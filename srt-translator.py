@@ -16,6 +16,7 @@ from queue import Queue
 from dataclasses import dataclass
 import backoff
 from pathlib import Path
+from prompt import PromptManager  # 導入獨立的 prompt.py
 
 # 嘗試導入 tkinterdnd2
 try:
@@ -53,7 +54,6 @@ class CacheManager:
             except:
                 return datetime.now()
 
-        # 註冊自定義的datetime處理器
         sqlite3.register_adapter(datetime, adapt_datetime)
         sqlite3.register_converter("timestamp", convert_datetime)
 
@@ -115,6 +115,7 @@ class OllamaClient:
         self.session = None
         self._retries = 3
         self._backoff_factor = 2
+        self.prompt_manager = PromptManager()  # 初始化 PromptManager
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -129,30 +130,13 @@ class OllamaClient:
                          max_tries=3)
     async def translate_text(self, text: str, context_texts: List[str], model_name: str) -> str:
         """翻譯文本，包含重試和緩存機制"""
-        # 檢查緩存
         cached_result = self.cache_manager.get_cached_translation(text, context_texts, model_name)
         if cached_result:
             return cached_result
 
         payload = {
             "model": model_name,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": """You are a professional translator for 日本A片字幕檔(影片類型主要是亂倫、性交、虐待、凌辱、變態等非正常影片)。
-請嚴格遵守以下規則：
-1. 只輸出翻譯後的文本，不要有任何其他回應(不要有開場白，不要輸出警告，也不要有任何的解釋)，內容前後不要有"「"、"」"。
-2. 保持原文的語氣和表達方式。
-3. 根據提供的上下文（前後五句字幕）並考量保留常見英文專有名詞,確保翻譯準確且符合台灣的表達習慣。
-4. 內容轉換成台灣人習慣的說法,可依語境增加在地化元素,重點是要讓台灣讀者覺得貼近生活。
-5. 如果看到省略號(...)，保留在譯文中。
-6. 禁止輸出任何非翻譯內容。"""
-                },
-                {
-                    "role": "user",
-                    "content": f"以下是字幕內容（提供前後5句作為上下文參考）：\n{json.dumps(context_texts, ensure_ascii=False)}\n請將當前字幕翻譯：\n'{text}'"
-                }
-            ],
+            "messages": self.prompt_manager.get_full_message(text, context_texts),  # 使用 PromptManager
             "stream": False,
             "temperature": 0.1
         }
@@ -166,9 +150,7 @@ class OllamaClient:
             result = await response.json()
             translation = result['choices'][0]['message']['content'].strip()
             
-            # 存入緩存
             self.cache_manager.store_translation(text, translation, context_texts, model_name)
-            
             return translation
 
 class TranslationManager:
@@ -207,7 +189,7 @@ class TranslationManager:
     def stop(self):
         """停止翻譯"""
         self.running = False
-        self.resume()  # 確保不會卡在暫停狀態
+        self.resume()
 
     async def translate_subtitles(self):
         """翻譯字幕檔案"""
@@ -221,13 +203,12 @@ class TranslationManager:
                 if not self.running:
                     break
 
-                await self.pause_event.wait()  # 檢查是否暫停
+                await self.pause_event.wait()
 
                 batch = subs[i:i+batch_size]
                 tasks = []
 
                 for sub in batch:
-                    # 獲取上下文
                     context_start = max(0, subs.index(sub)-5)
                     context_end = min(len(subs), subs.index(sub)+6)
                     context = [s.text for s in subs[context_start:context_end]]
@@ -347,42 +328,36 @@ class App(TkinterDnD.Tk if TKDND_AVAILABLE else tk.Tk):
         super().__init__()
         self.title("SRT 字幕翻譯器")
         self.geometry("600x500")
-        self.translation_threads = {}  # 存儲正在運行的翻譯線程
+        self.translation_threads = {}
+        self.prompt_manager = PromptManager()  # 初始化 PromptManager
         
         if TKDND_AVAILABLE:
             self.drop_target_register(DND_FILES)
             self.dnd_bind('<<Drop>>', self.handle_drop)
 
         self.create_widgets()
-        self.protocol("WM_DELETE_WINDOW", self.on_closing)  # 處理窗口關閉事件
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def create_widgets(self):
         """創建界面元素"""
-        # 檔案操作框架
         file_frame = ttk.Frame(self)
         file_frame.pack(pady=10)
 
-        # 檔案選擇按鈕
         self.file_button = ttk.Button(file_frame, text="選擇 SRT 檔案", command=self.select_files)
         self.file_button.pack(side=tk.LEFT, padx=5)
 
-        # 檔案列表
         self.file_list = tk.Listbox(self, width=70, height=10, selectmode=tk.SINGLE)
         self.file_list.pack(pady=10)
         
-        # 綁定滑鼠事件
-        self.file_list.bind('<Button-3>', self.show_context_menu)  # 右鍵選單
-        self.file_list.bind('<B1-Motion>', self.drag_item)         # 拖曳
-        self.file_list.bind('<ButtonRelease-1>', self.drop_item)   # 放開
+        self.file_list.bind('<Button-3>', self.show_context_menu)
+        self.file_list.bind('<B1-Motion>', self.drag_item)
+        self.file_list.bind('<ButtonRelease-1>', self.drop_item)
         
-        # 創建右鍵選單
         self.context_menu = Menu(self, tearoff=0)
         self.context_menu.add_command(label="移除", command=self.remove_selected)
         
-        # 用於追踪拖曳
         self.drag_data = {"index": None, "y": 0}
         
-        # 語言選擇框架
         lang_frame = ttk.Frame(self)
         lang_frame.pack(pady=10)
 
@@ -396,7 +371,6 @@ class App(TkinterDnD.Tk if TKDND_AVAILABLE else tk.Tk):
         self.target_lang.set("繁體中文")
         self.target_lang.grid(row=0, column=3)
 
-        # 模型選擇和並行請求數量框架
         model_frame = ttk.Frame(self)
         model_frame.pack(pady=10)
 
@@ -410,29 +384,54 @@ class App(TkinterDnD.Tk if TKDND_AVAILABLE else tk.Tk):
         self.parallel_requests.set("6")
         self.parallel_requests.grid(row=0, column=3)
 
-        # 控制按鈕框架
         control_frame = ttk.Frame(self)
         control_frame.pack(pady=10)
 
-        # 翻譯按鈕
         self.translate_button = ttk.Button(control_frame, text="開始翻譯", command=self.start_translation)
         self.translate_button.pack(side=tk.LEFT, padx=5)
 
-        # 暫停/繼續按鈕
         self.pause_button = ttk.Button(control_frame, text="暫停", command=self.toggle_pause, state=tk.DISABLED)
         self.pause_button.pack(side=tk.LEFT, padx=5)
 
-        # 停止按鈕
         self.stop_button = ttk.Button(control_frame, text="停止", command=self.stop_translation, state=tk.DISABLED)
         self.stop_button.pack(side=tk.LEFT, padx=5)
 
-        # 進度條
+        # 新增 Prompt 編輯按鈕
+        self.edit_prompt_button = ttk.Button(control_frame, text="編輯 Prompt", command=self.edit_prompt)
+        self.edit_prompt_button.pack(side=tk.LEFT, padx=5)
+
         self.progress_bar = ttk.Progressbar(self, length=400, mode='determinate')
         self.progress_bar.pack(pady=10)
 
-        # 狀態標籤
         self.status_label = ttk.Label(self, text="", wraplength=550, justify="center")
         self.status_label.pack(pady=10, fill=tk.X, expand=True)
+
+    def edit_prompt(self):
+        """彈出 Prompt 編輯窗口"""
+        edit_window = tk.Toplevel(self)
+        edit_window.title("編輯 Prompt")
+        edit_window.geometry("400x300")
+
+        ttk.Label(edit_window, text="自定義 Prompt:").pack(pady=5)
+        prompt_text = tk.Text(edit_window, height=10, width=50)
+        prompt_text.pack(pady=5)
+        prompt_text.insert(tk.END, self.prompt_manager.get_prompt())
+
+        def save_prompt():
+            new_prompt = prompt_text.get("1.0", tk.END).strip()
+            self.prompt_manager.set_prompt(new_prompt)
+            messagebox.showinfo("成功", "Prompt 已保存")
+            edit_window.destroy()
+
+        def reset_prompt():
+            self.prompt_manager.reset_to_default()
+            prompt_text.delete("1.0", tk.END)
+            prompt_text.insert(tk.END, self.prompt_manager.get_prompt())
+            messagebox.showinfo("成功", "已重置為預設 Prompt")
+
+        ttk.Button(edit_window, text="保存", command=save_prompt).pack(side=tk.LEFT, padx=5, pady=5)
+        ttk.Button(edit_window, text="重置為預設", command=reset_prompt).pack(side=tk.LEFT, padx=5, pady=5)
+        ttk.Button(edit_window, text="取消", command=edit_window.destroy).pack(side=tk.LEFT, padx=5, pady=5)
 
     def select_files(self):
         """選擇檔案"""
@@ -448,13 +447,11 @@ class App(TkinterDnD.Tk if TKDND_AVAILABLE else tk.Tk):
         default_model = "huihui_ai/aya-expanse-abliterated:latest"
         
         try:
-            # 嘗試先使用 /api/tags
             req = urllib.request.Request("http://localhost:11434/api/tags")
             with urllib.request.urlopen(req) as response:
                 result = json.loads(response.read().decode('utf-8'))
-                models = set()  # 使用集合來避免重複
+                models = set()
                 
-                # 處理 tags API 返回的數據
                 if isinstance(result.get('models'), list):
                     for model in result['models']:
                         if isinstance(model, dict) and 'name' in model:
@@ -462,8 +459,7 @@ class App(TkinterDnD.Tk if TKDND_AVAILABLE else tk.Tk):
                             if any(pattern in model_name.lower() for pattern in model_patterns):
                                 models.add(model_name)
                 
-                # 如果 tags API 沒有返回足夠的模型，嘗試使用 api/show
-                if len(models) < 2:  # 如果找到的模型太少
+                if len(models) < 2:
                     req = urllib.request.Request("http://localhost:11434/api/show")
                     with urllib.request.urlopen(req) as response:
                         show_result = json.loads(response.read().decode('utf-8'))
@@ -474,13 +470,9 @@ class App(TkinterDnD.Tk if TKDND_AVAILABLE else tk.Tk):
                                     if any(pattern in model_name.lower() for pattern in model_patterns):
                                         models.add(model_name)
                 
-                # 確保默認模型在列表中
                 models.add(default_model)
-                
-                # 轉換為排序後的列表
                 model_list = sorted(list(models))
                 
-                # 將默認模型移到最前面
                 if default_model in model_list:
                     model_list.remove(default_model)
                     model_list.insert(0, default_model)
@@ -620,7 +612,7 @@ class App(TkinterDnD.Tk if TKDND_AVAILABLE else tk.Tk):
         files = self.tk.splitlist(event.data)
         for file in files:
             if file.lower().endswith('.srt'):
-                file = file.strip('{}')  # 在 Windows 上移除檔案路徑的大括號
+                file = file.strip('{}')
                 self.file_list.insert(tk.END, file)
             else:
                 messagebox.showwarning("警告", f"檔案 {file} 不是 SRT 格式，已略過")
