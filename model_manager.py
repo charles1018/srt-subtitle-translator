@@ -2,6 +2,7 @@
 import json
 import urllib.request
 from typing import List
+from openai import OpenAI
 
 class ModelManager:
     def __init__(self, base_url: str = "http://localhost:11434"):
@@ -13,16 +14,23 @@ class ModelManager:
             'dolphin', 'vicuna', 'zephyr', 'gemma', 'deepseek'
         ]
 
-    def get_model_list(self) -> List[str]:
-        """獲取可用的模型列表"""
+    def get_model_list(self, llm_type: str, api_key: str = None) -> List[str]:
+        """根據 LLM 類型獲取模型列表"""
+        if llm_type == "ollama":
+            return self._get_ollama_models()
+        elif llm_type == "openai":
+            return self._get_openai_models(api_key)
+        else:
+            return [self.default_model]  # 默認回退
+
+    def _get_ollama_models(self) -> List[str]:
+        """獲取 Ollama 模型列表"""
         try:
-            # 嘗試使用 /api/tags 獲取模型列表
             req = urllib.request.Request(f"{self.base_url}/api/tags")
             with urllib.request.urlopen(req) as response:
                 result = json.loads(response.read().decode('utf-8'))
-                models = set()  # 使用集合避免重複
+                models = set()
                 
-                # 處理 tags API 返回的數據
                 if isinstance(result.get('models'), list):
                     for model in result['models']:
                         if isinstance(model, dict) and 'name' in model:
@@ -30,7 +38,6 @@ class ModelManager:
                             if any(pattern in model_name.lower() for pattern in self.model_patterns):
                                 models.add(model_name)
                 
-                # 如果模型數量不足，嘗試使用 /api/show
                 if len(models) < 2:
                     req = urllib.request.Request(f"{self.base_url}/api/show")
                     with urllib.request.urlopen(req) as response:
@@ -42,10 +49,7 @@ class ModelManager:
                                     if any(pattern in model_name.lower() for pattern in self.model_patterns):
                                         models.add(model_name)
                 
-                # 確保預設模型存在
                 models.add(self.default_model)
-                
-                # 轉換為排序後的列表，預設模型放在首位
                 model_list = sorted(list(models))
                 if self.default_model in model_list:
                     model_list.remove(self.default_model)
@@ -54,18 +58,32 @@ class ModelManager:
                 return model_list if model_list else [self.default_model]
                 
         except Exception as e:
-            print(f"獲取模型列表時發生錯誤: {str(e)}")
+            print(f"獲取 Ollama 模型列表時發生錯誤: {str(e)}")
             return [self.default_model]
 
-    def get_default_model(self) -> str:
+    def _get_openai_models(self, api_key: str) -> List[str]:
+        """獲取 OpenAI 模型列表"""
+        if not api_key:
+            print("未提供 OpenAI API Key，返回預設模型")
+            return ["gpt-3.5-turbo"]  # 默認模型
+        
+        try:
+            client = OpenAI(api_key=api_key)
+            models = client.models.list()
+            model_list = [model.id for model in models if "gpt" in model.id]  # 過濾包含 "gpt" 的模型
+            return sorted(model_list) if model_list else ["gpt-3.5-turbo"]
+        except Exception as e:
+            print(f"獲取 OpenAI 模型列表時發生錯誤: {str(e)}")
+            return ["gpt-3.5-turbo"]
+
+    def get_default_model(self, llm_type: str) -> str:
         """返回預設模型"""
-        return self.default_model
+        return "gpt-3.5-turbo" if llm_type == "openai" else self.default_model
 
 # 測試代碼
 if __name__ == "__main__":
+    with open("openapi_api_key.txt", "r") as f:
+        api_key = f.read().strip()
     manager = ModelManager()
-    models = manager.get_model_list()
-    print("可用模型列表:")
-    for model in models:
-        print(f"- {model}")
-    print(f"預設模型: {manager.get_default_model()}")
+    print("Ollama 模型:", manager.get_model_list("ollama"))
+    print("OpenAI 模型:", manager.get_model_list("openai", api_key))

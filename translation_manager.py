@@ -5,10 +5,10 @@ import pysrt
 from typing import Optional
 import logging
 from logging.handlers import TimedRotatingFileHandler
-from ollama_client import OllamaClient
+from translation_client import TranslationClient  # 使用新客戶端
 from file_handler import FileHandler
 
-# 設置日誌輪替，按時間分割
+# 設置日誌輪替
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -25,7 +25,8 @@ logger.addHandler(handler)
 
 class TranslationManager:
     def __init__(self, file_path: str, source_lang: str, target_lang: str, 
-                 model_name: str, parallel_requests: int, progress_callback, complete_callback, display_mode: str):
+                 model_name: str, parallel_requests: int, progress_callback, complete_callback, 
+                 display_mode: str, llm_type: str, api_key: str = None):
         self.file_path = file_path
         self.source_lang = source_lang
         self.target_lang = target_lang
@@ -33,7 +34,9 @@ class TranslationManager:
         self.parallel_requests = parallel_requests
         self.progress_callback = progress_callback
         self.complete_callback = complete_callback
-        self.display_mode = display_mode  # 顯示模式參數
+        self.display_mode = display_mode
+        self.llm_type = llm_type  # 新增 LLM 類型
+        self.api_key = api_key    # 新增 API Key
         self.file_handler = FileHandler()
         self.ollama_client = None
         self.semaphore = asyncio.Semaphore(parallel_requests)
@@ -43,7 +46,7 @@ class TranslationManager:
 
     async def initialize(self):
         """初始化翻譯管理器"""
-        self.ollama_client = await OllamaClient().__aenter__()
+        self.ollama_client = await TranslationClient(self.llm_type, api_key=self.api_key).__aenter__()
 
     async def cleanup(self):
         """清理資源"""
@@ -101,12 +104,11 @@ class TranslationManager:
                     try:
                         translation = await task
                         if translation:
-                            # 根據顯示模式調整字幕內容
-                            if self.display_mode == "目標語言":
+                            if self.display_mode == "target_only":
                                 sub.text = translation
-                            elif self.display_mode == "目標語言在上，原文語言在下":
+                            elif self.display_mode == "target_above_source":
                                 sub.text = f"{translation}\n{sub.text}"
-                            elif self.display_mode == "原文語言在上，目標語言在下":
+                            elif self.display_mode == "source_above_target":
                                 sub.text = f"{sub.text}\n{translation}"
                             translated_count += 1
                             self.progress_callback(translated_count, total_subs)
@@ -139,7 +141,7 @@ class TranslationManager:
 class TranslationThread(threading.Thread):
     """翻譯線程"""
     def __init__(self, file_path, source_lang, target_lang, model_name, parallel_requests, 
-                 progress_callback, complete_callback, display_mode: str):
+                 progress_callback, complete_callback, display_mode: str, llm_type: str, api_key: str = None):
         threading.Thread.__init__(self)
         self.manager = None
         self.file_path = file_path
@@ -150,13 +152,16 @@ class TranslationThread(threading.Thread):
         self.progress_callback = progress_callback
         self.complete_callback = complete_callback
         self.display_mode = display_mode
+        self.llm_type = llm_type  # 新增 LLM 類型
+        self.api_key = api_key    # 新增 API Key
 
     def run(self):
         """運行翻譯線程"""
         async def async_run():
             self.manager = TranslationManager(
                 self.file_path, self.source_lang, self.target_lang, self.model_name,
-                self.parallel_requests, self.progress_callback, self.complete_callback, self.display_mode
+                self.parallel_requests, self.progress_callback, self.complete_callback, 
+                self.display_mode, self.llm_type, self.api_key
             )
             await self.manager.initialize()
             try:
@@ -192,6 +197,6 @@ if __name__ == "__main__":
     def complete(message):
         print(message)
 
-    thread = TranslationThread("test.srt", "日文", "繁體中文", "test_model", 2, progress, complete, "目標語言")
+    thread = TranslationThread("test.srt", "日文", "繁體中文", "test_model", 2, progress, complete, "target_only", "ollama")
     thread.start()
     thread.join()

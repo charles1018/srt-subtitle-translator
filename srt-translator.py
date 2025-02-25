@@ -21,13 +21,34 @@ class App:
         self.prompt_manager = PromptManager()
         self.model_manager = ModelManager()
         
+        # 讀取 OpenAI API Key
+        try:
+            with open("openapi_api_key.txt", "r") as f:
+                self.openai_api_key = f.read().strip()
+        except FileNotFoundError:
+            messagebox.showerror("錯誤", "未找到 openapi_api_key.txt，OpenAI 模式不可用")
+            self.openai_api_key = None
+        
         self.gui = GUIComponents(self.root, self.start_translation, self.toggle_pause, 
                                  self.stop_translation, self._update_progress, 
                                  self._translation_completed, self.prompt_manager)
         self.gui.setup()
-        self.gui.set_model_list(self.model_manager.get_model_list(), self.model_manager.get_default_model())
+        
+        # 初始模型列表設為 Ollama
+        self.gui.set_model_list(self.model_manager.get_model_list("ollama"), 
+                               self.model_manager.get_default_model("ollama"))
+        
+        # 綁定 LLM 類型變更事件
+        self.gui.llm_type.bind("<<ComboboxSelected>>", self.update_model_list)
         
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def update_model_list(self, event=None):
+        """根據選擇的 LLM 類型更新模型列表"""
+        llm_type = self.gui.llm_type.get()
+        models = self.model_manager.get_model_list(llm_type, self.openai_api_key)
+        default_model = self.model_manager.get_default_model(llm_type)
+        self.gui.set_model_list(models, default_model)
 
     def start_translation(self):
         """開始翻譯"""
@@ -39,7 +60,8 @@ class App:
         self.gui.disable_controls()
         self.gui.status_label.config(text=f"正在翻譯 {len(files)} 個檔案...")
         
-        display_mode = self.gui.display_mode.get()  # 從 GUI 獲取顯示模式
+        display_mode = self.gui.display_mode.get()
+        llm_type = self.gui.llm_type.get()
         
         for file_path in files:
             thread = TranslationThread(
@@ -50,7 +72,9 @@ class App:
                 int(self.gui.parallel_requests.get()),
                 self._update_progress, 
                 self._translation_completed, 
-                display_mode
+                display_mode,
+                llm_type,
+                self.openai_api_key if llm_type == 'openai' else None
             )
             self.translation_threads[file_path] = thread
             thread.start()
