@@ -14,9 +14,9 @@ logger.setLevel(logging.DEBUG)
 
 handler = TimedRotatingFileHandler(
     filename='srt_translator.log',
-    when='midnight',        # 每天午夜分割
-    interval=1,             # 每 1 天
-    backupCount=7,          # 保留 7 天備份
+    when='midnight',
+    interval=1,
+    backupCount=7,
     encoding='utf-8'
 )
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
@@ -25,7 +25,7 @@ logger.addHandler(handler)
 
 class TranslationManager:
     def __init__(self, file_path: str, source_lang: str, target_lang: str, 
-                 model_name: str, parallel_requests: int, progress_callback, complete_callback):
+                 model_name: str, parallel_requests: int, progress_callback, complete_callback, display_mode: str):
         self.file_path = file_path
         self.source_lang = source_lang
         self.target_lang = target_lang
@@ -33,6 +33,7 @@ class TranslationManager:
         self.parallel_requests = parallel_requests
         self.progress_callback = progress_callback
         self.complete_callback = complete_callback
+        self.display_mode = display_mode  # 顯示模式參數
         self.file_handler = FileHandler()
         self.ollama_client = None
         self.semaphore = asyncio.Semaphore(parallel_requests)
@@ -73,7 +74,7 @@ class TranslationManager:
             translated_count = 0
             batch_size = self.optimize_batch_size(total_subs)
 
-            logger.info(f"開始翻譯檔案: {self.file_path}, 總字幕數: {total_subs}, 批次大小: {batch_size}")
+            logger.info(f"開始翻譯檔案: {self.file_path}, 總字幕數: {total_subs}, 批次大小: {batch_size}, 顯示模式: {self.display_mode}")
 
             for i in range(0, total_subs, batch_size):
                 if not self.running:
@@ -100,7 +101,13 @@ class TranslationManager:
                     try:
                         translation = await task
                         if translation:
-                            sub.text = translation
+                            # 根據顯示模式調整字幕內容
+                            if self.display_mode == "目標語言":
+                                sub.text = translation
+                            elif self.display_mode == "目標語言在上，原文語言在下":
+                                sub.text = f"{translation}\n{sub.text}"
+                            elif self.display_mode == "原文語言在上，目標語言在下":
+                                sub.text = f"{sub.text}\n{translation}"
                             translated_count += 1
                             self.progress_callback(translated_count, total_subs)
                     except Exception as e:
@@ -132,7 +139,7 @@ class TranslationManager:
 class TranslationThread(threading.Thread):
     """翻譯線程"""
     def __init__(self, file_path, source_lang, target_lang, model_name, parallel_requests, 
-                 progress_callback, complete_callback):
+                 progress_callback, complete_callback, display_mode: str):
         threading.Thread.__init__(self)
         self.manager = None
         self.file_path = file_path
@@ -142,13 +149,14 @@ class TranslationThread(threading.Thread):
         self.parallel_requests = parallel_requests
         self.progress_callback = progress_callback
         self.complete_callback = complete_callback
+        self.display_mode = display_mode
 
     def run(self):
         """運行翻譯線程"""
         async def async_run():
             self.manager = TranslationManager(
                 self.file_path, self.source_lang, self.target_lang, self.model_name,
-                self.parallel_requests, self.progress_callback, self.complete_callback
+                self.parallel_requests, self.progress_callback, self.complete_callback, self.display_mode
             )
             await self.manager.initialize()
             try:
@@ -184,6 +192,6 @@ if __name__ == "__main__":
     def complete(message):
         print(message)
 
-    thread = TranslationThread("test.srt", "日文", "繁體中文", "test_model", 2, progress, complete)
+    thread = TranslationThread("test.srt", "日文", "繁體中文", "test_model", 2, progress, complete, "目標語言")
     thread.start()
     thread.join()

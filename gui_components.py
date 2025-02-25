@@ -19,8 +19,8 @@ class GUIComponents:
         self.start_translation = start_translation
         self.toggle_pause = toggle_pause
         self.stop_translation = stop_translation
-        self.update_progress = update_progress  # 直接使用外部傳入的回調
-        self.translation_completed = translation_completed  # 直接使用外部傳入的回調
+        self.update_progress = update_progress
+        self.translation_completed = translation_completed
         self.prompt_manager = prompt_manager
         self.file_handler = FileHandler(root)
         self.drag_data = {"index": None, "y": 0}
@@ -35,7 +35,6 @@ class GUIComponents:
 
     def create_widgets(self):
         """創建界面元素"""
-        # 檔案操作框架
         file_frame = ttk.Frame(self.root)
         file_frame.pack(pady=10)
 
@@ -52,7 +51,6 @@ class GUIComponents:
         self.context_menu = Menu(self.root, tearoff=0)
         self.context_menu.add_command(label="移除", command=self.remove_selected)
 
-        # 語言選擇框架
         lang_frame = ttk.Frame(self.root)
         lang_frame.pack(pady=10)
 
@@ -66,7 +64,6 @@ class GUIComponents:
         self.target_lang.set("繁體中文")
         self.target_lang.grid(row=0, column=3)
 
-        # 模型選擇和並行請求數量框架
         model_frame = ttk.Frame(self.root)
         model_frame.pack(pady=10)
 
@@ -79,7 +76,17 @@ class GUIComponents:
         self.parallel_requests.set("6")
         self.parallel_requests.grid(row=0, column=3)
 
-        # 控制按鈕框架
+        # 顯示模式框架
+        display_frame = ttk.Frame(self.root)
+        display_frame.pack(pady=10)
+
+        ttk.Label(display_frame, text="字幕顯示模式:").grid(row=0, column=0)
+        self.display_mode = ttk.Combobox(display_frame, values=[
+            "目標語言", "目標語言在上，原文語言在下", "原文語言在上，目標語言在下"
+        ], state="readonly")
+        self.display_mode.set("目標語言")  # 預設僅目標語言
+        self.display_mode.grid(row=0, column=1)
+
         control_frame = ttk.Frame(self.root)
         control_frame.pack(pady=10)
 
@@ -95,11 +102,9 @@ class GUIComponents:
         self.edit_prompt_button = ttk.Button(control_frame, text="編輯 Prompt", command=self.edit_prompt)
         self.edit_prompt_button.pack(side=tk.LEFT, padx=5)
 
-        # 進度條
         self.progress_bar = ttk.Progressbar(self.root, length=400, mode='determinate')
         self.progress_bar.pack(pady=10)
 
-        # 狀態標籤
         self.status_label = ttk.Label(self.root, text="", wraplength=550, justify="center")
         self.status_label.pack(pady=10, fill=tk.X, expand=True)
 
@@ -179,7 +184,7 @@ class GUIComponents:
         """禁用控制按鈕"""
         self.translate_button.config(state=tk.DISABLED)
         self.pause_button.config(state=tk.NORMAL)
-        self.stop_button.config(state=tk.NORMAL)
+        self.stop_button.config(state=tk.DISABLED)
         self.progress_bar['value'] = 0
         self.status_label.config(text="")
 
@@ -199,18 +204,3 @@ class GUIComponents:
         """設置模型列表和預設值"""
         self.model_combo.config(values=models)
         self.model_combo.set(default_model)
-
-# 測試代碼
-if __name__ == "__main__":
-    from prompt import PromptManager
-
-    def dummy_callback(*args):
-        print(f"Callback called with args: {args}")
-
-    root = TkinterDnD.Tk() if TKDND_AVAILABLE else tk.Tk()
-    root.title("測試 GUI")
-    gui = GUIComponents(root, dummy_callback, dummy_callback, dummy_callback, 
-                        dummy_callback, dummy_callback, PromptManager())
-    gui.setup()
-    gui.set_model_list(["model1", "model2"], "model1")
-    root.mainloop()
