@@ -4,12 +4,24 @@ import asyncio
 from typing import List
 import backoff
 import logging
+from logging.handlers import TimedRotatingFileHandler
 from cache import CacheManager
 from prompt import PromptManager
 
-# 設置日誌
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+# 設置日誌輪替，按時間分割
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+handler = TimedRotatingFileHandler(
+    filename='srt_translator.log',
+    when='midnight',
+    interval=1,
+    backupCount=7,
+    encoding='utf-8'
+)
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 class OllamaClient:
     def __init__(self, base_url: str = "http://localhost:11434"):

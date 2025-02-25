@@ -4,12 +4,24 @@ import threading
 import pysrt
 from typing import Optional
 import logging
+from logging.handlers import TimedRotatingFileHandler
 from ollama_client import OllamaClient
 from file_handler import FileHandler
 
-# 設置日誌
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+# 設置日誌輪替，按時間分割
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+handler = TimedRotatingFileHandler(
+    filename='srt_translator.log',
+    when='midnight',        # 每天午夜分割
+    interval=1,             # 每 1 天
+    backupCount=7,          # 保留 7 天備份
+    encoding='utf-8'
+)
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 class TranslationManager:
     def __init__(self, file_path: str, source_lang: str, target_lang: str, 
@@ -92,7 +104,7 @@ class TranslationManager:
                             translated_count += 1
                             self.progress_callback(translated_count, total_subs)
                     except Exception as e:
-                        logger.error(f"翻譯字幕 '{sub.text}' 時發生錯誤: {str(e)}", exc_info=True)  # 打印完整堆疊
+                        logger.error(f"翻譯字幕 '{sub.text}' 時發生錯誤: {str(e)}", exc_info=True)
                         continue
 
             if self.running:
