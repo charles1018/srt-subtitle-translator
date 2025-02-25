@@ -1,2 +1,4 @@
 pysrt>=1.1.2
+aiohttp>=3.8.5
+backoff>=2.2.1
 tkinterdnd2>=0.3.0
