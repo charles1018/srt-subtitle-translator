@@ -76,15 +76,24 @@ class GUIComponents:
         self.parallel_requests.set("6")
         self.parallel_requests.grid(row=0, column=3)
 
+        # LLM 選擇框架
+        llm_frame = ttk.Frame(self.root)
+        llm_frame.pack(pady=10)
+
+        ttk.Label(llm_frame, text="LLM 類型:").grid(row=0, column=0)
+        self.llm_type = ttk.Combobox(llm_frame, values=["ollama", "openai"], state="readonly")
+        self.llm_type.set("ollama")
+        self.llm_type.grid(row=0, column=1)
+
         # 顯示模式框架
         display_frame = ttk.Frame(self.root)
         display_frame.pack(pady=10)
 
         ttk.Label(display_frame, text="字幕顯示模式:").grid(row=0, column=0)
         self.display_mode = ttk.Combobox(display_frame, values=[
-            "目標語言", "目標語言在上，原文語言在下", "原文語言在上，目標語言在下"
+            "target_only", "target_above_source", "source_above_target"
         ], state="readonly")
-        self.display_mode.set("目標語言")  # 預設僅目標語言
+        self.display_mode.set("target_only")
         self.display_mode.grid(row=0, column=1)
 
         control_frame = ttk.Frame(self.root)
@@ -184,7 +193,7 @@ class GUIComponents:
         """禁用控制按鈕"""
         self.translate_button.config(state=tk.DISABLED)
         self.pause_button.config(state=tk.NORMAL)
-        self.stop_button.config(state=tk.DISABLED)
+        self.stop_button.config(state=tk.NORMAL)
         self.progress_bar['value'] = 0
         self.status_label.config(text="")
 
