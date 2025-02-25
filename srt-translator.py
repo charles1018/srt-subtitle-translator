@@ -39,11 +39,18 @@ class App:
         self.gui.disable_controls()
         self.gui.status_label.config(text=f"正在翻譯 {len(files)} 個檔案...")
         
+        display_mode = self.gui.display_mode.get()  # 從 GUI 獲取顯示模式
+        
         for file_path in files:
             thread = TranslationThread(
-                file_path, self.gui.source_lang.get(), self.gui.target_lang.get(),
-                self.gui.model_combo.get(), int(self.gui.parallel_requests.get()),
-                self._update_progress, self._translation_completed
+                file_path, 
+                self.gui.source_lang.get(), 
+                self.gui.target_lang.get(),
+                self.gui.model_combo.get(), 
+                int(self.gui.parallel_requests.get()),
+                self._update_progress, 
+                self._translation_completed, 
+                display_mode
             )
             self.translation_threads[file_path] = thread
             thread.start()
