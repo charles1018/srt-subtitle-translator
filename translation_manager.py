@@ -72,13 +72,18 @@ class TranslationManager:
         self.resume()
 
     async def translate_subtitles(self):
-        """翻譯字幕檔案"""
+        """翻譯字幕檔案，OpenAI 使用優化的批次處理方式"""
         try:
-            self.start_time = time.time()  # 記錄開始時間
+            self.start_time = time.time()
             subs = pysrt.open(self.file_path)
             total_subs = len(subs)
             translated_count = 0
-            batch_size = self.optimize_batch_size(total_subs)
+            
+            # 為 OpenAI 和 Ollama 優化批次大小
+            if self.llm_type == 'openai':
+                batch_size = min(5, self.parallel_requests)  # OpenAI 使用較小批次
+            else:
+                batch_size = self.optimize_batch_size(total_subs)  # Ollama 使用原始策略
 
             logger.info(f"開始翻譯檔案: {self.file_path}, 總字幕數: {total_subs}, 批次大小: {batch_size}, 顯示模式: {self.display_mode}")
 
@@ -88,25 +93,25 @@ class TranslationManager:
                     break
 
                 await self.pause_event.wait()
-
+                
                 batch = subs[i:i + batch_size]
-                tasks = []
-
+                
+                # 準備這個批次的翻譯請求
+                translation_requests = []
                 for sub in batch:
                     context_start = max(0, subs.index(sub) - 5)
                     context_end = min(len(subs), subs.index(sub) + 6)
                     context = [s.text for s in subs[context_start:context_end]]
+                    translation_requests.append((sub.text, context))
+                
+                # OpenAI 使用優化的批次翻譯
+                if self.llm_type == 'openai':
+                    translations = await self.ollama_client.translate_batch(translation_requests, self.model_name)
                     
-                    async with self.semaphore:
-                        task = asyncio.create_task(
-                            self.ollama_client.translate_text(sub.text, context, self.model_name)
-                        )
-                        tasks.append((sub, task))
-
-                for sub, task in tasks:
-                    try:
-                        translation = await task
-                        if translation:
+                    # 應用翻譯結果
+                    for idx, sub in enumerate(batch):
+                        if idx < len(translations) and translations[idx]:
+                            translation = translations[idx]
                             if self.display_mode == "target_only":
                                 sub.text = translation
                             elif self.display_mode == "target_above_source":
@@ -115,9 +120,36 @@ class TranslationManager:
                                 sub.text = f"{sub.text}\n{translation}"
                             translated_count += 1
                             self.progress_callback(translated_count, total_subs)
-                    except Exception as e:
-                        logger.error(f"翻譯字幕 '{sub.text}' 時發生錯誤: {str(e)}", exc_info=True)
-                        continue
+                
+                # Ollama 使用原始並行方式
+                else:
+                    tasks = []
+                    for sub in batch:
+                        context_start = max(0, subs.index(sub) - 5)
+                        context_end = min(len(subs), subs.index(sub) + 6)
+                        context = [s.text for s in subs[context_start:context_end]]
+                        
+                        async with self.semaphore:
+                            task = asyncio.create_task(
+                                self.ollama_client.translate_text(sub.text, context, self.model_name)
+                            )
+                            tasks.append((sub, task))
+
+                    for sub, task in tasks:
+                        try:
+                            translation = await task
+                            if translation:
+                                if self.display_mode == "target_only":
+                                    sub.text = translation
+                                elif self.display_mode == "target_above_source":
+                                    sub.text = f"{translation}\n{sub.text}"
+                                elif self.display_mode == "source_above_target":
+                                    sub.text = f"{sub.text}\n{translation}"
+                                translated_count += 1
+                                self.progress_callback(translated_count, total_subs)
+                        except Exception as e:
+                            logger.error(f"翻譯字幕 '{sub.text}' 時發生錯誤: {str(e)}", exc_info=True)
+                            continue
 
             # 在所有翻譯完成後立即計算耗時
             if self.running:
