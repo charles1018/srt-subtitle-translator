@@ -5,8 +5,9 @@ import pysrt
 from typing import Optional
 import logging
 from logging.handlers import TimedRotatingFileHandler
-from translation_client import TranslationClient  # 使用新客戶端
+from translation_client import TranslationClient
 from file_handler import FileHandler
+import time
 
 # 設置日誌輪替
 logger = logging.getLogger(__name__)
@@ -35,14 +36,15 @@ class TranslationManager:
         self.progress_callback = progress_callback
         self.complete_callback = complete_callback
         self.display_mode = display_mode
-        self.llm_type = llm_type  # 新增 LLM 類型
-        self.api_key = api_key    # 新增 API Key
+        self.llm_type = llm_type
+        self.api_key = api_key
         self.file_handler = FileHandler()
         self.ollama_client = None
         self.semaphore = asyncio.Semaphore(parallel_requests)
         self.running = True
         self.pause_event = asyncio.Event()
         self.pause_event.set()
+        self.start_time = None  # 記錄開始時間
 
     async def initialize(self):
         """初始化翻譯管理器"""
@@ -72,6 +74,7 @@ class TranslationManager:
     async def translate_subtitles(self):
         """翻譯字幕檔案"""
         try:
+            self.start_time = time.time()  # 記錄開始時間
             subs = pysrt.open(self.file_path)
             total_subs = len(subs)
             translated_count = 0
@@ -116,18 +119,23 @@ class TranslationManager:
                         logger.error(f"翻譯字幕 '{sub.text}' 時發生錯誤: {str(e)}", exc_info=True)
                         continue
 
+            # 在所有翻譯完成後立即計算耗時
             if self.running:
+                elapsed_time = time.time() - self.start_time
+                elapsed_str = self.format_elapsed_time(elapsed_time)
+                logger.info(f"翻譯完成，總耗時: {elapsed_str}")
+
                 output_path = self.file_handler.get_output_path(self.file_path, self.target_lang, 
                                                                self.progress_callback)
                 if output_path:
                     subs.save(output_path, encoding='utf-8')
-                    self.complete_callback(f"翻譯完成 | 檔案已成功保存為: {output_path}")
+                    self.complete_callback(f"翻譯完成 | 檔案已成功保存為: {output_path}", elapsed_str)
                 else:
-                    self.complete_callback(f"已跳過檔案: {self.file_path}")
+                    self.complete_callback(f"已跳過檔案: {self.file_path}", elapsed_str)
 
         except Exception as e:
             logger.error(f"翻譯過程中發生異常: {str(e)}", exc_info=True)
-            self.complete_callback(f"翻譯過程中發生錯誤: {str(e)}")
+            self.complete_callback(f"翻譯過程中發生錯誤: {str(e)}", "未知")
 
     def optimize_batch_size(self, total_subs: int) -> int:
         """根據字幕總數優化批次大小"""
@@ -137,6 +145,12 @@ class TranslationManager:
             return min(self.parallel_requests * 2, total_subs)
         else:
             return min(self.parallel_requests * 3, total_subs)
+
+    def format_elapsed_time(self, seconds: float) -> str:
+        """格式化耗時為易讀格式"""
+        minutes = int(seconds // 60)
+        seconds = int(seconds % 60)
+        return f"{minutes} 分 {seconds} 秒" if minutes > 0 else f"{seconds} 秒"
 
 class TranslationThread(threading.Thread):
     """翻譯線程"""
@@ -152,8 +166,8 @@ class TranslationThread(threading.Thread):
         self.progress_callback = progress_callback
         self.complete_callback = complete_callback
         self.display_mode = display_mode
-        self.llm_type = llm_type  # 新增 LLM 類型
-        self.api_key = api_key    # 新增 API Key
+        self.llm_type = llm_type
+        self.api_key = api_key
 
     def run(self):
         """運行翻譯線程"""
@@ -194,8 +208,8 @@ if __name__ == "__main__":
     def progress(current, total):
         print(f"進度: {current}/{total}")
 
-    def complete(message):
-        print(message)
+    def complete(message, elapsed_time):
+        print(f"{message} | 耗時: {elapsed_time}")
 
     thread = TranslationThread("test.srt", "日文", "繁體中文", "test_model", 2, progress, complete, "target_only", "ollama")
     thread.start()
