@@ -21,7 +21,6 @@ class App:
         self.prompt_manager = PromptManager()
         self.model_manager = ModelManager()
         
-        # 讀取 OpenAI API Key
         try:
             with open("openapi_api_key.txt", "r") as f:
                 self.openai_api_key = f.read().strip()
@@ -34,11 +33,9 @@ class App:
                                  self._translation_completed, self.prompt_manager)
         self.gui.setup()
         
-        # 初始模型列表設為 Ollama
         self.gui.set_model_list(self.model_manager.get_model_list("ollama"), 
                                self.model_manager.get_default_model("ollama"))
         
-        # 綁定 LLM 類型變更事件
         self.gui.llm_type.bind("<<ComboboxSelected>>", self.update_model_list)
         
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -115,10 +112,10 @@ class App:
             self.gui.status_label.config(text=f"正在翻譯第 {current}/{total} 句字幕 ({percentage}%)")
             self.root.update_idletasks()
 
-    def _translation_completed(self, message):
-        """處理翻譯完成回調"""
-        current_text = self.gui.status_label.cget("text")
-        self.gui.status_label.config(text=f"{current_text}\n{message}")
+    def _translation_completed(self, message, elapsed_time):
+        """處理翻譯完成回調，顯示耗時"""
+        self.gui.status_label.config(text=f"{message} | 翻譯耗時: {elapsed_time}")
+        self.gui.reset_ui()
 
     def on_closing(self):
         """處理窗口關閉事件"""
