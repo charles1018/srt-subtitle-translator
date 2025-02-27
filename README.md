@@ -1,137 +1,126 @@
-# SRT 字幕翻譯器
+# SRT Subtitle Translator
 
+基於 Python 3.12 的 SRT 字幕檔自動翻譯工具，支援使用 Ollama 本地模型或 OpenAI API 進行多語言翻譯。本工具提供多種語言翻譯、批次處理、翻譯記憶緩存功能，並配備友好的圖形用戶界面。特別優化了日文字幕翻譯為繁體中文的功能。
 
+## 功能特點
 
-# SRT 字幕翻譯器
+- 支持 SRT 格式字幕檔的自動翻譯
+- 雙重翻譯引擎：支持 Ollama 本地 AI 模型和 OpenAI API
+- 多語言支持（日文、英文、繁體中文）
+- 批次處理多個檔案
+- 拖放操作界面
+- 翻譯記憶緩存功能，減少重複 API 呼叫
+- 自訂翻譯提示詞
+- 可調整字幕顯示模式（僅顯示翻譯、翻譯在原文上方、原文在翻譯上方）
+- 可控制並行翻譯數量，優化效能
 
-這是一個基於 Python 的 SRT 字幕翻譯工具，使用 Ollama API 進行翻譯，支持並行處理、自定義翻譯 Prompt 和檔案拖放功能。項目採用模組化設計，便於維護和擴展。
+## 系統需求
 
-## 功能
+- Python 3.12 或更高版本
+- 使用 OpenAI 模式需要 OpenAI API 密鑰（存放於 openapi_api_key.txt）
+- 使用 Ollama 模式需要在本機安裝 Ollama 服務 (http://localhost:11434)
+- 網路連接
 
-- 批量翻譯 `.srt` 字幕檔案。
-- 支持自定義翻譯 Prompt，適應不同語氣和在地化需求。
-- 可並行處理多個字幕，提升翻譯效率。
-- 提供進度條和狀態顯示，支援暫停/停止翻譯。
-- 支持檔案拖放（需安裝 `tkinterdnd2`）。
-- 緩存翻譯結果，減少重複請求。
+## 安裝指南
 
-## 檔案結構
+1. 克隆或下載本儲存庫
 
-srt_translator/
-├── srt-translator.py # 主腳本，應用程式入口
-├── cache.py # 緩存管理模組
-├── ollama_client.py # 翻譯客戶端模組
-├── translation_manager.py # 翻譯流程管理模組
-├── model_manager.py # 模型管理模組
-├── gui_components.py # GUI 組件模組
-├── file_handler.py # 檔案處理模組
-├── prompt.py # Prompt 管理模組
-├── requirements.txt # 依賴清單
-├── README.md # 本文件
+```bash
+git clone https://github.com/charles1018/srt-subtitle-translator.git
+cd srt-subtitle-translator
+```
 
+2. 安裝必要的套件
 
-
-## 安裝步驟
-
-### 前置條件
-
-- **Python 版本**：3.8 或更高版本。
-- **Ollama 服務**：需在本地運行 Ollama（默認地址 `http://localhost:11434`），並確保模型（如 `gemma2:9b`）已下載。
-- **操作系統**：Windows、Linux 或 macOS。
-
-### 步驟
-
-1. **克隆或下載項目**：
-
-git clone https://github.com/charles1018/srt-subtitle-translator 
-cd srt_translator
-
-或直接下載並解壓縮項目檔案。
-
-2. **設置虛擬環境（可選但推薦）**：
-
-python -m venv venv
-source venv/bin/activate # Linux/macOS
-venv\Scripts\activate # Windows
-
-3. **安裝依賴**：
-
+```bash
 pip install -r requirements.txt
+```
 
-- 若不需要拖放功能，可手動移除 `tkinterdnd2` 的安裝。
-4. **啟動 Ollama 服務**：
-- 確保 Ollama 已安裝並運行：
+3. 設定 OpenAI API 密鑰
 
-ollama run gemma2:9b
-
-- 檢查服務是否在 `http://localhost:11434` 可訪問。
-5. **運行程式**：
-
-python srt-translator.py
-
-## 依賴
-
-- **必要依賴**：
-- `pysrt`：處理 SRT 字幕檔案。
-- `aiohttp`：非同步 HTTP 請求。
-- `backoff`：API 請求重試機制。
-- **可選依賴**：
-- `tkinterdnd2`：啟用檔案拖放功能。
-- **內建依賴**（Python 標準庫）：
-- `tkinter`：GUI 界面。
-- `sqlite3`：緩存數據庫。
-- `json`、`urllib.request`：模型列表獲取。
-- `threading`、`asyncio`：線程和非同步管理。
-
-詳見 `requirements.txt`。
+將您的 OpenAI API 密鑰放入 `openapi_api_key.txt` 檔案中，或者在首次執行程式時通過介面設定。
 
 ## 使用方法
 
-1. **啟動應用**：
-- 運行 `python srt-translator.py`，顯示 GUI 界面。
-2. **添加檔案**：
-- 點擊「選擇 SRT 檔案」按鈕，或拖放 `.srt` 檔案到列表中（需 `tkinterdnd2`）。
-3. **設置參數**：
-- 選擇原文語言（預設：日文）和目標語言（預設：繁體中文）。
-- 選擇模型（預設從 Ollama API 獲取）。
-- 設置並行請求數（建議 1-8，預設 6）。
-4. **編輯 Prompt**（可選）：
-- 點擊「編輯 Prompt」，自定義翻譯規則，保存後生效。
-5. **開始翻譯**：
-- 點擊「開始翻譯」，觀察進度條和狀態更新。
-- 可點擊「暫停」/「繼續」或「停止」控制翻譯。
-6. **結果**：
-- 翻譯完成後，檔案保存為 `<原文件名>.zh_tw.srt`（或根據目標語言變化）。
-- 若檔案衝突，會提示選擇覆蓋、重新命名或跳過。
+### 圖形介面模式
+
+執行主程式以啟動圖形介面：
+
+```bash
+python srt-translator.py
+```
+
+在介面中：
+1. 選擇要翻譯的 SRT 檔案（可通過「選擇 SRT 檔案」按鈕或直接拖放檔案到列表中）
+2. 選擇源語言和目標語言
+3. 選擇 LLM 類型（Ollama 本地模型或 OpenAI API）
+4. 選擇使用的模型（會根據 LLM 類型自動列出可用模型）
+5. 設定並行請求數量（建議值：Ollama 模式 4-8，OpenAI 模式 3-6）
+6. 選擇字幕顯示模式：
+   - target_only：僅顯示翻譯結果
+   - target_above_source：翻譯在原文上方
+   - source_above_target：原文在翻譯上方
+7. 點擊「開始翻譯」按鈕
+
+翻譯過程中可以：
+- 暫停/繼續翻譯
+- 停止翻譯
+- 通過「編輯 Prompt」按鈕自訂翻譯提示詞
+
+### 注意：目前版本不支援命令列模式
+
+## 模組結構
+
+- `srt-translator.py`: 主腳本，應用程式入口
+- `cache.py`: 管理翻譯緩存的 SQLite 數據庫，提高重複翻譯效率
+- `translation_client.py`: 翻譯客戶端模組，封裝 Ollama 和 OpenAI API 調用
+- `translation_manager.py`: 管理翻譯流程，控制並行翻譯任務
+- `model_manager.py`: 管理 AI 模型清單和選擇
+- `gui_components.py`: GUI 界面組件，提供拖放功能和用戶交互
+- `file_handler.py`: 處理檔案選擇、衝突解決和路徑管理
+- `prompt.py`: 管理翻譯提示詞，針對不同 LLM 提供優化的提示
 
 ## 注意事項
 
-- **Ollama 配置**：確保 Ollama 服務運行，且模型支援繁體中文翻譯。
-- **記憶體使用**：並行請求數過高可能導致記憶體壓力，建議根據系統資源調整。
-- **日誌**：運行時會輸出詳細日誌，便於除錯。
+- Ollama 模式需要先在本機安裝 Ollama 服務，並預先下載相關模型
+- OpenAI 模式會消耗 API 配額，請確保您的帳戶有足夠的額度
+- 首次使用請先將您的 OpenAI API 密鑰放入 `openapi_api_key.txt` 檔案中
+- 翻譯速度取決於：
+  - 選擇的 LLM 類型和模型
+  - 網路連接速度和 API 響應時間
+  - 並行請求數量設定
+  - 字幕檔大小
+- 大型字幕檔的翻譯可能需要較長時間，您可以隨時暫停並稍後繼續
+- 預設翻譯提示詞針對日文到繁體中文翻譯進行了優化
 
-## 未來擴展
+## 授權條款
 
-- **支援新格式**：修改 `file_handler.py` 和 `translation_manager.py` 以支持 `.ass` 等格式。
-- **多模型支持**：擴展 `model_manager.py`，整合其他翻譯 API。
-- **批量 Prompt**：在 `gui_components.py` 中添加批量設定功能。
+MIT 授權
 
-## 維護
+## 問題反饋
 
-若遇到問題，請檢查日誌輸出並提交以下資訊：
+如果您遇到任何問題或有改進建議，請在 GitHub 儲存庫中提出 Issue。
 
-- Python 版本
-- 依賴版本（`pip list`）
-- Ollama 服務狀態
-- 完整錯誤訊息
+## 緩存系統
 
-## 注意事項
+本程式使用 SQLite 數據庫實現翻譯緩存功能：
+- 相同文本及上下文的翻譯結果會被緩存下來，避免重複調用 API
+- 緩存系統記錄模型名稱，使不同模型的翻譯結果互不影響
+- 預設緩存數據保存在 `translation_cache.db` 文件中
 
-- 確保 Ollama 服務運行中（http://localhost:11434）
-- 建議使用 gemma2:9b 模型
-- 並行請求數建議設為 5
-- 翻譯大量字幕時請耐心等待
+## 效能優化
 
-## 授權協議
+- Ollama 模式下使用異步並行請求，可大幅提高翻譯效率
+- OpenAI 模式實現了速率限制管理，避免超過 API 限制
+- 批量翻譯處理針對不同 LLM 類型進行了優化
+- 自動調整批次大小以適應不同規模的字幕檔
 
-MIT License
+## 錯誤處理
+
+- 程式會自動重試失敗的 API 請求
+- 翻譯過程記錄到 `srt_translator.log` 日誌檔案
+- 檔案衝突處理支持覆蓋、重命名或跳過選項
+
+## 可定制性
+
+您可以修改 `prompt_config.json` 中的提示詞以適應不同的翻譯場景和內容類型。通過「編輯 Prompt」按鈕修改後會自動保存。
