@@ -44,42 +44,95 @@ class ModelManager:
         return models
 
     def _get_ollama_models(self) -> List[str]:
-        """獲取 Ollama 模型列表"""
+        """獲取 Ollama 模型列表，改進檢測邏輯"""
         try:
-            req = urllib.request.Request(f"{self.base_url}/api/tags")
-            req.add_header('User-Agent', 'SRT Translator/1.0')
-            req.add_header('Connection', 'keep-alive')
+            models = set()
             
-            with urllib.request.urlopen(req, timeout=5) as response:
-                result = json.loads(response.read().decode('utf-8'))
-                models = set()
+            # 嘗試使用 /api/tags 端點
+            try:
+                req = urllib.request.Request(f"{self.base_url}/api/tags")
+                req.add_header('User-Agent', 'SRT Translator/1.0')
                 
-                if isinstance(result.get('models'), list):
-                    for model in result['models']:
-                        if isinstance(model, dict) and 'name' in model:
-                            model_name = model['name']
-                            if any(pattern in model_name.lower() for pattern in self.model_patterns):
-                                models.add(model_name)
-                
-                if len(models) < 2:
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    result = json.loads(response.read().decode('utf-8'))
+                    
+                    # 處理不同 API 版本可能的格式
+                    if isinstance(result.get('models'), list):
+                        for model in result['models']:
+                            if isinstance(model, dict) and 'name' in model:
+                                models.add(model['name'])
+                    elif 'models' in result and isinstance(result['models'], dict):
+                        # 某些版本可能使用字典格式
+                        for model_name in result['models'].keys():
+                            models.add(model_name)
+                    
+                    # 如果 models 不是預期格式，檢查頂層結構
+                    if len(models) == 0 and isinstance(result, list):
+                        for item in result:
+                            if isinstance(item, dict) and 'name' in item:
+                                models.add(item['name'])
+            except Exception as e:
+                logger.warning(f"/api/tags 端點獲取失敗: {str(e)}")
+                    
+            # 如果 /api/tags 未獲取到足夠模型，嘗試 /api/show
+            if len(models) < 2:
+                try:
                     req = urllib.request.Request(f"{self.base_url}/api/show")
                     req.add_header('User-Agent', 'SRT Translator/1.0')
+                    
                     with urllib.request.urlopen(req, timeout=5) as response:
-                        show_result = json.loads(response.read().decode('utf-8'))
-                        if isinstance(show_result, list):
-                            for model in show_result:
+                        result = json.loads(response.read().decode('utf-8'))
+                        
+                        if isinstance(result, list):
+                            for model in result:
                                 if isinstance(model, dict) and 'name' in model:
-                                    model_name = model['name']
-                                    if any(pattern in model_name.lower() for pattern in self.model_patterns):
-                                        models.add(model_name)
-                
-                models.add(self.default_model)
-                model_list = sorted(list(models))
-                if self.default_model in model_list:
-                    model_list.remove(self.default_model)
-                    model_list.insert(0, self.default_model)
-                
-                return model_list if model_list else [self.default_model]
+                                    models.add(model['name'])
+                        elif isinstance(result, dict) and 'models' in result:
+                            for model_name in result['models']:
+                                models.add(model_name)
+                except Exception as e:
+                    logger.warning(f"/api/show 端點獲取失敗: {str(e)}")
+            
+            # 如果還是沒有結果，嘗試一些其他端點
+            if len(models) < 2:
+                try:
+                    req = urllib.request.Request(f"{self.base_url}/api/list")
+                    req.add_header('User-Agent', 'SRT Translator/1.0')
+                    
+                    with urllib.request.urlopen(req, timeout=5) as response:
+                        result = json.loads(response.read().decode('utf-8'))
+                        if isinstance(result, list):
+                            for item in result:
+                                if isinstance(item, dict) and 'name' in item:
+                                    models.add(item['name'])
+                        elif isinstance(result, dict) and 'models' in result:
+                            for model_name in result['models']:
+                                if isinstance(model_name, str):
+                                    models.add(model_name)
+                except Exception as e:
+                    logger.warning(f"/api/list 端點獲取失敗: {str(e)}")
+            
+            # 確保至少有默認模型
+            models.add(self.default_model)
+            
+            # 現在過濾模型，但標準放寬 - 僅當有大量模型時才應用過濾
+            model_list = list(models)
+            if len(model_list) > 10:  # 只有模型很多時才過濾
+                filtered_models = [m for m in model_list if any(pattern in m.lower() for pattern in self.model_patterns)]
+                # 如果過濾後太少，就還是用原來的列表
+                if len(filtered_models) >= 3:
+                    model_list = filtered_models
+            
+            # 排序模型列表
+            model_list = sorted(model_list)
+            
+            # 確保默認模型在首位
+            if self.default_model in model_list:
+                model_list.remove(self.default_model)
+                model_list.insert(0, self.default_model)
+            
+            logger.info(f"檢測到 {len(model_list)} 個 Ollama 模型")
+            return model_list if model_list else [self.default_model]
                 
         except Exception as e:
             logger.error(f"獲取 Ollama 模型列表時發生錯誤: {str(e)}")
