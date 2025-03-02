@@ -58,10 +58,32 @@ class TranslationClient:
             logger.debug("關閉 aiohttp.ClientSession")
 
     async def _check_rate_limit(self):
-        # ... 原有代碼保持不變 ...
+        """檢查並處理 OpenAI 速率限制"""
+        if self.llm_type != 'openai':
+            return
+
+        current_time = time.time()
+        self.request_timestamps = [ts for ts in self.request_timestamps if current_time - ts < 60]
+        self.token_usage = [(ts, tokens) for ts, tokens in self.token_usage if current_time - ts < 60]
+        
+        requests_per_minute = len(self.request_timestamps)
+        tokens_per_minute = sum(tokens for _, tokens in self.token_usage)
+        
+        if requests_per_minute >= self.max_requests_per_minute * 0.95:
+            wait_time = 60 - (current_time - self.request_timestamps[0]) + 0.1
+            logger.warning(f"接近 OpenAI 請求速率限制 ({requests_per_minute}/{self.max_requests_per_minute})，等待 {wait_time:.2f} 秒")
+            await asyncio.sleep(wait_time)
+            
+        if tokens_per_minute >= self.max_tokens_per_minute * 0.95:
+            wait_time = 60 - (current_time - self.token_usage[0][0]) + 0.1
+            logger.warning(f"接近 OpenAI token 速率限制 ({tokens_per_minute}/{self.max_tokens_per_minute})，等待 {wait_time:.2f} 秒")
+            await asyncio.sleep(wait_time)
 
     async def _estimate_token_count(self, messages: List[dict]) -> int:
-        # ... 原有代碼保持不變 ...
+        """估算請求中的 token 數量 (粗略估計)"""
+        total_chars = sum(len(m.get('content', '')) for m in messages)
+        # 粗略估計: 英文平均 4 字符/token，非英文 2 字符/token
+        return total_chars // 3  # 大部分是中日文，所以用 3 作為平均值
 
     @backoff.on_exception(
         backoff.expo,
