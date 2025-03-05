@@ -116,9 +116,9 @@ def format_elapsed_time(seconds: float) -> str:
 
 class TranslationManager:
     def __init__(self, file_path: str, source_lang: str, target_lang: str, 
-                model_name: str, parallel_requests: int, progress_callback, complete_callback, 
-                display_mode: str, llm_type: str, api_key: str = None,
-                file_handler=None, prompt_manager=None, cache_manager=None):
+                 model_name: str, parallel_requests: int, progress_callback, complete_callback, 
+                 display_mode: str, llm_type: str, api_key: str = None,
+                 file_handler=None, prompt_manager=None, cache_manager=None):
         self.file_path = file_path
         self.source_lang = source_lang
         self.target_lang = target_lang
@@ -510,15 +510,18 @@ class TranslationManager:
         return False  # 不應到達這裡
 
     def _apply_translation(self, subtitle, translation: str) -> None:
-        """根據顯示模式應用翻譯結果"""
-        if self.display_mode == "target_only":
+        """根據顯示模式套用翻譯結果"""
+        if self.display_mode == "僅顯示翻譯":
             subtitle.text = translation
-        elif self.display_mode == "target_above_source":
+        elif self.display_mode == "翻譯在上":
             subtitle.text = f"{translation}\n{subtitle.text}"
-        elif self.display_mode == "source_above_target":
+        elif self.display_mode == "原文在上":
             subtitle.text = f"{subtitle.text}\n{translation}"
-        else:  # 雙語對照 (target_only)
-            subtitle.text = translation
+        elif self.display_mode == "雙語對照":
+            subtitle.text = f"{subtitle.text}\n{translation}"
+        else:
+            # 預設行為，使用雙語對照
+            subtitle.text = f"{subtitle.text}\n{translation}"
 
     async def translate_subtitles(self) -> None:
         """翻譯字幕檔案"""
@@ -605,8 +608,8 @@ class TranslationManager:
 class TranslationThread(threading.Thread):
     """翻譯執行緒"""
     def __init__(self, file_path, source_lang, target_lang, model_name, parallel_requests, 
-             progress_callback, complete_callback, display_mode: str, llm_type: str, api_key: str = None,
-             file_handler=None, prompt_manager=None, cache_manager=None):
+                 progress_callback, complete_callback, display_mode: str, llm_type: str, api_key: str = None,
+                 file_handler=None, prompt_manager=None, cache_manager=None):
         threading.Thread.__init__(self)
         self.daemon = True  # 設置為守護執行緒，主程式退出時自動結束
         self.manager = None
@@ -670,11 +673,11 @@ class TranslationThread(threading.Thread):
         self._is_paused = False
         if self.manager:
             self.manager.resume()
-    
+
     def is_alive(self) -> bool:
         """檢查執行緒是否存活"""
         return super().is_alive() and self._is_running
-    
+
     def is_paused(self) -> bool:
         """檢查是否已暫停"""
         return self._is_paused
@@ -702,7 +705,7 @@ if __name__ == "__main__":
     print(f"開始翻譯: {test_file}")
     thread = TranslationThread(
         test_file, "日文", "繁體中文", "llama3", 2, 
-        progress, complete, "target_only", "ollama"
+        progress, complete, "僅顯示翻譯", "ollama"
     )
     thread.start()
     
@@ -714,4 +717,4 @@ if __name__ == "__main__":
         print("使用者中斷，正在停止翻譯...")
         thread.stop()
     
-    thread.join()
+    thread.join()  # 等待執行緒結束

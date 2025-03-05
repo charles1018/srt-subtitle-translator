@@ -202,7 +202,7 @@ class App:
             "llm_type": "ollama",
             "model_name": "",
             "parallel_requests": "3",
-            "display_mode": "雙語對照",
+            "display_mode": "雙語對照",  # 預設使用雙語對照模式
             "theme": "default",
             "play_sound": True,
             "auto_save": True
@@ -278,13 +278,16 @@ class App:
             messagebox.showerror("錯誤", "網路連線異常，請檢查網路後重試")
             return
 
+        # 記錄顯示模式選擇，並記錄日誌
+        display_mode = self.gui.display_mode.get()
+        print(f"選擇的顯示模式: {display_mode}")  # 控制台列印以便偵錯
+
         self.gui.disable_controls()
         self.total_files = len(files)
         self.completed_files = 0
         self.gui.status_label.config(text=f"正在翻譯 {self.total_files} 個檔案...")
         self.gui.total_files_label.config(text=f"總進度: 0/{self.total_files} 檔案完成")
         
-        display_mode = self.gui.display_mode.get()
         llm_type = self.gui.llm_type.get()
         model_name = self.gui.model_combo.get()
         
@@ -300,7 +303,7 @@ class App:
                 int(self.gui.parallel_requests.get()),
                 self._update_progress, 
                 self._translation_completed, 
-                display_mode,
+                display_mode,  # 傳遞顯示模式
                 llm_type,
                 self.openai_api_key if llm_type == 'openai' else None,
                 file_handler,

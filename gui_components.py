@@ -10,14 +10,14 @@ import logging
 from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime
 
-# 嘗試導入拖放功能模組
+# 嘗試匯入拖放功能模組
 try:
     from tkinterdnd2 import DND_FILES, TkinterDnD
     TKDND_AVAILABLE = True
 except ImportError:
     TKDND_AVAILABLE = False
 
-# 設定日誌記錄
+# 設定日誌紀錄
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -38,20 +38,20 @@ if not logger.handlers:
     logger.addHandler(handler)
 
 class GUIComponents:
-    """GUI 組件類，用於創建和管理翻譯器介面"""
+    """GUI 元件類別，用於建立和管理翻譯器介面"""
     
     def __init__(self, root, start_callback, pause_callback, stop_callback, 
                  progress_callback, complete_callback, prompt_manager=None):
         """
-        初始化 GUI 組件
+        初始化 GUI 元件
         
         參數：
             root: Tkinter 根視窗
-            start_callback: 開始翻譯的回呼函數
-            pause_callback: 暫停/繼續翻譯的回呼函數
-            stop_callback: 停止翻譯的回呼函數
-            progress_callback: 更新進度的回呼函數
-            complete_callback: 完成翻譯的回呼函數
+            start_callback: 開始翻譯的回呼函式
+            pause_callback: 暫停/繼續翻譯的回呼函式
+            stop_callback: 停止翻譯的回呼函式
+            progress_callback: 更新進度的回呼函式
+            complete_callback: 完成翻譯的回呼函式
             prompt_manager: 提示詞管理器
         """
         self.root = root
@@ -65,7 +65,7 @@ class GUIComponents:
         # 用於儲存選中的檔案
         self.selected_files = []
         
-        # 創建控制項變數
+        # 建立控制項變數
         self.source_lang = tk.StringVar(value="日文")
         self.target_lang = tk.StringVar(value="繁體中文")
         self.llm_type = tk.StringVar(value="ollama")
@@ -79,7 +79,7 @@ class GUIComponents:
         # 初始化介面元素
         self.create_menu()
         
-        logger.info("GUI 組件初始化完成")
+        logger.info("GUI 元件初始化完成")
     
     def load_theme_settings(self):
         """載入主題設定"""
@@ -124,7 +124,7 @@ class GUIComponents:
             }
     
     def create_menu(self):
-        """創建選單列"""
+        """建立選單列"""
         menu_bar = tk.Menu(self.root)
         
         # 檔案選單
@@ -140,7 +140,7 @@ class GUIComponents:
         # 設定選單
         settings_menu = tk.Menu(menu_bar, tearoff=0)
         settings_menu.add_command(label="提示詞編輯", command=self.open_prompt_editor)
-        settings_menu.add_command(label="緩存管理", command=self.open_cache_manager)
+        settings_menu.add_command(label="快取管理", command=self.open_cache_manager)
         settings_menu.add_command(label="進階設定", command=self.open_advanced_settings)
         menu_bar.add_cascade(label="設定", menu=settings_menu)
         
@@ -148,7 +148,7 @@ class GUIComponents:
         help_menu = tk.Menu(menu_bar, tearoff=0)
         help_menu.add_command(label="使用說明", command=self.show_help)
         help_menu.add_command(label="關於", command=self.show_about)
-        menu_bar.add_cascade(label="幫助", menu=help_menu)
+        menu_bar.add_cascade(label="說明", menu=help_menu)
         
         # 設置選單列
         self.root.config(menu=menu_bar)
@@ -194,7 +194,7 @@ class GUIComponents:
             self.file_listbox.drop_target_register(DND_FILES)
             self.file_listbox.dnd_bind('<<Drop>>', self.handle_drop)
             
-            # 添加拖放提示
+            # 新增拖放提示
             drop_label = ttk.Label(file_frame, text="支援拖放檔案", foreground="gray")
             drop_label.pack(pady=(5, 0))
         
@@ -202,12 +202,12 @@ class GUIComponents:
         settings_frame = ttk.LabelFrame(top_frame, text="翻譯設定", padding=10)
         settings_frame.pack(fill=tk.BOTH, side=tk.RIGHT, expand=True, padx=(10, 0))
         
-        # 創建表格佈局
+        # 建立表格佈局
         settings_grid = ttk.Frame(settings_frame)
         settings_grid.pack(fill=tk.BOTH, expand=True)
         
         # 語言設定
-        ttk.Label(settings_grid, text="源語言:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Label(settings_grid, text="來源語言:").grid(row=0, column=0, sticky=tk.W, pady=5)
         source_langs = ["日文", "英文", "韓文", "簡體中文", "繁體中文"]
         ttk.Combobox(settings_grid, textvariable=self.source_lang, values=source_langs, width=10, state="readonly").grid(row=0, column=1, sticky=tk.W, pady=5)
         
@@ -228,8 +228,11 @@ class GUIComponents:
         
         # 顯示模式和並行請求
         ttk.Label(settings_grid, text="顯示模式:").grid(row=0, column=2, sticky=tk.W, pady=5, padx=(10, 0))
+        # 修改：確保顯示模式的值與 translation_manager.py 中使用的值一致
         display_modes = ["雙語對照", "僅顯示翻譯", "翻譯在上", "原文在上"]
-        ttk.Combobox(settings_grid, textvariable=self.display_mode, values=display_modes, width=10, state="readonly").grid(row=0, column=3, sticky=tk.W, pady=5)
+        self.display_mode_combo = ttk.Combobox(settings_grid, textvariable=self.display_mode, values=display_modes, width=10, state="readonly")
+        self.display_mode_combo.grid(row=0, column=3, sticky=tk.W, pady=5)
+        self.display_mode_combo.bind("<<ComboboxSelected>>", self.on_display_mode_changed)
         
         ttk.Label(settings_grid, text="並行請求:").grid(row=1, column=2, sticky=tk.W, pady=5, padx=(10, 0))
         parallel_options = ["1", "2", "3", "4", "5", "10", "15", "20"]
@@ -326,6 +329,12 @@ class GUIComponents:
         
         logger.info("GUI 介面設置完成")
     
+    # 新增：顯示模式變更的回呼函式
+    def on_display_mode_changed(self, event=None):
+        """顯示模式變更時的處理函式"""
+        selected_mode = self.display_mode.get()
+        logger.info(f"顯示模式已變更為: {selected_mode}")
+    
     def browse_files(self):
         """瀏覽並選擇字幕檔案"""
         filetypes = [
@@ -365,19 +374,19 @@ class GUIComponents:
                 messagebox.showinfo("檔案搜尋", "在選中的資料夾中未找到任何字幕檔案")
     
     def add_files(self, files):
-        """添加檔案到列表"""
+        """新增檔案到列表"""
         for file in files:
             # 確保檔案存在
             if not os.path.exists(file):
                 continue
                 
-            # 避免重複添加
+            # 避免重複新增
             if file not in self.selected_files:
                 self.selected_files.append(file)
                 # 在列表框中顯示檔案名而非完整路徑
                 self.file_listbox.insert(tk.END, os.path.basename(file))
         
-        logger.info(f"已添加 {len(files)} 個檔案，目前共有 {len(self.selected_files)} 個檔案")
+        logger.info(f"已新增 {len(files)} 個檔案，目前共有 {len(self.selected_files)} 個檔案")
     
     def clear_selection(self):
         """清除選中的檔案"""
@@ -417,12 +426,12 @@ class GUIComponents:
         
         if processed_files:
             self.add_files(processed_files)
-            messagebox.showinfo("檔案拖放", f"已添加 {len(processed_files)} 個字幕檔案")
+            messagebox.showinfo("檔案拖放", f"已新增 {len(processed_files)} 個字幕檔案")
         else:
             messagebox.showinfo("檔案拖放", "未找到任何有效的字幕檔案")
     
     def get_selected_files(self) -> List[str]:
-        """獲取所有選中的檔案路徑"""
+        """取得所有選中的檔案路徑"""
         return self.selected_files.copy()
     
     def toggle_pause(self):
@@ -444,9 +453,10 @@ class GUIComponents:
         self.settings_button.config(state=tk.DISABLED)
         self.llm_combobox.config(state=tk.DISABLED)
         self.model_combo.config(state=tk.DISABLED)
+        self.display_mode_combo.config(state=tk.DISABLED)  # 禁用顯示模式選擇
         
         # 禁用選單項
-        # 這需要獲取選單引用，此處略過
+        # 這需要取得選單引用，此處略過
     
     def reset_ui(self):
         """重置 UI（翻譯完成或停止時）"""
@@ -457,23 +467,24 @@ class GUIComponents:
         self.settings_button.config(state=tk.NORMAL)
         self.llm_combobox.config(state="readonly")
         self.model_combo.config(state="readonly")
+        self.display_mode_combo.config(state="readonly")  # 啟用顯示模式選擇
         self.progress_bar["value"] = 0
         
         # 啟用選單項
-        # 這需要獲取選單引用，此處略過
+        # 這需要取得選單引用，此處略過
     
     def on_llm_type_changed(self, event=None):
-        """LLM 類型變更時的處理函數"""
-        # 這個函數會在外部被覆蓋以更新模型列表
+        """LLM 類型變更時的處理函式"""
+        # 這個函式會在外部被覆蓋以更新模型列表
         pass
     
     def on_content_type_changed(self, event=None):
-        """內容類型變更時的處理函數"""
+        """內容類型變更時的處理函式"""
         if self.prompt_manager:
             self.prompt_manager.set_content_type(self.content_type_var.get())
     
     def on_style_changed(self, event=None):
-        """翻譯風格變更時的處理函數"""
+        """翻譯風格變更時的處理函式"""
         if self.prompt_manager:
             self.prompt_manager.set_translation_style(self.style_var.get())
     
@@ -497,12 +508,12 @@ class GUIComponents:
             messagebox.showwarning("功能不可用", "提示詞管理器未初始化")
             return
             
-        # 創建提示詞編輯視窗
+        # 建立提示詞編輯視窗
         prompt_editor = PromptEditorWindow(self.root, self.prompt_manager)
     
     def open_cache_manager(self):
-        """開啟緩存管理器"""
-        messagebox.showinfo("功能開發中", "緩存管理功能正在開發中")
+        """開啟快取管理器"""
+        messagebox.showinfo("功能開發中", "快取管理功能正在開發中")
     
     def open_advanced_settings(self):
         """開啟進階設定視窗"""
@@ -515,11 +526,16 @@ class GUIComponents:
 使用說明：
 
 1. 選擇檔案：點擊"選擇檔案"按鈕或直接拖放字幕檔案到列表中。
-2. 設定翻譯參數：選擇源語言、目標語言、LLM類型和模型。
+2. 設定翻譯參數：選擇來源語言、目標語言、LLM類型和模型。
 3. 設定內容類型和翻譯風格：根據字幕內容選擇合適的類型和風格。
-4. 點擊"開始翻譯"按鈕開始翻譯過程。
-5. 翻譯過程中可以暫停或停止。
-6. 可以在"設定"選單中自定義提示詞和管理緩存。
+4. 設定顯示模式：選擇如何顯示原文和翻譯。
+   - 雙語對照：原文和翻譯同時顯示（原文在上，翻譯在下）
+   - 僅顯示翻譯：只顯示翻譯文本
+   - 翻譯在上：翻譯在上，原文在下
+   - 原文在上：原文在上，翻譯在下
+5. 點擊"開始翻譯"按鈕開始翻譯過程。
+6. 翻譯過程中可以暫停或停止。
+7. 可以在"設定"選單中自訂提示詞和管理快取。
 
 支援的檔案格式：SRT, VTT, ASS, SSA, SUB
         """
@@ -536,9 +552,9 @@ SRT字幕翻譯器 V1.0.0
 特點：
 - 支援多種字幕格式
 - 多種翻譯風格和內容類型
-- 翻譯緩存功能，提高效率
-- 自定義提示詞模板
-- 批量處理功能
+- 翻譯快取功能，提高效率
+- 自訂提示詞模板
+- 批次處理功能
 - 支援中斷恢復
 
 © 2024 版權所有
@@ -551,7 +567,7 @@ class PromptEditorWindow:
     def __init__(self, parent, prompt_manager):
         self.prompt_manager = prompt_manager
         
-        # 創建視窗
+        # 建立視窗
         self.window = tk.Toplevel(parent)
         self.window.title("提示詞編輯器")
         self.window.geometry("800x600")
@@ -612,7 +628,7 @@ class PromptEditorWindow:
         content_type = self.content_type_var.get()
         llm_type = self.llm_type_var.get()
         
-        # 獲取提示詞
+        # 取得提示詞
         prompt = self.prompt_manager.get_prompt(llm_type, content_type)
         
         # 顯示在編輯區
@@ -624,7 +640,7 @@ class PromptEditorWindow:
         content_type = self.content_type_var.get()
         llm_type = self.llm_type_var.get()
         
-        # 獲取編輯區的內容
+        # 取得編輯區的內容
         prompt = self.prompt_text.get(1.0, tk.END).strip()
         
         # 儲存提示詞
@@ -687,7 +703,7 @@ class PromptEditorWindow:
         # 顯示分析結果
         result_text = f"""提示詞分析結果:
 
-字數: {analysis['length']} 字符
+字數: {analysis['length']} 字元
 單詞數: {analysis['word_count']} 單詞
 
 品質評分 ({analysis['quality_score']}/100):
@@ -704,12 +720,12 @@ class PromptEditorWindow:
         messagebox.showinfo("提示詞分析", result_text)
 
 
-# 測試代碼
+# 測試程式碼
 if __name__ == "__main__":
     # 測試介面
     from prompt import PromptManager
     
-    # 簡易模擬回呼函數
+    # 簡易模擬回呼函式
     def start_callback():
         print("開始翻譯")
         gui.disable_controls()
@@ -744,7 +760,7 @@ if __name__ == "__main__":
         print(f"初始化提示詞管理器失敗: {e}")
         prompt_manager = None
     
-    # 初始化 GUI 組件
+    # 初始化 GUI 元件
     gui = GUIComponents(
         root, 
         start_callback, 
@@ -761,5 +777,5 @@ if __name__ == "__main__":
     # 測試設置模型列表
     gui.set_model_list(["llama3", "mistral", "mixtral"], "llama3")
     
-    # 運行主循環
+    # 執行主迴圈
     root.mainloop()
