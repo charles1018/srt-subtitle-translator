@@ -12,6 +12,7 @@ from logging.handlers import TimedRotatingFileHandler
 import time
 from datetime import datetime
 from queue import Queue
+import re
 
 # 從本地模組導入
 from translation_client import TranslationClient
@@ -134,6 +135,9 @@ class TranslationManager:
         self.cache_manager = cache_manager
         self.translation_client = None
         
+        # 初始化專有名詞詞典
+        self._key_terms_dict = {}
+        
         # 控制狀態
         self.running = True
         self.pause_event = asyncio.Event()
@@ -163,6 +167,68 @@ class TranslationManager:
         self.max_retries = 3
         self.retry_delay = 1.0
 
+    def _post_process_translation(self, original_text: str, translated_text: str) -> str:
+        """對翻譯結果進行後處理，包括專有名詞統一和移除標點符號
+        
+        參數:
+            original_text: 原始文字
+            translated_text: 翻譯文字
+            
+        回傳:
+            後處理後的翻譯文字
+        """
+        # 1. 處理專有名詞統一
+        # 使用正則表達式識別可能的專有名詞（假設專有名詞通常是2-6個漢字的連續序列）
+        potential_terms = re.findall(r'[\u4e00-\u9fff]{2,6}', translated_text)
+        
+        # 對於每個潛在的專有名詞，檢查是否已在詞典中
+        for term in potential_terms:
+            # 如果該詞已在詞典中，用標準形式替換
+            if term in self._key_terms_dict:
+                translated_text = translated_text.replace(term, self._key_terms_dict[term])
+            # 否則添加到詞典，以當前形式作為標準
+            elif len(term) >= 2:  # 只考慮至少兩個字的詞
+                self._key_terms_dict[term] = term
+        
+        # 2. 移除中文標點符號，用空格替換
+        # 定義中文標點符號
+        cn_punctuation = r'，。！？；：""''（）【】《》〈〉、…—～·「」『』〔〕'
+        # 將標點符號替換為空格
+        for punct in cn_punctuation:
+            translated_text = translated_text.replace(punct, ' ')
+        
+        # 替換英文標點符號
+        en_punctuation = r',.!?;:"\'()[]<>-_'
+        for punct in en_punctuation:
+            translated_text = translated_text.replace(punct, ' ')
+        
+        # 處理連續空格
+        translated_text = re.sub(r'\s+', ' ', translated_text)
+        
+        return translated_text.strip()
+        
+    def _save_key_terms_dictionary(self) -> None:
+        """儲存專有名詞詞典到檔案"""
+        try:
+            # 檢查詞典大小，如果太小則不儲存
+            if len(self._key_terms_dict) <= 2:
+                return
+                
+            # 構建檔案路徑，使用影片名稱
+            base_name = os.path.splitext(os.path.basename(self.file_path))[0]
+            dict_path = os.path.join("data", "terms_dictionaries", f"{base_name}_terms.json")
+            
+            # 確保目錄存在
+            os.makedirs(os.path.dirname(dict_path), exist_ok=True)
+            
+            # 儲存詞典
+            with open(dict_path, 'w', encoding='utf-8') as f:
+                json.dump(self._key_terms_dict, f, ensure_ascii=False, indent=2)
+                
+            logger.info(f"已儲存 {len(self._key_terms_dict)} 個專有名詞到檔案: {dict_path}")
+        except Exception as e:
+            logger.error(f"儲存專有名詞詞典失敗: {str(e)}")
+
     def _get_checkpoint_path(self) -> str:
         """取得檢查點檔案路徑"""
         # 使用檔案路徑和目標語言建立唯一的檢查點檔名
@@ -182,7 +248,8 @@ class TranslationManager:
                 "model_name": self.model_name,
                 "translated_indices": list(self.translated_indices),
                 "stats": self.stats,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
+                "key_terms_dict": self._key_terms_dict  # 添加專有名詞詞典
             }
             
             with open(self.checkpoint_path, 'wb') as f:
@@ -209,6 +276,10 @@ class TranslationManager:
                 # 恢復已翻譯索引
                 self.translated_indices = set(checkpoint_data.get("translated_indices", []))
                 
+                # 恢復專有名詞詞典
+                if "key_terms_dict" in checkpoint_data:
+                    self._key_terms_dict = checkpoint_data["key_terms_dict"]
+                
                 # 恢復統計資訊（除了時間）
                 saved_stats = checkpoint_data.get("stats")
                 if saved_stats:
@@ -222,7 +293,8 @@ class TranslationManager:
                     self.stats.retry_count = saved_stats.retry_count
                     self.stats.errors = saved_stats.errors.copy() if saved_stats.errors else []
                 
-                logger.info(f"已從檢查點恢復翻譯進度: {len(self.translated_indices)} 個已翻譯字幕")
+                logger.info(f"已從檢查點恢復翻譯進度: {len(self.translated_indices)} 個已翻譯字幕，" +
+                           f"{len(self._key_terms_dict)} 個專有名詞")
                 return True
             else:
                 logger.warning("檢查點與目前任務不符，將重新開始翻譯")
@@ -380,9 +452,12 @@ class TranslationManager:
                         error_msg = translation if translation else "空白翻譯結果"
                         self.stats.errors.append(f"字幕 {sub_idx}: {error_msg}")
                         continue
+                    
+                    # 進行後處理
+                    processed_translation = self._post_process_translation(sub.text, translation)
                         
                     # 應用翻譯
-                    self._apply_translation(sub, translation)
+                    self._apply_translation(sub, processed_translation)
                     self.translated_indices.add(sub_idx)
                     success_count += 1
                     
@@ -482,9 +557,12 @@ class TranslationManager:
                             self.stats.errors.append(f"字幕 {index}: {error_msg}")
                             self.stats.failed_count += 1
                             return False
+                        
+                        # 進行後處理 - 專有名詞統一與移除標點符號
+                        processed_translation = self._post_process_translation(sub.text, translation)
                             
                         # 應用翻譯
-                        self._apply_translation(sub, translation)
+                        self._apply_translation(sub, processed_translation)
                         self.translated_indices.add(index)
                         
                         # 更新統計和進度
@@ -584,6 +662,9 @@ class TranslationManager:
                 
                 logger.info(f"翻譯完成，總耗時: {elapsed_str}")
                 logger.info(f"翻譯統計: {json.dumps(self.stats.get_summary(), ensure_ascii=False)}")
+                
+                # 儲存專有名詞詞典
+                self._save_key_terms_dictionary()
 
                 # 取得輸出路徑並儲存檔案
                 output_path = self.file_handler.get_output_path(self.file_path, self.target_lang, 
@@ -604,6 +685,7 @@ class TranslationManager:
             self.stats.finished_at = time.time()
             elapsed_str = self.stats.get_formatted_elapsed_time()
             self.complete_callback(f"翻譯過程中發生錯誤: {str(e)}", elapsed_str)
+
 
 class TranslationThread(threading.Thread):
     """翻譯執行緒"""
@@ -687,6 +769,7 @@ class TranslationThread(threading.Thread):
         if self.manager and hasattr(self.manager, 'stats'):
             return self.manager.stats.get_summary()
         return {}
+
 
 # 測試程式碼
 if __name__ == "__main__":
