@@ -248,7 +248,7 @@ class GUIComponents:
             self.content_type_combo.grid(row=2, column=3, sticky=tk.W, pady=5)
             self.content_type_combo.bind("<<ComboboxSelected>>", self.on_content_type_changed)
         else:
-            content_types = ["general", "anime", "movie", "documentary", "adult"]
+            content_types = ["general", "adult", "anime", "movie"]
             self.content_type_var = tk.StringVar(value="general")
             self.content_type_combo = ttk.Combobox(settings_grid, textvariable=self.content_type_var, 
                                                   values=content_types, width=10, state="readonly")
@@ -264,7 +264,7 @@ class GUIComponents:
             self.style_combo.grid(row=3, column=3, sticky=tk.W, pady=5)
             self.style_combo.bind("<<ComboboxSelected>>", self.on_style_changed)
         else:
-            styles = ["standard", "literal", "literary", "localized", "concise", "formal", "casual"]
+            styles = ["standard", "literal", "localized", "specialized"]
             self.style_var = tk.StringVar(value="standard")
             self.style_combo = ttk.Combobox(settings_grid, textvariable=self.style_var, 
                                            values=styles, width=10, state="readonly")

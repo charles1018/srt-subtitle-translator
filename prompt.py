@@ -37,16 +37,12 @@ class PromptManager:
         # 確保模板目錄存在
         os.makedirs(self.templates_dir, exist_ok=True)
         
-        # 翻譯風格定義
+        # 翻譯風格定義 (僅保留指定風格)
         self.translation_styles = {
             "standard": "標準翻譯 - 平衡準確性和自然度",
             "literal": "直譯 - 更忠於原文的字面意思",
-            "literary": "文學翻譯 - 更優美的表達",
-            "localized": "本地化翻譯 - 更適合目標語言文化",
-            "concise": "簡潔翻譯 - 更精簡的表達",
-            "formal": "正式翻譯 - 更正式的語氣",
-            "casual": "口語化翻譯 - 更口語化的表達",
-            "specialized": "專業翻譯 - 針對特定領域"
+            "localized": "本地化翻譯 - 更適合台灣繁體中文文化",
+            "specialized": "專業翻譯 - 保留專業術語"
         }
         
         # 語言組合映射
@@ -62,7 +58,7 @@ class PromptManager:
             "俄文→繁體中文": {"source": "俄文", "target": "繁體中文"}
         }
         
-        # 預設提示詞 (通用)
+        # 預設提示詞 (僅保留指定內容類型)
         self.default_prompts = {
             "general": {
                 "ollama": """
@@ -121,26 +117,6 @@ You are an anime subtitle translator. Your task:
 3. Preserve anime terms, character names, and honorifics (-san, -kun, etc.).
 4. Translate to Taiwan Mandarin using anime-appropriate language.
 5. Keep context-appropriate. Preserve ellipses (...) when present.
-"""
-            },
-            "documentary": {
-                "ollama": """
-You are a professional documentary subtitle translator.
-Please strictly follow these rules:
-1. Only output the translated text without any additional response.
-2. Maintain accurate and precise translation of technical terms and scientific concepts.
-3. Use formal and educational language appropriate for documentaries.
-4. Translate into natural Taiwan Mandarin Chinese expressions.
-5. Use context (surrounding subtitles) to ensure accurate and consistent translation.
-6. Keep ellipses (...) if present in the original text.
-""",
-                "openai": """
-You are a documentary subtitle translator. Your task:
-1. ONLY output the translated text. No explanations.
-2. Maintain precision with technical/scientific terms.
-3. Use formal, educational language appropriate for Taiwan audience.
-4. Keep consistent terminology throughout the context.
-5. Preserve proper nouns, scientific names, and measurements appropriately.
 """
             },
             "movie": {
@@ -230,7 +206,7 @@ You are a movie subtitle translator. Your task:
         self.custom_prompts = self.config.get("custom_prompts", {})
         
         # 然後檢查模板目錄中是否有新的模板
-        for content_type in ["general", "adult", "anime", "documentary", "movie"]:
+        for content_type in ["general", "adult", "anime", "movie"]:
             if content_type not in self.custom_prompts:
                 self.custom_prompts[content_type] = {}
                 
@@ -288,25 +264,9 @@ You are a movie subtitle translator. Your task:
                 "ollama": "Focus on providing a more literal translation that is closer to the original text meaning. Prioritize accuracy to source text over natural flow in the target language.",
                 "openai": "Translate literally. Prioritize source accuracy over target fluency."
             },
-            "literary": {
-                "ollama": "Focus on providing a more elegant and literary translation. You may use more expressive language and literary devices while maintaining the meaning of the original text.",
-                "openai": "Translate elegantly. Use expressive language while maintaining meaning."
-            },
             "localized": {
                 "ollama": "Focus on adapting the content to the target culture. Use Taiwan-specific expressions, cultural references, and idioms where appropriate to make the translation feel natural to local readers.",
                 "openai": "Translate with cultural adaptation. Use Taiwan expressions and references."
-            },
-            "concise": {
-                "ollama": "Focus on providing a concise translation. Simplify complex expressions while preserving the core meaning. Aim for clarity and brevity.",
-                "openai": "Translate concisely. Simplify while preserving core meaning."
-            },
-            "formal": {
-                "ollama": "Focus on providing a formal translation. Use more formal language, avoid contractions, colloquialisms, and slang. Maintain a respectful and professional tone.",
-                "openai": "Translate formally. Use proper language and avoid colloquialisms."
-            },
-            "casual": {
-                "ollama": "Focus on providing a casual, conversational translation. Use natural everyday language, contractions, and common expressions that would be used in casual conversation.",
-                "openai": "Translate casually. Use everyday language and conversational style."
             },
             "specialized": {
                 "ollama": "Focus on accurate translation of terminology relevant to the content domain. Prioritize precision in specialized terms and concepts.",
@@ -465,7 +425,7 @@ You are a movie subtitle translator. Your task:
     
     def set_content_type(self, content_type: str) -> None:
         """設置當前使用的內容類型"""
-        if content_type in ["general", "adult", "anime", "documentary", "movie"]:
+        if content_type in ["general", "adult", "anime", "movie"]:
             self.current_content_type = content_type
             self.config["current_content_type"] = content_type
             self._save_config()
@@ -489,7 +449,7 @@ You are a movie subtitle translator. Your task:
     
     def get_available_content_types(self) -> List[str]:
         """取得可用的內容類型"""
-        return ["general", "adult", "anime", "documentary", "movie"]
+        return ["general", "adult", "anime", "movie"]
     
     def get_available_styles(self) -> Dict[str, str]:
         """取得可用的翻譯風格"""
@@ -628,54 +588,6 @@ You are a movie subtitle translator. Your task:
         """生成完整的訊息結構，供翻譯使用 (保留向後相容性)"""
         return self.get_optimized_message(text, context_texts, "ollama", "default")
     
-    def add_custom_content_type(self, content_type: str, prompts: Dict[str, str]) -> bool:
-        """添加自訂內容類型的提示詞"""
-        if content_type in self.get_available_content_types():
-            logger.warning(f"內容類型 '{content_type}' 已存在")
-            return False
-            
-        # 添加到自訂提示詞
-        self.custom_prompts[content_type] = prompts
-        
-        # 更新設定
-        self.config["custom_prompts"] = self.custom_prompts
-        self._save_config()
-        
-        # 儲存至模板檔案
-        self._save_prompt_template(content_type)
-        
-        logger.info(f"已添加自訂內容類型: {content_type}")
-        return True
-    
-    def get_prompt_statistics(self) -> Dict[str, Any]:
-        """取得提示詞使用統計資訊"""
-        stats = {
-            "content_types": len(self.custom_prompts),
-            "total_prompts": sum(len(prompts) for prompts in self.custom_prompts.values()),
-            "current_content_type": self.current_content_type,
-            "current_style": self.current_style,
-            "current_language_pair": self.current_language_pair,
-            "version_history_entries": sum(
-                len(history) for content_type in self.version_history.values() 
-                for history in content_type.values()
-            ),
-            "last_updated": self.config.get("last_updated"),
-            "content_type_details": {}
-        }
-        
-        # 添加各內容類型的詳細資訊
-        for content_type, prompts in self.custom_prompts.items():
-            stats["content_type_details"][content_type] = {
-                "llm_types": list(prompts.keys()),
-                "has_openai": "openai" in prompts,
-                "has_ollama": "ollama" in prompts,
-                "prompt_lengths": {
-                    llm: len(prompt) for llm, prompt in prompts.items()
-                }
-            }
-            
-        return stats
-    
     def analyze_prompt(self, prompt: str) -> Dict[str, Any]:
         """分析提示詞的品質和特性"""
         analysis = {
@@ -750,7 +662,7 @@ if __name__ == "__main__":
     
     # 測試不同風格
     print("\n測試不同翻譯風格:")
-    for style in ["standard", "literary", "localized"]:
+    for style in ["standard", "literal", "localized"]:
         print(f"\n{style} 風格:")
         prompt = manager.get_prompt("ollama", "general", style)
         print(prompt[:100] + "..." if len(prompt) > 100 else prompt)
@@ -762,27 +674,3 @@ if __name__ == "__main__":
     messages = manager.get_optimized_message(text, context, "openai", "gpt-3.5-turbo")
     for msg in messages:
         print(f"{msg['role']}: {msg['content'][:50]}...")
-        
-    # 測試統計功能
-    print("\n測試提示詞統計:")
-    stats = manager.get_prompt_statistics()
-    print(f"內容類型數量: {stats['content_types']}")
-    print(f"提示詞總數: {stats['total_prompts']}")
-    print(f"當前內容類型: {stats['current_content_type']}")
-    print(f"當前翻譯風格: {stats['current_style']}")
-    
-    # 測試提示詞分析
-    print("\n測試提示詞分析:")
-    sample_prompt = """
-    You are a professional translator. Please follow these rules:
-    1. Only output the translated text.
-    2. Maintain the original tone and style.
-    3. Use natural expressions in the target language.
-    4. Use context to ensure consistency.
-    """
-    analysis = manager.analyze_prompt(sample_prompt)
-    print(f"提示詞長度: {analysis['length']}")
-    print(f"清晰度得分: {analysis['clarity']}/5")
-    print(f"特異性得分: {analysis['specificity']}/5")
-    print(f"完整性得分: {analysis['completeness']}/5")
-    print(f"總體品質得分: {analysis['quality_score']}/100")
