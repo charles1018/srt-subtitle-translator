@@ -1,12 +1,17 @@
-import json
 import os
-import logging
 import re
+import json
+import logging
 import time
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Union, Set
 from datetime import datetime
 from pathlib import Path
 import logging.handlers
+import threading
+
+# 從配置管理器導入
+from config_manager import ConfigManager, get_config, set_config
+from utils import safe_execute, format_exception, AppError
 
 # 設定日誌記錄
 logger = logging.getLogger(__name__)
@@ -29,7 +34,37 @@ if not logger.handlers:
     logger.addHandler(handler)
 
 class PromptManager:
+    """提示詞管理器，負責管理翻譯提示詞模板和設定"""
+    
+    # 類變數，用於實現單例模式
+    _instance = None
+    _lock = threading.Lock()
+    
+    @classmethod
+    def get_instance(cls, config_file: str = None) -> 'PromptManager':
+        """獲取提示詞管理器的單例實例
+        
+        參數:
+            config_file: 配置檔案路徑，若為None則使用預設路徑
+            
+        回傳:
+            提示詞管理器實例
+        """
+        with cls._lock:
+            if cls._instance is None:
+                # 如果沒有指定config_file，從配置獲取
+                if config_file is None:
+                    config_file = get_config("prompt", "config_file", "config/prompt_config.json")
+                
+                cls._instance = PromptManager(config_file)
+            return cls._instance
+    
     def __init__(self, config_file: str = "config/prompt_config.json"):
+        """初始化提示詞管理器
+        
+        參數:
+            config_file: 配置檔案路徑
+        """
         self.config_file = config_file
         self.config_dir = os.path.dirname(config_file) or "."
         self.templates_dir = os.path.join(self.config_dir, "prompt_templates")
@@ -37,7 +72,10 @@ class PromptManager:
         # 確保模板目錄存在
         os.makedirs(self.templates_dir, exist_ok=True)
         
-        # 翻譯風格定義 (僅保留指定風格)
+        # 獲取配置管理器實例
+        self.config_manager = ConfigManager.get_instance("prompt")
+        
+        # 翻譯風格定義
         self.translation_styles = {
             "standard": "標準翻譯 - 平衡準確性和自然度",
             "literal": "直譯 - 更忠於原文的字面意思",
@@ -58,8 +96,40 @@ class PromptManager:
             "俄文→繁體中文": {"source": "俄文", "target": "繁體中文"}
         }
         
-        # 預設提示詞 (僅保留指定內容類型)
-        self.default_prompts = {
+        # 預設提示詞
+        self.default_prompts = self._get_default_prompts()
+        
+        # 載入設定
+        self._load_config()
+        
+        # 設定當前使用的內容類型和風格
+        self.current_content_type = self.config_manager.get_value("current_content_type", "general")
+        self.current_style = self.config_manager.get_value("current_style", "standard")
+        self.current_language_pair = self.config_manager.get_value("current_language_pair", "日文→繁體中文")
+        
+        # 載入版本歷史
+        self.version_history = self.config_manager.get_value("version_history", {})
+        
+        # 載入自訂提示詞
+        self.custom_prompts = self.config_manager.get_value("custom_prompts", {})
+        self._load_custom_prompts()
+        
+        # 設置配置變更監聽器
+        self.config_manager.add_listener(self._config_changed)
+        
+        logger.info("PromptManager 初始化完成")
+    
+    def _get_default_prompts(self) -> Dict[str, Dict[str, str]]:
+        """獲取預設提示詞，從配置檔案或內置預設值"""
+        # 嘗試從配置獲取預設提示詞
+        default_config = ConfigManager.get_instance("default_prompt")
+        default_prompts = default_config.get_value("default_prompts", None)
+        
+        if default_prompts:
+            return default_prompts
+        
+        # 如果配置中沒有，使用內置預設值
+        return {
             "general": {
                 "ollama": """
 You are a professional translator. Your task is to translate subtitles accurately.
@@ -140,72 +210,54 @@ You are a movie subtitle translator. Your task:
 """
             }
         }
-        
-        # 載入設定
-        self.config = self._load_config()
-        
-        # 設定當前使用的內容類型和風格
-        self.current_content_type = self.config.get("current_content_type", "general")
-        self.current_style = self.config.get("current_style", "standard")
-        self.current_language_pair = self.config.get("current_language_pair", "日文→繁體中文")
-        
-        # 載入版本歷史
-        self.version_history = self.config.get("version_history", {})
-        
-        # 載入自訂提示詞
-        self._load_custom_prompts()
-        
-        logger.info("PromptManager 初始化完成")
     
-    def _load_config(self) -> Dict[str, Any]:
-        """載入主設定檔"""
-        default_config = {
+    def _load_config(self) -> None:
+        """讀取配置並確保必要的設定存在"""
+        # 如果配置檔案不存在，將使用配置管理器中的預設值
+        default_values = {
             "current_content_type": "general",
-            "current_style": "standard",
+            "current_style": "standard", 
             "current_language_pair": "日文→繁體中文",
             "custom_prompts": {},
             "version_history": {},
             "last_updated": datetime.now().isoformat()
         }
         
-        try:
-            if os.path.exists(self.config_file):
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                logger.debug(f"已載入設定檔: {self.config_file}")
-                return config
-            else:
-                logger.info(f"設定檔不存在，使用預設設定: {self.config_file}")
-                self._save_config(default_config)
-                return default_config
-                
-        except Exception as e:
-            logger.error(f"載入設定檔時發生錯誤: {str(e)}")
-            return default_config
-    
-    def _save_config(self, config: Dict[str, Any] = None) -> None:
-        """儲存設定至檔案"""
-        if config is None:
-            config = self.config
-            
-        config["last_updated"] = datetime.now().isoformat()
+        # 確保所有預設值都存在於配置中
+        for key, value in default_values.items():
+            if not self.config_manager.get_value(key, None):
+                self.config_manager.set_value(key, value, auto_save=False)
         
-        try:
-            # 確保目錄存在
-            os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
+        # 儲存配置
+        self.config_manager.save_config()
+    
+    def _config_changed(self, config_type: str, config: Dict[str, Any]) -> None:
+        """配置變更時的回調函數
+        
+        參數:
+            config_type: 配置類型
+            config: 配置內容
+        """
+        if config_type != "prompt":
+            return
             
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(config, f, ensure_ascii=False, indent=4)
-            logger.debug(f"已儲存設定至檔案: {self.config_file}")
-        except Exception as e:
-            logger.error(f"儲存設定檔時發生錯誤: {str(e)}")
+        # 更新當前設定
+        self.current_content_type = config.get("current_content_type", self.current_content_type)
+        self.current_style = config.get("current_style", self.current_style)
+        self.current_language_pair = config.get("current_language_pair", self.current_language_pair)
+        
+        # 更新自訂提示詞和版本歷史
+        self.custom_prompts = config.get("custom_prompts", self.custom_prompts)
+        self.version_history = config.get("version_history", self.version_history)
+        
+        logger.debug("提示詞配置已更新")
     
     def _load_custom_prompts(self) -> None:
         """載入所有自訂提示詞"""
-        # 首先從設定檔中載入已儲存的自訂提示詞
-        self.custom_prompts = self.config.get("custom_prompts", {})
+        # 首先從配置中載入已儲存的自訂提示詞
+        self.custom_prompts = self.config_manager.get_value("custom_prompts", {})
         
-        # 然後檢查模板目錄中是否有新的模板
+        # 確保所有內容類型都存在
         for content_type in ["general", "adult", "anime", "movie"]:
             if content_type not in self.custom_prompts:
                 self.custom_prompts[content_type] = {}
@@ -224,14 +276,22 @@ You are a movie subtitle translator. Your task:
                             
                     logger.debug(f"已載入模板: {template_file}")
                 except Exception as e:
-                    logger.error(f"載入模板檔案時發生錯誤: {str(e)}")
+                    logger.error(f"載入模板檔案時發生錯誤: {format_exception(e)}")
         
-        # 更新設定
-        self.config["custom_prompts"] = self.custom_prompts
-        self._save_config()
+        # 更新配置
+        self.config_manager.set_value("custom_prompts", self.custom_prompts)
     
     def get_prompt(self, llm_type: str = "ollama", content_type: str = None, style: str = None) -> str:
-        """根據 LLM 類型、內容類型和風格取得適合的 Prompt"""
+        """根據 LLM 類型、內容類型和風格取得適合的 Prompt
+        
+        參數:
+            llm_type: LLM類型 (如 "ollama" 或 "openai")
+            content_type: 內容類型，若為None則使用當前設定
+            style: 翻譯風格，若為None則使用當前設定
+            
+        回傳:
+            提示詞文本
+        """
         # 使用指定的內容類型和風格，或使用當前設定
         content_type = content_type or self.current_content_type
         style = style or self.current_style
@@ -246,7 +306,8 @@ You are a movie subtitle translator. Your task:
                 prompt = self.default_prompts[content_type][llm_type]
             else:
                 # 回退到通用提示詞
-                prompt = self.default_prompts["general"][llm_type]
+                prompt = self.default_prompts["general"].get(llm_type, 
+                                                        self.default_prompts["general"]["ollama"])
         
         # 套用風格修飾符（如果不是標準風格）
         if style != "standard":
@@ -258,7 +319,16 @@ You are a movie subtitle translator. Your task:
         return prompt.strip()
     
     def _apply_style_modifier(self, prompt: str, style: str, llm_type: str) -> str:
-        """根據翻譯風格修改提示詞"""
+        """根據翻譯風格修改提示詞
+        
+        參數:
+            prompt: 原始提示詞
+            style: 翻譯風格
+            llm_type: LLM類型
+            
+        回傳:
+            修改後的提示詞
+        """
         style_modifiers = {
             "literal": {
                 "ollama": "Focus on providing a more literal translation that is closer to the original text meaning. Prioritize accuracy to source text over natural flow in the target language.",
@@ -282,7 +352,15 @@ You are a movie subtitle translator. Your task:
         return prompt
     
     def _apply_language_pair_modifier(self, prompt: str, language_pair: str) -> str:
-        """根據語言對修改提示詞"""
+        """根據語言對修改提示詞
+        
+        參數:
+            prompt: 原始提示詞
+            language_pair: 語言對 (如 "日文→繁體中文")
+            
+        回傳:
+            修改後的提示詞
+        """
         # 如果是預設的日文→繁體中文，不需要修改
         if language_pair == "日文→繁體中文":
             return prompt
@@ -306,8 +384,17 @@ You are a movie subtitle translator. Your task:
             
         return prompt
     
-    def set_prompt(self, new_prompt: str, llm_type: str = "ollama", content_type: str = None):
-        """設置特定 LLM 和內容類型的提示詞"""
+    def set_prompt(self, new_prompt: str, llm_type: str = "ollama", content_type: str = None) -> bool:
+        """設置特定 LLM 和內容類型的提示詞
+        
+        參數:
+            new_prompt: 新的提示詞
+            llm_type: LLM類型 (如 "ollama" 或 "openai")
+            content_type: 內容類型，若為None則使用當前設定
+            
+        回傳:
+            是否設置成功
+        """
         content_type = content_type or self.current_content_type
         
         # 確保自訂提示詞字典中有對應的內容類型
@@ -322,17 +409,23 @@ You are a movie subtitle translator. Your task:
         # 更新提示詞
         self.custom_prompts[content_type][llm_type] = new_prompt.strip()
         
-        # 更新設定
-        self.config["custom_prompts"] = self.custom_prompts
-        self._save_config()
+        # 更新配置
+        self.config_manager.set_value("custom_prompts", self.custom_prompts)
         
         # 儲存至模板檔案
         self._save_prompt_template(content_type)
         
         logger.info(f"已設置 '{content_type}' 類型的 '{llm_type}' 提示詞")
+        return True
     
     def _add_to_version_history(self, content_type: str, llm_type: str, prompt: str) -> None:
-        """將提示詞添加到版本歷史"""
+        """將提示詞添加到版本歷史
+        
+        參數:
+            content_type: 內容類型
+            llm_type: LLM類型
+            prompt: 提示詞
+        """
         if content_type not in self.version_history:
             self.version_history[content_type] = {}
             
@@ -353,22 +446,41 @@ You are a movie subtitle translator. Your task:
             history = history[-10:]  # 只保留最新的 10 個版本
             self.version_history[content_type][llm_type] = history
             
-        # 更新設定
-        self.config["version_history"] = self.version_history
-        self._save_config()
+        # 更新配置
+        self.config_manager.set_value("version_history", self.version_history)
     
-    def _save_prompt_template(self, content_type: str) -> None:
-        """儲存提示詞模板至檔案"""
+    def _save_prompt_template(self, content_type: str) -> bool:
+        """儲存提示詞模板至檔案
+        
+        參數:
+            content_type: 內容類型
+            
+        回傳:
+            是否儲存成功
+        """
         template_file = os.path.join(self.templates_dir, f"{content_type}_template.json")
         try:
+            # 確保目錄存在
+            os.makedirs(self.templates_dir, exist_ok=True)
+            
             with open(template_file, 'w', encoding='utf-8') as f:
                 json.dump(self.custom_prompts[content_type], f, ensure_ascii=False, indent=4)
             logger.debug(f"已儲存模板至: {template_file}")
+            return True
         except Exception as e:
-            logger.error(f"儲存模板檔案時發生錯誤: {str(e)}")
+            logger.error(f"儲存模板檔案時發生錯誤: {format_exception(e)}")
+            return False
     
     def get_version_history(self, content_type: str = None, llm_type: str = None) -> List[Dict[str, Any]]:
-        """取得提示詞的版本歷史"""
+        """取得提示詞的版本歷史
+        
+        參數:
+            content_type: 內容類型，若為None則使用當前設定
+            llm_type: LLM類型，若為None則返回所有LLM類型的歷史
+            
+        回傳:
+            版本歷史列表
+        """
         content_type = content_type or self.current_content_type
         
         if content_type not in self.version_history:
@@ -390,7 +502,16 @@ You are a movie subtitle translator. Your task:
         return all_history
     
     def restore_version(self, content_type: str, llm_type: str, version_index: int) -> bool:
-        """恢復到特定版本的提示詞"""
+        """恢復到特定版本的提示詞
+        
+        參數:
+            content_type: 內容類型
+            llm_type: LLM類型
+            version_index: 版本索引
+            
+        回傳:
+            是否恢復成功
+        """
         if (content_type in self.version_history and 
             llm_type in self.version_history[content_type] and
             0 <= version_index < len(self.version_history[content_type][llm_type])):
@@ -407,8 +528,16 @@ You are a movie subtitle translator. Your task:
         logger.warning(f"無法恢復版本，找不到對應的版本記錄")
         return False
     
-    def reset_to_default(self, llm_type: str = None, content_type: str = None):
-        """重置為預設提示詞"""
+    def reset_to_default(self, llm_type: str = None, content_type: str = None) -> bool:
+        """重置為預設提示詞
+        
+        參數:
+            llm_type: LLM類型，若為None則重置所有LLM類型
+            content_type: 內容類型，若為None則使用當前設定
+            
+        回傳:
+            是否重置成功
+        """
         content_type = content_type or self.current_content_type
         
         if llm_type:
@@ -416,58 +545,110 @@ You are a movie subtitle translator. Your task:
             if content_type in self.default_prompts and llm_type in self.default_prompts[content_type]:
                 self.set_prompt(self.default_prompts[content_type][llm_type], llm_type, content_type)
                 logger.info(f"已重置 '{content_type}' 類型的 '{llm_type}' 提示詞為預設值")
+                return True
         else:
             # 重置所有 LLM 類型的提示詞
+            success = True
             for llm in ["ollama", "openai"]:
                 if content_type in self.default_prompts and llm in self.default_prompts[content_type]:
-                    self.set_prompt(self.default_prompts[content_type][llm], llm, content_type)
+                    result = self.set_prompt(self.default_prompts[content_type][llm], llm, content_type)
+                    success = success and result
             logger.info(f"已重置 '{content_type}' 類型的所有提示詞為預設值")
+            return success
+            
+        return False
     
-    def set_content_type(self, content_type: str) -> None:
-        """設置當前使用的內容類型"""
+    def set_content_type(self, content_type: str) -> bool:
+        """設置當前使用的內容類型
+        
+        參數:
+            content_type: 內容類型
+            
+        回傳:
+            是否設置成功
+        """
         if content_type in ["general", "adult", "anime", "movie"]:
             self.current_content_type = content_type
-            self.config["current_content_type"] = content_type
-            self._save_config()
+            self.config_manager.set_value("current_content_type", content_type)
             logger.info(f"已設置當前內容類型為: {content_type}")
+            return True
+        return False
     
-    def set_translation_style(self, style: str) -> None:
-        """設置當前使用的翻譯風格"""
+    def set_translation_style(self, style: str) -> bool:
+        """設置當前使用的翻譯風格
+        
+        參數:
+            style: 翻譯風格
+            
+        回傳:
+            是否設置成功
+        """
         if style in self.translation_styles:
             self.current_style = style
-            self.config["current_style"] = style
-            self._save_config()
+            self.config_manager.set_value("current_style", style)
             logger.info(f"已設置當前翻譯風格為: {style}")
+            return True
+        return False
     
-    def set_language_pair(self, language_pair: str) -> None:
-        """設置當前使用的語言對"""
+    def set_language_pair(self, language_pair: str) -> bool:
+        """設置當前使用的語言對
+        
+        參數:
+            language_pair: 語言對
+            
+        回傳:
+            是否設置成功
+        """
         if language_pair in self.language_pairs:
             self.current_language_pair = language_pair
-            self.config["current_language_pair"] = language_pair
-            self._save_config()
+            self.config_manager.set_value("current_language_pair", language_pair)
             logger.info(f"已設置當前語言對為: {language_pair}")
+            return True
+        return False
     
     def get_available_content_types(self) -> List[str]:
-        """取得可用的內容類型"""
+        """取得可用的內容類型
+        
+        回傳:
+            內容類型列表
+        """
         return ["general", "adult", "anime", "movie"]
     
     def get_available_styles(self) -> Dict[str, str]:
-        """取得可用的翻譯風格"""
+        """取得可用的翻譯風格
+        
+        回傳:
+            翻譯風格字典 {風格代碼: 風格描述}
+        """
         return self.translation_styles
     
     def get_available_language_pairs(self) -> List[str]:
-        """取得可用的語言對"""
+        """取得可用的語言對
+        
+        回傳:
+            語言對列表
+        """
         return list(self.language_pairs.keys())
     
     def export_prompt(self, content_type: str = None, llm_type: str = None, file_path: str = None) -> Optional[str]:
-        """匯出提示詞至檔案"""
+        """匯出提示詞至檔案
+        
+        參數:
+            content_type: 內容類型，若為None則使用當前設定
+            llm_type: LLM類型，若為None則匯出所有LLM類型的提示詞
+            file_path: 輸出檔案路徑，若為None則自動生成
+            
+        回傳:
+            匯出檔案路徑，若失敗則回傳None
+        """
         content_type = content_type or self.current_content_type
         
         # 要匯出的資料
         export_data = {
             "metadata": {
                 "exported_at": datetime.now().isoformat(),
-                "content_type": content_type
+                "content_type": content_type,
+                "version": "1.0"
             },
             "prompts": {}
         }
@@ -495,111 +676,55 @@ You are a movie subtitle translator. Your task:
             file_path = os.path.join(self.templates_dir, file_name)
             
         try:
+            # 確保目錄存在
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(export_data, f, ensure_ascii=False, indent=4)
             logger.info(f"已匯出提示詞至: {file_path}")
             return file_path
         except Exception as e:
-            logger.error(f"匯出提示詞時發生錯誤: {str(e)}")
+            logger.error(f"匯出提示詞時發生錯誤: {format_exception(e)}")
             return None
     
-    def import_prompt(self, file_path: str) -> bool:
-        """從檔案匯入提示詞"""
+    def import_prompt(self, input_path: str) -> bool:
+        """從檔案匯入提示詞
+        
+        參數:
+            input_path: 輸入檔案路徑
+            
+        回傳:
+            是否匯入成功
+        """
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                import_data = json.load(f)
+            if not os.path.exists(input_path):
+                logger.error(f"匯入檔案不存在: {input_path}")
+                return False
                 
-            if "metadata" not in import_data or "prompts" not in import_data:
-                logger.warning(f"無效的提示詞匯入格式: {file_path}")
+            with open(input_path, 'r', encoding='utf-8') as f:
+                import_data = json.load(f)
+            
+            # 驗證匯入資料格式
+            if not all(k in import_data for k in ["metadata", "prompts"]):
+                logger.warning(f"無效的提示詞匯入格式: {input_path}")
                 return False
                 
             content_type = import_data["metadata"].get("content_type", "general")
             
             # 匯入提示詞
             for llm_type, prompt in import_data["prompts"].items():
+                if llm_type not in ["ollama", "openai"]:
+                    logger.warning(f"跳過不支援的LLM類型: {llm_type}")
+                    continue
                 self.set_prompt(prompt, llm_type, content_type)
                 
-            logger.info(f"已從 {file_path} 匯入 '{content_type}' 類型的提示詞")
+            logger.info(f"已從 {input_path} 匯入 '{content_type}' 類型的提示詞")
             return True
         except Exception as e:
-            logger.error(f"匯入提示詞時發生錯誤: {str(e)}")
+            logger.error(f"匯入提示詞時發生錯誤: {format_exception(e)}")
             return False
     
-    def get_optimized_message(self, text: str, context_texts: List[str], llm_type: str, model_name: str) -> List[Dict[str, str]]:
-        """生成為特定 LLM 和模型優化的訊息結構"""
-        # 取得適合當前設置的系統提示詞
-        system_prompt = self.get_prompt(llm_type)
-        
-        # 為不同的 LLM 優化訊息結構
-        if llm_type == "openai":
-            # 為 OpenAI 優化上下文處理和格式
-            # 精簡上下文，減少 token 使用
-            limited_context = []
-            
-            # 只包含非空的上下文，最多 6 行
-            for ctx in context_texts:
-                if ctx.strip():
-                    limited_context.append(ctx)
-                    if len(limited_context) >= 6:
-                        break
-            
-            # 構建更緊湊的使用者提示
-            user_content = "上下文：\n" + "\n".join(limited_context)
-            user_content += f"\n\n翻譯：{text}"
-            
-            # GPT-4 等高級模型可以處理更簡潔的指令
-            if "gpt-4" in model_name:
-                return [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content}
-                ]
-            else:
-                # 較低階模型可能需要更明確的指令
-                return [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content}
-                ]
-                
-        elif llm_type == "anthropic":
-            # 為 Anthropic Claude 模型優化
-            # Claude 模型更喜歡詳細的上下文和指令
-            user_content = "以下是字幕內容（提供上下文參考）：\n\n"
-            
-            # 提供帶序號的上下文
-            for i, ctx in enumerate(context_texts):
-                if ctx.strip():
-                    user_content += f"[{i+1}] {ctx}\n"
-            
-            user_content += f"\n請將當前字幕翻譯（保持原始語氣和風格）：\n{text}"
-            
-            return [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content}
-            ]
-            
-        else:
-            # 標準 Ollama 格式（或其他開源模型）
-            return [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"以下是字幕內容（提供前後作為上下文參考）：\n{json.dumps(context_texts, ensure_ascii=False)}\n請將當前字幕翻譯：\n'{text}'"}
-            ]
-    
-    def get_full_message(self, text: str, context_texts: List[str]) -> List[Dict[str, str]]:
-        """生成完整的訊息結構，供翻譯使用 (保留向後相容性)"""
-        return self.get_optimized_message(text, context_texts, "ollama", "default")
-    
-    def analyze_prompt(self, prompt: str) -> Dict[str, Any]:
-        """分析提示詞的品質和特性"""
-        analysis = {
-            "length": len(prompt),
-            "word_count": len(prompt.split()),
-            "clarity": 0,
-            "specificity": 0,
-            "completeness": 0,
-            "contains_rules": False,
-            "contains_examples": False,
-            "contains_constraints": False,
-            "formatting_score": 0
+    0
         }
         
         # 檢測是否包含規則
@@ -643,34 +768,3 @@ You are a movie subtitle translator. Your task:
         ) // 5
         
         return analysis
-
-# 測試代碼
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    
-    # 初始化 PromptManager
-    manager = PromptManager()
-    
-    print("\n==== 提示詞管理器測試 ====")
-    
-    # 測試取得不同類型的提示詞
-    print("\n測試取得提示詞:")
-    for content_type in manager.get_available_content_types():
-        print(f"\n{content_type} 類型 (OpenAI):")
-        prompt = manager.get_prompt("openai", content_type)
-        print(prompt[:100] + "..." if len(prompt) > 100 else prompt)
-    
-    # 測試不同風格
-    print("\n測試不同翻譯風格:")
-    for style in ["standard", "literal", "localized"]:
-        print(f"\n{style} 風格:")
-        prompt = manager.get_prompt("ollama", "general", style)
-        print(prompt[:100] + "..." if len(prompt) > 100 else prompt)
-        
-    # 測試取得優化訊息結構
-    print("\n測試取得優化訊息結構:")
-    text = "こんにちは、元気ですか？"
-    context = ["前の字幕です。", "こんにちは、元気ですか？", "次の字幕です。"]
-    messages = manager.get_optimized_message(text, context, "openai", "gpt-3.5-turbo")
-    for msg in messages:
-        print(f"{msg['role']}: {msg['content'][:50]}...")
