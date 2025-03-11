@@ -69,6 +69,9 @@ class CacheManager:
         參數:
             db_path: 快取資料庫路徑
         """
+        # 如果 db_path 為 None 或空字串，則使用預設值
+        if not db_path:
+            db_path = "data/translation_cache.db"
         # 確保目錄存在
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         
