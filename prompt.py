@@ -318,6 +318,37 @@ You are a movie subtitle translator. Your task:
         
         return prompt.strip()
     
+    def get_optimized_message(self, text: str, context_texts: List[str], llm_type: str, model_name: str) -> List[Dict[str, str]]:
+        """根據不同LLM和模型生成優化的提示訊息格式
+        
+        參數:
+            text: 要翻譯的文字
+            context_texts: 上下文文本列表
+            llm_type: LLM類型 (如 "ollama" 或 "openai")
+            model_name: 模型名稱
+            
+        回傳:
+            適合API請求的訊息列表
+        """
+        # 獲取基本提示詞
+        prompt = self.get_prompt(llm_type)
+        
+        # 為不同的LLM類型創建不同格式的訊息
+        if llm_type == "openai" or llm_type == "anthropic":
+            # OpenAI/Anthropic的訊息格式
+            messages = [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": f"請將以下文本翻譯:\n\n{text}\n\n上下文:\n{', '.join(context_texts)}"}
+            ]
+        else:
+            # Ollama等其他LLM的訊息格式
+            messages = [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": f"請將以下文本翻譯:\n\n{text}\n\n上下文:\n{', '.join(context_texts)}"}
+            ]
+        
+        return messages
+    
     def _apply_style_modifier(self, prompt: str, style: str, llm_type: str) -> str:
         """根據翻譯風格修改提示詞
         
@@ -639,7 +670,7 @@ You are a movie subtitle translator. Your task:
             file_path: 輸出檔案路徑，若為None則自動生成
             
         回傳:
-            匯出檔案路徑，若失敗則回傳None
+匯出檔案路徑，若失敗則回傳None
         """
         content_type = content_type or self.current_content_type
         
@@ -734,6 +765,8 @@ You are a movie subtitle translator. Your task:
             分析結果字典
         """
         analysis = {
+            "length": len(prompt),
+            "word_count": len(prompt.split()),
             "contains_rules": False,
             "contains_examples": False,
             "contains_constraints": False,
