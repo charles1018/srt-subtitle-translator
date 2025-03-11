@@ -433,7 +433,7 @@ class FileHandler:
         Returns:
             List of selected file paths
         """
-        initial_dir = self.last_directory if os.path.exists(self.last_directory) else os.path.expanduser("~")
+        initial_dir = self.last_directory if self.last_directory and os.path.exists(self.last_directory) else os.path.expanduser("~")
         
         # Build filetypes filter
         filetypes = []
