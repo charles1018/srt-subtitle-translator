@@ -75,12 +75,12 @@ class ConfigManager:
         # 設定預設配置值
         self.default_configs = self._get_default_configs()
         
+        # 先初始化監聽器列表，避免在 load_config 呼叫儲存時未定義 listeners
+        self.listeners = []
+        
         # 載入配置
         self.configs = {}
         self.load_config()
-        
-        # 設定監聽器列表
-        self.listeners = []
         
         logger.info(f"配置管理器初始化完成: {config_type}")
     
@@ -345,6 +345,9 @@ class ConfigManager:
             配置值，若不存在則回傳 default
         """
         config_type = config_type or self.config_type
+        # 如果 config_type 不是字串，則使用預設值
+        if not isinstance(config_type, str):
+            config_type = self.config_type
         
         if config_type not in self.configs:
             return default
