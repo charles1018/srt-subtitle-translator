@@ -1,3 +1,4 @@
+import re
 import os
 import json
 import logging
@@ -764,7 +765,7 @@ class ConfigManager:
             errors["colors"] = ["必須為字典格式"]
         else:
             for key, color in colors.items():
-                if not isinstance(color, str) or not color.startswith("#") or not re.match(r'^#[0-9A-Fa-f]{6}, color):
+                if not isinstance(color, str) or not color.startswith("#") or not re.match(r'^#[0-9A-Fa-f]{6}$', color):
                     errors[f"colors.{key}"] = ["必須為有效的十六進位色碼 (#RRGGBB)"]
         
         # 字型大小

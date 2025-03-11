@@ -724,7 +724,6 @@ You are a movie subtitle translator. Your task:
             logger.error(f"匯入提示詞時發生錯誤: {format_exception(e)}")
             return False
     
-    0
         }
         
         # 檢測是否包含規則
