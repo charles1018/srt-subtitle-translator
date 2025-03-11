@@ -123,6 +123,12 @@ class ModelInfo:
                 result["response_time"] = round(end_time - start_time, 2)
                 
             return result
+        except Exception as e:
+            logger.error(f"測試模型連線時發生錯誤: {str(e)}")
+            result["success"] = False
+            result["message"] = f"測試過程中發生錯誤: {str(e)}"
+            result["error"] = str(e)
+            return result
     
     async def _test_ollama_connection(self, model_name: str) -> Tuple[bool, str]:
         """測試 Ollama 模型連線
@@ -147,7 +153,20 @@ class ModelInfo:
             url = f"{self.base_url}/api/generate"
             async with self.session.post(url, json=payload, timeout=10) as response:
                 if response.status != 200:
-                    return False
+                    return False, f"API 返回非 200 狀態碼: {response.status}"
+                    
+                result = await response.json()
+                if 'response' in result and result['response']:
+                    return True, "模型回應正常"
+                else:
+                    return False, "模型回應格式異常"
+                    
+        except aiohttp.ClientConnectorError:
+            return False, "無法連線到 Ollama 伺服器，請確保 Ollama 正在執行"
+        except asyncio.TimeoutError:
+            return False, "連線逾時，Ollama 伺服器回應時間過長"
+        except Exception as e:
+            return False, f"測試連線時發生錯誤: {str(e)}"
     
     def set_default_ollama_model(self, model_name: str) -> bool:
         """設置預設的 Ollama 模型
@@ -192,623 +211,6 @@ class ModelInfo:
         self.cache_time.clear()
         
         logger.info("模型管理器資源已釋放")
-
-
-# 提供便捷的全域函數
-def get_model_info(model_name: str, provider: str = None) -> Dict[str, Any]:
-    """全域函數：獲取模型資訊
-    
-    參數:
-        model_name: 模型名稱
-        provider: 提供者 (如 "ollama" 或 "openai")
-        
-    回傳:
-        模型資訊字典
-    """
-    manager = ModelManager.get_instance()
-    return manager.get_model_info(model_name, provider)
-
-
-def get_recommended_model(task_type: str = "translation", provider: str = None) -> str:
-    """全域函數：根據任務類型獲取推薦模型
-    
-    參數:
-        task_type: 任務類型 (如 "translation" 或 "literary")
-        provider: 提供者 (如 "ollama" 或 "openai")
-        
-    回傳:
-        推薦的模型名稱
-    """
-    manager = ModelManager.get_instance()
-    model_info = manager.get_recommended_model(task_type, provider)
-    if model_info:
-        return model_info.id
-    return manager.get_default_model(provider or "ollama")
-
-
-async def test_model_connection(model_name: str, provider: str, api_key: str = None) -> Dict[str, Any]:
-    """全域函數：測試與模型的連線
-    
-    參數:
-        model_name: 模型名稱
-        provider: 提供者 (如 "ollama", "openai" 或 "anthropic")
-        api_key: API 金鑰 (可選)
-        
-    回傳:
-        測試結果字典
-    """
-    manager = ModelManager.get_instance()
-    return await manager.test_model_connection(model_name, provider, api_key)
-
-
-# 測試程式碼
-if __name__ == "__main__":
-    async def test_async():
-        try:
-            # 讀取 API 金鑰
-            try:
-                with open("openapi_api_key.txt", "r") as f:
-                    api_key = f.read().strip()
-            except FileNotFoundError:
-                print("未找到 API 金鑰檔案，使用 Ollama 模式")
-                api_key = None
-                
-            # 使用非同步上下文管理器
-            async with ModelManager.get_instance() as manager:
-                # 檢查各提供者狀態
-                print("檢查提供者狀態...")
-                status = await manager.get_provider_status()
-                for provider, available in status.items():
-                    print(f"{provider}: {'可用' if available else '不可用'}")
-                
-                # 獲取 Ollama 模型
-                print("\n獲取 Ollama 模型...")
-                ollama_models = await manager.get_model_list_async("ollama")
-                print(f"找到 {len(ollama_models)} 個 Ollama 模型:")
-                for model in ollama_models[:5]:  # 只顯示前 5 個
-                    print(f"- {model.name} ({model.id})")
-                
-                # 獲取 OpenAI 模型
-                if api_key:
-                    print("\n獲取 OpenAI 模型...")
-                    openai_models = await manager.get_model_list_async("openai", api_key)
-                    print(f"找到 {len(openai_models)} 個 OpenAI 模型:")
-                    for model in openai_models[:5]:  # 只顯示前 5 個
-                        print(f"- {model.name} ({model.id})")
-                
-                # 測試模型連線
-                if ollama_models:
-                    print("\n測試 Ollama 模型連線...")
-                    test_model = ollama_models[0].id
-                    result = await manager.test_model_connection(test_model, "ollama")
-                    if result["success"]:
-                        print(f"連線成功! 回應時間: {result['response_time']}秒")
-                    else:
-                        print(f"連線失敗: {result['message']}")
-                
-                # 獲取推薦模型
-                print("\n獲取推薦模型...")
-                for task in ["translation", "literary", "technical", "subtitle"]:
-                    model = manager.get_recommended_model(task)
-                    if model:
-                        print(f"推薦用於{task}的模型: {model.name} ({model.provider})")
-        
-        except Exception as e:
-            print(f"測試過程中發生錯誤: {str(e)}")
-            import traceback
-            traceback.print_exc()
-
-    # 執行測試
-    asyncio.run(test_async())
-
-            
-    def update_config(self, new_config: Dict[str, Any]) -> bool:
-        """更新模型管理器配置
-        
-        參數:
-            new_config: 新的配置項字典
-            
-        回傳:
-            是否更新成功
-        """
-        try:
-            # 更新配置
-            for key, value in new_config.items():
-                if key in self.config:
-                    self.config[key] = value
-            
-            # 儲存配置
-            save_result = self._save_config()
-            
-            # 如果更新了重要設定，清除快取
-            important_keys = ["ollama_url", "default_ollama_model", "model_patterns"]
-            if any(key in new_config for key in important_keys):
-                self.cached_models.clear()
-                self.cache_time.clear()
-            
-            logger.info("已更新模型管理器配置")
-            return save_result
-        except Exception as e:
-            logger.error(f"更新模型管理器配置時發生錯誤: {str(e)}")
-            return False, f"API 返回非 200 狀態碼: {response.status}"
-                    
-                result = await response.json()
-                if 'response' in result and result['response']:
-                    return True, "模型回應正常"
-                else:
-                    return False, "模型回應格式異常"
-                    
-        except aiohttp.ClientConnectorError:
-            return False, "無法連線到 Ollama 伺服器，請確保 Ollama 正在執行"
-        except asyncio.TimeoutError:
-            return False, "連線逾時，Ollama 伺服器回應時間過長"
-        except Exception as e:
-            return False, f"測試連線時發生錯誤: {str(e)}"
-    
-    async def _test_anthropic_connection(self, model_name: str, api_key: str) -> Tuple[bool, str]:
-        """測試 Anthropic 模型連線
-        
-        參數:
-            model_name: 模型名稱
-            api_key: API 金鑰
-            
-        回傳:
-            (是否成功, 訊息)
-        """
-        if not ANTHROPIC_AVAILABLE:
-            return False, "未安裝 Anthropic 客戶端程式庫"
-            
-        if not api_key:
-            return False, "未提供 API 金鑰"
-            
-        try:
-            client = anthropic.Anthropic(api_key=api_key)
-            response = client.messages.create(
-                model=model_name,
-                max_tokens=10,
-                messages=[{"role": "user", "content": "Hello"}]
-            )
-            
-            if response and response.content:
-                return True, "模型回應正常"
-            else:
-                return False, "模型回應格式異常"
-                
-        except Exception as e:
-            error_msg = str(e).lower()
-            if "authentication" in error_msg or "invalid api key" in error_msg:
-                return False, "API 金鑰無效或認證失敗"
-            elif "rate limit" in error_msg:
-                return False, "達到 API 速率限制，請稍後再試"
-            elif "not found" in error_msg or "no such model" in error_msg:
-                return False, f"模型 {model_name} 不存在或不可用"
-            else:
-                return False, f"測試連線時發生錯誤: {str(e)}"
-    
-    def get_recommended_model(self, task_type: str = "translation", provider: str = None) -> Optional[ModelInfo]:
-        """根據任務類型獲取推薦模型
-        
-        參數:
-            task_type: 任務類型 (如 "translation", "literary", "technical", "subtitle")
-            provider: 提供者 (如 "ollama", "openai" 或 "anthropic")
-            
-        回傳:
-            推薦的模型資訊，若無適合的則回傳 None
-        """
-        available_providers = [provider] if provider else self.config.get("default_providers", ["ollama", "openai", "anthropic"])
-        
-        # 定義不同任務的能力權重
-        task_weights = {
-            "translation": {
-                "translation": 0.7,
-                "multilingual": 0.2,
-                "context_handling": 0.1
-            },
-            "literary": {  # 文學翻譯
-                "translation": 0.5,
-                "multilingual": 0.2,
-                "context_handling": 0.3
-            },
-            "technical": {  # 技術文件翻譯
-                "translation": 0.6,
-                "multilingual": 0.1,
-                "context_handling": 0.3
-            },
-            "subtitle": {  # 字幕翻譯
-                "translation": 0.5,
-                "multilingual": 0.3,
-                "context_handling": 0.2
-            }
-        }
-        
-        weights = task_weights.get(task_type, task_weights["translation"])
-        
-        # 獲取所有可用模型
-        all_models = []
-        for provider_name in available_providers:
-            for key, model in self.model_database.items():
-                if model.provider == provider_name and model.available:
-                    all_models.append(model)
-        
-        if not all_models:
-            return None
-    
-    async def get_provider_status(self) -> Dict[str, bool]:
-        """獲取各提供者的連線狀態
-        
-        回傳:
-            包含各提供者狀態的字典
-        """
-        status = {
-            "ollama": False,
-            "openai": False,
-            "anthropic": False
-        }
-        
-        # 檢查 Ollama 連線
-        try:
-            if not self.session:
-                await self._init_async_session()
-                
-            url = f"{self.base_url}/api/version"
-            async with self.session.get(url, timeout=2) as response:
-                status["ollama"] = response.status == 200
-        except Exception:
-            status["ollama"] = False
-            
-        # 其他提供者需要 API 金鑰，檢查是否有有效金鑰和客戶端庫
-        status["openai"] = OPENAI_AVAILABLE and bool(self.api_keys.get("openai"))
-        status["anthropic"] = ANTHROPIC_AVAILABLE and bool(self.api_keys.get("anthropic"))
-        
-        return status
-    
-    async def __aenter__(self):
-        """非同步上下文管理器入口"""
-        await self._init_async_session()
-        return self
-        
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """非同步上下文管理器退出"""
-        await self._close_async_session()
-    
-    async def _get_ollama_models_async(self) -> List[ModelInfo]:
-        """非同步獲取 Ollama 模型列表
-        
-        回傳:
-            Ollama ModelInfo物件列表
-        """
-        try:
-            if not self.session:
-                await self._init_async_session()
-                
-            models = set()
-            
-            # 嘗試使用不同的 API 端點獲取模型列表
-            endpoints = [
-                "/api/tags",
-                "/api/models"
-            ]
-            
-            for endpoint in endpoints:
-                try:
-                    url = f"{self.base_url}{endpoint}"
-                    logger.debug(f"嘗試從 {url} 獲取 Ollama 模型")
-                    
-                    async with self.session.get(url, timeout=self.request_timeout) as response:
-                        if response.status != 200:
-                            logger.warning(f"API 端點 {endpoint} 返回非 200 狀態碼: {response.status}")
-                            continue
-                            
-                        result = await response.json()
-                        
-                        # 處理不同的回應格式
-                        if 'models' in result and isinstance(result['models'], list):
-                            for model in result['models']:
-                                if isinstance(model, dict) and 'name' in model:
-                                    models.add(model['name'])
-                        elif 'models' in result and isinstance(result['models'], dict):
-                            for model_name in result['models'].keys():
-                                models.add(model_name)
-                        elif isinstance(result, list):
-                            for item in result:
-                                if isinstance(item, dict) and 'name' in item:
-                                    models.add(item['name'])
-                        
-                        # 如果成功獲取了模型，跳出循環
-                        if len(models) > 0:
-                            break
-                            
-                except Exception as e:
-                    logger.warning(f"從端點 {endpoint} 獲取模型失敗: {str(e)}")
-                    continue
-            
-            # 如果沒有找到模型，嘗試使用系統自帶的模型列表
-            if len(models) == 0:
-                default_models = ["llama3", "mistral", "mixtral", "phi3"]
-                for model in default_models:
-                    models.add(model)
-                    
-                logger.warning(f"無法從 API 獲取模型，使用預設模型列表: {default_models}")
-            
-            # 添加預設模型
-            models.add(self.default_ollama_model)
-            
-            # 過濾和排序
-            model_set = set(models)
-            if len(model_set) > 20:  # 只有當模型數量過多時才過濾
-                filtered_models = set()
-                for pattern in self.model_patterns:
-                    for model in model_set:
-                        if pattern in model.lower():
-                            filtered_models.add(model)
-                
-                # 如果過濾後仍有足夠多的模型，使用過濾後的集合
-                if len(filtered_models) >= 3:
-                    model_set = filtered_models
-            
-            # 建立 ModelInfo 物件列表
-            model_info_list = []
-            for model_id in sorted(model_set):
-                # 檢查是否有預定義的模型資訊
-                key = f"ollama:{model_id}"
-                if key in self.model_database:
-                    model_info = self.model_database[key]
-                else:
-                    # 建立新的模型資訊
-                    model_info = ModelInfo(
-                        id=model_id,
-                        provider="ollama",
-                        name=self._format_model_name(model_id),
-                        description="Ollama 模型",
-                        pricing="免費(本機執行)",
-                        recommended_for="一般翻譯任務",
-                        parallel=2,
-                        tags=["free", "local"],
-                        capabilities={
-                            "translation": 0.75,
-                            "multilingual": 0.7,
-                            "context_handling": 0.7
-                        }
-                    )
-                
-                model_info_list.append(model_info)
-            
-            # 確保預設模型在首位
-            default_model_id = self.default_ollama_model
-            model_info_list.sort(key=lambda x: 0 if x.id == default_model_id else 1)
-            
-            logger.info(f"檢測到 {len(model_info_list)} 個 Ollama 模型")
-            return model_info_list
-            
-        except Exception as e:
-            logger.error(f"獲取 Ollama 模型列表失敗: {str(e)}")
-            # 返回預設模型
-            default_model = self._create_default_ollama_model()
-            return [default_model]
-    
-    def save_api_key(self, provider: str, api_key: str) -> bool:
-        """儲存 API 金鑰
-        
-        參數:
-            provider: 提供者 (如 "openai" 或 "anthropic")
-            api_key: API 金鑰
-            
-        回傳:
-            是否儲存成功
-        """
-        try:
-            key_path = get_config("app", f"{provider}_key_path", f"{provider}_api_key.txt")
-            
-            # 確保目錄存在
-            os.makedirs(os.path.dirname(key_path), exist_ok=True)
-            
-            with open(key_path, 'w', encoding='utf-8') as f:
-                f.write(api_key)
-            
-            # 更新緩存
-            self.api_keys[provider] = api_key
-            
-            # 清除模型快取，強制重新檢測
-            if provider in self.cached_models:
-                del self.cached_models[provider]
-                if provider in self.cache_time:
-                    del self.cache_time[provider]
-            
-            logger.info(f"已儲存 {provider} API 金鑰")
-            return True
-        except Exception as e:
-            logger.error(f"儲存 {provider} API 金鑰時發生錯誤: {str(e)}")
-            return False
-    
-    def _format_model_name(self, model_id: str) -> str:
-        """格式化模型名稱，使其更易讀
-        
-        參數:
-            model_id: 模型ID
-            
-        回傳:
-            格式化後的模型名稱
-        """
-        try:
-            # 移除版本號和標籤
-            name = re.sub(r'[:@].+', '', model_id)
-            
-            # 處理常見縮寫
-            name = name.replace('-', ' ').replace('_', ' ')
-            
-            # 分割路徑，只取最後部分
-            parts = name.split('/')
-            name = parts[-1]
-            
-            # 首字母大寫
-            words = name.split()
-            capitalized = []
-            for word in words:
-                # 處理駝峰命名
-                camel_parts = re.findall(r'[A-Z][a-z]*|[a-z]+', word)
-                camel_parts = [p.capitalize() for p in camel_parts]
-                capitalized.append(' '.join(camel_parts))
-            
-            return ' '.join(capitalized)
-        except Exception:
-            return model_id
-    
-    async def _get_openai_models_async(self, api_key: str) -> List[ModelInfo]:
-        """非同步獲取 OpenAI 模型列表
-        
-        參數:
-            api_key: OpenAI API金鑰
-            
-        回傳:
-            OpenAI ModelInfo物件列表
-        """
-        if not api_key:
-            logger.warning("未提供 OpenAI API 金鑰")
-            # 返回預設模型
-            default_model = self._create_default_openai_model()
-            return [default_model]
-        
-        if not OPENAI_AVAILABLE:
-            logger.warning("未安裝 OpenAI 客戶端函式庫")
-            default_model = self._create_default_openai_model()
-            return [default_model]
-        
-        try:
-            # 使用同步客戶端 - 未來可改為非同步
-            client = OpenAI(api_key=api_key)
-            models_response = client.models.list()
-            
-            # 優先推薦適合翻譯的模型
-            translation_priority = {
-                "gpt-4o": 1,
-                "gpt-4-turbo": 2,
-                "gpt-4": 3,
-                "gpt-3.5-turbo-16k": 4,
-                "gpt-3.5-turbo": 5,
-                "gpt-4-vision-preview": 999
-            }
-            
-            # 過濾模型
-            model_list = []
-            for model in models_response:
-                # 只包含 GPT 系列，且排除日期版本(如 gpt-3.5-turbo-0301)
-                if "gpt" in model.id and not re.search(r"-\d{4}$", model.id):
-                    key = f"openai:{model.id}"
-                    if key in self.model_database:
-                        model_info = ModelInfo(
-                            id=default_model,
-                            provider="openai",
-                            name=self._format_model_name(default_model),
-                            description="OpenAI 模型",
-                            pricing="中" if "gpt-4" in default_model else "低",
-                            recommended_for="一般翻譯任務"
-                        )
-                    model_list.append(model_info)
-            
-            logger.info(f"檢測到 {len(model_list)} 個 OpenAI 模型")
-            return model_list
-            
-        except Exception as e:
-            logger.error(f"獲取 OpenAI 模型列表失敗: {str(e)}")
-            # 返回預設模型
-            default_model = self._create_default_openai_model()
-            return [default_model] self.model_database[key]
-                    else:
-                        # 建立新的模型資訊
-                        model_info = ModelInfo(
-                            id=model.id,
-                            provider="openai",
-                            name=self._format_model_name(model.id),
-                            description="OpenAI 模型",
-                            pricing="中",
-                            recommended_for="一般翻譯任務",
-                            parallel=10
-                        )
-                    
-                    model_list.append(model_info)
-            
-            # 按翻譯優先級排序
-            model_list.sort(key=lambda x: translation_priority.get(x.id, 900))
-            
-            # 確保列表中有最常用的模型
-            default_models = ["gpt-3.5-turbo", "gpt-4"]
-            for default_model in default_models:
-                if not any(m.id == default_model for m in model_list):
-                    key = f"openai:{default_model}"
-                    if key in self.model_database:
-                        model_info = self.model_database[key]
-                    else:
-                        model_info =
-            
-        # 計算每個模型的得分
-        scored_models = []
-        for model in all_models:
-            score = 0
-            for capability, weight in weights.items():
-                if capability in model.capabilities:
-                    score += model.capabilities[capability] * weight
-            
-            # 根據提供者調整得分
-            if model.provider == "ollama":
-                # Ollama 是本機執行，在沒有指定提供者時降低評分以優先使用雲端服務
-                if provider is None:
-                    score *= 0.85
-                
-            scored_models.append((model, score))
-            
-        # 按得分排序
-        scored_models.sort(key=lambda x: x[1], reverse=True)
-        
-        # 返回得分最高的模型
-        if scored_models:
-            return scored_models[0][0]
-        return None
-    
-    async def _test_openai_connection(self, model_name: str, api_key: str) -> Tuple[bool, str]:
-        """測試 OpenAI 模型連線
-        
-        參數:
-            model_name: 模型名稱
-            api_key: API 金鑰
-            
-        回傳:
-            (是否成功, 訊息)
-        """
-        if not api_key:
-            return False, "未提供 API 金鑰"
-            
-        if not OPENAI_AVAILABLE:
-            return False, "未安裝 OpenAI 客戶端函式庫"
-            
-        try:
-            client = OpenAI(api_key=api_key)
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=[{"role": "user", "content": "Hello"}],
-                max_tokens=5
-            )
-            
-            if response and response.choices and len(response.choices) > 0:
-                return True, "模型回應正常"
-            else:
-                return False, "模型回應格式異常"
-                
-        except openai.RateLimitError:
-            return False, "達到 API 速率限制，請稍後再試"
-        except openai.AuthenticationError:
-            return False, "API 金鑰無效或認證失敗"
-        except openai.BadRequestError as e:
-            if "does not exist" in str(e):
-                return False, f"模型 {model_name} 不存在或不可用"
-            return False, f"請求錯誤: {str(e)}"
-        except Exception as e:
-            return False, f"測試連線時發生錯誤: {str(e)}"
-        except Exception as e:
-            logger.error(f"測試模型連線時發生錯誤: {str(e)}")
-            result["success"] = False
-            result["message"] = f"測試過程中發生錯誤: {str(e)}"
-            result["error"] = str(e)
-            return result
 
 class ModelManager:
     """模型管理器，負責管理、載入和監控不同的大型語言模型"""
@@ -1459,3 +861,605 @@ class ModelManager:
                 "recommended_for": "日常翻譯，最具成本效益",
                 "parallel": 30
             }
+        }
+        if model_name in openai_models:
+            return {
+                "id": model_name,
+                "name": model_name,
+                "provider": "openai",
+                **openai_models[model_name]
+            }
+        return {}
+
+    def get_recommended_model(self, task_type: str = "translation", provider: str = None) -> Optional[ModelInfo]:
+        """根據任務類型獲取推薦模型
+        
+        參數:
+            task_type: 任務類型 (如 "translation", "literary", "technical", "subtitle")
+            provider: 提供者 (如 "ollama", "openai" 或 "anthropic")
+            
+        回傳:
+            推薦的模型資訊，若無適合的則回傳 None
+        """
+        available_providers = [provider] if provider else self.config.get("default_providers", ["ollama", "openai", "anthropic"])
+        
+        # 定義不同任務的能力權重
+        task_weights = {
+            "translation": {
+                "translation": 0.7,
+                "multilingual": 0.2,
+                "context_handling": 0.1
+            },
+            "literary": {  # 文學翻譯
+                "translation": 0.5,
+                "multilingual": 0.2,
+                "context_handling": 0.3
+            },
+            "technical": {  # 技術文件翻譯
+                "translation": 0.6,
+                "multilingual": 0.1,
+                "context_handling": 0.3
+            },
+            "subtitle": {  # 字幕翻譯
+                "translation": 0.5,
+                "multilingual": 0.3,
+                "context_handling": 0.2
+            }
+        }
+        
+        weights = task_weights.get(task_type, task_weights["translation"])
+        
+        # 獲取所有可用模型
+        all_models = []
+        for provider_name in available_providers:
+            for key, model in self.model_database.items():
+                if model.provider == provider_name and model.available:
+                    all_models.append(model)
+        
+        if not all_models:
+            return None
+        
+        # 計算每個模型的得分
+        scored_models = []
+        for model in all_models:
+            score = 0
+            for capability, weight in weights.items():
+                if capability in model.capabilities:
+                    score += model.capabilities[capability] * weight
+            
+            # 根據提供者調整得分
+            if model.provider == "ollama":
+                # Ollama 是本機執行，在沒有指定提供者時降低評分以優先使用雲端服務
+                if provider is None:
+                    score *= 0.85
+                
+            scored_models.append((model, score))
+            
+        # 按得分排序
+        scored_models.sort(key=lambda x: x[1], reverse=True)
+        
+        # 返回得分最高的模型
+        if scored_models:
+            return scored_models[0][0]
+        return None
+    
+    async def _test_openai_connection(self, model_name: str, api_key: str) -> Tuple[bool, str]:
+        """測試 OpenAI 模型連線
+        
+        參數:
+            model_name: 模型名稱
+            api_key: API 金鑰
+            
+        回傳:
+            (是否成功, 訊息)
+        """
+        if not api_key:
+            return False, "未提供 API 金鑰"
+            
+        if not OPENAI_AVAILABLE:
+            return False, "未安裝 OpenAI 客戶端函式庫"
+            
+        try:
+            client = OpenAI(api_key=api_key)
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[{"role": "user", "content": "Hello"}],
+                max_tokens=5
+            )
+            
+            if response and response.choices and len(response.choices) > 0:
+                return True, "模型回應正常"
+            else:
+                return False, "模型回應格式異常"
+                
+        except openai.RateLimitError:
+            return False, "達到 API 速率限制，請稍後再試"
+        except openai.AuthenticationError:
+            return False, "API 金鑰無效或認證失敗"
+        except openai.BadRequestError as e:
+            if "does not exist" in str(e):
+                return False, f"模型 {model_name} 不存在或不可用"
+            return False, f"請求錯誤: {str(e)}"
+        except Exception as e:
+            return False, f"測試連線時發生錯誤: {str(e)}"
+    
+    async def _test_anthropic_connection(self, model_name: str, api_key: str) -> Tuple[bool, str]:
+        """測試 Anthropic 模型連線
+        
+        參數:
+            model_name: 模型名稱
+            api_key: API 金鑰
+            
+        回傳:
+            (是否成功, 訊息)
+        """
+        if not ANTHROPIC_AVAILABLE:
+            return False, "未安裝 Anthropic 客戶端程式庫"
+            
+        if not api_key:
+            return False, "未提供 API 金鑰"
+            
+        try:
+            client = anthropic.Anthropic(api_key=api_key)
+            response = client.messages.create(
+                model=model_name,
+                max_tokens=10,
+                messages=[{"role": "user", "content": "Hello"}]
+            )
+            
+            if response and response.content:
+                return True, "模型回應正常"
+            else:
+                return False, "模型回應格式異常"
+                
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "authentication" in error_msg or "invalid api key" in error_msg:
+                return False, "API 金鑰無效或認證失敗"
+            elif "rate limit" in error_msg:
+                return False, "達到 API 速率限制，請稍後再試"
+            elif "not found" in error_msg or "no such model" in error_msg:
+                return False, f"模型 {model_name} 不存在或不可用"
+            else:
+                return False, f"測試連線時發生錯誤: {str(e)}"
+    
+    async def get_provider_status(self) -> Dict[str, bool]:
+        """獲取各提供者的連線狀態
+        
+        回傳:
+            包含各提供者狀態的字典
+        """
+        status = {
+            "ollama": False,
+            "openai": False,
+            "anthropic": False
+        }
+        
+        # 檢查 Ollama 連線
+        try:
+            if not self.session:
+                await self._init_async_session()
+                
+            url = f"{self.base_url}/api/version"
+            async with self.session.get(url, timeout=2) as response:
+                status["ollama"] = response.status == 200
+        except Exception:
+            status["ollama"] = False
+            
+        # 其他提供者需要 API 金鑰，檢查是否有有效金鑰和客戶端庫
+        status["openai"] = OPENAI_AVAILABLE and bool(self.api_keys.get("openai"))
+        status["anthropic"] = ANTHROPIC_AVAILABLE and bool(self.api_keys.get("anthropic"))
+        
+        return status
+    
+    async def __aenter__(self):
+        """非同步上下文管理器入口"""
+        await self._init_async_session()
+        return self
+        
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """非同步上下文管理器退出"""
+        await self._close_async_session()
+    
+    async def _get_ollama_models_async(self) -> List[ModelInfo]:
+        """非同步獲取 Ollama 模型列表
+        
+        回傳:
+            Ollama ModelInfo物件列表
+        """
+        try:
+            if not self.session:
+                await self._init_async_session()
+                
+            models = set()
+            
+            # 嘗試使用不同的 API 端點獲取模型列表
+            endpoints = [
+                "/api/tags",
+                "/api/models"
+            ]
+            
+            for endpoint in endpoints:
+                try:
+                    url = f"{self.base_url}{endpoint}"
+                    logger.debug(f"嘗試從 {url} 獲取 Ollama 模型")
+                    
+                    async with self.session.get(url, timeout=self.request_timeout) as response:
+                        if response.status != 200:
+                            logger.warning(f"API 端點 {endpoint} 返回非 200 狀態碼: {response.status}")
+                            continue
+                            
+                        result = await response.json()
+                        
+                        # 處理不同的回應格式
+                        if 'models' in result and isinstance(result['models'], list):
+                            for model in result['models']:
+                                if isinstance(model, dict) and 'name' in model:
+                                    models.add(model['name'])
+                        elif 'models' in result and isinstance(result['models'], dict):
+                            for model_name in result['models'].keys():
+                                models.add(model_name)
+                        elif isinstance(result, list):
+                            for item in result:
+                                if isinstance(item, dict) and 'name' in item:
+                                    models.add(item['name'])
+                        
+                        # 如果成功獲取了模型，跳出循環
+                        if len(models) > 0:
+                            break
+                            
+                except Exception as e:
+                    logger.warning(f"從端點 {endpoint} 獲取模型失敗: {str(e)}")
+                    continue
+            
+            # 如果沒有找到模型，嘗試使用系統自帶的模型列表
+            if len(models) == 0:
+                default_models = ["llama3", "mistral", "mixtral", "phi3"]
+                for model in default_models:
+                    models.add(model)
+                    
+                logger.warning(f"無法從 API 獲取模型，使用預設模型列表: {default_models}")
+            
+            # 添加預設模型
+            models.add(self.default_ollama_model)
+            
+            # 過濾和排序
+            model_set = set(models)
+            if len(model_set) > 20:  # 只有當模型數量過多時才過濾
+                filtered_models = set()
+                for pattern in self.model_patterns:
+                    for model in model_set:
+                        if pattern in model.lower():
+                            filtered_models.add(model)
+                
+                # 如果過濾後仍有足夠多的模型，使用過濾後的集合
+                if len(filtered_models) >= 3:
+                    model_set = filtered_models
+            
+            # 建立 ModelInfo 物件列表
+            model_info_list = []
+            for model_id in sorted(model_set):
+                # 檢查是否有預定義的模型資訊
+                key = f"ollama:{model_id}"
+                if key in self.model_database:
+                    model_info = self.model_database[key]
+                else:
+                    # 建立新的模型資訊
+                    model_info = ModelInfo(
+                        id=model_id,
+                        provider="ollama",
+                        name=self._format_model_name(model_id),
+                        description="Ollama 模型",
+                        pricing="免費(本機執行)",
+                        recommended_for="一般翻譯任務",
+                        parallel=2,
+                        tags=["free", "local"],
+                        capabilities={
+                            "translation": 0.75,
+                            "multilingual": 0.7,
+                            "context_handling": 0.7
+                        }
+                    )
+                
+                model_info_list.append(model_info)
+            
+            # 確保預設模型在首位
+            default_model_id = self.default_ollama_model
+            model_info_list.sort(key=lambda x: 0 if x.id == default_model_id else 1)
+            
+            logger.info(f"檢測到 {len(model_info_list)} 個 Ollama 模型")
+            return model_info_list
+            
+        except Exception as e:
+            logger.error(f"獲取 Ollama 模型列表失敗: {str(e)}")
+            # 返回預設模型
+            default_model = self._create_default_ollama_model()
+            return [default_model]
+    
+    def save_api_key(self, provider: str, api_key: str) -> bool:
+        """儲存 API 金鑰
+        
+        參數:
+            provider: 提供者 (如 "openai" 或 "anthropic")
+            api_key: API 金鑰
+            
+        回傳:
+            是否儲存成功
+        """
+        try:
+            key_path = get_config("app", f"{provider}_key_path", f"{provider}_api_key.txt")
+            
+            # 確保目錄存在
+            os.makedirs(os.path.dirname(key_path), exist_ok=True)
+            
+            with open(key_path, 'w', encoding='utf-8') as f:
+                f.write(api_key)
+            
+            # 更新緩存
+            self.api_keys[provider] = api_key
+            
+            # 清除模型快取，強制重新檢測
+            if provider in self.cached_models:
+                del self.cached_models[provider]
+                if provider in self.cache_time:
+                    del self.cache_time[provider]
+            
+            logger.info(f"已儲存 {provider} API 金鑰")
+            return True
+        except Exception as e:
+            logger.error(f"儲存 {provider} API 金鑰時發生錯誤: {str(e)}")
+            return False
+    
+    def _format_model_name(self, model_id: str) -> str:
+        """格式化模型名稱，使其更易讀
+        
+        參數:
+            model_id: 模型ID
+            
+        回傳:
+            格式化後的模型名稱
+        """
+        try:
+            # 移除版本號和標籤
+            name = re.sub(r'[:@].+', '', model_id)
+            
+            # 處理常見縮寫
+            name = name.replace('-', ' ').replace('_', ' ')
+            
+            # 分割路徑，只取最後部分
+            parts = name.split('/')
+            name = parts[-1]
+            
+            # 首字母大寫
+            words = name.split()
+            capitalized = []
+            for word in words:
+                # 處理駝峰命名
+                camel_parts = re.findall(r'[A-Z][a-z]*|[a-z]+', word)
+                camel_parts = [p.capitalize() for p in camel_parts]
+                capitalized.append(' '.join(camel_parts))
+            
+            return ' '.join(capitalized)
+        except Exception:
+            return model_id
+    
+    async def _get_openai_models_async(self, api_key: str) -> List[ModelInfo]:
+        """非同步獲取 OpenAI 模型列表
+        
+        參數:
+            api_key: OpenAI API金鑰
+            
+        回傳:
+            OpenAI ModelInfo物件列表
+        """
+        if not api_key:
+            logger.warning("未提供 OpenAI API 金鑰")
+            # 返回預設模型
+            default_model = self._create_default_openai_model()
+            return [default_model]
+        
+        if not OPENAI_AVAILABLE:
+            logger.warning("未安裝 OpenAI 客戶端函式庫")
+            default_model = self._create_default_openai_model()
+            return [default_model]
+        
+        try:
+            # 使用同步客戶端 - 未來可改為非同步
+            client = OpenAI(api_key=api_key)
+            models_response = client.models.list()
+            
+            # 優先推薦適合翻譯的模型
+            translation_priority = {
+                "gpt-4o": 1,
+                "gpt-4-turbo": 2,
+                "gpt-4": 3,
+                "gpt-3.5-turbo-16k": 4,
+                "gpt-3.5-turbo": 5,
+                "gpt-4-vision-preview": 999
+            }
+            
+            # 過濾模型
+            model_list = []
+            for model in models_response:
+                # 只包含 GPT 系列，且排除日期版本(如 gpt-3.5-turbo-0301)
+                if "gpt" in model.id and not re.search(r"-\d{4}$", model.id):
+                    key = f"openai:{model.id}"
+                    if key in self.model_database:
+                        model_info = self.model_database[key]
+                    else:
+                        # 建立新的模型資訊
+                        model_info = ModelInfo(
+                            id=model.id,
+                            provider="openai",
+                            name=self._format_model_name(model.id),
+                            description="OpenAI 模型",
+                            pricing="中",
+                            recommended_for="一般翻譯任務",
+                            parallel=10
+                        )
+                    
+                    model_list.append(model_info)
+            
+            # 按翻譯優先級排序
+            model_list.sort(key=lambda x: translation_priority.get(x.id, 900))
+            
+            # 確保列表中有最常用的模型
+            default_models = ["gpt-3.5-turbo", "gpt-4"]
+            for default_model in default_models:
+                if not any(m.id == default_model for m in model_list):
+                    key = f"openai:{default_model}"
+                    if key in self.model_database:
+                        model_info = self.model_database[key]
+                    else:
+                        model_info = ModelInfo(
+                            id=default_model,
+                            provider="openai",
+                            name=self._format_model_name(default_model),
+                            description="OpenAI 模型",
+                            pricing="中" if "gpt-4" in default_model else "低",
+                            recommended_for="一般翻譯任務"
+                        )
+                    model_list.append(model_info)
+            
+            logger.info(f"檢測到 {len(model_list)} 個 OpenAI 模型")
+            return model_list
+            
+        except Exception as e:
+            logger.error(f"獲取 OpenAI 模型列表失敗: {str(e)}")
+            # 返回預設模型
+            default_model = self._create_default_openai_model()
+            return [default_model]
+
+    def update_config(self, new_config: Dict[str, Any]) -> bool:
+        """更新模型管理器配置
+        
+        參數:
+            new_config: 新的配置項字典
+            
+        回傳:
+            是否更新成功
+        """
+        try:
+            # 更新配置
+            for key, value in new_config.items():
+                if key in self.config:
+                    self.config[key] = value
+            
+            # 儲存配置
+            save_result = self._save_config()
+            
+            # 如果更新了重要設定，清除快取
+            important_keys = ["ollama_url", "default_ollama_model", "model_patterns"]
+            if any(key in new_config for key in important_keys):
+                self.cached_models.clear()
+                self.cache_time.clear()
+            
+            logger.info("已更新模型管理器配置")
+            return save_result
+        except Exception as e:
+            logger.error(f"更新模型管理器配置時發生錯誤: {str(e)}")
+            return False
+
+# 提供便捷的全域函數
+def get_model_info(model_name: str, provider: str = None) -> Dict[str, Any]:
+    """全域函數：獲取模型資訊
+    
+    參數:
+        model_name: 模型名稱
+        provider: 提供者 (如 "ollama" 或 "openai")
+        
+    回傳:
+        模型資訊字典
+    """
+    manager = ModelManager.get_instance()
+    return manager.get_model_info(model_name, provider)
+
+def get_recommended_model(task_type: str = "translation", provider: str = None) -> str:
+    """全域函數：根據任務類型獲取推薦模型
+    
+    參數:
+        task_type: 任務類型 (如 "translation" 或 "literary")
+        provider: 提供者 (如 "ollama" 或 "openai")
+        
+    回傳:
+        推薦的模型名稱
+    """
+    manager = ModelManager.get_instance()
+    model_info = manager.get_recommended_model(task_type, provider)
+    if model_info:
+        return model_info.id
+    return manager.get_default_model(provider or "ollama")
+
+async def test_model_connection(model_name: str, provider: str, api_key: str = None) -> Dict[str, Any]:
+    """全域函數：測試與模型的連線
+    
+    參數:
+        model_name: 模型名稱
+        provider: 提供者 (如 "ollama", "openai" 或 "anthropic")
+        api_key: API 金鑰 (可選)
+        
+    回傳:
+        測試結果字典
+    """
+    manager = ModelManager.get_instance()
+    return await manager.test_model_connection(model_name, provider, api_key)
+
+# 測試程式碼
+if __name__ == "__main__":
+    async def test_async():
+        try:
+            # 讀取 API 金鑰
+            try:
+                with open("openapi_api_key.txt", "r") as f:
+                    api_key = f.read().strip()
+            except FileNotFoundError:
+                print("未找到 API 金鑰檔案，使用 Ollama 模式")
+                api_key = None
+                
+            # 使用非同步上下文管理器
+            async with ModelManager.get_instance() as manager:
+                # 檢查各提供者狀態
+                print("檢查提供者狀態...")
+                status = await manager.get_provider_status()
+                for provider, available in status.items():
+                    print(f"{provider}: {'可用' if available else '不可用'}")
+                
+                # 獲取 Ollama 模型
+                print("\n獲取 Ollama 模型...")
+                ollama_models = await manager.get_model_list_async("ollama")
+                print(f"找到 {len(ollama_models)} 個 Ollama 模型:")
+                for model in ollama_models[:5]:  # 只顯示前 5 個
+                    print(f"- {model.name} ({model.id})")
+                
+                # 獲取 OpenAI 模型
+                if api_key:
+                    print("\n獲取 OpenAI 模型...")
+                    openai_models = await manager.get_model_list_async("openai", api_key)
+                    print(f"找到 {len(openai_models)} 個 OpenAI 模型:")
+                    for model in openai_models[:5]:  # 只顯示前 5 個
+                        print(f"- {model.name} ({model.id})")
+                
+                # 測試模型連線
+                if ollama_models:
+                    print("\n測試 Ollama 模型連線...")
+                    test_model = ollama_models[0].id
+                    result = await manager.test_model_connection(test_model, "ollama")
+                    if result["success"]:
+                        print(f"連線成功! 回應時間: {result['response_time']}秒")
+                    else:
+                        print(f"連線失敗: {result['message']}")
+                
+                # 獲取推薦模型
+                print("\n獲取推薦模型...")
+                for task in ["translation", "literary", "technical", "subtitle"]:
+                    model = manager.get_recommended_model(task)
+                    if model:
+                        print(f"推薦用於{task}的模型: {model.name} ({model.provider})")
+        
+        except Exception as e:
+            print(f"測試過程中發生錯誤: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    # 執行測試
+    asyncio.run(test_async())

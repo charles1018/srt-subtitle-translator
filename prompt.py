@@ -723,9 +723,26 @@ You are a movie subtitle translator. Your task:
         except Exception as e:
             logger.error(f"匯入提示詞時發生錯誤: {format_exception(e)}")
             return False
-    
-        }
+
+    def analyze_prompt(self, prompt: str) -> Dict[str, Any]:
+        """分析提示詞文本的品質得分
         
+        參數:
+            prompt: 要分析的提示詞文本
+            
+        回傳:
+            分析結果字典
+        """
+        analysis = {
+            "contains_rules": False,
+            "contains_examples": False,
+            "contains_constraints": False,
+            "clarity": 0,
+            "specificity": 0,
+            "completeness": 0,
+            "formatting_score": 0,
+            "quality_score": 0
+        }
         # 檢測是否包含規則
         if re.search(r'(rule|guidelines|follow these|instructions|請遵守)', prompt, re.IGNORECASE):
             analysis["contains_rules"] = True
@@ -752,7 +769,7 @@ You are a movie subtitle translator. Your task:
         analysis["clarity"] += min(3, prompt.count('.') // 3)
         analysis["specificity"] += min(3, len(re.findall(r'\b(translate|翻譯|maintain|保持|preserve|keep|確保)\b', prompt, re.IGNORECASE)))
         analysis["completeness"] += min(3, len(re.findall(r'\b(tone|style|context|語氣|風格|上下文)\b', prompt, re.IGNORECASE)))
-        
+            
         # 調整分數範圍 (0-5)
         for key in ["clarity", "specificity", "completeness", "formatting_score"]:
             analysis[key] = min(5, analysis[key])
@@ -765,5 +782,5 @@ You are a movie subtitle translator. Your task:
             (analysis["formatting_score"] * 10) +
             (30 if analysis["contains_rules"] and analysis["contains_constraints"] else 0)
         ) // 5
-        
+            
         return analysis
