@@ -1,7 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import ttk, filedialog, scrolledtext, messagebox
-from typing import Callable, List, Dict, Any, Optional
+from typing import Callable, List, Dict, Any, Optional, Union
 import threading
 import json
 import queue
@@ -9,6 +9,11 @@ from pathlib import Path
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime
+
+# 從新模組導入
+from config_manager import ConfigManager, get_config, set_config
+from services import ServiceFactory
+from utils import safe_execute, format_exception, AppError, locale_manager
 
 # 嘗試匯入拖放功能模組
 try:
@@ -73,7 +78,12 @@ class GUIComponents:
         self.parallel_requests = tk.StringVar(value="3")
         self.display_mode = tk.StringVar(value="雙語對照")
         
-        # 主題色彩
+        # 獲取服務實例
+        self.file_service = ServiceFactory.get_file_service()
+        self.model_service = ServiceFactory.get_model_service()
+        self.config_manager = ConfigManager.get_instance("user")
+        
+        # 載入主題設定
         self.load_theme_settings()
         
         # 初始化介面元素
@@ -84,34 +94,19 @@ class GUIComponents:
     def load_theme_settings(self):
         """載入主題設定"""
         try:
-            theme_file = "config/theme_settings.json"
-            if os.path.exists(theme_file):
-                with open(theme_file, 'r', encoding='utf-8') as f:
-                    theme = json.load(f)
-                    
-                # 設定主題色彩
-                self.colors = theme.get("colors", {
-                    "primary": "#3498db",
-                    "secondary": "#2ecc71",
-                    "background": "#f0f0f0",
-                    "text": "#333333",
-                    "accent": "#e74c3c",
-                    "button": "#3498db",
-                    "button_hover": "#2980b9"
-                })
-            else:
-                # 預設主題色彩
-                self.colors = {
-                    "primary": "#3498db",
-                    "secondary": "#2ecc71",
-                    "background": "#f0f0f0",
-                    "text": "#333333",
-                    "accent": "#e74c3c",
-                    "button": "#3498db",
-                    "button_hover": "#2980b9"
-                }
+            # 從配置管理器獲取主題設定
+            theme_config = ConfigManager.get_instance("theme")
+            self.colors = theme_config.get_value("colors", {
+                "primary": "#3498db",
+                "secondary": "#2ecc71",
+                "background": "#f0f0f0",
+                "text": "#333333",
+                "accent": "#e74c3c",
+                "button": "#3498db",
+                "button_hover": "#2980b9"
+            })
         except Exception as e:
-            logger.error(f"載入主題設定失敗: {str(e)}")
+            logger.error(f"載入主題設定失敗: {format_exception(e)}")
             # 預設主題色彩
             self.colors = {
                 "primary": "#3498db",
@@ -143,6 +138,14 @@ class GUIComponents:
         settings_menu.add_command(label="快取管理", command=self.open_cache_manager)
         settings_menu.add_command(label="進階設定", command=self.open_advanced_settings)
         menu_bar.add_cascade(label="設定", menu=settings_menu)
+        
+        # 工具選單
+        tools_menu = tk.Menu(menu_bar, tearoff=0)
+        tools_menu.add_command(label="字幕格式轉換", command=self.open_subtitle_converter)
+        tools_menu.add_command(label="從影片提取字幕", command=self.open_subtitle_extractor)
+        tools_menu.add_separator()
+        tools_menu.add_command(label="統計報告", command=self.open_stats_viewer)
+        menu_bar.add_cascade(label="工具", menu=tools_menu)
         
         # 關於選單
         help_menu = tk.Menu(menu_bar, tearoff=0)
@@ -220,7 +223,6 @@ class GUIComponents:
         llm_types = ["ollama", "openai"]
         self.llm_combobox = ttk.Combobox(settings_grid, textvariable=self.llm_type, values=llm_types, width=10, state="readonly")
         self.llm_combobox.grid(row=2, column=1, sticky=tk.W, pady=5)
-        self.llm_combobox.bind("<<ComboboxSelected>>", self.on_llm_type_changed)
         
         ttk.Label(settings_grid, text="模型:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.model_combo = ttk.Combobox(settings_grid, textvariable=self.model_combo_var, width=15, state="readonly")
@@ -334,44 +336,36 @@ class GUIComponents:
         """顯示模式變更時的處理函式"""
         selected_mode = self.display_mode.get()
         logger.info(f"顯示模式已變更為: {selected_mode}")
+        
+        # 保存設置到配置
+        set_config("user", "display_mode", selected_mode)
     
     def browse_files(self):
         """瀏覽並選擇字幕檔案"""
-        filetypes = [
-            ("字幕檔案", "*.srt;*.vtt;*.ass;*.ssa;*.sub"),
-            ("SRT檔案", "*.srt"),
-            ("VTT檔案", "*.vtt"),
-            ("ASS檔案", "*.ass;*.ssa"),
-            ("SUB檔案", "*.sub"),
-            ("所有檔案", "*.*")
-        ]
-        
-        files = filedialog.askopenfilenames(
-            title="選擇字幕檔案",
-            filetypes=filetypes
-        )
-        
-        if files:
-            self.add_files(files)
+        try:
+            files = self.file_service.select_files()
+            if files:
+                self.add_files(files)
+        except Exception as e:
+            logger.error(f"選擇檔案時發生錯誤: {format_exception(e)}")
+            messagebox.showerror("錯誤", f"選擇檔案時發生錯誤: {str(e)}")
     
     def browse_folder(self):
         """瀏覽並選擇含有字幕檔案的資料夾"""
-        folder = filedialog.askdirectory(title="選擇資料夾")
-        if folder:
-            # 搜尋資料夾中的字幕檔案
-            subtitle_extensions = (".srt", ".vtt", ".ass", ".ssa", ".sub")
-            files = []
-            
-            for root, _, filenames in os.walk(folder):
-                for filename in filenames:
-                    if filename.lower().endswith(subtitle_extensions):
-                        files.append(os.path.join(root, filename))
-            
-            if files:
-                self.add_files(files)
-                messagebox.showinfo("檔案搜尋", f"在資料夾中找到 {len(files)} 個字幕檔案")
-            else:
-                messagebox.showinfo("檔案搜尋", "在選中的資料夾中未找到任何字幕檔案")
+        try:
+            folder = self.file_service.select_directory()
+            if folder:
+                # 搜尋資料夾中的字幕檔案
+                files = self.file_service.scan_directory(folder)
+                
+                if files:
+                    self.add_files(files)
+                    messagebox.showinfo("檔案搜尋", f"在資料夾中找到 {len(files)} 個字幕檔案")
+                else:
+                    messagebox.showinfo("檔案搜尋", "在選中的資料夾中未找到任何字幕檔案")
+        except Exception as e:
+            logger.error(f"瀏覽資料夾時發生錯誤: {format_exception(e)}")
+            messagebox.showerror("錯誤", f"瀏覽資料夾時發生錯誤: {str(e)}")
     
     def add_files(self, files):
         """新增檔案到列表"""
@@ -387,6 +381,12 @@ class GUIComponents:
                 self.file_listbox.insert(tk.END, os.path.basename(file))
         
         logger.info(f"已新增 {len(files)} 個檔案，目前共有 {len(self.selected_files)} 個檔案")
+        
+        # 更新最後使用的目錄
+        if files:
+            first_file = files[0]
+            last_directory = os.path.dirname(first_file)
+            set_config("user", "last_directory", last_directory)
     
     def clear_selection(self):
         """清除選中的檔案"""
@@ -399,36 +399,14 @@ class GUIComponents:
         if not TKDND_AVAILABLE:
             return
         
-        # 解析拖放的檔案路徑
-        file_paths = event.data
-        
-        # Windows 系統下可能需要處理大括號
-        if isinstance(file_paths, str):
-            # 去除大括號和多餘的引號
-            file_paths = file_paths.strip('{}')
-            file_paths = file_paths.split('} {')
-        
-        # 檢查是檔案還是資料夾
-        processed_files = []
-        
-        for path in file_paths:
-            path = path.strip()
-            if os.path.isfile(path):
-                # 檢查是否為字幕檔案
-                if path.lower().endswith((".srt", ".vtt", ".ass", ".ssa", ".sub")):
-                    processed_files.append(path)
-            elif os.path.isdir(path):
-                # 資料夾，遞迴搜尋字幕檔案
-                for root, _, filenames in os.walk(path):
-                    for filename in filenames:
-                        if filename.lower().endswith((".srt", ".vtt", ".ass", ".ssa", ".sub")):
-                            processed_files.append(os.path.join(root, filename))
-        
-        if processed_files:
-            self.add_files(processed_files)
-            messagebox.showinfo("檔案拖放", f"已新增 {len(processed_files)} 個字幕檔案")
-        else:
-            messagebox.showinfo("檔案拖放", "未找到任何有效的字幕檔案")
+        try:
+            files = self.file_service.handle_drop(event)
+            if files:
+                self.add_files(files)
+                messagebox.showinfo("檔案拖放", f"已新增 {len(files)} 個字幕檔案")
+        except Exception as e:
+            logger.error(f"處理拖放檔案時發生錯誤: {format_exception(e)}")
+            messagebox.showerror("錯誤", f"處理拖放檔案時發生錯誤: {str(e)}")
     
     def get_selected_files(self) -> List[str]:
         """取得所有選中的檔案路徑"""
@@ -456,7 +434,7 @@ class GUIComponents:
         self.display_mode_combo.config(state=tk.DISABLED)  # 禁用顯示模式選擇
         
         # 禁用選單項
-        # 這需要取得選單引用，此處略過
+        # 在實際實作中，這裡可能需要保存選單項的引用並禁用它們
     
     def reset_ui(self):
         """重置 UI（翻譯完成或停止時）"""
@@ -471,7 +449,7 @@ class GUIComponents:
         self.progress_bar["value"] = 0
         
         # 啟用選單項
-        # 這需要取得選單引用，此處略過
+        # 在實際實作中，這裡可能需要保存選單項的引用並啟用它們
     
     def on_llm_type_changed(self, event=None):
         """LLM 類型變更時的處理函式"""
@@ -481,12 +459,22 @@ class GUIComponents:
     def on_content_type_changed(self, event=None):
         """內容類型變更時的處理函式"""
         if self.prompt_manager:
-            self.prompt_manager.set_content_type(self.content_type_var.get())
+            content_type = self.content_type_var.get()
+            self.prompt_manager.set_content_type(content_type)
+            logger.info(f"內容類型已變更為: {content_type}")
+            
+            # 保存設置到配置
+            set_config("prompt", "current_content_type", content_type)
     
     def on_style_changed(self, event=None):
         """翻譯風格變更時的處理函式"""
         if self.prompt_manager:
-            self.prompt_manager.set_translation_style(self.style_var.get())
+            style = self.style_var.get()
+            self.prompt_manager.set_translation_style(style)
+            logger.info(f"翻譯風格已變更為: {style}")
+            
+            # 保存設置到配置
+            set_config("prompt", "current_style", style)
     
     def set_model_list(self, models: List[str], default_model: str = ""):
         """設置模型列表"""
@@ -509,16 +497,285 @@ class GUIComponents:
             return
             
         # 建立提示詞編輯視窗
-        prompt_editor = PromptEditorWindow(self.root, self.prompt_manager)
+        PromptEditorWindow(self.root, self.prompt_manager)
     
     def open_cache_manager(self):
         """開啟快取管理器"""
-        messagebox.showinfo("功能開發中", "快取管理功能正在開發中")
+        try:
+            # 使用快取服務
+            cache_service = ServiceFactory.get_cache_service()
+            cache_stats = cache_service.get_cache_stats()
+            
+            # 顯示快取統計資訊
+            stats_text = "\n".join([f"{k}: {v}" for k, v in cache_stats.items() if k != "top_used"])
+            messagebox.showinfo("快取統計", f"快取統計資訊:\n\n{stats_text}")
+            
+            # TODO: 將來實現完整的快取管理界面
+        except Exception as e:
+            logger.error(f"開啟快取管理器時發生錯誤: {format_exception(e)}")
+            messagebox.showerror("錯誤", f"開啟快取管理器時發生錯誤: {str(e)}")
     
     def open_advanced_settings(self):
         """開啟進階設定視窗"""
-        # 此功能可能由外部回呼實現
-        messagebox.showinfo("功能開發中", "進階設定功能正在開發中")
+        # 在主程式中實現
+        pass
+    
+    def open_subtitle_converter(self):
+        """開啟字幕格式轉換工具"""
+        # 建立一個簡單的轉換對話框
+        dialog = tk.Toplevel(self.root)
+        dialog.title("字幕格式轉換")
+        dialog.geometry("500x300")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # 建立界面元素
+        ttk.Label(dialog, text="選擇要轉換的字幕檔案:").pack(pady=(20, 5))
+        
+        # 檔案選擇框
+        file_frame = ttk.Frame(dialog)
+        file_frame.pack(fill=tk.X, padx=20, pady=5)
+        
+        self.convert_file_var = tk.StringVar()
+        ttk.Entry(file_frame, textvariable=self.convert_file_var, width=50).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(file_frame, text="瀏覽", command=self._select_file_for_conversion).pack(side=tk.LEFT)
+        
+        # 格式選擇
+        format_frame = ttk.Frame(dialog)
+        format_frame.pack(fill=tk.X, padx=20, pady=15)
+        
+        ttk.Label(format_frame, text="目標格式:").pack(side=tk.LEFT, padx=(0, 10))
+        self.target_format_var = tk.StringVar(value="srt")
+        format_combo = ttk.Combobox(format_frame, textvariable=self.target_format_var, 
+                                   values=["srt", "vtt", "ass"], width=10, state="readonly")
+        format_combo.pack(side=tk.LEFT)
+        
+        # 轉換按鈕
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(fill=tk.X, padx=20, pady=20)
+        
+        ttk.Button(button_frame, text="轉換", command=lambda: self._convert_subtitle_format(dialog), 
+                  style="Primary.TButton", width=15).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(button_frame, text="取消", command=dialog.destroy, width=15).pack(side=tk.RIGHT, padx=5)
+    
+    def _select_file_for_conversion(self):
+        """選擇要轉換的字幕檔案"""
+        files = self.file_service.select_files()
+        if files and len(files) > 0:
+            self.convert_file_var.set(files[0])
+    
+    def _convert_subtitle_format(self, dialog):
+        """執行字幕格式轉換"""
+        file_path = self.convert_file_var.get()
+        target_format = self.target_format_var.get()
+        
+        if not file_path or not os.path.exists(file_path):
+            messagebox.showwarning("警告", "請選擇有效的字幕檔案")
+            return
+        
+        try:
+            # 使用檔案服務進行轉換
+            result = self.file_service.convert_subtitle_format(file_path, target_format)
+            
+            if result:
+                messagebox.showinfo("轉換成功", f"檔案已成功轉換並儲存為:\n{result}")
+                dialog.destroy()
+            else:
+                messagebox.showerror("轉換失敗", "無法轉換檔案，請檢查檔案格式和權限")
+        except Exception as e:
+            logger.error(f"轉換字幕格式時發生錯誤: {format_exception(e)}")
+            messagebox.showerror("錯誤", f"轉換字幕格式時發生錯誤: {str(e)}")
+    
+    def open_subtitle_extractor(self):
+        """開啟從影片提取字幕工具"""
+        # 建立提取對話框
+        dialog = tk.Toplevel(self.root)
+        dialog.title("從影片提取字幕")
+        dialog.geometry("500x300")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # 建立界面元素
+        ttk.Label(dialog, text="選擇要提取字幕的影片檔案:").pack(pady=(20, 5))
+        
+        # 檔案選擇框
+        file_frame = ttk.Frame(dialog)
+        file_frame.pack(fill=tk.X, padx=20, pady=5)
+        
+        self.extract_file_var = tk.StringVar()
+        ttk.Entry(file_frame, textvariable=self.extract_file_var, width=50).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(file_frame, text="瀏覽", command=self._select_video_for_extraction).pack(side=tk.LEFT)
+        
+        # 字幕軌道選擇
+        track_frame = ttk.Frame(dialog)
+        track_frame.pack(fill=tk.X, padx=20, pady=15)
+        
+        ttk.Label(track_frame, text="字幕軌道:").pack(side=tk.LEFT, padx=(0, 10))
+        self.subtitle_track_var = tk.StringVar(value="1")
+        track_combo = ttk.Combobox(track_frame, textvariable=self.subtitle_track_var, 
+                                  values=["1", "2", "3", "all"], width=10, state="readonly")
+        track_combo.pack(side=tk.LEFT)
+        
+        # 提取按鈕
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(fill=tk.X, padx=20, pady=20)
+        
+        ttk.Button(button_frame, text="提取", command=lambda: self._extract_subtitle_from_video(dialog), 
+                  style="Primary.TButton", width=15).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(button_frame, text="取消", command=dialog.destroy, width=15).pack(side=tk.RIGHT, padx=5)
+    
+    def _select_video_for_extraction(self):
+        """選擇要提取字幕的影片檔案"""
+        filetypes = [
+            ("影片檔案", "*.mp4 *.mkv *.avi *.mov *.wmv"),
+            ("所有檔案", "*.*")
+        ]
+        
+        file = filedialog.askopenfilename(
+            title="選擇影片檔案",
+            filetypes=filetypes
+        )
+        
+        if file:
+            self.extract_file_var.set(file)
+    
+    def _extract_subtitle_from_video(self, dialog):
+        """從影片提取字幕"""
+        video_path = self.extract_file_var.get()
+        
+        if not video_path or not os.path.exists(video_path):
+            messagebox.showwarning("警告", "請選擇有效的影片檔案")
+            return
+        
+        try:
+            # 使用檔案服務提取字幕
+            progress_dialog = tk.Toplevel(dialog)
+            progress_dialog.title("提取中")
+            progress_dialog.geometry("300x100")
+            progress_dialog.transient(dialog)
+            progress_dialog.grab_set()
+            
+            ttk.Label(progress_dialog, text=f"正在從影片提取字幕...").pack(pady=(20, 10))
+            progress = ttk.Progressbar(progress_dialog, mode="indeterminate")
+            progress.pack(fill=tk.X, padx=20)
+            progress.start()
+            
+            def extract_task():
+                try:
+                    result = self.file_service.extract_subtitle(video_path)
+                    
+                    # 在主線程更新 UI
+                    self.root.after(0, lambda: self._show_extraction_result(progress_dialog, dialog, result))
+                except Exception as e:
+                    logger.error(f"提取字幕時發生錯誤: {format_exception(e)}")
+                    self.root.after(0, lambda: messagebox.showerror("錯誤", f"提取字幕時發生錯誤: {str(e)}"))
+                    self.root.after(0, progress_dialog.destroy)
+            
+            # 在背景執行提取
+            threading.Thread(target=extract_task, daemon=True).start()
+            
+        except Exception as e:
+            logger.error(f"準備提取字幕時發生錯誤: {format_exception(e)}")
+            messagebox.showerror("錯誤", f"準備提取字幕時發生錯誤: {str(e)}")
+    
+    def _show_extraction_result(self, progress_dialog, parent_dialog, result):
+        """顯示字幕提取結果"""
+        progress_dialog.destroy()
+        
+        if result:
+            messagebox.showinfo("提取成功", f"字幕已成功提取並儲存為:\n{result}")
+            parent_dialog.destroy()
+            
+            # 詢問是否將提取的字幕添加到翻譯列表
+            if messagebox.askyesno("添加到翻譯列表", "是否要將提取的字幕添加到翻譯列表？"):
+                self.add_files([result])
+        else:
+            messagebox.showerror("提取失敗", "無法從影片提取字幕，可能沒有內嵌字幕或格式不支援")
+    
+    def open_stats_viewer(self):
+        """開啟統計報告檢視器"""
+        try:
+            # 取得翻譯服務的統計資訊
+            translation_service = ServiceFactory.get_translation_service()
+            stats = translation_service.get_stats()
+            
+            # 取得快取服務的統計資訊
+            cache_service = ServiceFactory.get_cache_service()
+            cache_stats = cache_service.get_cache_stats()
+            
+            # 創建統計報告視窗
+            dialog = tk.Toplevel(self.root)
+            dialog.title("翻譯統計報告")
+            dialog.geometry("500x400")
+            dialog.transient(self.root)
+            
+            # 建立介面
+            notebook = ttk.Notebook(dialog)
+            notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            # 翻譯統計頁面
+            trans_frame = ttk.Frame(notebook)
+            notebook.add(trans_frame, text="翻譯統計")
+            
+            # 建立文本區域顯示統計資訊
+            trans_text = scrolledtext.ScrolledText(trans_frame, width=60, height=20)
+            trans_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+            
+            trans_text.insert(tk.END, "=== 翻譯統計 ===\n\n")
+            for key, value in stats.items():
+                trans_text.insert(tk.END, f"{key}: {value}\n")
+            trans_text.config(state=tk.DISABLED)
+            
+            # 快取統計頁面
+            cache_frame = ttk.Frame(notebook)
+            notebook.add(cache_frame, text="快取統計")
+            
+            cache_text = scrolledtext.ScrolledText(cache_frame, width=60, height=20)
+            cache_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+            
+            cache_text.insert(tk.END, "=== 快取統計 ===\n\n")
+            for key, value in cache_stats.items():
+                if key != "top_used" and key != "models":
+                    cache_text.insert(tk.END, f"{key}: {value}\n")
+            
+            if "models" in cache_stats:
+                cache_text.insert(tk.END, "\n=== 模型統計 ===\n\n")
+                for model, count in cache_stats["models"].items():
+                    cache_text.insert(tk.END, f"{model}: {count} 筆記錄\n")
+                    
+            cache_text.config(state=tk.DISABLED)
+            
+            # 底部按鈕
+            button_frame = ttk.Frame(dialog)
+            button_frame.pack(fill=tk.X, pady=10)
+            
+            ttk.Button(button_frame, text="清理快取", 
+                      command=lambda: self._clean_cache(dialog)).pack(side=tk.LEFT, padx=10)
+            ttk.Button(button_frame, text="關閉", 
+                      command=dialog.destroy).pack(side=tk.RIGHT, padx=10)
+            
+        except Exception as e:
+            logger.error(f"開啟統計報告時發生錯誤: {format_exception(e)}")
+            messagebox.showerror("錯誤", f"開啟統計報告時發生錯誤: {str(e)}")
+    
+    def _clean_cache(self, dialog):
+        """清理快取"""
+        try:
+            # 詢問確認
+            if messagebox.askyesno("確認", "確定要清理快取嗎？此操作會刪除 30 天前的快取記錄。"):
+                cache_service = ServiceFactory.get_cache_service()
+                deleted = cache_service.clear_old_cache(30)
+                
+                messagebox.showinfo("清理完成", f"已刪除 {deleted} 筆快取記錄")
+                
+                # 關閉對話框
+                dialog.destroy()
+                
+                # 重新開啟統計報告
+                self.open_stats_viewer()
+        except Exception as e:
+            logger.error(f"清理快取時發生錯誤: {format_exception(e)}")
+            messagebox.showerror("錯誤", f"清理快取時發生錯誤: {str(e)}")
     
     def show_help(self):
         """顯示使用說明"""
@@ -565,6 +822,12 @@ SRT字幕翻譯器 V1.0.0
 class PromptEditorWindow:
     """提示詞編輯器視窗"""
     def __init__(self, parent, prompt_manager):
+        """初始化提示詞編輯器視窗
+        
+        參數:
+            parent: 父窗口
+            prompt_manager: 提示詞管理器
+        """
         self.prompt_manager = prompt_manager
         
         # 建立視窗
@@ -722,60 +985,74 @@ class PromptEditorWindow:
 
 # 測試程式碼
 if __name__ == "__main__":
+    # 設定控制台日誌以便於測試
+    console_handler = logging.StreamHandler()
+    console_formatter = logging.Formatter('%(levelname)s - %(message)s')
+    console_handler.setFormatter(console_formatter)
+    logger.addHandler(console_handler)
+    
     # 測試介面
-    from prompt import PromptManager
-    
-    # 簡易模擬回呼函式
-    def start_callback():
-        print("開始翻譯")
-        gui.disable_controls()
-    
-    def pause_callback():
-        print("暫停/繼續翻譯")
-    
-    def stop_callback():
-        print("停止翻譯")
-        gui.reset_ui()
-    
-    def progress_callback(current, total, extra_data=None):
-        print(f"進度更新: {current}/{total}")
-        progress = int(current / total * 100) if total > 0 else 0
-        gui.progress_bar["value"] = progress
-        gui.status_label.config(text=f"正在翻譯第 {current}/{total} 句字幕 ({progress}%)")
-    
-    def complete_callback(message, elapsed_time):
-        print(f"翻譯完成: {message}, 耗時: {elapsed_time}")
-        gui.reset_ui()
-        gui.status_label.config(text=message)
-    
-    # 初始化根視窗
-    root = tk.Tk() if not TKDND_AVAILABLE else TkinterDnD.Tk()
-    root.title("SRT 字幕翻譯器")
-    root.geometry("600x550")
-    
-    # 初始化提示詞管理器(可選)
     try:
-        prompt_manager = PromptManager()
+        # 初始化服務
+        file_service = ServiceFactory.get_file_service()
+        model_service = ServiceFactory.get_model_service()
+        
+        # 初始化配置管理器
+        config_manager = ConfigManager.get_instance("user")
+        
+        # 從服務獲取提示詞管理器
+        translation_service = ServiceFactory.get_translation_service()
+        prompt_manager = translation_service.prompt_manager
+        
+        # 簡易模擬回調函式
+        def start_callback():
+            print("開始翻譯")
+            gui.disable_controls()
+        
+        def pause_callback():
+            print("暫停/繼續翻譯")
+        
+        def stop_callback():
+            print("停止翻譯")
+            gui.reset_ui()
+        
+        def progress_callback(current, total, extra_data=None):
+            print(f"進度更新: {current}/{total}")
+            progress = int(current / total * 100) if total > 0 else 0
+            gui.progress_bar["value"] = progress
+            gui.status_label.config(text=f"正在翻譯第 {current}/{total} 句字幕 ({progress}%)")
+        
+        def complete_callback(message, elapsed_time):
+            print(f"翻譯完成: {message}, 耗時: {elapsed_time}")
+            gui.reset_ui()
+            gui.status_label.config(text=message)
+        
+        # 初始化根視窗
+        root = tk.Tk() if not TKDND_AVAILABLE else TkinterDnD.Tk()
+        root.title("SRT 字幕翻譯器")
+        root.geometry("600x550")
+        
+        # 初始化 GUI 元件
+        gui = GUIComponents(
+            root, 
+            start_callback, 
+            pause_callback, 
+            stop_callback, 
+            progress_callback, 
+            complete_callback,
+            prompt_manager
+        )
+        
+        # 設置介面
+        gui.setup()
+        
+        # 設置標題顯示版本
+        version = get_config("app", "version", "1.0.0")
+        root.title(f"SRT 字幕翻譯器 v{version}")
+        
+        # 執行主迴圈
+        root.mainloop()
+        
     except Exception as e:
-        print(f"初始化提示詞管理器失敗: {e}")
-        prompt_manager = None
-    
-    # 初始化 GUI 元件
-    gui = GUIComponents(
-        root, 
-        start_callback, 
-        pause_callback, 
-        stop_callback, 
-        progress_callback, 
-        complete_callback,
-        prompt_manager
-    )
-    
-    # 設置介面
-    gui.setup()
-    
-    # 測試設置模型列表
-    gui.set_model_list(["llama3", "mistral", "mixtral"], "llama3")
-    
-    # 執行主迴圈
-    root.mainloop()
+        logger.error(f"運行GUI測試時發生錯誤: {format_exception(e)}")
+        print(f"錯誤: {str(e)}")

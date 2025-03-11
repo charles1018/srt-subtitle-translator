@@ -5,20 +5,25 @@ import os
 import json
 import pickle
 import hashlib
-from dataclasses import dataclass
-from typing import Optional, List, Dict, Any, Tuple, Callable, Union
 import logging
-from logging.handlers import TimedRotatingFileHandler
 import time
-from datetime import datetime
-from queue import Queue
 import re
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Optional, List, Dict, Any, Tuple, Callable, Union
+from queue import Queue
+from logging.handlers import TimedRotatingFileHandler
 
-# 從本地模組導入
-from translation_client import TranslationClient
-from file_handler import FileHandler
+# 從新模組導入
+from config_manager import ConfigManager, get_config, set_config
+from services import ServiceFactory
+from utils import (
+    AppError, TranslationError, FileError, 
+    format_elapsed_time, format_exception, 
+    safe_execute, clean_text
+)
 
-# 設定日誌輪替
+# 設定日誌
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -41,19 +46,19 @@ if not logger.handlers:
 @dataclass
 class TranslationStats:
     """翻譯統計資訊類別"""
-    started_at: float = 0
-    finished_at: float = 0
-    total_subtitles: int = 0
-    translated_count: int = 0
-    failed_count: int = 0
-    skipped_count: int = 0
-    cached_count: int = 0
-    total_chars: int = 0
-    total_wait_time: float = 0
-    total_processing_time: float = 0
-    batch_count: int = 0
-    retry_count: int = 0
-    errors: List[str] = None
+    started_at: float = 0                # 開始時間（時間戳）
+    finished_at: float = 0               # 結束時間（時間戳）
+    total_subtitles: int = 0             # 總字幕數
+    translated_count: int = 0            # 已翻譯數量
+    failed_count: int = 0                # 失敗數量
+    skipped_count: int = 0               # 跳過數量
+    cached_count: int = 0                # 快取命中數量
+    total_chars: int = 0                 # 總字元數
+    total_wait_time: float = 0           # 總等待時間
+    total_processing_time: float = 0     # 總處理時間
+    batch_count: int = 0                 # 批次數量
+    retry_count: int = 0                 # 重試次數
+    errors: List[str] = None             # 錯誤訊息列表
     
     def __post_init__(self):
         if self.errors is None:
@@ -67,8 +72,7 @@ class TranslationStats:
     
     def get_formatted_elapsed_time(self) -> str:
         """取得格式化的耗時字串"""
-        seconds = self.get_elapsed_time()
-        return format_elapsed_time(seconds)
+        return format_elapsed_time(self.get_elapsed_time())
     
     def get_translation_speed(self) -> float:
         """取得翻譯速度（字幕/分鐘）"""
@@ -100,26 +104,26 @@ class TranslationStats:
             "重試次數": self.retry_count
         }
 
-def format_elapsed_time(seconds: float) -> str:
-    """將耗時格式化為易讀格式"""
-    if seconds < 60:
-        return f"{int(seconds)} 秒"
-    
-    minutes = int(seconds // 60)
-    seconds = int(seconds % 60)
-    
-    if minutes < 60:
-        return f"{minutes} 分 {seconds} 秒"
-    
-    hours = int(minutes // 60)
-    minutes = int(minutes % 60)
-    return f"{hours} 小時 {minutes} 分 {seconds} 秒"
-
 class TranslationManager:
+    """翻譯管理器類別，處理字幕檔案的翻譯"""
+    
     def __init__(self, file_path: str, source_lang: str, target_lang: str, 
                  model_name: str, parallel_requests: int, progress_callback, complete_callback, 
-                 display_mode: str, llm_type: str, api_key: str = None,
-                 file_handler=None, prompt_manager=None, cache_manager=None):
+                 display_mode: str, llm_type: str, api_key: str = None):
+        """初始化翻譯管理器
+        
+        參數:
+            file_path: 字幕檔案路徑
+            source_lang: 來源語言
+            target_lang: 目標語言
+            model_name: 模型名稱
+            parallel_requests: 並行請求數
+            progress_callback: 進度回調函數
+            complete_callback: 完成回調函數
+            display_mode: 顯示模式
+            llm_type: LLM類型
+            api_key: API金鑰（可選）
+        """
         self.file_path = file_path
         self.source_lang = source_lang
         self.target_lang = target_lang
@@ -130,10 +134,12 @@ class TranslationManager:
         self.display_mode = display_mode
         self.llm_type = llm_type
         self.api_key = api_key
-        self.file_handler = file_handler or FileHandler()
-        self.prompt_manager = prompt_manager
-        self.cache_manager = cache_manager
-        self.translation_client = None
+        
+        # 初始化服務
+        self.translation_service = ServiceFactory.get_translation_service()
+        self.file_service = ServiceFactory.get_file_service()
+        self.cache_service = ServiceFactory.get_cache_service()
+        self.progress_service = ServiceFactory.get_progress_service()
         
         # 初始化專有名詞詞典
         self._key_terms_dict = {}
@@ -161,11 +167,13 @@ class TranslationManager:
         self.batch_shrink_rate = 0.5   # 每次失敗後減少的倍率
         
         # 上下文視窗大小
-        self.context_window = 5  # 上下文視窗大小 (每側)
+        self.context_window = get_config("model", "context_window", 5)  # 上下文視窗大小 (每側)
         
         # 重試設定
-        self.max_retries = 3
-        self.retry_delay = 1.0
+        self.max_retries = get_config("model", "max_retries", 3)
+        self.retry_delay = get_config("model", "retry_delay", 1.0)
+        
+        logger.info(f"初始化翻譯管理器: {file_path}, 模型: {model_name}, 顯示模式: {display_mode}")
 
     def _post_process_translation(self, original_text: str, translated_text: str) -> str:
         """對翻譯結果進行後處理，包括專有名詞統一和移除標點符號
@@ -190,6 +198,11 @@ class TranslationManager:
             elif len(term) >= 2:  # 只考慮至少兩個字的詞
                 self._key_terms_dict[term] = term
         
+        # 檢查是否需要保留原始標點符號
+        preserve_punctuation = get_config("user", "preserve_punctuation", True)
+        if preserve_punctuation:
+            return translated_text.strip()
+            
         # 2. 移除中文標點符號，用空格替換
         # 定義中文標點符號
         cn_punctuation = r'，。！？；：""''（）【】《》〈〉、…—～·「」『』〔〕'
@@ -232,8 +245,9 @@ class TranslationManager:
     def _get_checkpoint_path(self) -> str:
         """取得檢查點檔案路徑"""
         # 使用檔案路徑和目標語言建立唯一的檢查點檔名
+        checkpoints_dir = get_config("app", "checkpoints_dir", "data/checkpoints")
         file_hash = hashlib.md5(f"{self.file_path}_{self.target_lang}_{self.model_name}".encode()).hexdigest()[:10]
-        return os.path.join("data/checkpoints", f"checkpoint_{file_hash}.pkl")
+        return os.path.join(checkpoints_dir, f"checkpoint_{file_hash}.pkl")
 
     def _save_checkpoint(self) -> None:
         """儲存翻譯進度檢查點"""
@@ -315,29 +329,20 @@ class TranslationManager:
     async def initialize(self) -> None:
         """初始化翻譯管理器"""
         try:
-            self.translation_client = TranslationClient(
-                self.llm_type, 
-                api_key=self.api_key,
-                cache_db_path="data/translation_cache.db"
-            )
-            await self.translation_client.__aenter__()
-            logger.info(f"翻譯客戶端初始化完成: {self.llm_type}, 模型: {self.model_name}")
+            # 取得翻譯服務（已經由 ServiceFactory 初始化）
             
             # 載入進度檢查點
             self._load_checkpoint()
             
+            logger.info(f"翻譯管理器初始化完成: {self.llm_type}, 模型: {self.model_name}")
         except Exception as e:
             logger.error(f"初始化翻譯管理器失敗: {str(e)}")
-            raise
+            raise TranslationError(f"初始化翻譯管理器失敗: {str(e)}")
 
     async def cleanup(self) -> None:
         """清理資源"""
-        if self.translation_client:
-            try:
-                await self.translation_client.__aexit__(None, None, None)
-                logger.info("翻譯客戶端已清理")
-            except Exception as e:
-                logger.error(f"清理翻譯客戶端時發生錯誤: {str(e)}")
+        # 不需要清理資源，因為服務由 ServiceFactory 管理
+        logger.info("翻譯管理器清理完成")
 
     def pause(self) -> None:
         """暫停翻譯"""
@@ -409,106 +414,95 @@ class TranslationManager:
         failed_count = 0
         skipped_count = 0
         
-        # 檢查是否可以使用批量翻譯API
-        if self.llm_type == 'openai' and hasattr(self.translation_client, 'translate_batch'):
-            # 準備批量翻譯請求
-            translation_requests = []
-            request_map = {}  # 映射 request_idx -> subtitle_idx
-            
-            # 建構請求列表，並跳過已翻譯的
-            for i, idx in enumerate(batch_indices):
-                if idx in self.translated_indices:
-                    skipped_count += 1
-                    continue
-                    
-                sub = subs[idx]
-                context = await self._get_context_for_subtitle(subs, idx)
-                translation_requests.append((sub.text, context))
-                request_map[len(translation_requests) - 1] = idx
-                self.stats.total_chars += len(sub.text)
-            
-            # 如果所有字幕都已被翻譯，直接回傳
-            if not translation_requests:
-                return 0, 0, skipped_count
-                
-            try:
-                # 批量翻譯
-                translations = await self.translation_client.translate_batch(
-                    translation_requests, 
-                    self.model_name,
-                    concurrent_limit=self.parallel_requests
-                )
-                
-                # 處理結果
-                for req_idx, translation in enumerate(translations):
-                    if req_idx not in request_map:
-                        continue
-                        
-                    sub_idx = request_map[req_idx]
-                    sub = subs[sub_idx]
-                    
-                    if not translation or "[翻譯錯誤" in translation:
-                        failed_count += 1
-                        error_msg = translation if translation else "空白翻譯結果"
-                        self.stats.errors.append(f"字幕 {sub_idx}: {error_msg}")
-                        continue
-                    
-                    # 進行後處理
-                    processed_translation = self._post_process_translation(sub.text, translation)
-                        
-                    # 應用翻譯
-                    self._apply_translation(sub, processed_translation)
-                    self.translated_indices.add(sub_idx)
-                    success_count += 1
-                    
-                    # 更新進度
-                    self.stats.translated_count += 1
-                    self.progress_callback(self.stats.translated_count, self.stats.total_subtitles)
-                    
-                # 更新自適應批次大小
-                self._adjust_batch_size(failed_count == 0)
-                return success_count, failed_count, skipped_count
-                
-            except Exception as e:
-                logger.error(f"批量翻譯失敗: {str(e)}")
-                # 降級到單個字幕處理
-                self._adjust_batch_size(False)
+        # 準備批量翻譯請求
+        translation_requests = []
+        request_map = {}  # 映射 request_idx -> subtitle_idx
         
-        # 使用單獨的任務處理每個字幕
-        tasks = []
-        for idx in batch_indices:
+        # 建構請求列表，並跳過已翻譯的
+        for i, idx in enumerate(batch_indices):
             if idx in self.translated_indices:
                 skipped_count += 1
                 continue
                 
             sub = subs[idx]
+            context = await self._get_context_for_subtitle(subs, idx)
+            translation_requests.append((sub.text, context))
+            request_map[len(translation_requests) - 1] = idx
             self.stats.total_chars += len(sub.text)
+        
+        # 如果所有字幕都已被翻譯，直接回傳
+        if not translation_requests:
+            return 0, 0, skipped_count
             
-            # 建立非同步任務
-            task = asyncio.create_task(
-                self._translate_single_subtitle(sub, idx, subs)
+        try:
+            # 批量翻譯
+            translations = await self.translation_service.translate_batch(
+                translation_requests, 
+                self.llm_type,
+                self.model_name,
+                self.parallel_requests
             )
-            tasks.append(task)
-        
-        # 等待所有任務完成
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # 處理結果
-        for result in results:
-            if isinstance(result, Exception):
-                logger.error(f"字幕翻譯任務異常: {str(result)}")
-                failed_count += 1
-                self.stats.errors.append(f"任務異常: {str(result)}")
-                continue
+            
+            # 處理結果
+            for req_idx, translation in enumerate(translations):
+                if req_idx not in request_map:
+                    continue
+                    
+                sub_idx = request_map[req_idx]
+                sub = subs[sub_idx]
                 
-            if result == True:  # 成功翻譯
+                if not translation or "[翻譯錯誤" in translation:
+                    failed_count += 1
+                    error_msg = translation if translation else "空白翻譯結果"
+                    self.stats.errors.append(f"字幕 {sub_idx}: {error_msg}")
+                    continue
+                
+                # 進行後處理
+                processed_translation = self._post_process_translation(sub.text, translation)
+                    
+                # 應用翻譯
+                self._apply_translation(sub, processed_translation)
+                self.translated_indices.add(sub_idx)
                 success_count += 1
-            elif result == False:  # 翻譯失敗
-                failed_count += 1
                 
-        # 更新自適應批次大小
-        self._adjust_batch_size(failed_count == 0)
-        return success_count, failed_count, skipped_count
+                # 更新進度
+                self.stats.translated_count += 1
+                if self.progress_callback:
+                    self.progress_callback(self.stats.translated_count, self.stats.total_subtitles)
+                
+            # 更新自適應批次大小
+            self._adjust_batch_size(failed_count == 0)
+            return success_count, failed_count, skipped_count
+            
+        except Exception as e:
+            logger.error(f"批量翻譯失敗: {str(e)}")
+            # 調整批次大小
+            self._adjust_batch_size(False)
+            
+            # 降級到單個字幕處理
+            tasks = []
+            for i, (text, context) in enumerate(translation_requests):
+                sub_idx = request_map[i]
+                sub = subs[sub_idx]
+                tasks.append(self._translate_single_subtitle(sub, sub_idx, subs))
+            
+            # 等待所有任務完成
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # 處理結果
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.error(f"字幕翻譯任務異常: {str(result)}")
+                    failed_count += 1
+                    self.stats.errors.append(f"任務異常: {str(result)}")
+                    continue
+                    
+                if result == True:  # 成功翻譯
+                    success_count += 1
+                elif result == False:  # 翻譯失敗
+                    failed_count += 1
+            
+            return success_count, failed_count, skipped_count
 
     async def _translate_single_subtitle(self, sub, index: int, all_subs: List) -> bool:
         """翻譯單個字幕
@@ -538,17 +532,12 @@ class TranslationManager:
                             self.stats.retry_count += 1
                             logger.info(f"重試翻譯字幕 {index} (第{retry}次)")
                             await asyncio.sleep(self.retry_delay * retry)
-                            
-                        # 使用翻譯客戶端
-                        if hasattr(self.translation_client, 'translate_with_retry'):
-                            translation = await self.translation_client.translate_with_retry(
-                                sub.text, context, self.model_name
-                            )
-                        else:
-                            translation = await self.translation_client.translate_text(
-                                sub.text, context, self.model_name
-                            )
-                            
+                        
+                        # 使用翻譯服務
+                        translation = await self.translation_service.translate_text(
+                            sub.text, context, self.llm_type, self.model_name
+                        )
+                        
                         # 檢查翻譯結果
                         if not translation or "[翻譯錯誤" in translation:
                             if retry < self.max_retries:
@@ -567,7 +556,8 @@ class TranslationManager:
                         
                         # 更新統計和進度
                         self.stats.translated_count += 1
-                        self.progress_callback(self.stats.translated_count, self.stats.total_subtitles)
+                        if self.progress_callback:
+                            self.progress_callback(self.stats.translated_count, self.stats.total_subtitles)
                         return True
                         
                     except Exception as e:
@@ -667,31 +657,51 @@ class TranslationManager:
                 self._save_key_terms_dictionary()
 
                 # 取得輸出路徑並儲存檔案
-                output_path = self.file_handler.get_output_path(self.file_path, self.target_lang, 
+                output_path = self.file_service.get_output_path(self.file_path, self.target_lang, 
                                                                self.progress_callback)
                 if output_path:
                     subs.save(output_path, encoding='utf-8')
-                    self.complete_callback(f"翻譯完成 | 檔案已成功儲存為: {output_path}", elapsed_str)
+                    
+                    if self.complete_callback:
+                        self.complete_callback(f"翻譯完成 | 檔案已成功儲存為: {output_path}", elapsed_str)
                     logger.info(f"檔案已儲存為: {output_path}")
                     
                     # 清理檢查點
                     self._clean_checkpoint()
                 else:
-                    self.complete_callback(f"已跳過檔案: {self.file_path}", elapsed_str)
+                    if self.complete_callback:
+                        self.complete_callback(f"已跳過檔案: {self.file_path}", elapsed_str)
                     logger.info(f"檔案已跳過: {self.file_path}")
 
         except Exception as e:
             logger.error(f"翻譯過程中發生異常: {str(e)}", exc_info=True)
             self.stats.finished_at = time.time()
             elapsed_str = self.stats.get_formatted_elapsed_time()
-            self.complete_callback(f"翻譯過程中發生錯誤: {str(e)}", elapsed_str)
+            
+            if self.complete_callback:
+                self.complete_callback(f"翻譯過程中發生錯誤: {str(e)}", elapsed_str)
+            
+            raise TranslationError(f"翻譯過程中發生錯誤: {str(e)}")
 
 
 class TranslationThread(threading.Thread):
     """翻譯執行緒"""
     def __init__(self, file_path, source_lang, target_lang, model_name, parallel_requests, 
-                 progress_callback, complete_callback, display_mode: str, llm_type: str, api_key: str = None,
-                 file_handler=None, prompt_manager=None, cache_manager=None):
+                 display_mode, llm_type, progress_callback=None, complete_callback=None, api_key=None):
+        """初始化翻譯執行緒
+        
+        參數:
+            file_path: 字幕檔案路徑
+            source_lang: 來源語言
+            target_lang: 目標語言
+            model_name: 模型名稱
+            parallel_requests: 並行請求數
+            display_mode: 顯示模式
+            llm_type: LLM類型
+            progress_callback: 進度回調函數
+            complete_callback: 完成回調函數
+            api_key: API金鑰（可選）
+        """
         threading.Thread.__init__(self)
         self.daemon = True  # 設置為守護執行緒，主程式退出時自動結束
         self.manager = None
@@ -700,70 +710,124 @@ class TranslationThread(threading.Thread):
         self.target_lang = target_lang
         self.model_name = model_name
         self.parallel_requests = parallel_requests
-        self.progress_callback = progress_callback
-        self.complete_callback = complete_callback
         self.display_mode = display_mode
         self.llm_type = llm_type
+        self.progress_callback = progress_callback
+        self.complete_callback = complete_callback
         self.api_key = api_key
-        self.file_handler = file_handler
-        self.prompt_manager = prompt_manager
-        self.cache_manager = cache_manager
+        
         self._is_running = True
         self._is_paused = False
+        self._pause_condition = threading.Condition()
+        
+        logger.info(f"初始化翻譯執行緒: {file_path}")
 
     def run(self):
         """執行翻譯執行緒"""
+        try:
+            self._run_async()
+        except Exception as e:
+            logger.error(f"翻譯執行緒運行時發生錯誤: {format_exception(e)}")
+            if self.complete_callback:
+                self.complete_callback(f"翻譯失敗: {str(e)}", "0 秒")
+    
+    def _run_async(self):
+        """在新的事件循環中執行非同步翻譯"""
         async def async_run():
+            # 初始化翻譯管理器
             self.manager = TranslationManager(
-                self.file_path, self.source_lang, self.target_lang, self.model_name,
-                self.parallel_requests, self.progress_callback, self.complete_callback, 
-                self.display_mode, self.llm_type, self.api_key,
-                self.file_handler, self.prompt_manager, self.cache_manager
+                self.file_path, 
+                self.source_lang, 
+                self.target_lang, 
+                self.model_name,
+                self.parallel_requests, 
+                self._progress_wrapper, 
+                self._complete_wrapper, 
+                self.display_mode, 
+                self.llm_type,
+                self.api_key
             )
+            
+            # 初始化管理器
             await self.manager.initialize()
+            
             try:
+                # 執行翻譯
                 await self.manager.translate_subtitles()
             except Exception as e:
                 logger.error(f"翻譯執行失敗: {str(e)}", exc_info=True)
+                raise
             finally:
+                # 清理資源
                 await self.manager.cleanup()
-
-        # 建立新的非同步事件循環
+        
+        # 建立新的事件循環
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        
         try:
             loop.run_until_complete(async_run())
         except Exception as e:
-            logger.error(f"翻譯執行緒執行失敗: {str(e)}", exc_info=True)
+            logger.error(f"執行事件循環時發生錯誤: {format_exception(e)}")
+            raise
         finally:
             loop.close()
-
+    
+    def _progress_wrapper(self, current, total, extra_data=None):
+        """進度回調包裝器，處理暫停狀態"""
+        # 檢查是否暫停
+        with self._pause_condition:
+            while self._is_paused and self._is_running:
+                self._pause_condition.wait()
+        
+        # 如果已停止則不再更新進度
+        if not self._is_running:
+            return
+        
+        # 呼叫原始進度回調
+        if self.progress_callback:
+            self.progress_callback(current, total, extra_data)
+    
+    def _complete_wrapper(self, message, elapsed_time):
+        """完成回調包裝器"""
+        # 呼叫原始完成回調
+        if self.complete_callback and self._is_running:
+            self.complete_callback(message, elapsed_time)
+    
     def stop(self):
-        """停止翻譯"""
+        """停止翻譯任務"""
         self._is_running = False
+        # 如果有管理器，也停止管理器
         if self.manager:
             self.manager.stop()
-
+        # 恢復暫停的執行緒以檢查停止標誌
+        self.resume()
+    
     def pause(self):
-        """暫停翻譯"""
-        self._is_paused = True
-        if self.manager:
-            self.manager.pause()
-
+        """暫停翻譯任務"""
+        with self._pause_condition:
+            self._is_paused = True
+            # 如果有管理器，也暫停管理器
+            if self.manager:
+                self.manager.pause()
+    
     def resume(self):
-        """恢復翻譯"""
-        self._is_paused = False
-        if self.manager:
-            self.manager.resume()
-
-    def is_alive(self) -> bool:
-        """檢查執行緒是否存活"""
-        return super().is_alive() and self._is_running
-
+        """恢復翻譯任務"""
+        with self._pause_condition:
+            self._is_paused = False
+            self._pause_condition.notify_all()
+            # 如果有管理器，也恢復管理器
+            if self.manager:
+                self.manager.resume()
+    
     def is_paused(self) -> bool:
-        """檢查是否已暫停"""
+        """檢查任務是否已暫停"""
         return self._is_paused
-
+    
+    def is_alive(self) -> bool:
+        """檢查任務是否仍在執行"""
+        return super().is_alive() and self._is_running
+    
     def get_statistics(self) -> Dict[str, Any]:
         """取得翻譯統計資訊"""
         if self.manager and hasattr(self.manager, 'stats'):
@@ -771,8 +835,154 @@ class TranslationThread(threading.Thread):
         return {}
 
 
+# 用於管理多個翻譯任務的任務管理器
+class TranslationTaskManager:
+    """翻譯任務管理器，管理多個翻譯任務"""
+    
+    def __init__(self):
+        """初始化翻譯任務管理器"""
+        self.tasks = {}  # 檔案路徑 -> 任務
+        self.total_files = 0
+        self.completed_files = 0
+        
+        # 配置管理器
+        self.config_manager = ConfigManager.get_instance("user")
+        
+        # 服務
+        self.translation_service = ServiceFactory.get_translation_service()
+        
+        logger.info("初始化翻譯任務管理器")
+    
+    def start_translation(self, files: List[str], 
+                        source_lang: str, target_lang: str, 
+                        model_name: str, parallel_requests: int,
+                        display_mode: str, llm_type: str,
+                        progress_callback=None, complete_callback=None) -> bool:
+        """開始翻譯多個檔案
+        
+        參數:
+            files: 字幕檔案路徑列表
+            source_lang: 來源語言
+            target_lang: 目標語言
+            model_name: 模型名稱
+            parallel_requests: 並行請求數
+            display_mode: 顯示模式
+            llm_type: LLM類型
+            progress_callback: 進度回調函數
+            complete_callback: 完成回調函數
+            
+        回傳:
+            是否成功啟動翻譯
+        """
+        if not files:
+            logger.warning("沒有選擇要翻譯的檔案")
+            return False
+        
+        # 重置任務統計
+        self.total_files = len(files)
+        self.completed_files = 0
+        
+        # 獲取 API 金鑰
+        api_key = None
+        if llm_type == "openai":
+            model_service = ServiceFactory.get_model_service()
+            api_key = model_service.api_keys.get("openai")
+        
+        # 建立並啟動任務
+        for file_path in files:
+            task = TranslationThread(
+                file_path,
+                source_lang,
+                target_lang,
+                model_name,
+                parallel_requests,
+                display_mode,
+                llm_type,
+                progress_callback,
+                self._complete_wrapper(file_path, complete_callback),
+                api_key
+            )
+            
+            self.tasks[file_path] = task
+            task.start()
+            
+        logger.info(f"已啟動 {len(files)} 個翻譯任務")
+        return True
+    
+    def _complete_wrapper(self, file_path: str, original_callback):
+        """包裝完成回調函數，以便追蹤已完成的檔案數"""
+        def wrapper(message, elapsed_time):
+            self.completed_files += 1
+            
+            # 修改消息以包含總進度
+            extended_message = f"{message} | 總進度: {self.completed_files}/{self.total_files}"
+            
+            # 呼叫原始回調
+            if original_callback:
+                original_callback(extended_message, elapsed_time)
+            
+            # 移除已完成的任務
+            if file_path in self.tasks:
+                del self.tasks[file_path]
+        
+        return wrapper
+    
+    def stop_all(self) -> None:
+        """停止所有翻譯任務"""
+        for task in list(self.tasks.values()):
+            task.stop()
+        
+        # 清空任務列表
+        self.tasks.clear()
+        logger.info("已停止所有翻譯任務")
+    
+    def pause_all(self) -> None:
+        """暫停所有翻譯任務"""
+        for task in self.tasks.values():
+            task.pause()
+        logger.info("已暫停所有翻譯任務")
+    
+    def resume_all(self) -> None:
+        """恢復所有翻譯任務"""
+        for task in self.tasks.values():
+            task.resume()
+        logger.info("已恢復所有翻譯任務")
+    
+    def is_any_running(self) -> bool:
+        """檢查是否有任務正在執行
+        
+        回傳:
+            是否有任務正在執行
+        """
+        return any(task.is_alive() for task in self.tasks.values())
+    
+    def is_all_paused(self) -> bool:
+        """檢查是否所有任務都已暫停
+        
+        回傳:
+            是否所有任務都已暫停
+        """
+        if not self.tasks:
+            return False
+        return all(task.is_paused() for task in self.tasks.values() if task.is_alive())
+    
+    def get_active_task_count(self) -> int:
+        """獲取活躍任務數量
+        
+        回傳:
+            活躍任務數量
+        """
+        return sum(1 for task in self.tasks.values() if task.is_alive())
+
+
 # 測試程式碼
 if __name__ == "__main__":
+    # 設定控制台日誌以便於測試
+    console_handler = logging.StreamHandler()
+    console_formatter = logging.Formatter('%(levelname)s - %(message)s')
+    console_handler.setFormatter(console_formatter)
+    logger.addHandler(console_handler)
+    
     def progress(current, total, extra_data=None):
         print(f"進度: {current}/{total}")
 
@@ -785,19 +995,33 @@ if __name__ == "__main__":
     else:
         test_file = "test.srt"  # 預設測試檔案
     
-    print(f"開始翻譯: {test_file}")
-    thread = TranslationThread(
-        test_file, "日文", "繁體中文", "llama3", 2, 
-        progress, complete, "僅顯示翻譯", "ollama"
-    )
-    thread.start()
+    # 使用任務管理器測試
+    async def test_async():
+        # 初始化服務
+        translation_service = ServiceFactory.get_translation_service()
+        
+        # 建立任務管理器
+        manager = TranslationTaskManager()
+        
+        # 啟動翻譯
+        manager.start_translation(
+            [test_file], 
+            "日文", 
+            "繁體中文",
+            "llama3", 
+            2, 
+            "雙語對照",
+            "ollama",
+            progress,
+            complete
+        )
+        
+        # 等待所有任務完成
+        while manager.is_any_running():
+            await asyncio.sleep(1)
+            
+        print("所有任務已完成")
     
-    try:
-        # 等待翻譯完成或使用者中斷
-        while thread.is_alive():
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("使用者中斷，正在停止翻譯...")
-        thread.stop()
-    
-    thread.join()  # 等待執行緒結束
+    # 執行測試
+    if __name__ == "__main__":
+        asyncio.run(test_async())
