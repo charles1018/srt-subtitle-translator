@@ -4,23 +4,23 @@ import json
 import shutil
 import tempfile
 import logging
-import logging.handlers
+import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Tuple, Any, Union, Set
+from typing import Optional, List, Dict, Tuple, Any, Union, Set, Callable
 from queue import Queue
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import chardet
 
-# 嘗試匯入tkinterdnd2
+# Try importing tkinterdnd2
 try:
     from tkinterdnd2 import *
     TKDND_AVAILABLE = True
 except ImportError:
     TKDND_AVAILABLE = False
 
-# 嘗試匯入字幕相關套件
+# Try importing subtitle related packages
 try:
     import pysrt
     PYSRT_AVAILABLE = True
@@ -33,14 +33,18 @@ try:
 except ImportError:
     WEBVTT_AVAILABLE = False
 
-# 設定日誌
+# Import from configuration manager
+from config_manager import ConfigManager, get_config, set_config
+from utils import AppError, FileError, safe_execute, format_exception
+
+# Setup logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# 確保日誌目錄存在
+# Ensure logs directory exists
 os.makedirs('logs', exist_ok=True)
 
-# 避免重複添加處理程序
+# Avoid adding handlers multiple times
 if not logger.handlers:
     handler = logging.handlers.TimedRotatingFileHandler(
         filename='logs/file_handler.log',
@@ -53,23 +57,37 @@ if not logger.handlers:
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
+
 class SubtitleInfo:
-    """字幕檔案資訊類別"""
+    """Information about a subtitle file"""
+    
     def __init__(self, file_path: str):
+        """Initialize subtitle information
+        
+        Args:
+            file_path: Path to the subtitle file
+        """
         self.file_path = file_path
         self.format = self._detect_format(file_path)
         self.encoding = self._detect_encoding(file_path)
         self.subtitle_count = 0
-        self.duration = 0  # 秒數
+        self.duration = 0  # Seconds
         self.languages = []
         self.file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
         self.last_modified = os.path.getmtime(file_path) if os.path.exists(file_path) else 0
         
-        # 解析字幕檔案獲取更多資訊
+        # Parse subtitle file to get more information
         self._parse_subtitle_file()
     
     def _detect_format(self, file_path: str) -> str:
-        """檢測字幕檔案格式"""
+        """Detect subtitle file format
+        
+        Args:
+            file_path: Path to the subtitle file
+            
+        Returns:
+            Format of the subtitle file
+        """
         ext = os.path.splitext(file_path)[1].lower()
         if ext == '.srt':
             return 'srt'
@@ -83,17 +101,24 @@ class SubtitleInfo:
             return 'unknown'
     
     def _detect_encoding(self, file_path: str) -> str:
-        """檢測檔案編碼"""
+        """Detect file encoding
+        
+        Args:
+            file_path: Path to the file
+            
+        Returns:
+            Detected encoding
+        """
         try:
             with open(file_path, 'rb') as f:
-                raw_data = f.read(4096)  # 讀取前4KB來檢測
+                raw_data = f.read(4096)  # Read the first 4KB for detection
                 result = chardet.detect(raw_data)
                 encoding = result['encoding'] or 'utf-8'
                 confidence = result['confidence']
                 
-                # 如果可信度低於0.7，嘗試更多方法
+                # If confidence is low, try more methods
                 if confidence < 0.7:
-                    # 檢查BOM標記
+                    # Check BOM markers
                     if raw_data.startswith(b'\xef\xbb\xbf'):
                         encoding = 'utf-8-sig'
                     elif raw_data.startswith(b'\xff\xfe'):
@@ -103,11 +128,11 @@ class SubtitleInfo:
                 
                 return encoding
         except Exception as e:
-            logger.error(f"檢測檔案編碼時發生錯誤: {str(e)}")
-            return 'utf-8'  # 預設為UTF-8
+            logger.error(f"Error detecting file encoding: {str(e)}")
+            return 'utf-8'  # Default to UTF-8
     
     def _parse_subtitle_file(self) -> None:
-        """解析字幕檔案以獲取更多資訊"""
+        """Parse subtitle file to get more information"""
         try:
             if self.format == 'srt' and PYSRT_AVAILABLE:
                 self._parse_srt_file()
@@ -115,123 +140,131 @@ class SubtitleInfo:
                 self._parse_vtt_file()
             elif self.format in ['ass', 'ssa']:
                 self._parse_ass_file()
-            # 其他格式可以根據需要添加
+            # Other formats can be added as needed
         except Exception as e:
-            logger.error(f"解析字幕檔案時發生錯誤: {str(e)}")
+            logger.error(f"Error parsing subtitle file: {str(e)}")
     
     def _parse_srt_file(self) -> None:
-        """解析SRT檔案"""
+        """Parse SRT file"""
         try:
             subs = pysrt.open(self.file_path, encoding=self.encoding)
             self.subtitle_count = len(subs)
             
-            # 計算總時長
+            # Calculate total duration
             if self.subtitle_count > 0:
                 try:
                     last_sub = subs[-1]
-                    self.duration = last_sub.end.ordinal / 1000  # 轉換為秒
+                    self.duration = last_sub.end.ordinal / 1000  # Convert to seconds
                 except Exception as e:
-                    logger.warning(f"計算SRT時長時發生錯誤: {str(e)}")
+                    logger.warning(f"Error calculating SRT duration: {str(e)}")
             
-            # 嘗試檢測語言
+            # Try to detect language
             self._detect_language_from_content(subs)
         except Exception as e:
-            logger.error(f"解析SRT檔案時發生錯誤: {str(e)}")
+            logger.error(f"Error parsing SRT file: {str(e)}")
     
     def _parse_vtt_file(self) -> None:
-        """解析VTT檔案"""
+        """Parse VTT file"""
         try:
             vtt = webvtt.read(self.file_path)
             self.subtitle_count = len(vtt)
             
-            # 計算總時長
+            # Calculate total duration
             if self.subtitle_count > 0:
                 try:
                     last_caption = vtt.captions[-1]
-                    # WebVTT時間格式為HH:MM:SS.mmm
+                    # WebVTT time format is HH:MM:SS.mmm
                     end_time = last_caption.end_in_seconds
                     self.duration = end_time
                 except Exception as e:
-                    logger.warning(f"計算VTT時長時發生錯誤: {str(e)}")
+                    logger.warning(f"Error calculating VTT duration: {str(e)}")
             
-            # 嘗試檢測語言
+            # Try to detect language
             content = '\n'.join([caption.text for caption in vtt])
             self._detect_language_from_text(content)
         except Exception as e:
-            logger.error(f"解析VTT檔案時發生錯誤: {str(e)}")
+            logger.error(f"Error parsing VTT file: {str(e)}")
     
     def _parse_ass_file(self) -> None:
-        """解析ASS/SSA檔案"""
+        """Parse ASS/SSA file"""
         try:
             with open(self.file_path, 'r', encoding=self.encoding, errors='replace') as f:
                 content = f.read()
             
-            # 使用正規表達式提取字幕對話
+            # Use regular expressions to extract subtitle dialogues
             dialogue_pattern = re.compile(r'Dialogue: [^,]*,([^,]*),([^,]*),')
             matches = dialogue_pattern.findall(content)
             
             self.subtitle_count = len(matches)
             
-            # 計算總時長
+            # Calculate total duration
             if matches:
-                # 試著從最後一個對話解析結束時間
+                # Try to parse the end time from the last dialogue
                 try:
-                    last_end_time = matches[-1][1]  # 格式通常是 0:00:00.00
+                    last_end_time = matches[-1][1]  # Format is usually 0:00:00.00
                     h, m, s = last_end_time.split(':')
                     self.duration = int(h) * 3600 + int(m) * 60 + float(s)
                 except Exception as e:
-                    logger.warning(f"計算ASS時長時發生錯誤: {str(e)}")
+                    logger.warning(f"Error calculating ASS duration: {str(e)}")
             
-            # 嘗試檢測語言
+            # Try to detect language
             self._detect_language_from_text(content)
         except Exception as e:
-            logger.error(f"解析ASS檔案時發生錯誤: {str(e)}")
+            logger.error(f"Error parsing ASS file: {str(e)}")
     
     def _detect_language_from_content(self, subs) -> None:
-        """從字幕內容檢測語言"""
+        """Detect language from subtitle content
+        
+        Args:
+            subs: Subtitle content
+        """
         if self.subtitle_count == 0:
             return
         
         try:
-            # 連接一些字幕文本用於語言檢測
+            # Join some subtitle text for language detection
             sample_size = min(10, self.subtitle_count)
             sample_text = '\n'.join([subs[i].text for i in range(sample_size)])
             self._detect_language_from_text(sample_text)
         except Exception as e:
-            logger.warning(f"從字幕內容檢測語言時發生錯誤: {str(e)}")
+            logger.warning(f"Error detecting language from subtitle content: {str(e)}")
             
     def _detect_language_from_text(self, text: str) -> None:
-        """從文本檢測語言"""
+        """Detect language from text
+        
+        Args:
+            text: Text to detect language from
+        """
         if not text:
             return
             
-        # 基於字元分佈的簡單語言檢測
-        # 檢測常見語言的特徵
+        # Language detection based on character distribution
+        # Check for common language features
         
-        # 檢測日文(日文字元範圍)
+        # Japanese characters
         japanese_chars = len(re.findall(r'[\u3040-\u309F\u30A0-\u30FF]', text))
         
-        # 檢測中文(中文字元範圍)
+        # Chinese characters
         chinese_chars = len(re.findall(r'[\u4E00-\u9FFF]', text))
         
-        # 檢測韓文(韓文字元範圍)
+        # Korean characters
         korean_chars = len(re.findall(r'[\uAC00-\uD7A3]', text))
         
-        # 檢測英文和其他拉丁語言
+        # English and other Latin languages
         latin_chars = len(re.findall(r'[a-zA-Z]', text))
         
-        # 統計字元總數(排除空白字元)
+        # Count total characters (excluding whitespace)
         total_chars = len(re.sub(r'\s', '', text))
         if total_chars == 0:
             return
             
-        # 計算各語言佔比
+        # Calculate language ratios
         jp_ratio = japanese_chars / total_chars
         cn_ratio = chinese_chars / total_chars
         kr_ratio = korean_chars / total_chars
         latin_ratio = latin_chars / total_chars
         
-        # 根據比例判斷語言
+        # Determine language based on ratios
         if jp_ratio > 0.3:
             self.languages.append('日文')
         if cn_ratio > 0.3:
@@ -241,12 +274,16 @@ class SubtitleInfo:
         if latin_ratio > 0.5:
             self.languages.append('英文')
         
-        # 如果沒有檢測到任何語言，標記為未知
+        # If no language detected, mark as unknown
         if not self.languages:
             self.languages.append('未知')
     
     def get_summary(self) -> Dict[str, Any]:
-        """獲取字幕檔案摘要資訊"""
+        """Get subtitle file summary information
+        
+        Returns:
+            Summary information dictionary
+        """
         return {
             "檔案路徑": self.file_path,
             "檔案名稱": os.path.basename(self.file_path),
@@ -260,7 +297,14 @@ class SubtitleInfo:
         }
     
     def _format_duration(self, seconds: float) -> str:
-        """格式化時間為小時:分鐘:秒格式"""
+        """Format time as hours:minutes:seconds
+        
+        Args:
+            seconds: Time in seconds
+            
+        Returns:
+            Formatted time string
+        """
         if seconds <= 0:
             return "未知"
         
@@ -274,7 +318,14 @@ class SubtitleInfo:
             return f"{minutes}分{secs}秒"
     
     def _format_size(self, size_bytes: int) -> str:
-        """格式化檔案大小"""
+        """Format file size
+        
+        Args:
+            size_bytes: Size in bytes
+            
+        Returns:
+            Formatted size string
+        """
         if size_bytes < 1024:
             return f"{size_bytes} B"
         elif size_bytes < 1024 * 1024:
@@ -282,18 +333,49 @@ class SubtitleInfo:
         else:
             return f"{size_bytes / (1024 * 1024):.2f} MB"
 
+
 class FileHandler:
-    def __init__(self, root: tk.Tk = None, config_file: str = "config/file_handler_config.json"):
+    """File handler for subtitle translation"""
+    
+    # Class variables for singleton pattern
+    _instance = None
+    _lock = threading.Lock()
+    
+    @classmethod
+    def get_instance(cls, root: tk.Tk = None, config_section: str = "file") -> 'FileHandler':
+        """Get file handler singleton instance
+        
+        Args:
+            root: Tkinter root window
+            config_section: Configuration section to use
+            
+        Returns:
+            FileHandler instance
+        """
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = FileHandler(root, config_section)
+            elif root is not None:
+                # Update root if provided
+                cls._instance.root = root
+                
+            return cls._instance
+    
+    def __init__(self, root: tk.Tk = None, config_section: str = "file"):
+        """Initialize file handler
+        
+        Args:
+            root: Tkinter root window
+            config_section: Configuration section to use
+        """
         self.root = root
-        self.config_file = config_file
+        self.config_section = config_section
         
-        # 確保設定目錄存在
-        os.makedirs(os.path.dirname(config_file), exist_ok=True)
+        # Get configuration manager
+        self.config_manager = ConfigManager.get_instance(config_section)
         
-        self.config = self._load_config()
-        
-        # 語言後綴對應表
-        self.lang_suffix = self.config.get("lang_suffix", {
+        # Language suffix mapping
+        self.lang_suffix = self.config_manager.get_value("lang_suffix", {
             "繁體中文": ".zh_tw", 
             "簡體中文": ".zh_cn",
             "英文": ".en", 
@@ -305,224 +387,200 @@ class FileHandler:
             "俄文": ".ru"
         })
         
-        # 支援的字幕格式
-        self.supported_formats = self.config.get("supported_formats", [
-            (".srt", "SRT字幕檔"),
-            (".vtt", "WebVTT字幕檔"),
-            (".ass", "ASS字幕檔"),
-            (".ssa", "SSA字幕檔"),
-            (".sub", "SUB字幕檔")
+        # Supported subtitle formats
+        self.supported_formats = self.config_manager.get_value("supported_formats", [
+            (".srt", "SRT subtitle file"),
+            (".vtt", "WebVTT subtitle file"),
+            (".ass", "ASS subtitle file"),
+            (".ssa", "SSA subtitle file"),
+            (".sub", "SUB subtitle file")
         ])
         
-        # 用於讀取字幕檔案資訊的快取
+        # Cache for subtitle file information
         self.subtitle_info_cache = {}
         
-        # 記住上次使用的目錄
-        self.last_directory = self.config.get("last_directory", "")
+        # Remember last used directory
+        self.last_directory = self.config_manager.get_value("last_directory", "")
         
-        # 記住檔案選擇和批次管理的設定
-        self.batch_settings = self.config.get("batch_settings", {
+        # Batch settings
+        self.batch_settings = self.config_manager.get_value("batch_settings", {
             "name_pattern": "{filename}_{language}{ext}",
             "overwrite_mode": "ask",  # ask, overwrite, rename, skip
             "output_directory": "",
             "preserve_folder_structure": True
         })
         
-        logger.debug("FileHandler初始化完成")
-    
-    def _load_config(self) -> Dict[str, Any]:
-        """載入設定檔案"""
-        default_config = {
-            "lang_suffix": {
-                "繁體中文": ".zh_tw", 
-                "簡體中文": ".zh_cn",
-                "英文": ".en", 
-                "日文": ".jp",
-                "韓文": ".kr",
-                "法文": ".fr",
-                "德文": ".de",
-                "西班牙文": ".es",
-                "俄文": ".ru"
-            },
-            "supported_formats": [
-                (".srt", "SRT字幕檔"),
-                (".vtt", "WebVTT字幕檔"),
-                (".ass", "ASS字幕檔"),
-                (".ssa", "SSA字幕檔"),
-                (".sub", "SUB字幕檔")
-            ],
-            "last_directory": "",
-            "batch_settings": {
-                "name_pattern": "{filename}_{language}{ext}",
-                "overwrite_mode": "ask",
-                "output_directory": "",
-                "preserve_folder_structure": True
-            }
-        }
+        # Thread lock for thread safety
+        self._lock = threading.RLock()
         
-        try:
-            if os.path.exists(self.config_file):
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                logger.debug(f"已載入設定檔案: {self.config_file}")
-                
-                # 合併預設設定，確保所有設定都存在
-                for key, value in default_config.items():
-                    if key not in config:
-                        config[key] = value
-                    elif isinstance(value, dict) and isinstance(config[key], dict):
-                        # 對於字典類型的設定，確保所有子項也存在
-                        for sub_key, sub_value in value.items():
-                            if sub_key not in config[key]:
-                                config[key][sub_key] = sub_value
-                
-                return config
-            else:
-                logger.debug(f"設定檔案不存在，使用預設設定")
-                # 儲存預設設定
-                os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
-                with open(self.config_file, 'w', encoding='utf-8') as f:
-                    json.dump(default_config, f, ensure_ascii=False, indent=2)
-                return default_config
-                
-        except Exception as e:
-            logger.error(f"載入設定檔案時發生錯誤: {str(e)}")
-            return default_config
-    
-    def _save_config(self) -> bool:
-        """儲存設定到檔案"""
-        try:
-            # 更新設定中的最後使用目錄
-            self.config["last_directory"] = self.last_directory
-            self.config["batch_settings"] = self.batch_settings
-            
-            # 確保目錄存在
-            os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
-            
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(self.config, f, ensure_ascii=False, indent=2)
-            
-            logger.debug(f"已儲存設定到檔案: {self.config_file}")
-            return True
-        except Exception as e:
-            logger.error(f"儲存設定檔案時發生錯誤: {str(e)}")
-            return False
+        logger.debug("FileHandler initialized")
     
     def add_language_suffix(self, language: str, suffix: str) -> None:
-        """添加或更新語言後綴對應"""
-        self.lang_suffix[language] = suffix
-        self.config["lang_suffix"] = self.lang_suffix
-        self._save_config()
-        logger.debug(f"已添加語言後綴對應: {language} -> {suffix}")
+        """Add or update language suffix mapping
+        
+        Args:
+            language: Language name
+            suffix: File suffix to use
+        """
+        with self._lock:
+            self.lang_suffix[language] = suffix
+            self.config_manager.set_value("lang_suffix", self.lang_suffix)
+            logger.debug(f"Added language suffix mapping: {language} -> {suffix}")
     
     def select_files(self) -> List[str]:
-        """通過對話框選擇檔案"""
+        """Select files via dialog
+        
+        Returns:
+            List of selected file paths
+        """
         initial_dir = self.last_directory if os.path.exists(self.last_directory) else os.path.expanduser("~")
         
-        # 構建檔案類型過濾器
+        # Build filetypes filter
         filetypes = []
         for ext, desc in self.supported_formats:
             filetypes.append((desc, f"*{ext}"))
-        filetypes.append(("所有支援的字幕檔", " ".join([f"*{ext}" for ext, _ in self.supported_formats])))
-        filetypes.append(("所有檔案", "*.*"))
+        filetypes.append(("All supported subtitle files", " ".join([f"*{ext}" for ext, _ in self.supported_formats])))
+        filetypes.append(("All files", "*.*"))
         
-        files = filedialog.askopenfilenames(
-            title="選擇字幕檔案",
-            initialdir=initial_dir,
-            filetypes=filetypes
-        )
-        
-        if files:
-            # 更新最後使用的目錄
-            self.last_directory = os.path.dirname(files[0])
-            self._save_config()
+        try:
+            files = filedialog.askopenfilenames(
+                title="Select subtitle files",
+                initialdir=initial_dir,
+                filetypes=filetypes
+            )
             
-            # 過濾非支援的檔案格式
-            valid_files = []
-            for file in files:
-                ext = os.path.splitext(file)[1].lower()
-                if any(ext == supported_ext for supported_ext, _ in self.supported_formats):
-                    valid_files.append(file)
-                else:
-                    logger.warning(f"不支援的檔案格式: {file}")
-            
-            logger.info(f"已選擇 {len(valid_files)}/{len(files)} 個有效檔案")
-            return valid_files
+            if files:
+                # Update last used directory
+                self.last_directory = os.path.dirname(files[0])
+                self._save_last_directory()
+                
+                # Filter unsupported file formats
+                valid_files = []
+                for file in files:
+                    ext = os.path.splitext(file)[1].lower()
+                    if any(ext == supported_ext for supported_ext, _ in self.supported_formats):
+                        valid_files.append(file)
+                    else:
+                        logger.warning(f"Unsupported file format: {file}")
+                
+                logger.info(f"Selected {len(valid_files)}/{len(files)} valid files")
+                return valid_files
+        except Exception as e:
+            logger.error(f"Error selecting files: {format_exception(e)}")
+            if self.root:
+                messagebox.showerror("Error", f"Error selecting files: {str(e)}")
         
         return []
     
+    def _save_last_directory(self) -> None:
+        """Save last directory to configuration"""
+        with self._lock:
+            self.config_manager.set_value("last_directory", self.last_directory)
+    
     def select_directory(self) -> str:
-        """選擇目錄"""
+        """Select directory
+        
+        Returns:
+            Selected directory path
+        """
         initial_dir = self.batch_settings["output_directory"] if os.path.exists(self.batch_settings["output_directory"]) else self.last_directory
         if not os.path.exists(initial_dir):
             initial_dir = os.path.expanduser("~")
             
-        directory = filedialog.askdirectory(
-            title="選擇輸出目錄",
-            initialdir=initial_dir
-        )
-        
-        if directory:
-            self.batch_settings["output_directory"] = directory
-            self._save_config()
-            logger.info(f"已選擇輸出目錄: {directory}")
-            return directory
+        try:
+            directory = filedialog.askdirectory(
+                title="Select output directory",
+                initialdir=initial_dir
+            )
+            
+            if directory:
+                with self._lock:
+                    self.batch_settings["output_directory"] = directory
+                    self.config_manager.set_value("batch_settings", self.batch_settings)
+                    
+                logger.info(f"Selected output directory: {directory}")
+                return directory
+        except Exception as e:
+            logger.error(f"Error selecting directory: {format_exception(e)}")
+            if self.root:
+                messagebox.showerror("Error", f"Error selecting directory: {str(e)}")
         
         return ""
     
     def handle_drop(self, event) -> List[str]:
-        """處理檔案拖放"""
+        """Handle file drop event
+        
+        Args:
+            event: Drop event
+            
+        Returns:
+            List of valid file paths
+        """
         if not TKDND_AVAILABLE or not self.root:
-            logger.warning("拖放功能不可用")
+            logger.warning("Drag and drop functionality is not available")
             return []
         
-        files = self.root.tk.splitlist(event.data)
-        valid_files = []
-        
-        for file in files:
-            # 在 Windows 上移除檔案路徑的大括號
-            file = file.strip('{}')
+        try:
+            files = self.root.tk.splitlist(event.data)
+            valid_files = []
             
-            # 檢查是否為目錄
-            if os.path.isdir(file):
-                # 掃描目錄下的字幕檔案
-                logger.info(f"拖放了目錄: {file}，正在掃描字幕檔案...")
-                dir_files = self.scan_directory(file)
-                valid_files.extend(dir_files)
-                logger.info(f"從目錄 {file} 找到 {len(dir_files)} 個字幕檔案")
-            elif os.path.isfile(file):
-                # 檢查檔案類型
-                ext = os.path.splitext(file)[1].lower()
-                if any(ext == supported_ext for supported_ext, _ in self.supported_formats):
-                    valid_files.append(file)
+            for file in files:
+                # Remove braces from file paths on Windows
+                file = file.strip('{}')
+                
+                # Check if it's a directory
+                if os.path.isdir(file):
+                    # Scan directory for subtitle files
+                    logger.info(f"Directory dropped: {file}, scanning for subtitle files...")
+                    dir_files = self.scan_directory(file)
+                    valid_files.extend(dir_files)
+                    logger.info(f"Found {len(dir_files)} subtitle files in directory {file}")
+                elif os.path.isfile(file):
+                    # Check file type
+                    ext = os.path.splitext(file)[1].lower()
+                    if any(ext == supported_ext for supported_ext, _ in self.supported_formats):
+                        valid_files.append(file)
+                    else:
+                        logger.warning(f"Unsupported file format: {file}")
+                        if self.root:
+                            messagebox.showwarning("Warning", f"File {os.path.basename(file)} is not a supported subtitle format and will be skipped")
                 else:
-                    logger.warning(f"不支援的檔案格式: {file}")
-                    messagebox.showwarning("警告", f"檔案 {os.path.basename(file)} 不是支援的字幕格式，已略過")
-            else:
-                logger.warning(f"拖放的項目不是有效的檔案或目錄: {file}")
-        
-        # 更新最後使用的目錄(如果有有效檔案)
-        if valid_files:
-            self.last_directory = os.path.dirname(valid_files[0])
-            self._save_config()
-        
-        return valid_files
+                    logger.warning(f"Dropped item is not a valid file or directory: {file}")
+            
+            # Update last used directory (if valid files were found)
+            if valid_files:
+                self.last_directory = os.path.dirname(valid_files[0])
+                self._save_last_directory()
+            
+            return valid_files
+            
+        except Exception as e:
+            logger.error(f"Error handling dropped files: {format_exception(e)}")
+            return []
     
     def scan_directory(self, directory: str, recursive: bool = True) -> List[str]:
-        """掃描目錄下的字幕檔案"""
+        """Scan directory for subtitle files
+        
+        Args:
+            directory: Directory path
+            recursive: Whether to scan subdirectories recursively
+            
+        Returns:
+            List of subtitle file paths
+        """
         valid_files = []
         valid_extensions = [ext for ext, _ in self.supported_formats]
         
         try:
             if recursive:
-                # 遞迴掃描
+                # Recursive scan
                 for root, _, files in os.walk(directory):
                     for file in files:
                         ext = os.path.splitext(file)[1].lower()
                         if ext in valid_extensions:
                             valid_files.append(os.path.join(root, file))
             else:
-                # 僅掃描當前目錄
+                # Only scan current directory
                 with os.scandir(directory) as entries:
                     for entry in entries:
                         if entry.is_file():
@@ -530,70 +588,94 @@ class FileHandler:
                             if ext in valid_extensions:
                                 valid_files.append(entry.path)
         except Exception as e:
-            logger.error(f"掃描目錄時發生錯誤: {str(e)}")
+            logger.error(f"Error scanning directory: {format_exception(e)}")
+            raise FileError(f"Error scanning directory: {str(e)}")
         
         return valid_files
     
     def get_subtitle_info(self, file_path: str, force_refresh: bool = False) -> Dict[str, Any]:
-        """獲取字幕檔案的資訊"""
+        """Get subtitle file information
+        
+        Args:
+            file_path: File path
+            force_refresh: Whether to force refresh the cached information
+            
+        Returns:
+            Subtitle information dictionary
+        """
         if not os.path.exists(file_path):
-            logger.warning(f"檔案不存在: {file_path}")
-            return {"error": "檔案不存在"}
+            logger.warning(f"File does not exist: {file_path}")
+            return {"error": "File does not exist"}
         
-        # 檢查快取
-        if not force_refresh and file_path in self.subtitle_info_cache:
-            return self.subtitle_info_cache[file_path].get_summary()
-        
-        try:
-            info = SubtitleInfo(file_path)
-            # 更新快取
-            self.subtitle_info_cache[file_path] = info
-            return info.get_summary()
-        except Exception as e:
-            logger.error(f"獲取字幕資訊時發生錯誤: {str(e)}")
-            return {"error": f"處理錯誤: {str(e)}"}
+        with self._lock:
+            # Check cache
+            if not force_refresh and file_path in self.subtitle_info_cache:
+                return self.subtitle_info_cache[file_path].get_summary()
+            
+            try:
+                info = SubtitleInfo(file_path)
+                # Update cache
+                self.subtitle_info_cache[file_path] = info
+                return info.get_summary()
+            except Exception as e:
+                logger.error(f"Error getting subtitle information: {format_exception(e)}")
+                return {"error": f"Processing error: {str(e)}"}
 
     def set_batch_settings(self, settings: Dict[str, Any]) -> None:
-        """設定批次處理設定"""
-        if settings:
-            self.batch_settings.update(settings)
-            self._save_config()
-            logger.debug(f"已更新批次處理設定: {self.batch_settings}")
+        """Set batch processing settings
+        
+        Args:
+            settings: Settings dictionary
+        """
+        with self._lock:
+            if settings:
+                self.batch_settings.update(settings)
+                self.config_manager.set_value("batch_settings", self.batch_settings)
+                logger.debug(f"Updated batch settings: {self.batch_settings}")
     
     def get_output_path(self, file_path: str, target_lang: str, progress_callback=None) -> Optional[str]:
-        """獲取輸出檔案路徑並處理衝突"""
+        """Get output file path and handle conflicts
+        
+        Args:
+            file_path: Source file path
+            target_lang: Target language
+            progress_callback: Progress callback function
+            
+        Returns:
+            Output file path, or None if failed
+        """
         try:
-            # 檢查檔案是否存在
+            # Check if file exists
             if not os.path.exists(file_path):
-                logger.warning(f"來源檔案不存在: {file_path}")
+                logger.warning(f"Source file does not exist: {file_path}")
                 return None
             
             dir_name, file_name = os.path.split(file_path)
             name, ext = os.path.splitext(file_name)
             
-            # 應用批次設定中的輸出目錄
+            # Apply output directory from batch settings
             output_dir = self.batch_settings["output_directory"]
             if output_dir and os.path.exists(output_dir):
-                # 是否保留目錄結構
+                # Whether to preserve directory structure
                 if self.batch_settings["preserve_folder_structure"]:
-                    # 獲取相對路徑(如果有共同的根目錄)
+                    # Get relative path (if there's a common base directory)
                     try:
                         common_base = os.path.commonpath([self.last_directory, file_path])
                         rel_dir = os.path.dirname(os.path.relpath(file_path, common_base))
                         new_dir = os.path.join(output_dir, rel_dir)
                         os.makedirs(new_dir, exist_ok=True)
                     except Exception as e:
-                        logger.warning(f"計算相對路徑時發生錯誤: {str(e)}，使用平面結構")
+                        logger.warning(f"Error calculating relative path: {str(e)}, using flat structure")
                         new_dir = output_dir
                 else:
                     new_dir = output_dir
                     
                 dir_name = new_dir
             
-            # 獲取語言後綴
+            # Get language suffix
             lang_suffix = self.lang_suffix.get(target_lang, ".unknown")
             
-            # 應用檔案命名模式
+            # Apply file naming pattern
             name_pattern = self.batch_settings["name_pattern"]
             output_filename = name_pattern.format(
                 filename=name, 
@@ -604,19 +686,19 @@ class FileHandler:
                 time=datetime.now().strftime('%H%M%S')
             )
             
-            # 如果輸出檔名沒有副檔名，添加原始副檔名
+            # If output filename doesn't have an extension, add the original extension
             if not os.path.splitext(output_filename)[1]:
                 output_filename += ext
                 
             base_path = os.path.join(dir_name, output_filename)
             
-            # 處理檔案衝突
+            # Handle file conflicts
             if os.path.exists(base_path):
-                # 檢查衝突處理模式
+                # Check conflict handling mode
                 overwrite_mode = self.batch_settings["overwrite_mode"]
                 
                 if overwrite_mode == "ask" and progress_callback:
-                    # 通過回調函數詢問使用者
+                    # Ask user via callback function
                     queue = Queue()
                     progress_callback(-1, -1, {"type": "file_conflict", "path": base_path, "queue": queue})
                     response = queue.get()
@@ -625,26 +707,36 @@ class FileHandler:
                         return self._get_unique_path(dir_name, name, lang_suffix, ext)
                     elif response == "skip":
                         return None
-                    # "overwrite" 情況直接返回 base_path
+                    # "overwrite" case will just return base_path
                 
                 elif overwrite_mode == "rename":
-                    # 自動重新命名
+                    # Automatically rename
                     return self._get_unique_path(dir_name, name, lang_suffix, ext)
                     
                 elif overwrite_mode == "skip":
-                    # 跳過已存在的檔案
-                    logger.info(f"檔案已存在，跳過: {base_path}")
+                    # Skip existing files
+                    logger.info(f"File already exists, skipping: {base_path}")
                     return None
                     
-                # "overwrite" 情況直接返回 base_path
+                # "overwrite" case will just return base_path
             
             return base_path
         except Exception as e:
-            logger.error(f"獲取輸出路徑時發生錯誤: {str(e)}")
-            return None
+            logger.error(f"Error getting output path: {format_exception(e)}")
+            raise FileError(f"Error determining output path: {str(e)}")
     
     def _get_unique_path(self, dir_name: str, name: str, lang_suffix: str, ext: str) -> str:
-        """獲取唯一的檔案路徑(避免衝突)"""
+        """Get unique file path (to avoid conflicts)
+        
+        Args:
+            dir_name: Directory path
+            name: Base file name
+            lang_suffix: Language suffix
+            ext: File extension
+            
+        Returns:
+            Unique file path
+        """
         counter = 1
         while True:
             new_path = os.path.join(dir_name, f"{name}{lang_suffix}_{counter}{ext}")
@@ -653,64 +745,87 @@ class FileHandler:
             counter += 1
     
     def load_api_key(self, file_path: str = "openapi_api_key.txt") -> str:
-        """載入API金鑰"""
+        """Load API key
+        
+        Args:
+            file_path: API key file path
+            
+        Returns:
+            API key string
+        """
         try:
-            # 嘗試從環境變數讀取
+            # Try to read from environment variable
             api_key = os.environ.get("OPENAI_API_KEY")
             if api_key:
-                logger.info("從環境變數載入API金鑰")
+                logger.info("Loaded API key from environment variable")
                 return api_key
                 
-            # 嘗試從檔案讀取
+            # Try to read from file
             if os.path.exists(file_path):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     api_key = f.read().strip()
                     
                 if api_key:
-                    logger.info(f"從檔案 {file_path} 載入API金鑰")
+                    logger.info(f"Loaded API key from file {file_path}")
                     return api_key
                     
-            logger.warning(f"API金鑰檔案 {file_path} 不存在或為空")
+            logger.warning(f"API key file {file_path} does not exist or is empty")
             return ""
         except Exception as e:
-            logger.error(f"讀取API金鑰時發生錯誤: {str(e)}")
+            logger.error(f"Error reading API key: {format_exception(e)}")
             return ""
     
     def save_api_key(self, api_key: str, file_path: str = "openapi_api_key.txt") -> bool:
-        """儲存API金鑰"""
+        """Save API key
+        
+        Args:
+            api_key: API key string
+            file_path: Output file path
+            
+        Returns:
+            Whether the operation was successful
+        """
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(api_key)
-            logger.info(f"已儲存API金鑰到檔案: {file_path}")
+            logger.info(f"Saved API key to file: {file_path}")
             return True
         except Exception as e:
-            logger.error(f"儲存API金鑰時發生錯誤: {str(e)}")
+            logger.error(f"Error saving API key: {format_exception(e)}")
             return False
     
     def convert_subtitle_format(self, input_path: str, target_format: str) -> Optional[str]:
-        """轉換字幕檔案格式"""
+        """Convert subtitle file format
+        
+        Args:
+            input_path: Input file path
+            target_format: Target format (without dot)
+            
+        Returns:
+            Output file path, or None if failed
+        """
         try:
-            # 檢查來源檔案
+            # Check source file
             if not os.path.exists(input_path):
-                logger.warning(f"來源檔案不存在: {input_path}")
+                logger.warning(f"Source file does not exist: {input_path}")
                 return None
                 
-            # 檢查來源格式和目標格式
+            # Check source and target formats
             source_format = os.path.splitext(input_path)[1].lower().replace(".", "")
             if source_format == target_format:
-                logger.info(f"來源檔案已經是 {target_format} 格式: {input_path}")
+                logger.info(f"Source file is already in {target_format} format: {input_path}")
                 return input_path
                 
-            # 獲取輸出檔案路徑
+            # Get output file path
             output_dir = os.path.dirname(input_path)
             base_name = os.path.splitext(os.path.basename(input_path))[0]
             output_path = os.path.join(output_dir, f"{base_name}.{target_format}")
             
-            # 確保輸出路徑不與來源檔案相同
+            # Ensure output path is not the same as source path
             if output_path == input_path:
                 output_path = os.path.join(output_dir, f"{base_name}_converted.{target_format}")
                 
-            # 處理檔案已存在的情況
+            # Handle file already exists case
             if os.path.exists(output_path):
                 output_path = self._get_unique_path(
                     output_dir, 
@@ -719,83 +834,101 @@ class FileHandler:
                     f".{target_format}"
                 )
             
-            # 根據不同格式進行轉換
+            # Convert between different formats
             if source_format == "srt" and target_format == "vtt":
                 self._convert_srt_to_vtt(input_path, output_path)
             elif source_format == "vtt" and target_format == "srt":
                 self._convert_vtt_to_srt(input_path, output_path)
-            # 更多格式轉換可以在這裡添加
+            # More format conversions can be added here
             else:
-                logger.warning(f"暫不支援從 {source_format} 轉換到 {target_format}")
+                logger.warning(f"Conversion from {source_format} to {target_format} is not supported yet")
                 return None
                 
-            logger.info(f"已將 {input_path} 轉換為 {output_path}")
+            logger.info(f"Converted {input_path} to {output_path}")
             return output_path
                 
         except Exception as e:
-            logger.error(f"轉換字幕格式時發生錯誤: {str(e)}")
-            return None
+            logger.error(f"Error converting subtitle format: {format_exception(e)}")
+            raise FileError(f"Error converting subtitle format: {str(e)}")
     
     def _convert_srt_to_vtt(self, srt_path: str, vtt_path: str) -> None:
-        """將SRT格式轉換為VTT格式"""
+        """Convert SRT format to VTT format
+        
+        Args:
+            srt_path: SRT file path
+            vtt_path: VTT file path
+        """
         if not PYSRT_AVAILABLE:
-            raise ImportError("缺少pysrt套件，無法轉換SRT格式")
+            raise ImportError("pysrt package is missing, cannot convert SRT format")
             
-        # 讀取SRT檔案
+        # Read SRT file
         encoding = self.get_subtitle_info(srt_path).get("編碼", "utf-8")
         subs = pysrt.open(srt_path, encoding=encoding)
         
-        # 寫入VTT檔案
+        # Write VTT file
         with open(vtt_path, 'w', encoding='utf-8') as f:
             f.write("WEBVTT\n\n")
             
             for sub in subs:
-                # 轉換時間格式 (00:00:00,000 -> 00:00:00.000)
+                # Convert time format (00:00:00,000 -> 00:00:00.000)
                 start = sub.start.to_time().strftime('%H:%M:%S.%f')[:-3]
                 end = sub.end.to_time().strftime('%H:%M:%S.%f')[:-3]
                 
-                # 寫入字幕
+                # Write subtitle
                 f.write(f"{start} --> {end}\n")
                 f.write(f"{sub.text}\n\n")
     
     def _convert_vtt_to_srt(self, vtt_path: str, srt_path: str) -> None:
-        """將VTT格式轉換為SRT格式"""
+        """Convert VTT format to SRT format
+        
+        Args:
+            vtt_path: VTT file path
+            srt_path: SRT file path
+        """
         if not WEBVTT_AVAILABLE:
-            raise ImportError("缺少webvtt套件，無法轉換VTT格式")
+            raise ImportError("webvtt package is missing, cannot convert VTT format")
             
-        # 讀取VTT檔案
+        # Read VTT file
         vtt = webvtt.read(vtt_path)
         
-        # 寫入SRT檔案
+        # Write SRT file
         with open(srt_path, 'w', encoding='utf-8') as f:
             for i, caption in enumerate(vtt, 1):
-                # 轉換時間格式 (00:00:00.000 -> 00:00:00,000)
+                # Convert time format (00:00:00.000 -> 00:00:00,000)
                 start = caption.start.replace('.', ',')
                 end = caption.end.replace('.', ',')
                 
-                # 寫入字幕
+                # Write subtitle
                 f.write(f"{i}\n")
                 f.write(f"{start} --> {end}\n")
                 f.write(f"{caption.text}\n\n")
     
     def extract_subtitle(self, video_path: str, callback=None) -> Optional[str]:
-        """從影片檔案中提取字幕"""
+        """Extract subtitle from video file
+        
+        Args:
+            video_path: Video file path
+            callback: Callback function
+            
+        Returns:
+            Subtitle file path, or None if failed
+        """
         try:
             import subprocess
             
-            # 檢查ffmpeg是否可用
+            # Check if ffmpeg is available
             try:
                 subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             except (subprocess.SubprocessError, FileNotFoundError):
-                logger.error("未找到ffmpeg，無法提取字幕")
-                return None
+                logger.error("ffmpeg not found, cannot extract subtitle")
+                raise FileError("ffmpeg not found, cannot extract subtitle")
                 
-            # 準備路徑
+            # Prepare paths
             output_dir = os.path.dirname(video_path)
             base_name = os.path.splitext(os.path.basename(video_path))[0]
             output_path = os.path.join(output_dir, f"{base_name}.srt")
             
-            # 確保輸出路徑不存在
+            # Ensure output path does not exist
             if os.path.exists(output_path):
                 output_path = self._get_unique_path(
                     output_dir, 
@@ -804,28 +937,144 @@ class FileHandler:
                     ".srt"
                 )
             
-            # 提取字幕命令
+            # Extract subtitle command
             cmd = [
                 "ffmpeg", "-i", video_path, 
-                "-map", "0:s:0", # 選擇第一個字幕軌道
+                "-map", "0:s:0", # Select first subtitle track
                 "-c", "copy", 
                 output_path
             ]
             
-            # 執行命令
+            # Execute command
             if callback:
                 callback(-1, -1, {"type": "extracting", "path": video_path})
                 
             result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             
-            # 檢查結果
+            # Check result
             if result.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
-                logger.warning(f"提取字幕失敗: {result.stderr.decode()}")
-                return None
+                logger.warning(f"Failed to extract subtitle: {result.stderr.decode()}")
+                raise FileError(f"Failed to extract subtitle: {result.stderr.decode()}")
                 
-            logger.info(f"已從 {video_path} 提取字幕到 {output_path}")
+            logger.info(f"Extracted subtitle from {video_path} to {output_path}")
             return output_path
                 
+        except ImportError as e:
+            logger.error(f"Import error: {format_exception(e)}")
+            raise FileError(f"Missing required package: {str(e)}")
         except Exception as e:
-            logger.error(f"提取字幕時發生錯誤: {str(e)}")
-            return None
+            logger.error(f"Error extracting subtitle: {format_exception(e)}")
+            raise FileError(f"Error extracting subtitle: {str(e)}")
+            
+    def cleanup(self) -> None:
+        """Clean up resources"""
+        # For future use
+        pass
+
+
+# Global functions for easy access
+def get_file_handler(root: tk.Tk = None) -> FileHandler:
+    """Get file handler instance
+    
+    Args:
+        root: Tkinter root window
+        
+    Returns:
+        FileHandler instance
+    """
+    return FileHandler.get_instance(root)
+
+
+def select_files(root: tk.Tk = None) -> List[str]:
+    """Select subtitle files
+    
+    Args:
+        root: Tkinter root window
+        
+    Returns:
+        List of selected file paths
+    """
+    handler = get_file_handler(root)
+    return handler.select_files()
+
+
+def get_subtitle_info(file_path: str) -> Dict[str, Any]:
+    """Get subtitle file information
+    
+    Args:
+        file_path: Subtitle file path
+        
+    Returns:
+        Subtitle information dictionary
+    """
+    handler = get_file_handler()
+    return handler.get_subtitle_info(file_path)
+
+
+def scan_directory(directory: str, recursive: bool = True) -> List[str]:
+    """Scan directory for subtitle files
+    
+    Args:
+        directory: Directory path
+        recursive: Whether to scan subdirectories recursively
+        
+    Returns:
+        List of subtitle file paths
+    """
+    handler = get_file_handler()
+    return handler.scan_directory(directory, recursive)
+
+
+# For testing the module
+if __name__ == "__main__":
+    # Setup console logging for testing
+    console_handler = logging.StreamHandler()
+    console_formatter = logging.Formatter('%(levelname)s - %(message)s')
+    console_handler.setFormatter(console_formatter)
+    logger.addHandler(console_handler)
+    
+    print("===== File Handler Test =====")
+    
+    # Initialize tk for file dialog tests
+    root = tk.Tk()
+    root.withdraw()  # Hide the root window
+    
+    file_handler = FileHandler.get_instance(root)
+    
+    # Test file selection
+    print("\n1. Testing file selection")
+    files = file_handler.select_files()
+    print(f"Selected files: {files}")
+    
+    if files:
+        # Test subtitle info
+        print("\n2. Testing subtitle info")
+        test_file = files[0]
+        info = file_handler.get_subtitle_info(test_file)
+        for key, value in info.items():
+            print(f"  {key}: {value}")
+        
+        # Test output path generation
+        print("\n3. Testing output path generation")
+        output_path = file_handler.get_output_path(test_file, "繁體中文")
+        print(f"Output path: {output_path}")
+        
+        # Test format conversion
+        if os.path.splitext(test_file)[1].lower() == ".srt":
+            print("\n4. Testing format conversion (SRT to VTT)")
+            try:
+                vtt_path = file_handler.convert_subtitle_format(test_file, "vtt")
+                print(f"Converted to: {vtt_path}")
+            except Exception as e:
+                print(f"Conversion failed: {str(e)}")
+    
+    # Test batch settings
+    print("\n5. Testing batch settings")
+    new_settings = {
+        "name_pattern": "{filename}_{language}_{date}{ext}",
+        "overwrite_mode": "rename"
+    }
+    file_handler.set_batch_settings(new_settings)
+    print(f"Updated batch settings: {file_handler.batch_settings}")
+    
+    print("\n===== Test Complete =====")
