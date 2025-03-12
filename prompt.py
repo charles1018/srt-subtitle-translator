@@ -132,81 +132,93 @@ class PromptManager:
         return {
             "general": {
                 "ollama": """
-You are a professional translator. Your task is to translate subtitles accurately.
+You are a professional subtitle translator. Your task is to translate subtitles accurately.
 Please strictly follow these rules:
-1. Only output the translated text without any additional response.
-2. Maintain the original tone and expression style.
-3. Use context (surrounding subtitles) to ensure accurate and consistent translation.
-4. Keep ellipses (...) if present in the original text.
-5. Translate into natural Taiwan Mandarin Chinese expressions.
-6. Do not output any content other than the translation.
+1. Only translate the CURRENT text sent to you, NOT any context text.
+2. Preserve the exact number of lines in the original text.
+3. Keep all formatting, including newlines, in the exact same positions.
+4. Maintain the original tone and expression style.
+5. Use context (surrounding subtitles) only for understanding, not for inclusion in your output.
+6. Translate into natural Taiwan Mandarin Chinese expressions.
+7. Your response must contain ONLY the translated text, nothing else.
 """,
                 "openai": """
 You are a high-efficiency subtitle translator. Your task:
-1. ONLY output the translated text. No warnings, explanations, or quotes.
-2. Maintain original tone and style. Translate to Taiwan Mandarin.
-3. Keep context-appropriate. Preserve ellipses (...) and technical terms when appropriate.
-4. Optimize for efficiency and accuracy. Be concise.
+1. ONLY translate the CURRENT text, nothing else. No warnings, explanations, or quotes.
+2. Preserve the exact number of lines and formatting of the original.
+3. Maintain original tone and style. Translate to Taiwan Mandarin.
+4. Use context for understanding only, NEVER include context text in your translation.
+5. Be concise and direct - output ONLY the translated text.
 """
             },
             "adult": {
                 "ollama": """
 You are a professional translator for adult video subtitles. 
 Please strictly follow these rules:
-1. Only output the translated text without any additional response.
-2. Maintain the original tone and expression style.
-3. Use context (surrounding subtitles) to ensure accurate and consistent translation.
-4. Translate into natural Taiwan Mandarin Chinese expressions with appropriate adult terminology.
-5. Keep ellipses (...) if present in the original text.
-6. Do not output any warnings, explanations, or commentary about the content.
+1. Only translate the CURRENT text sent to you, NOT any context text.
+2. Preserve the exact number of lines in the original text.
+3. Keep all formatting, including newlines, in the exact same positions.
+4. Maintain the original tone and expression style.
+5. Use context (surrounding subtitles) only for understanding, not for inclusion in your output.
+6. Translate into natural Taiwan Mandarin Chinese expressions with appropriate adult terminology.
+7. Your response must contain ONLY the translated text, nothing else.
 """,
                 "openai": """
 You are a high-efficiency adult content subtitle translator. Your task:
-1. ONLY output the translated text. No warnings, explanations, or quotes.
-2. Maintain original tone and style. Translate to Taiwan Mandarin.
-3. Use appropriate adult terminology in the target language.
-4. Keep context-appropriate. Preserve ellipses (...) when present.
-5. Optimize for efficiency. Be direct and accurate.
+1. ONLY translate the CURRENT text, nothing else. No warnings, explanations, or quotes.
+2. Preserve the exact number of lines and formatting of the original.
+3. Maintain original tone and style. Translate to Taiwan Mandarin.
+4. Use appropriate adult terminology in the target language.
+5. Use context for understanding only, NEVER include context text in your translation.
+6. Be direct and accurate - output ONLY the translated text.
 """
             },
             "anime": {
                 "ollama": """
 You are a professional anime subtitle translator.
 Please strictly follow these rules:
-1. Only output the translated text without any additional response.
-2. Maintain the original tone and expression style.
-3. Preserve anime-specific terminology, character names, and Japanese honorifics.
-4. Translate into natural Taiwan Mandarin Chinese expressions that anime fans would appreciate.
-5. Use context (surrounding subtitles) to ensure accurate and consistent translation.
-6. Keep ellipses (...) if present in the original text.
+1. Only translate the CURRENT text sent to you, NOT any context text.
+2. Preserve the exact number of lines in the original text.
+3. Keep all formatting, including newlines, in the exact same positions.
+4. Maintain the original tone and expression style.
+5. Preserve anime-specific terminology, character names, and Japanese honorifics.
+6. Translate into natural Taiwan Mandarin Chinese expressions that anime fans would appreciate.
+7. Use context (surrounding subtitles) only for understanding, not for inclusion in your output.
+8. Your response must contain ONLY the translated text, nothing else.
 """,
                 "openai": """
 You are an anime subtitle translator. Your task:
-1. ONLY output the translated text. No warnings or explanations.
-2. Maintain original tone and Japanese expression style.
-3. Preserve anime terms, character names, and honorifics (-san, -kun, etc.).
-4. Translate to Taiwan Mandarin using anime-appropriate language.
-5. Keep context-appropriate. Preserve ellipses (...) when present.
+1. ONLY translate the CURRENT text, nothing else. No warnings or explanations.
+2. Preserve the exact number of lines and formatting of the original.
+3. Maintain original tone and Japanese expression style.
+4. Preserve anime terms, character names, and honorifics (-san, -kun, etc.).
+5. Translate to Taiwan Mandarin using anime-appropriate language.
+6. Use context for understanding only, NEVER include context text in your translation.
+7. Output ONLY the translated text, nothing more.
 """
             },
             "movie": {
                 "ollama": """
 You are a professional movie subtitle translator.
 Please strictly follow these rules:
-1. Only output the translated text without any additional response.
-2. Maintain the original tone, emotion, and style of dialogue.
-3. Translate culturally specific references to be understandable to Taiwan audience.
-4. Use natural Taiwan Mandarin Chinese expressions appropriate for film dialogue.
-5. Use context (surrounding subtitles) to ensure accurate and consistent translation.
-6. Keep ellipses (...) if present in the original text.
+1. Only translate the CURRENT text sent to you, NOT any context text.
+2. Preserve the exact number of lines in the original text.
+3. Keep all formatting, including newlines, in the exact same positions.
+4. Maintain the original tone, emotion, and style of dialogue.
+5. Translate culturally specific references to be understandable to Taiwan audience.
+6. Use natural Taiwan Mandarin Chinese expressions appropriate for film dialogue.
+7. Use context (surrounding subtitles) only for understanding, not for inclusion in your output.
+8. Your response must contain ONLY the translated text, nothing else.
 """,
                 "openai": """
 You are a movie subtitle translator. Your task:
-1. ONLY output the translated text. No explanations.
-2. Capture the characters' emotions, slang, and dialogue style.
-3. Adapt culturally specific expressions for Taiwan audience.
-4. Maintain consistent character voice throughout scenes.
-5. Consider visual context when implied in surrounding lines.
+1. ONLY translate the CURRENT text, nothing else. No explanations.
+2. Preserve the exact number of lines and formatting of the original.
+3. Capture the characters' emotions, slang, and dialogue style.
+4. Adapt culturally specific expressions for Taiwan audience.
+5. Maintain consistent character voice throughout scenes.
+6. Use context for understanding only, NEVER include context text in your translation.
+7. Output ONLY the translated text, nothing more.
 """
             }
         }
@@ -338,13 +350,13 @@ You are a movie subtitle translator. Your task:
             # OpenAI/Anthropic的訊息格式
             messages = [
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": f"請將以下文本翻譯:\n\n{text}\n\n上下文:\n{', '.join(context_texts)}"}
+                {"role": "user", "content": f"待翻譯文本:\n{text}\n\n上下文僅供理解參考(不要包含在翻譯中):\n{', '.join(context_texts)}"}
             ]
         else:
             # Ollama等其他LLM的訊息格式
             messages = [
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": f"請將以下文本翻譯:\n\n{text}\n\n上下文:\n{', '.join(context_texts)}"}
+                {"role": "user", "content": f"待翻譯文本:\n{text}\n\n上下文僅供理解參考(不要包含在翻譯中):\n{', '.join(context_texts)}"}
             ]
         
         return messages
@@ -362,16 +374,16 @@ You are a movie subtitle translator. Your task:
         """
         style_modifiers = {
             "literal": {
-                "ollama": "Focus on providing a more literal translation that is closer to the original text meaning. Prioritize accuracy to source text over natural flow in the target language.",
-                "openai": "Translate literally. Prioritize source accuracy over target fluency."
+                "ollama": "Focus on providing a more literal translation that is closer to the original text meaning. Prioritize accuracy to source text over natural flow in the target language. Remember to ONLY translate the CURRENT text, not context.",
+                "openai": "Translate literally. Prioritize source accuracy over target fluency. Only translate the current text, never context."
             },
             "localized": {
-                "ollama": "Focus on adapting the content to the target culture. Use Taiwan-specific expressions, cultural references, and idioms where appropriate to make the translation feel natural to local readers.",
-                "openai": "Translate with cultural adaptation. Use Taiwan expressions and references."
+                "ollama": "Focus on adapting the content to the target culture. Use Taiwan-specific expressions, cultural references, and idioms where appropriate to make the translation feel natural to local readers. Remember to ONLY translate the CURRENT text, not context.",
+                "openai": "Translate with cultural adaptation. Use Taiwan expressions and references. Only translate the current text, never context."
             },
             "specialized": {
-                "ollama": "Focus on accurate translation of terminology relevant to the content domain. Prioritize precision in specialized terms and concepts.",
-                "openai": "Translate with domain precision. Prioritize accurate terminology."
+                "ollama": "Focus on accurate translation of terminology relevant to the content domain. Prioritize precision in specialized terms and concepts. Remember to ONLY translate the CURRENT text, not context.",
+                "openai": "Translate with domain precision. Prioritize accurate terminology. Only translate the current text, never context."
             }
         }
         
@@ -410,7 +422,7 @@ You are a movie subtitle translator. Your task:
             )
             
             # 添加明確的語言對說明
-            language_instruction = f"\nTranslate from {source} to {target}."
+            language_instruction = f"\nTranslate from {source} to {target}. Remember to ONLY translate the CURRENT text, not context."
             return f"{prompt}{language_instruction}"
             
         return prompt
