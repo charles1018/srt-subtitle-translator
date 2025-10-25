@@ -1,0 +1,276 @@
+[project]
+name = "srt-subtitle-translator"
+version = "1.0.0"
+description = "基於 Python 的 SRT 字幕檔自動翻譯工具，支援 Ollama、OpenAI、Anthropic 多種 AI 引擎"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [
+    { name = "charles1018", email = "chmadux8@gmail.com" }
+]
+keywords = [
+    "subtitle",
+    "translation",
+    "srt",
+    "ai",
+    "openai",
+    "anthropic",
+    "ollama",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+dependencies = [
+    # Core dependencies
+    "pysrt>=1.1.2",
+    "openai>=1.12.0",
+    "aiohttp>=3.9.0",
+    "backoff>=2.2.1",
+    "tiktoken>=0.5.0",
+    "chardet>=5.0.0",
+
+    # Optional LLM APIs
+    "anthropic>=0.8.0",
+
+    # GUI dependencies
+    "tkinterdnd2>=0.3.0",
+
+    # Subtitle processing
+    "webvtt-py>=0.4.6",
+
+    # System utilities
+    "psutil>=5.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.11.0",
+
+    # Code quality
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+
+    # Type stubs
+    "types-chardet>=5.0.0",
+]
+
+all = [
+    "srt-subtitle-translator[dev]",
+]
+
+[project.scripts]
+srt-translator = "srt_translator.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/charles1018/srt-subtitle-translator"
+Issues = "https://github.com/charles1018/srt-subtitle-translator/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# ============================================================
+# Ruff 配置（代碼檢查與格式化工具）
+# ============================================================
+[tool.ruff]
+# 行長度限制
+line-length = 120
+
+# 目標 Python 版本
+target-version = "py38"
+
+# 排除的目錄
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+    "logs",
+    "data",
+    "config",
+]
+
+[tool.ruff.lint]
+# 啟用的規則集
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific rules
+]
+
+# 忽略的規則
+ignore = [
+    "E501",   # 行過長（由 line-length 控制）
+    "B008",   # 函數呼叫中的預設參數
+    "N802",   # 函數名稱應為小寫（GUI 回調函數可能例外）
+    "N803",   # 參數名稱應為小寫
+    "N806",   # 變數名稱應為小寫
+]
+
+# 每個檔案允許的未使用導入
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # 允許未使用的導入
+
+[tool.ruff.lint.isort]
+# import 排序配置
+known-first-party = ["srt-translator"]
+
+# ============================================================
+# Mypy 配置（型別檢查工具）
+# ============================================================
+[tool.mypy]
+# Python 版本
+python_version = "3.8"
+
+# 基本設定
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # 暫時寬鬆，後續可改為 true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+
+# 導入相關
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+
+# 錯誤訊息格式
+show_error_codes = true
+show_column_numbers = true
+
+# 排除的目錄
+exclude = [
+    "^build/",
+    "^dist/",
+    "^logs/",
+    "^data/",
+    "^config/",
+]
+
+# 針對第三方套件忽略缺少型別資訊的錯誤
+[[tool.mypy.overrides]]
+module = [
+    "pysrt.*",
+    "tkinterdnd2.*",
+    "webvtt.*",
+]
+ignore_missing_imports = true
+
+# ============================================================
+# Pytest 配置（測試框架）
+# ============================================================
+[tool.pytest.ini_options]
+# 測試目錄
+testpaths = ["tests"]
+
+# 測試檔案模式
+python_files = ["test_*.py", "*_test.py"]
+
+# 測試函數模式
+python_functions = ["test_*"]
+
+# 測試類別模式
+python_classes = ["Test*"]
+
+# 最小化輸出
+minversion = "7.0"
+
+# 加入選項
+addopts = [
+    "-ra",                          # 顯示所有測試結果摘要
+    "--strict-markers",             # 嚴格標記模式
+    "--strict-config",              # 嚴格配置模式
+    "--showlocals",                 # 顯示局部變數
+    "--tb=short",                   # 簡短的追蹤訊息
+    "--cov=.",                      # 代碼覆蓋率
+    "--cov-report=term-missing",    # 顯示未覆蓋的行
+    "--cov-report=html",            # 生成 HTML 報告
+    "--cov-fail-under=0",           # 覆蓋率門檻（暫時設為 0）
+]
+
+# 標記定義
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "gui: marks tests that require GUI",
+]
+
+# 日誌設定
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+
+# ============================================================
+# Coverage 配置（代碼覆蓋率）
+# ============================================================
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "*/site-packages/*",
+    "*/__pycache__/*",
+    "*/logs/*",
+    "*/data/*",
+    "*/config/*",
+    ".venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+
+# ============================================================
+# Hatch 構建配置
+# ============================================================
+[tool.hatch.build.targets.wheel]
+# 套件結構配置（已重組為 src/srt_translator）
+packages = ["src/srt_translator"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/",
+    "requirements.txt",
+    "README.md",
+    "LICENSE",
+    "CLAUDE.md",
+]

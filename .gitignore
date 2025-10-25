@@ -35,3 +35,25 @@ env/
 # 作業系統
 .DS_Store
 Thumbs.db
+
+# uv 虛擬環境與鎖檔
+.venv/
+uv.lock
+
+# 開發與測試
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# 專案特定
+logs/
+data/
+config/
+*.db
+*.sqlite
+
+# 暫存檔案
+.summary.txt
+STATE/
