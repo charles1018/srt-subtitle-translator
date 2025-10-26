@@ -11,7 +11,7 @@ import hashlib
 from functools import lru_cache
 
 # 從配置管理器導入
-from config_manager import ConfigManager, get_config, set_config
+from srt_translator.core.config import ConfigManager, get_config, set_config
 
 # 設定日誌
 logger = logging.getLogger(__name__)

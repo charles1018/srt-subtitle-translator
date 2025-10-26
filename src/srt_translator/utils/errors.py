@@ -3,14 +3,8 @@
 定義專案中使用的自訂例外類別。
 """
 
-import os
-import re
-import json
-import logging
-import hashlib
-import traceback
 from datetime import datetime
-from typing import Dict, Any, Optional, List, Tuple, Union, Callable
+from typing import Dict, Any
 
 # ================ 錯誤處理類 ================
 
@@ -79,37 +73,3 @@ class NetworkError(AppError):
         super().__init__(message, 1500, details)
 
 
-# ================ 工具函數 ================
-
-def format_exception(e: Exception) -> str:
-    """格式化例外訊息為可讀的字串
-
-    參數:
-        e: 例外物件
-
-    回傳:
-        格式化後的例外訊息
-    """
-    if isinstance(e, AppError):
-        return f"{e.__class__.__name__}: {e.message}"
-    else:
-        return f"{e.__class__.__name__}: {str(e)}"
-
-
-def safe_execute(func: Callable, *args, default_return=None, **kwargs) -> Any:
-    """安全執行函數，捕捉例外並返回預設值
-
-    參數:
-        func: 要執行的函數
-        *args: 位置參數
-        default_return: 例外時的預設返回值
-        **kwargs: 關鍵字參數
-
-    回傳:
-        函數執行結果或預設值
-    """
-    try:
-        return func(*args, **kwargs)
-    except Exception as e:
-        logging.error(f"函數執行失敗 {func.__name__}: {format_exception(e)}")
-        return default_return

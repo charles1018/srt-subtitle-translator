@@ -34,8 +34,8 @@ except ImportError:
     WEBVTT_AVAILABLE = False
 
 # Import from configuration manager
-from config_manager import ConfigManager, get_config, set_config
-from utils import AppError, FileError, safe_execute, format_exception
+from srt_translator.core.config import ConfigManager, get_config, set_config
+from srt_translator.utils import AppError, FileError, safe_execute, format_exception
 
 # Setup logging
 logger = logging.getLogger(__name__)

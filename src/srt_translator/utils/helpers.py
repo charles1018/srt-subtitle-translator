@@ -1,10 +1,14 @@
+"""工具函數模組
+
+提供各種實用工具函數，包括文本處理、字幕處理、進度追踪等。
+"""
+
 import os
 import re
 import json
 import logging
 import hashlib
 import traceback
-from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple, Union, Callable
 from pathlib import Path
@@ -12,109 +16,16 @@ import threading
 from queue import Queue
 import time
 
-# 確保日誌目錄存在
-os.makedirs('logs', exist_ok=True)
+# 導入錯誤類別
+from srt_translator.utils.errors import (
+    AppError, ConfigError, ModelError, TranslationError, FileError, NetworkError
+)
 
-# 全局日誌格式設定
-LOG_FORMAT = "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s"
+# 導入日誌配置
+from srt_translator.utils.logging_config import setup_logger
 
-# 配置根日誌
-root_logger = logging.getLogger()
-if not root_logger.handlers:
-    root_handler = TimedRotatingFileHandler(
-        filename='logs/app.log',
-        when='midnight',
-        interval=1,
-        backupCount=7,
-        encoding='utf-8'
-    )
-    root_formatter = logging.Formatter(LOG_FORMAT)
-    root_handler.setFormatter(root_formatter)
-    root_logger.addHandler(root_handler)
-    root_logger.setLevel(logging.INFO)
-
-# 工具類專用日誌
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-# 避免重複添加處理程序
-if not logger.handlers:
-    handler = TimedRotatingFileHandler(
-        filename='logs/utils.log',
-        when='midnight',
-        interval=1,
-        backupCount=7,
-        encoding='utf-8'
-    )
-    formatter = logging.Formatter(LOG_FORMAT)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-# ================ 錯誤處理類 ================
-
-class AppError(Exception):
-    """應用程式自定義基礎異常類"""
-    
-    def __init__(self, message: str, error_code: int = 1000, details: Dict[str, Any] = None):
-        """初始化應用程式異常
-        
-        參數:
-            message: 錯誤訊息
-            error_code: 錯誤代碼
-            details: 詳細信息字典
-        """
-        self.message = message
-        self.error_code = error_code
-        self.details = details or {}
-        super().__init__(message)
-    
-    def __str__(self) -> str:
-        """格式化錯誤訊息"""
-        return f"[{self.error_code}] {self.message}"
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """轉換為字典格式"""
-        return {
-            "error_code": self.error_code,
-            "message": self.message,
-            "details": self.details,
-            "timestamp": datetime.now().isoformat()
-        }
-
-
-class ConfigError(AppError):
-    """配置相關錯誤"""
-    
-    def __init__(self, message: str, details: Dict[str, Any] = None):
-        super().__init__(message, 1100, details)
-
-
-class ModelError(AppError):
-    """模型相關錯誤"""
-    
-    def __init__(self, message: str, details: Dict[str, Any] = None):
-        super().__init__(message, 1200, details)
-
-
-class TranslationError(AppError):
-    """翻譯相關錯誤"""
-    
-    def __init__(self, message: str, details: Dict[str, Any] = None):
-        super().__init__(message, 1300, details)
-
-
-class FileError(AppError):
-    """檔案處理相關錯誤"""
-    
-    def __init__(self, message: str, details: Dict[str, Any] = None):
-        super().__init__(message, 1400, details)
-
-
-class NetworkError(AppError):
-    """網路相關錯誤"""
-    
-    def __init__(self, message: str, details: Dict[str, Any] = None):
-        super().__init__(message, 1500, details)
+# 設置本模組的日誌記錄器
+logger = setup_logger(__name__, log_file='utils.log')
 
 
 def format_exception(e: Exception) -> str:

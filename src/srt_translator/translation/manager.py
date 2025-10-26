@@ -15,11 +15,11 @@ from queue import Queue
 from logging.handlers import TimedRotatingFileHandler
 
 # 從新模組導入
-from config_manager import ConfigManager, get_config, set_config
-from services import ServiceFactory
-from utils import (
-    AppError, TranslationError, FileError, 
-    format_elapsed_time, format_exception, 
+from srt_translator.core.config import ConfigManager, get_config, set_config
+from srt_translator.services.factory import ServiceFactory
+from srt_translator.utils import (
+    AppError, TranslationError, FileError,
+    format_elapsed_time, format_exception,
     safe_execute, clean_text
 )
 

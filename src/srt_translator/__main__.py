@@ -15,9 +15,9 @@ except ImportError:
     TkinterDnD = type('TkinterDnD', (object,), {'Tk': TkBase})
 
 # 從新創建的模組導入
-from config_manager import ConfigManager, get_config, set_config
-from services import ServiceFactory, TranslationTaskManager
-from utils import safe_execute, format_exception, AppError, check_internet_connection
+from srt_translator.core.config import ConfigManager, get_config, set_config
+from srt_translator.services.factory import ServiceFactory, TranslationTaskManager
+from srt_translator.utils import safe_execute, format_exception, AppError, check_internet_connection
 
 # 設定日誌
 logging.basicConfig(
@@ -392,8 +392,8 @@ class App:
         """運行應用程式"""
         self.root.mainloop()
 
-# 主程式進入點
-if __name__ == "__main__":
+def main() -> None:
+    """主程式入口點"""
     try:
         app = App()
         app.run()
@@ -407,3 +407,7 @@ if __name__ == "__main__":
         logger.error(f"未預期的錯誤: {format_exception(e)}")
         from tkinter import messagebox
         messagebox.showerror("未預期的錯誤", f"發生未預期的錯誤:\n{str(e)}")
+
+# 主程式進入點
+if __name__ == "__main__":
+    main()

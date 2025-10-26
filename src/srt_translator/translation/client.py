@@ -19,8 +19,8 @@ except ImportError:
     OPENAI_AVAILABLE = False
 
 # 從本地模組導入
-from cache import CacheManager
-from prompt import PromptManager
+from srt_translator.core.cache import CacheManager
+from srt_translator.core.prompt import PromptManager
 
 # 設定日誌輪替
 logger = logging.getLogger(__name__)

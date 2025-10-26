@@ -11,9 +11,10 @@ from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime
 
 # 從新模組導入
-from config_manager import ConfigManager, get_config, set_config
-from services import ServiceFactory
-from utils import safe_execute, format_exception, AppError, locale_manager
+from srt_translator.core.config import ConfigManager, get_config, set_config
+from srt_translator.services.factory import ServiceFactory
+from srt_translator.utils import safe_execute, format_exception, AppError
+from srt_translator.utils.helpers import locale_manager
 
 # 嘗試匯入拖放功能模組
 try:

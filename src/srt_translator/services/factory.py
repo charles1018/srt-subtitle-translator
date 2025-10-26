@@ -15,16 +15,16 @@ from queue import Queue
 
 # 嘗試匯入相依模組
 try:
-    from config_manager import ConfigManager, get_config, set_config
+    from srt_translator.core.config import ConfigManager, get_config, set_config
 except ImportError:
     raise ImportError("請先實現 config_manager.py")
 
 # 從現有模組匯入必要的類和函數
-from translation_client import TranslationClient
-from cache import CacheManager
-from model_manager import ModelManager
-from prompt import PromptManager
-from file_handler import FileHandler, SubtitleInfo
+from srt_translator.translation.client import TranslationClient
+from srt_translator.core.cache import CacheManager
+from srt_translator.core.models import ModelManager
+from srt_translator.core.prompt import PromptManager
+from srt_translator.file_handling.handler import FileHandler, SubtitleInfo
 
 # 設定日誌
 logger = logging.getLogger(__name__)

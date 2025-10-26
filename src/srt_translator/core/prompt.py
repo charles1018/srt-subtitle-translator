@@ -10,8 +10,8 @@ import logging.handlers
 import threading
 
 # 從配置管理器導入
-from config_manager import ConfigManager, get_config, set_config
-from utils import safe_execute, format_exception, AppError
+from srt_translator.core.config import ConfigManager, get_config, set_config
+from srt_translator.utils import safe_execute, format_exception, AppError
 
 # 設定日誌記錄
 logger = logging.getLogger(__name__)
