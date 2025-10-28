@@ -39,11 +39,11 @@ def test_load_default_config(e2e_temp_dir: Path):
         config = ConfigManager.get_instance("user")
 
         # 驗證預設值
-        assert config.get_value("source_lang") == "日文", "預設來源語言應該是日文"
+        assert config.get_value("source_lang") == "英文", "預設來源語言應該是英文"
         assert config.get_value("target_lang") == "繁體中文", "預設目標語言應該是繁體中文"
-        assert config.get_value("llm_type") == "ollama", "預設 LLM 類型應該是 ollama"
+        assert config.get_value("llm_type") == "openai", "預設 LLM 類型應該是 openai"
         assert config.get_value("parallel_requests") == 3, "預設並發數應該是 3"
-        assert config.get_value("display_mode") == "雙語對照", "預設顯示模式應該是雙語對照"
+        assert config.get_value("display_mode") == "僅顯示翻譯", "預設顯示模式應該是僅顯示翻譯"
 
         # 驗證配置有效
         assert config.is_config_valid(), "預設配置應該是有效的"
