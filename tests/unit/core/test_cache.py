@@ -17,37 +17,49 @@ class TestCacheManager:
         return temp_dir / "test_cache.db"
 
     @pytest.fixture
-    def cache_manager(self, cache_db_path):
+    def cache_manager(self, cache_db_path, ensure_cache_cleanup):
         """提供測試用的快取管理器"""
-        # 重置單例
-        CacheManager._instance = None
-        return CacheManager(str(cache_db_path))
+        manager = CacheManager(str(cache_db_path))
+        yield manager
+        # 確保連線關閉
+        if hasattr(manager, 'conn') and manager.conn:
+            manager.conn.close()
 
     def test_cache_manager_initialization(self, cache_manager, cache_db_path):
         """測試快取管理器初始化"""
         assert cache_manager is not None
         assert Path(cache_db_path).exists()
 
-    def test_singleton_pattern(self, cache_db_path):
+    def test_singleton_pattern(self, cache_db_path, ensure_cache_cleanup):
         """測試單例模式"""
-        CacheManager._instance = None
         manager1 = CacheManager.get_instance(str(cache_db_path))
         manager2 = CacheManager.get_instance()
-        assert manager1 is manager2
 
-    def test_database_initialization(self, cache_db_path):
+        try:
+            assert manager1 is manager2
+        finally:
+            # 確保關閉連線
+            if hasattr(manager1, 'conn') and manager1.conn:
+                manager1.conn.close()
+
+    def test_database_initialization(self, cache_db_path, ensure_cache_cleanup):
         """測試資料庫初始化"""
         manager = CacheManager(str(cache_db_path))
 
-        # 檢查資料庫文件存在
-        assert Path(cache_db_path).exists()
+        try:
+            # 檢查資料庫文件存在
+            assert Path(cache_db_path).exists()
 
-        # 檢查表格存在
-        with sqlite3.connect(str(cache_db_path)) as conn:
-            cursor = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='translations'"
-            )
-            assert cursor.fetchone() is not None
+            # 檢查表格存在
+            with sqlite3.connect(str(cache_db_path)) as conn:
+                cursor = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='translations'"
+                )
+                assert cursor.fetchone() is not None
+        finally:
+            # 確保關閉連線
+            if hasattr(manager, 'conn') and manager.conn:
+                manager.conn.close()
 
     def test_cache_stats_initialization(self, cache_manager):
         """測試快取統計初始化"""
@@ -65,39 +77,54 @@ class TestCacheManagerOperations:
     """測試快取管理器操作（簡化版）"""
 
     @pytest.fixture
-    def cache_manager(self, temp_dir):
+    def cache_manager(self, temp_dir, ensure_cache_cleanup):
         """提供測試用的快取管理器"""
-        CacheManager._instance = None
         cache_path = temp_dir / "test_cache.db"
-        return CacheManager(str(cache_path))
+        manager = CacheManager(str(cache_path))
+        yield manager
+        # 確保連線關閉
+        if hasattr(manager, 'conn') and manager.conn:
+            manager.conn.close()
 
-    def test_cache_initialization_creates_data_dir(self, temp_dir):
+    def test_cache_initialization_creates_data_dir(self, temp_dir, ensure_cache_cleanup):
         """測試初始化時自動創建資料目錄"""
         cache_path = temp_dir / "new_data" / "cache.db"
         manager = CacheManager(str(cache_path))
 
-        assert cache_path.parent.exists()
-        assert cache_path.exists()
+        try:
+            assert cache_path.parent.exists()
+            assert cache_path.exists()
+        finally:
+            # 確保關閉連線
+            if hasattr(manager, 'conn') and manager.conn:
+                manager.conn.close()
 
-    def test_default_db_path_handling(self):
+    def test_default_db_path_handling(self, ensure_cache_cleanup):
         """測試預設資料庫路徑處理"""
-        CacheManager._instance = None
         manager = CacheManager(db_path=None)
 
-        # 應該使用預設路徑
-        assert manager.db_path is not None
-        assert manager.db_path != ""
+        try:
+            # 應該使用預設路徑
+            assert manager.db_path is not None
+            assert manager.db_path != ""
+        finally:
+            # 確保關閉連線
+            if hasattr(manager, 'conn') and manager.conn:
+                manager.conn.close()
 
 
 class TestCacheGetSet:
     """測試快取的 get/set 核心操作"""
 
     @pytest.fixture
-    def cache_manager(self, temp_dir):
+    def cache_manager(self, temp_dir, ensure_cache_cleanup):
         """提供測試用的快取管理器"""
-        CacheManager._instance = None
         cache_path = temp_dir / "test_cache.db"
-        return CacheManager(str(cache_path))
+        manager = CacheManager(str(cache_path))
+        yield manager
+        # 確保連線關閉
+        if hasattr(manager, 'conn') and manager.conn:
+            manager.conn.close()
 
     def test_store_and_get_translation_basic(self, cache_manager):
         """測試基本的儲存與獲取翻譯"""
@@ -193,13 +220,15 @@ class TestCacheMemoryManagement:
     """測試記憶體快取管理"""
 
     @pytest.fixture
-    def cache_manager(self, temp_dir):
+    def cache_manager(self, temp_dir, ensure_cache_cleanup):
         """提供測試用的快取管理器，設定小的記憶體快取限制"""
-        CacheManager._instance = None
         cache_path = temp_dir / "test_cache.db"
         manager = CacheManager(str(cache_path))
         manager.max_memory_cache = 10  # 設定小的限制以便測試
-        return manager
+        yield manager
+        # 確保連線關閉
+        if hasattr(manager, 'conn') and manager.conn:
+            manager.conn.close()
 
     def test_memory_cache_auto_cleanup(self, cache_manager):
         """測試記憶體快取自動清理"""
@@ -234,11 +263,14 @@ class TestCacheDatabaseMaintenance:
     """測試資料庫維護功能"""
 
     @pytest.fixture
-    def cache_manager(self, temp_dir):
+    def cache_manager(self, temp_dir, ensure_cache_cleanup):
         """提供測試用的快取管理器"""
-        CacheManager._instance = None
         cache_path = temp_dir / "test_cache.db"
-        return CacheManager(str(cache_path))
+        manager = CacheManager(str(cache_path))
+        yield manager
+        # 確保連線關閉
+        if hasattr(manager, 'conn') and manager.conn:
+            manager.conn.close()
 
     def test_create_backup(self, cache_manager, temp_dir):
         """測試建立資料庫備份"""
@@ -311,11 +343,14 @@ class TestCacheStatistics:
     """測試快取統計與查詢功能"""
 
     @pytest.fixture
-    def cache_manager(self, temp_dir):
+    def cache_manager(self, temp_dir, ensure_cache_cleanup):
         """提供測試用的快取管理器"""
-        CacheManager._instance = None
         cache_path = temp_dir / "test_cache.db"
-        return CacheManager(str(cache_path))
+        manager = CacheManager(str(cache_path))
+        yield manager
+        # 確保連線關閉
+        if hasattr(manager, 'conn') and manager.conn:
+            manager.conn.close()
 
     def test_get_cache_stats_basic(self, cache_manager):
         """測試獲取基本統計資訊"""
@@ -377,11 +412,14 @@ class TestCacheImportExport:
     """測試快取匯入匯出功能"""
 
     @pytest.fixture
-    def cache_manager(self, temp_dir):
+    def cache_manager(self, temp_dir, ensure_cache_cleanup):
         """提供測試用的快取管理器"""
-        CacheManager._instance = None
         cache_path = temp_dir / "test_cache.db"
-        return CacheManager(str(cache_path))
+        manager = CacheManager(str(cache_path))
+        yield manager
+        # 確保連線關閉
+        if hasattr(manager, 'conn') and manager.conn:
+            manager.conn.close()
 
     def test_export_cache(self, cache_manager, temp_dir):
         """測試匯出快取"""
@@ -435,11 +473,14 @@ class TestCacheConfigAndMaintenance:
     """測試快取配置與維護功能"""
 
     @pytest.fixture
-    def cache_manager(self, temp_dir):
+    def cache_manager(self, temp_dir, ensure_cache_cleanup):
         """提供測試用的快取管理器"""
-        CacheManager._instance = None
         cache_path = temp_dir / "test_cache.db"
-        return CacheManager(str(cache_path))
+        manager = CacheManager(str(cache_path))
+        yield manager
+        # 確保連線關閉
+        if hasattr(manager, 'conn') and manager.conn:
+            manager.conn.close()
 
     def test_update_config(self, cache_manager):
         """測試更新配置"""

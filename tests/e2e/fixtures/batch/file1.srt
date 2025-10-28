@@ -1,0 +1,11 @@
+1
+00:00:00,000 --> 00:00:02,000
+Welcome to batch translation test.
+
+2
+00:00:02,000 --> 00:00:04,000
+This is the first file.
+
+3
+00:00:04,000 --> 00:00:06,000
+It contains three subtitles.

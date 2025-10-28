@@ -3,8 +3,39 @@
 import pytest
 import json
 from pathlib import Path
+import shutil
 
 from srt_translator.core.config import ConfigManager
+
+
+@pytest.fixture(autouse=True)
+def reset_config_manager():
+    """在每個測試後重置 ConfigManager 單例
+
+    這確保測試間不會有狀態污染。
+    """
+    # 備份原始配置（如果存在）
+    config_backup = {}
+    config_dir = Path("config")
+    if config_dir.exists():
+        for config_file in config_dir.glob("*.json"):
+            try:
+                config_backup[config_file.name] = config_file.read_text(encoding='utf-8')
+            except Exception:
+                pass
+
+    yield
+
+    # 測試後：重置單例
+    ConfigManager._instances = {}
+
+    # 恢復配置檔案
+    if config_dir.exists():
+        for filename, content in config_backup.items():
+            try:
+                (config_dir / filename).write_text(content, encoding='utf-8')
+            except Exception:
+                pass
 
 
 class TestConfigManager:

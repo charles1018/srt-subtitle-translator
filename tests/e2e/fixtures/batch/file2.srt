@@ -1,0 +1,11 @@
+1
+00:00:00,000 --> 00:00:02,000
+Batch processing is efficient.
+
+2
+00:00:02,000 --> 00:00:04,000
+Multiple files can be translated simultaneously.
+
+3
+00:00:04,000 --> 00:00:06,000
+This improves productivity.

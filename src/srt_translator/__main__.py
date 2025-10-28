@@ -100,8 +100,8 @@ class App:
     
     def _init_gui(self) -> None:
         """初始化圖形介面"""
-        # 從gui_components.py 導入 GUI 相關類
-        from gui_components import GUIComponents
+        # 從 GUI 模組導入 GUI 相關類
+        from srt_translator.gui.components import GUIComponents
         
         # 獲取提示詞服務
         prompt_manager = ServiceFactory.get_translation_service().prompt_manager

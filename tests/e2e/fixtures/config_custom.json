@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "exported_at": "2025-10-27T00:00:00",
+    "config_type": "user",
+    "version": "1.0.0"
+  },
+  "config": {
+    "source_lang": "英文",
+    "target_lang": "繁體中文",
+    "llm_type": "openai",
+    "model_name": "gpt-4",
+    "parallel_requests": 5,
+    "display_mode": "僅顯示翻譯",
+    "theme": "dark",
+    "play_sound": false,
+    "auto_save": true,
+    "last_directory": "/custom/path"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "exported_at": "2025-10-27T00:00:00",
+    "config_type": "user",
+    "version": "1.0.0"
+  },
+  "config": {
+    "source_lang": "InvalidLanguage",
+    "target_lang": "AnotherInvalidLanguage",
+    "llm_type": "invalid_llm",
+    "model_name": "test-model",
+    "parallel_requests": -5,
+    "display_mode": "InvalidMode",
+    "theme": "default",
+    "play_sound": true,
+    "auto_save": true,
+    "last_directory": ""
+  }
+}

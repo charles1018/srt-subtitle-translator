@@ -28,8 +28,13 @@ sys.path.insert(0, str(SRC_DIR))
 
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
-    """提供臨時目錄，測試結束後自動清理"""
-    with tempfile.TemporaryDirectory() as tmpdir:
+    """提供臨時目錄，測試結束後自動清理
+
+    注意：在 Windows 上，若資料庫檔案仍被鎖定，清理可能失敗。
+    使用 ignore_cleanup_errors=True 避免測試失敗。
+    """
+    # Python 3.10+ 支援 ignore_cleanup_errors 參數
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         yield Path(tmpdir)
 
 
