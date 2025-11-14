@@ -1316,6 +1316,7 @@ class TranslationTaskManager:
     def _complete_wrapper(self, file_path: str, original_callback):
         """包裝完成回調函數，以便追蹤已完成的檔案數"""
         def wrapper(message, elapsed_time):
+            """內部包裝函數，在執行原始回調前更新完成計數"""
             self.completed_files += 1
             
             # 修改消息以包含總進度

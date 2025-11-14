@@ -912,6 +912,7 @@ class TranslationTaskManager:
     def _complete_wrapper(self, file_path: str, original_callback):
         """包裝完成回調函數，以便追蹤已完成的檔案數"""
         def wrapper(message, elapsed_time):
+            """內部包裝函數，在執行原始回調前更新完成計數"""
             self.completed_files += 1
             
             # 修改消息以包含總進度
@@ -984,9 +985,22 @@ if __name__ == "__main__":
     logger.addHandler(console_handler)
     
     def progress(current, total, extra_data=None):
+        """回調函數，打印翻譯進度
+
+        參數:
+            current: 當前完成的字幕數
+            total: 總字幕數
+            extra_data: 額外的進度信息
+        """
         print(f"進度: {current}/{total}")
 
     def complete(message, elapsed_time):
+        """回調函數，打印翻譯完成信息和耗時
+
+        參數:
+            message: 完成消息
+            elapsed_time: 耗時（秒）
+        """
         print(f"{message} | 耗時: {elapsed_time}")
 
     import sys

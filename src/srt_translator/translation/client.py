@@ -47,6 +47,19 @@ if len(logger.handlers) > 1:
 
 # 定義 API 錯誤類型
 class ApiErrorType(Enum):
+    """LLM API 呼叫的錯誤分類
+
+    用於分類 API 失敗的原因，便於區分不同的失敗場景並實施相應的重試策略。
+
+    屬性:
+        RATE_LIMIT: API 請求頻率限制
+        TIMEOUT: API 回應超時
+        CONNECTION: 網路連線失敗
+        SERVER: API 伺服器錯誤
+        AUTHENTICATION: API 金鑰或認證失敗
+        CONTENT_FILTER: 內容被 API 安全過濾器攔截
+        UNKNOWN: 未知錯誤類型
+    """
     RATE_LIMIT = "rate_limit"
     TIMEOUT = "timeout"
     CONNECTION = "connection"
@@ -67,21 +80,41 @@ class ApiMetrics:
     total_response_time: float = 0
     
     def get_average_response_time(self) -> float:
+        """計算平均回應時間
+
+        回傳:
+            float: 平均回應時間（秒），無成功請求時回傳 0
+        """
         if self.successful_requests == 0:
             return 0
         return self.total_response_time / self.successful_requests
     
     def get_success_rate(self) -> float:
+        """計算請求成功率
+
+        回傳:
+            float: 成功率百分比（0-100），無請求時回傳 0
+        """
         if self.total_requests == 0:
             return 0
         return (self.successful_requests / self.total_requests) * 100
     
     def get_cache_hit_rate(self) -> float:
+        """計算快取命中率
+
+        回傳:
+            float: 快取命中率百分比（0-100），無請求時回傳 0
+        """
         if self.total_requests == 0:
             return 0
         return (self.cache_hits / self.total_requests) * 100
     
     def get_summary(self) -> Dict[str, Any]:
+        """生成效能指標摘要
+
+        回傳:
+            dict: 包含所有主要指標的字典，格式化為易讀的字符串
+        """
         return {
             "total_requests": self.total_requests,
             "successful_requests": self.successful_requests,
