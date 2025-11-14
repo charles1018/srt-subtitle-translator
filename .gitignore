@@ -24,7 +24,13 @@ wheels/
 venv/
 ENV/
 env/
-.env/
+
+# 環境變數與敏感資訊
+.env
+*.env
+*api_key*.txt
+*.key
+*.secret
 
 # IDE
 .idea/
@@ -57,3 +63,13 @@ config/
 # 暫存檔案
 .summary.txt
 STATE/
+
+# 開發筆記與對話銜接
+NEXT_*.md
+SESSION_*.md
+PROJECT_CLEANUP_PLAN.md
+GUI_Specifications_Overview.txt
+
+# Claude Code 本地配置
+.claude/
+CLAUDE.md
