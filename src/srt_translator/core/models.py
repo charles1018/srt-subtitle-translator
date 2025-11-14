@@ -27,7 +27,7 @@ except ImportError:
 
 # 從配置管理器導入
 from srt_translator.core.config import ConfigManager, get_config, set_config
-from srt_translator.utils import AppError, ModelError, format_exception, safe_execute
+from srt_translator.utils import AppError, ModelError, APIKeyError, ModelNotFoundError, format_exception, safe_execute
 
 # 設定日誌
 logger = logging.getLogger(__name__)

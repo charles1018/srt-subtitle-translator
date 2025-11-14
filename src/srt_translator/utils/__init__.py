@@ -10,7 +10,12 @@ from srt_translator.utils.errors import (
     ModelError,
     TranslationError,
     FileError,
-    NetworkError
+    NetworkError,
+    APIKeyError,
+    ModelNotFoundError,
+    CacheError,
+    ValidationError,
+    TimeoutError
 )
 
 # 導出日誌配置
@@ -66,6 +71,11 @@ __all__ = [
     'TranslationError',
     'FileError',
     'NetworkError',
+    'APIKeyError',
+    'ModelNotFoundError',
+    'CacheError',
+    'ValidationError',
+    'TimeoutError',
     # 日誌配置
     'setup_logger',
     'setup_root_logger',

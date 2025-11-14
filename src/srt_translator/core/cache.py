@@ -13,6 +13,7 @@ from functools import lru_cache
 # 從配置管理器導入
 from srt_translator.core.config import ConfigManager, get_config, set_config
 
+from srt_translator.utils import CacheError
 # 設定日誌
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
