@@ -8,14 +8,12 @@
 注意：此測試使用 ServiceFactory 和 Mock API，不會進行實際的翻譯 API 呼叫。
 """
 
-import os
-import pytest
-import pysrt
 from pathlib import Path
-from unittest.mock import patch, AsyncMock, Mock, MagicMock
+from unittest.mock import AsyncMock, Mock
+
+import pytest
 
 from srt_translator.services.factory import ServiceFactory
-
 
 # ============================================================
 # 測試前準備：Mock 所有服務

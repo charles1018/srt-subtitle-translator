@@ -1,32 +1,29 @@
 """測試 helpers 模組"""
 
-import pytest
 import time
-from pathlib import Path
 
 from srt_translator.utils.helpers import (
-    # 文本處理工具
-    clean_text,
-    detect_language,
-    standardize_language_code,
-    get_language_name,
-    compute_text_hash,
-    truncate_text,
-    split_sentences,
-    # 字幕處理工具
-    format_srt_time,
-    parse_srt_time,
-    generate_unique_filename,
-    is_valid_subtitle_file,
-    # 時間和格式工具
-    format_elapsed_time,
-    format_file_size,
     # 快取工具
     MemoryCache,
     # 進度追踪工具
     ProgressTracker,
+    # 文本處理工具
+    clean_text,
+    compute_text_hash,
+    detect_language,
+    # 時間和格式工具
+    format_elapsed_time,
+    format_file_size,
+    # 字幕處理工具
+    format_srt_time,
+    generate_unique_filename,
+    get_language_name,
+    is_valid_subtitle_file,
+    parse_srt_time,
+    split_sentences,
+    standardize_language_code,
+    truncate_text,
 )
-
 
 # ============================================================
 # 文本處理工具測試

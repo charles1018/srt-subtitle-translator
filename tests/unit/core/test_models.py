@@ -1,12 +1,11 @@
 """測試 models 模組"""
 
-import pytest
-import json
-from pathlib import Path
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, patch
 
-from srt_translator.core.models import ModelInfo, ModelManager
+import pytest
+
 from srt_translator.core.config import ConfigManager
+from srt_translator.core.models import ModelInfo, ModelManager
 
 
 class TestModelInfo:

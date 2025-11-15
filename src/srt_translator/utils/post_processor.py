@@ -1,15 +1,14 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Netflix 字幕風格後處理器
 
 此模組提供字幕文本的後處理功能，確保翻譯結果符合 Netflix 繁體中文字幕規範。
 """
 
-import re
 import logging
-from typing import Tuple, List, Optional
+import re
 from dataclasses import dataclass, field
+from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -126,8 +125,8 @@ class NetflixStylePostProcessor:
         # 5. 移除行尾標點
         result.text = self._remove_line_end_punctuation(result.text, result)
 
-        # 6. 檢查字符限制
-        self._check_character_limit(result.text, result)
+        # 6. 檢查並修正字符限制
+        result.text = self._check_and_fix_character_limit(result.text, result)
 
         # 7. 檢查問號
         self._check_question_marks(result.text, result)
@@ -332,35 +331,130 @@ class NetflixStylePostProcessor:
 
         return text
 
-    def _check_character_limit(self, text: str, result: ProcessingResult) -> None:
-        """檢查字符限制
+    def _smart_split_line(self, line: str, max_chars: int) -> List[str]:
+        """智慧分割長行
+
+        優先在以下位置斷行:
+        1. 逗號、頓號後
+        2. 連接詞(和、與、或、但)前後
+        3. 空格處
+        4. 最後才考慮強制斷行
+
+        參數:
+            line: 要分割的行
+            max_chars: 每行最大字符數
+
+        回傳:
+            分割後的行列表
+        """
+        if len(line) <= max_chars:
+            return [line]
+
+        # 定義斷行優先級 (pattern, offset)
+        # offset: 0=在匹配字符前斷行, 1=在匹配字符後斷行
+        split_points = [
+            (r'[，、]', 1),      # 逗號、頓號後
+            (r'[和與或但]', 0),  # 連接詞前
+            (r'\s', 1),          # 空格後
+        ]
+
+        result = []
+        remaining = line
+
+        while len(remaining) > max_chars:
+            best_pos = -1
+            best_priority = float('inf')
+
+            # 尋找最佳斷點(接近中間位置的優先)
+            for pattern, offset in split_points:
+                matches = list(re.finditer(pattern, remaining[:max_chars]))
+                if matches:
+                    # 選擇最後一個匹配(最接近行尾)
+                    match = matches[-1]
+                    pos = match.end() if offset else match.start()
+                    # 計算與理想斷點(行的一半)的距離
+                    distance = abs(pos - max_chars // 2)
+                    if distance < best_priority:
+                        best_pos = pos
+                        best_priority = distance
+
+            if best_pos > 0:
+                # 在最佳位置斷行
+                result.append(remaining[:best_pos].strip())
+                remaining = remaining[best_pos:].lstrip()
+            else:
+                # 沒有找到好的斷點,強制斷行
+                result.append(remaining[:max_chars].strip())
+                remaining = remaining[max_chars:].lstrip()
+
+        # 加入剩餘部分
+        if remaining:
+            result.append(remaining.strip())
+
+        return result
+
+    def _check_and_fix_character_limit(self, text: str, result: ProcessingResult) -> str:
+        """檢查並修正字符限制
 
         Netflix 規範: 每行最多 16 個字符，最多 2 行
 
         參數:
             text: 輸入文本
             result: 處理結果對象
+
+        回傳:
+            修正後的文本(如果 auto_fix=True)
         """
         lines = text.split('\n')
+        fixed_lines = []
+        needs_fix = False
 
-        # 檢查行數
-        if len(lines) > self.max_lines:
+        # 處理每一行
+        for i, line in enumerate(lines, start=1):
+            line_stripped = line.strip()
+            char_count = len(line_stripped)
+
+            if char_count > self.max_chars_per_line:
+                if self.auto_fix:
+                    # 自動分割
+                    split_lines = self._smart_split_line(line_stripped, self.max_chars_per_line)
+                    fixed_lines.extend(split_lines)
+                    needs_fix = True
+                    result.auto_fixed += 1
+
+                    result.add_warning(
+                        'LINE_TOO_LONG_AUTO_FIXED',
+                        f'第 {i} 行超過限制 ({char_count} 字符)，已自動分割為 {len(split_lines)} 行',
+                        line_number=i,
+                        original_text=line_stripped,
+                        fixed_text='\n'.join(split_lines)
+                    )
+
+                    logger.debug(
+                        f"自動分割第 {i} 行: {char_count} 字符 -> {len(split_lines)} 行 "
+                        f"({', '.join(str(len(l)) for l in split_lines)} 字符)"
+                    )
+                else:
+                    # 不自動修正，只發出警告
+                    fixed_lines.append(line_stripped)
+                    result.add_warning(
+                        'LINE_TOO_LONG',
+                        f'第 {i} 行超過字符限制: {char_count} 字符 (最多 {self.max_chars_per_line} 字符)',
+                        line_number=i,
+                        original_text=line_stripped
+                    )
+            else:
+                fixed_lines.append(line_stripped)
+
+        # 檢查行數(在分割後)
+        if len(fixed_lines) > self.max_lines:
             result.add_warning(
                 'TOO_MANY_LINES',
-                f'超過最大行數限制: {len(lines)} 行 (最多 {self.max_lines} 行)',
-                line_number=len(lines)
+                f'超過最大行數限制: {len(fixed_lines)} 行 (最多 {self.max_lines} 行)',
+                line_number=len(fixed_lines)
             )
 
-        # 檢查每行字符數
-        for i, line in enumerate(lines, start=1):
-            char_count = len(line.strip())
-            if char_count > self.max_chars_per_line:
-                result.add_warning(
-                    'LINE_TOO_LONG',
-                    f'第 {i} 行超過字符限制: {char_count} 字符 (最多 {self.max_chars_per_line} 字符)',
-                    line_number=i,
-                    original_text=line.strip()
-                )
+        return '\n'.join(fixed_lines) if needs_fix else text
 
     def _check_question_marks(self, text: str, result: ProcessingResult) -> None:
         """檢查問號使用

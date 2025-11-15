@@ -8,48 +8,43 @@
 5. 網路和命令執行工具測試（使用 mock）
 """
 
-import pytest
-import time
 import json
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+import time
 from datetime import datetime
+from unittest.mock import MagicMock, Mock, patch
 
+import pytest
+
+from srt_translator.utils.errors import TranslationError
 from srt_translator.utils.helpers import (
-    # 錯誤處理工具
-    format_exception,
-    safe_execute,
-    # 文本處理工具
-    clean_text,
-    detect_language,
-    standardize_language_code,
-    # 字幕處理工具
-    format_srt_time,
-    parse_srt_time,
-    generate_unique_filename,
-    is_valid_subtitle_file,
-    # 時間和格式工具
-    format_datetime,
-    format_elapsed_time,
     # 本地化工具
     LocaleManager,
     # 快取工具
     MemoryCache,
     # 進度追踪工具
     ProgressTracker,
+    check_api_connection,
     # 網路檢查工具
     check_internet_connection,
-    check_api_connection,
-    # 系統信息工具
-    get_system_info,
     check_python_packages,
+    # 文本處理工具
+    detect_language,
     # 命令執行工具
     execute_command,
+    # 時間和格式工具
+    format_datetime,
+    format_exception,
+    # 字幕處理工具
+    format_srt_time,
+    generate_unique_filename,
+    # 系統信息工具
+    get_system_info,
     is_command_available,
+    is_valid_subtitle_file,
+    parse_srt_time,
+    safe_execute,
+    standardize_language_code,
 )
-
-from srt_translator.utils.errors import AppError, TranslationError
-
 
 # ============================================================
 # 錯誤處理工具測試

@@ -3,15 +3,15 @@
 此檔案定義了整合測試專用的 fixtures，提供完整的測試環境設定。
 """
 
-import pytest
 import json
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from srt_translator.core.cache import CacheManager
 from srt_translator.core.config import ConfigManager
-from srt_translator.core.prompt import PromptManager
 from srt_translator.core.models import ModelManager
+from srt_translator.core.prompt import PromptManager
 
 
 @pytest.fixture(scope="function")

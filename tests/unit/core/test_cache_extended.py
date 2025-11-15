@@ -8,17 +8,16 @@
 5. 批量操作與優化
 """
 
-import pytest
-import sqlite3
 import json
-import os
 import shutil
-from pathlib import Path
+import sqlite3
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, MagicMock
+from pathlib import Path
+from unittest.mock import patch
 
-from srt_translator.core.cache import CacheManager, CACHE_VERSION
+import pytest
 
+from srt_translator.core.cache import CACHE_VERSION, CacheManager
 
 # ============================================================
 # 資料庫初始化與復原測試
@@ -367,7 +366,7 @@ class TestCacheImportExport:
         assert export_path.exists()
 
         # 驗證內容
-        with open(export_path, 'r', encoding='utf-8') as f:
+        with open(export_path, encoding='utf-8') as f:
             data = json.load(f)
         assert "version" in data
         assert "entries" in data

@@ -8,16 +8,13 @@
 """
 
 import os
-import pytest
-import tempfile
-import shutil
 from pathlib import Path
-from unittest.mock import patch, Mock, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from srt_translator.core.config import ConfigManager
 from srt_translator.services.factory import ServiceFactory
-from srt_translator.utils.errors import ConfigError
-
 
 # ============================================================
 # 配置載入測試（3 個測試）

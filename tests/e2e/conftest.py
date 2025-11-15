@@ -3,17 +3,15 @@
 此檔案定義了 E2E 測試所需的 fixtures 和輔助工具。
 """
 
-import os
+import shutil
 import sys
 import tempfile
-import shutil
-import asyncio
 from pathlib import Path
-from typing import Generator, Dict, Any, List, Callable
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
+from typing import Dict, Generator, List
+from unittest.mock import AsyncMock, Mock, patch
 
-import pytest
 import pysrt
+import pytest
 
 # 將 src 目錄加入 Python 路徑
 ROOT_DIR = Path(__file__).parent.parent.parent

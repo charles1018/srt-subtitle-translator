@@ -1,14 +1,11 @@
 """測試 models 模組的擴展功能"""
 
-import pytest
-import json
-import time
-import os
-from pathlib import Path
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from srt_translator.core.models import ModelInfo, ModelManager, get_model_info, get_recommended_model
+import pytest
+
 from srt_translator.core.config import ConfigManager
+from srt_translator.core.models import ModelInfo, ModelManager, get_model_info, get_recommended_model
 
 
 class TestModelManagerAPIKeyOperations:

@@ -127,6 +127,90 @@ class ApiMetrics:
             "estimated_cost": f"${self.total_cost:.4f}"
         }
 
+
+class AdaptiveConcurrencyController:
+    """自適應並發控制器
+
+    根據 API 回應時間動態調整並發請求數量，以優化翻譯效率。
+
+    策略:
+        - API 回應快時（< 0.5秒），增加並發數
+        - API 回應慢時（> 1.5秒），降低並發數
+        - 使用指數移動平均(EMA)平滑回應時間波動
+    """
+
+    def __init__(self, initial: int = 3, min_concurrent: int = 2, max_concurrent: int = 10):
+        """初始化並發控制器
+
+        參數:
+            initial: 初始並發數
+            min_concurrent: 最小並發數
+            max_concurrent: 最大並發數
+        """
+        self.current = initial
+        self.min = min_concurrent
+        self.max = max_concurrent
+        self.avg_response_time = 0.8  # 初始估計值
+        self.sample_count = 0
+
+    def update(self, response_time: float) -> int:
+        """更新平均回應時間並調整並發數
+
+        使用指數移動平均(EMA)平滑回應時間:
+        - 權重: 90% 歷史 + 10% 新樣本
+
+        參數:
+            response_time: API 回應時間(秒)
+
+        回傳:
+            調整後的並發數
+        """
+        # 使用 EMA 更新平均回應時間
+        alpha = 0.1  # 新樣本權重
+        self.avg_response_time = (1 - alpha) * self.avg_response_time + alpha * response_time
+        self.sample_count += 1
+
+        # 根據平均回應時間調整並發數
+        if self.avg_response_time < 0.5 and self.current < self.max:
+            # 回應快，增加並發
+            self.current = min(self.current + 1, self.max)
+            logger.debug(
+                f"並發數增加: {self.current - 1} -> {self.current} "
+                f"(平均回應時間: {self.avg_response_time:.2f}s)"
+            )
+        elif self.avg_response_time > 1.5 and self.current > self.min:
+            # 回應慢，降低並發
+            self.current = max(self.current - 1, self.min)
+            logger.debug(
+                f"並發數降低: {self.current + 1} -> {self.current} "
+                f"(平均回應時間: {self.avg_response_time:.2f}s)"
+            )
+
+        return self.current
+
+    def get_current(self) -> int:
+        """獲取當前並發數
+
+        回傳:
+            當前並發數
+        """
+        return self.current
+
+    def get_stats(self) -> Dict[str, Any]:
+        """獲取統計資訊
+
+        回傳:
+            統計資訊字典
+        """
+        return {
+            "current_concurrency": self.current,
+            "min_concurrency": self.min,
+            "max_concurrency": self.max,
+            "avg_response_time": f"{self.avg_response_time:.2f}s",
+            "sample_count": self.sample_count
+        }
+
+
 class TranslationClient:
     def __init__(self,
                  llm_type: str,
@@ -228,6 +312,16 @@ class TranslationClient:
                 logger.warning(f"無法初始化 Netflix 風格後處理器: {e}，功能已停用")
                 self.enable_netflix_style = False
                 self.post_processor = None
+
+        # 自適應並發控制器
+        self.concurrency_controller = AdaptiveConcurrencyController(
+            initial=3,
+            min_concurrent=2,
+            max_concurrent=10
+        )
+        logger.info(
+            f"自適應並發控制器已啟用: 初始並發數={self.concurrency_controller.get_current()}"
+        )
 
     def _load_tokenizers(self):
         """載入各 OpenAI 模型的 tokenizer"""
@@ -602,6 +696,9 @@ class TranslationClient:
             elapsed_time = time.time() - start_time
             self.metrics.total_response_time += elapsed_time
 
+            # 更新並發控制器
+            self.concurrency_controller.update(elapsed_time)
+
             logger.debug(f"翻譯成功，耗時: {elapsed_time:.2f} 秒")
 
             # 存入快取
@@ -743,9 +840,13 @@ class TranslationClient:
         if not api_requests:
             return results
 
-        # 計算批次大小
-        batch_size = min(concurrent_limit, len(api_requests))
-        logger.info(f"批量翻譯 {len(api_requests)} 個字幕，並發數: {batch_size}")
+        # 使用動態並發數（受 concurrent_limit 上限限制）
+        adaptive_concurrency = self.concurrency_controller.get_current()
+        batch_size = min(concurrent_limit, adaptive_concurrency, len(api_requests))
+        logger.info(
+            f"批量翻譯 {len(api_requests)} 個字幕，"
+            f"並發數: {batch_size} (動態調整: {adaptive_concurrency}, 上限: {concurrent_limit})"
+        )
 
         # 非同步批次處理
         semaphore = asyncio.Semaphore(batch_size)

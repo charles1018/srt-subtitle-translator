@@ -3,11 +3,8 @@
 測試 CacheManager 與其他模組的整合互動。
 """
 
-import pytest
-from pathlib import Path
 
 from srt_translator.core.cache import CacheManager
-from srt_translator.core.config import ConfigManager
 
 
 class TestCacheConfigIntegration:

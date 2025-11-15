@@ -1,10 +1,8 @@
 """測試 logging_config 模組"""
 
-import pytest
 import logging
-from pathlib import Path
 
-from srt_translator.utils.logging_config import setup_logger, setup_root_logger
+from srt_translator.utils.logging_config import setup_logger
 
 
 class TestLoggingConfig:

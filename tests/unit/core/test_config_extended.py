@@ -8,14 +8,13 @@
 5. 監聽器異常處理
 """
 
-import pytest
 import json
-from pathlib import Path
-from datetime import datetime
 import time
+from pathlib import Path
+
+import pytest
 
 from srt_translator.core.config import ConfigManager, get_config, set_config
-
 
 # ============================================================
 # 備份與還原功能測試
@@ -52,7 +51,7 @@ class TestConfigBackupRestore:
         backup_path = config_manager.create_backup()
 
         # 讀取備份內容
-        with open(backup_path, 'r', encoding='utf-8') as f:
+        with open(backup_path, encoding='utf-8') as f:
             backup_data = json.load(f)
 
         # 驗證元數據存在

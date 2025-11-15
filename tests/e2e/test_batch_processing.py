@@ -7,17 +7,16 @@
 對應階段三任務 4 - 批量處理與效能測試
 """
 
-import os
-import pytest
-import pysrt
 import asyncio
 import time
 from pathlib import Path
 from typing import List
-from unittest.mock import patch, AsyncMock, Mock, call
+from unittest.mock import AsyncMock, Mock
+
+import pysrt
+import pytest
 
 from srt_translator.services.factory import ServiceFactory
-
 
 # ============================================================
 # 測試前準備：Mock 所有服務

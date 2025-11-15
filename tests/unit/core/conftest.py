@@ -4,9 +4,8 @@
 """
 
 import time
+
 import pytest
-import sqlite3
-from pathlib import Path
 
 from srt_translator.core.cache import CacheManager
 

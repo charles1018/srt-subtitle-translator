@@ -7,20 +7,14 @@
 對應階段三任務 3 - 配置整合與錯誤處理測試
 """
 
-import os
-import pytest
-import pysrt
 from pathlib import Path
-from unittest.mock import patch, Mock, AsyncMock
+from unittest.mock import AsyncMock, Mock
+
+import pysrt
+import pytest
 
 from srt_translator.services.factory import ServiceFactory
-from srt_translator.utils.errors import (
-    AppError,
-    TranslationError,
-    NetworkError,
-    FileError
-)
-
+from srt_translator.utils.errors import FileError, NetworkError, TranslationError
 
 # ============================================================
 # API 錯誤處理測試（3 個測試）

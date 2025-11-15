@@ -8,14 +8,13 @@
 對應階段三任務 2 - 基本翻譯流程測試
 """
 
-import os
-import pytest
-import pysrt
 from pathlib import Path
-from unittest.mock import patch, AsyncMock, Mock, call
+from unittest.mock import AsyncMock, Mock
+
+import pysrt
+import pytest
 
 from srt_translator.services.factory import ServiceFactory
-
 
 # ============================================================
 # 測試前準備：Mock 所有服務

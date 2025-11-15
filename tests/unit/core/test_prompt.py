@@ -1,12 +1,13 @@
 """測試 prompt 模組"""
 
-import pytest
 import json
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
-from srt_translator.core.prompt import PromptManager
+import pytest
+
 from srt_translator.core.config import ConfigManager
+from srt_translator.core.prompt import PromptManager
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -252,7 +253,7 @@ class TestPromptManagerSetPrompt:
         assert template_file.exists()
 
         # 驗證檔案內容
-        with open(template_file, 'r', encoding='utf-8') as f:
+        with open(template_file, encoding='utf-8') as f:
             data = json.load(f)
         assert "ollama" in data
         assert data["ollama"].strip() == new_prompt

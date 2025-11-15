@@ -1,9 +1,9 @@
 """測試 config 模組"""
 
-import pytest
 import json
 from pathlib import Path
-import shutil
+
+import pytest
 
 from srt_translator.core.config import ConfigManager
 
@@ -352,7 +352,7 @@ class TestConfigImportExport:
 
         # 驗證檔案存在且格式正確
         assert export_path.exists()
-        with open(export_path, 'r', encoding='utf-8') as f:
+        with open(export_path, encoding='utf-8') as f:
             data = json.load(f)
         assert "metadata" in data
         assert "config" in data
@@ -603,7 +603,7 @@ class TestConfigHelperFunctions:
 
     def test_set_config_function(self):
         """測試 set_config 輔助函數"""
-        from srt_translator.core.config import set_config, get_config
+        from srt_translator.core.config import get_config, set_config
 
         result = set_config("app", "debug_mode", True)
         assert result is True

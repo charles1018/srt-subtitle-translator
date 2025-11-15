@@ -1,9 +1,9 @@
 """測試 cache 模組"""
 
-import pytest
 import sqlite3
 from pathlib import Path
-import time
+
+import pytest
 
 from srt_translator.core.cache import CacheManager
 
@@ -436,7 +436,7 @@ class TestCacheImportExport:
         assert export_path.exists()
 
         import json
-        with open(export_path, 'r', encoding='utf-8') as f:
+        with open(export_path, encoding='utf-8') as f:
             data = json.load(f)
 
         assert "version" in data
@@ -517,7 +517,6 @@ class TestCacheConfigAndMaintenance:
         cache_manager.store_translation("test", "測試", [], "gpt-4")
 
         # 關閉並刪除資料庫以模擬錯誤
-        import os
         db_path = cache_manager.db_path
         # 先清空記憶體快取
         cache_manager.memory_cache.clear()
