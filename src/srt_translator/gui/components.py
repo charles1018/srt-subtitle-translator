@@ -78,6 +78,9 @@ class GUIComponents:
         self.model_combo_var = tk.StringVar()
         self.parallel_requests = tk.StringVar(value="3")
         self.display_mode = tk.StringVar(value="雙語對照")
+
+        # Netflix 風格選項
+        self.netflix_style_enabled = tk.BooleanVar(value=False)
         
         # 獲取服務實例
         self.file_service = ServiceFactory.get_file_service()
@@ -269,9 +272,19 @@ class GUIComponents:
         else:
             styles = ["standard", "literal", "localized", "specialized"]
             self.style_var = tk.StringVar(value="standard")
-            self.style_combo = ttk.Combobox(settings_grid, textvariable=self.style_var, 
+            self.style_combo = ttk.Combobox(settings_grid, textvariable=self.style_var,
                                            values=styles, width=10, state="readonly")
             self.style_combo.grid(row=3, column=3, sticky=tk.W, pady=5)
+
+        # Netflix 風格選項
+        ttk.Label(settings_grid, text="Netflix 風格:").grid(row=4, column=2, sticky=tk.W, pady=5, padx=(10, 0))
+        self.netflix_checkbox = ttk.Checkbutton(
+            settings_grid,
+            text="啟用",
+            variable=self.netflix_style_enabled,
+            command=self.on_netflix_style_changed
+        )
+        self.netflix_checkbox.grid(row=4, column=3, sticky=tk.W, pady=5)
 
         # 下半部分 - 狀態和控制
         bottom_frame = ttk.Frame(main_frame)
@@ -473,10 +486,18 @@ class GUIComponents:
             style = self.style_var.get()
             self.prompt_manager.set_translation_style(style)
             logger.info(f"翻譯風格已變更為: {style}")
-            
+
             # 保存設置到配置
             set_config("prompt", "current_style", style)
-    
+
+    def on_netflix_style_changed(self):
+        """Netflix 風格選項變更時的處理函式"""
+        enabled = self.netflix_style_enabled.get()
+        logger.info(f"Netflix 風格已{'啟用' if enabled else '停用'}")
+
+        # 保存設置到配置
+        set_config("user", "netflix_style_enabled", enabled)
+
     def set_model_list(self, models: List[str], default_model: str = ""):
         """設置模型列表"""
         if isinstance(models, list) and models:

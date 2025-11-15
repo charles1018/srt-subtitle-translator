@@ -594,8 +594,24 @@ class ModelService:
         api_key = self.api_keys.get(llm_type)
         base_url = get_config("model", f"{llm_type}_url", None)
         cache_db_path = get_config("cache", "db_path", "data/translation_cache.db")
-        
-        client = TranslationClient(llm_type, base_url=base_url, api_key=api_key, cache_db_path=cache_db_path)
+
+        # Netflix 風格配置（從使用者配置讀取）
+        netflix_enabled = get_config("user", "netflix_style_enabled", False)
+        netflix_style_config = {
+            "enabled": netflix_enabled,  # 從配置讀取啟用狀態
+            "auto_fix": True,            # 自動修正格式問題
+            "strict_mode": False,        # 非嚴格模式（警告但不阻止）
+            "max_chars_per_line": 16,    # 每行最多 16 個字符
+            "max_lines": 2               # 最多 2 行
+        }
+
+        client = TranslationClient(
+            llm_type,
+            base_url=base_url,
+            api_key=api_key,
+            cache_db_path=cache_db_path,
+            netflix_style_config=netflix_style_config
+        )
         await client.__aenter__()
         
         # 儲存客戶端實例
