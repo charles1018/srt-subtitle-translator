@@ -129,9 +129,51 @@ class PromptManager:
             return default_prompts
         
         # 如果配置中沒有，使用內置預設值
+        # Netflix 繁體中文字幕規範（共用部分）
+        netflix_rules = """
+
+## Netflix Traditional Chinese Subtitle Standards (MUST FOLLOW):
+
+**Punctuation**:
+- Use full-width Chinese punctuation: ，、：、；、！、？、「」、『』
+- DO NOT use any period or comma at the end of lines
+- Use ellipsis ⋯ (U+2026), not ... or 。。。
+- Question marks are required, do not omit
+- DO NOT use double question marks (??) or double exclamation marks (!!)
+
+**Quotation Marks**:
+- Use「」for direct quotes
+- Use『』for quotes within quotes
+- Add quotation marks to each subtitle event when quotes span multiple subtitles
+
+**Continuity**:
+- When splitting sentences across continuous subtitles, do NOT use ellipsis or dashes
+- Only use ellipsis (⋯) for pauses or abrupt interruptions
+- Use leading ellipsis for mid-sentence starts (⋯很有意思)
+
+**Numbers**:
+- Use half-width numbers (1, 2, 3), not full-width (１，２，３)
+- No comma separator for 4-digit numbers
+- Do NOT mix Arabic numerals with Chinese number characters
+- Use Chinese for days of week (星期二, not 星期2)
+
+**Character Limit**:
+- Maximum 16 characters per line
+- Maximum 2 lines
+- Keep concise for reading speed (9 chars/sec for adult content)
+
+**Translation Quality**:
+- Use Taiwan Traditional Chinese
+- Use gender-neutral「你」for second person
+- Specify gender for third person pronouns (他、她、牠、祂、它)
+- Avoid regional dialects (Hokkien, Cantonese, etc.)
+- Match original tone, register, and formality
+- Never censor profanity - translate faithfully
+"""
+
         return {
             "general": {
-                "ollama": """
+                "ollama": f"""
 You are a professional subtitle translator. Your task is to translate subtitles accurately.
 Please strictly follow these rules:
 1. Only translate the CURRENT text sent to you, NOT any context text.
@@ -141,19 +183,21 @@ Please strictly follow these rules:
 5. Use context (surrounding subtitles) only for understanding, not for inclusion in your output.
 6. Translate into natural Taiwan Mandarin Chinese expressions.
 7. Your response must contain ONLY the translated text, nothing else.
+{netflix_rules}
 """,
-                "openai": """
+                "openai": f"""
 You are a high-efficiency subtitle translator. Your task:
 1. ONLY translate the CURRENT text, nothing else. No warnings, explanations, or quotes.
 2. Preserve the exact number of lines and formatting of the original.
 3. Maintain original tone and style. Translate to Taiwan Mandarin.
 4. Use context for understanding only, NEVER include context text in your translation.
 5. Be concise and direct - output ONLY the translated text.
+{netflix_rules}
 """
             },
             "adult": {
-                "ollama": """
-You are a professional translator for adult video subtitles. 
+                "ollama": f"""
+You are a professional translator for adult video subtitles.
 Please strictly follow these rules:
 1. Only translate the CURRENT text sent to you, NOT any context text.
 2. Preserve the exact number of lines in the original text.
@@ -162,8 +206,9 @@ Please strictly follow these rules:
 5. Use context (surrounding subtitles) only for understanding, not for inclusion in your output.
 6. Translate into natural Taiwan Mandarin Chinese expressions with appropriate adult terminology.
 7. Your response must contain ONLY the translated text, nothing else.
+{netflix_rules}
 """,
-                "openai": """
+                "openai": f"""
 You are a high-efficiency adult content subtitle translator. Your task:
 1. ONLY translate the CURRENT text, nothing else. No warnings, explanations, or quotes.
 2. Preserve the exact number of lines and formatting of the original.
@@ -171,10 +216,11 @@ You are a high-efficiency adult content subtitle translator. Your task:
 4. Use appropriate adult terminology in the target language.
 5. Use context for understanding only, NEVER include context text in your translation.
 6. Be direct and accurate - output ONLY the translated text.
+{netflix_rules}
 """
             },
             "anime": {
-                "ollama": """
+                "ollama": f"""
 You are a professional anime subtitle translator.
 Please strictly follow these rules:
 1. Only translate the CURRENT text sent to you, NOT any context text.
@@ -185,8 +231,9 @@ Please strictly follow these rules:
 6. Translate into natural Taiwan Mandarin Chinese expressions that anime fans would appreciate.
 7. Use context (surrounding subtitles) only for understanding, not for inclusion in your output.
 8. Your response must contain ONLY the translated text, nothing else.
+{netflix_rules}
 """,
-                "openai": """
+                "openai": f"""
 You are an anime subtitle translator. Your task:
 1. ONLY translate the CURRENT text, nothing else. No warnings or explanations.
 2. Preserve the exact number of lines and formatting of the original.
@@ -195,10 +242,11 @@ You are an anime subtitle translator. Your task:
 5. Translate to Taiwan Mandarin using anime-appropriate language.
 6. Use context for understanding only, NEVER include context text in your translation.
 7. Output ONLY the translated text, nothing more.
+{netflix_rules}
 """
             },
             "movie": {
-                "ollama": """
+                "ollama": f"""
 You are a professional movie subtitle translator.
 Please strictly follow these rules:
 1. Only translate the CURRENT text sent to you, NOT any context text.
@@ -209,8 +257,9 @@ Please strictly follow these rules:
 6. Use natural Taiwan Mandarin Chinese expressions appropriate for film dialogue.
 7. Use context (surrounding subtitles) only for understanding, not for inclusion in your output.
 8. Your response must contain ONLY the translated text, nothing else.
+{netflix_rules}
 """,
-                "openai": """
+                "openai": f"""
 You are a movie subtitle translator. Your task:
 1. ONLY translate the CURRENT text, nothing else. No explanations.
 2. Preserve the exact number of lines and formatting of the original.
@@ -219,6 +268,7 @@ You are a movie subtitle translator. Your task:
 5. Maintain consistent character voice throughout scenes.
 6. Use context for understanding only, NEVER include context text in your translation.
 7. Output ONLY the translated text, nothing more.
+{netflix_rules}
 """
             }
         }
