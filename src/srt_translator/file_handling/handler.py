@@ -719,27 +719,30 @@ class FileHandler:
                     return None
                     
                 # "overwrite" case will just return base_path
-            
-            return base_path
+
+            # 規範化路徑，確保路徑分隔符統一（Windows 環境下避免混用 / 和 \\）
+            return os.path.normpath(base_path)
         except Exception as e:
             logger.error(f"Error getting output path: {format_exception(e)}")
             raise FileError(f"Error determining output path: {str(e)}")
     
     def _get_unique_path(self, dir_name: str, name: str, lang_suffix: str, ext: str) -> str:
         """Get unique file path (to avoid conflicts)
-        
+
         Args:
             dir_name: Directory path
             name: Base file name
             lang_suffix: Language suffix
             ext: File extension
-            
+
         Returns:
             Unique file path
         """
         counter = 1
         while True:
             new_path = os.path.join(dir_name, f"{name}{lang_suffix}_{counter}{ext}")
+            # 規範化路徑，確保路徑分隔符統一
+            new_path = os.path.normpath(new_path)
             if not os.path.exists(new_path):
                 return new_path
             counter += 1
