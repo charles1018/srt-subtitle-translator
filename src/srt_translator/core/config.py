@@ -669,8 +669,8 @@ class ConfigManager:
 
         # 內容類型
         content_type = config.get("current_content_type", "")
-        if content_type not in ["general", "adult", "anime", "movie"]:
-            errors["current_content_type"] = ["無效的內容類型，有效選項: general, adult, anime, movie"]
+        if content_type not in ["general", "adult", "anime", "movie", "english_drama"]:
+            errors["current_content_type"] = ["無效的內容類型，有效選項: general, adult, anime, movie, english_drama"]
 
         # 風格
         style = config.get("current_style", "")

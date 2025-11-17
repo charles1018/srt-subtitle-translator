@@ -7,6 +7,17 @@
 
 ## [Unreleased]
 
+### 🐛 修復
+
+#### 翻譯斷句問題修復
+- 🔧 修復 `english_drama` 模式翻譯長句時出現不必要換行的問題
+  - **問題**：AI 在翻譯長句（如新聞播報）時會在翻譯結果中插入換行符，導致字幕顯示時出現不適當的斷行
+  - **解決方案**：採用雙重保險機制
+    1. **提示詞增強**：在 `english_drama` 提示詞中明確要求 "1 input line = 1 output line, NEVER insert newlines in single-line translations"
+    2. **後處理清理**：在 `client.py` 新增 `_clean_single_line_translation()` 方法，自動清除單行原文翻譯結果中的多餘換行符和空白字符
+  - **影響範圍**：所有內容類型均受益於後處理邏輯，確保單行字幕不會被意外拆分
+- 🔧 修正配置驗證邏輯，添加 `english_drama` 到有效內容類型列表
+
 ### ✨ 新增
 
 #### 提示詞系統增強式整合

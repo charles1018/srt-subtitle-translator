@@ -691,6 +691,9 @@ class TranslationClient:
                     logger.warning(f"Netflix 風格後處理失敗，使用原始翻譯: {e}")
                     # result 保持不變，繼續使用原始翻譯結果
 
+            # 清理單行翻譯中的多餘換行符（防護措施）
+            result = self._clean_single_line_translation(text, result)
+
             # 記錄成功指標
             self.metrics.successful_requests += 1
             elapsed_time = time.time() - start_time
@@ -710,6 +713,36 @@ class TranslationClient:
             elapsed_time = time.time() - start_time
             logger.error(f"翻譯失敗: {e!s}，耗時: {elapsed_time:.2f} 秒")
             raise
+
+    def _clean_single_line_translation(self, original_text: str, translated_text: str) -> str:
+        """
+        清理單行翻譯中的多餘換行符
+
+        如果原文是單行（沒有換行符），則確保翻譯結果也是單行。
+        這是一個防護措施，以防 AI 在翻譯長句時插入不必要的換行符。
+
+        Args:
+            original_text: 原文文本
+            translated_text: 翻譯後的文本
+
+        Returns:
+            清理後的翻譯文本
+        """
+        import re
+
+        # 檢查原文是否為單行（不包含換行符）
+        if '\n' not in original_text:
+            # 移除所有換行符和多餘的空白字符
+            cleaned = re.sub(r'\s+', ' ', translated_text)
+            cleaned = cleaned.strip()
+
+            if cleaned != translated_text:
+                logger.debug(f"已清理單行翻譯中的換行符")
+
+            return cleaned
+
+        # 原文是多行，保持原樣
+        return translated_text
 
     async def _translate_with_openai(self, messages: List[Dict[str, str]], model_name: str) -> str:
         """使用 OpenAI API 翻譯"""
