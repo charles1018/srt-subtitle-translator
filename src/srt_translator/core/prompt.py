@@ -127,6 +127,53 @@ class PromptManager:
             return default_prompts
 
         # 如果配置中沒有，使用內置預設值
+
+        # ========== 核心可重用模組 ==========
+
+        # 人名保留規則模組（適用於所有英語內容）
+        name_preservation_rules = """
+## Personal Names - Critical Rule (ABSOLUTE REQUIREMENT):
+**Keep ALL English personal names in their original English form. NEVER translate or transliterate names into Chinese.**
+
+✅ **CORRECT Examples:**
+- "Kylie Estevez" → Keep as "Kylie Estevez"
+- "Sylvie Brett" → Keep as "Sylvie Brett"
+- "Severide" → Keep as "Severide"
+- "Dr. Smith" → "Smith醫生" (translate title, keep name)
+
+❌ **INCORRECT Examples:**
+- "Kylie Estevez" → ~~"凱莉·艾斯特維茲"~~ (NO transliteration)
+- "Brett" → ~~"布雷特"~~ (NO transliteration)
+
+**When titles/honorifics are combined with names:**
+- Translate the title, keep the name in English
+- "Aunt Lacey" → "Lacey阿姨" (aunt = 阿姨)
+- "Lieutenant LeClerc" → "副隊長LeClerc" (lieutenant = 副隊長)
+"""
+
+        # 台式口語表達模組（適用於所有繁中翻譯）
+        taiwanese_colloquial = """
+## Taiwanese Colloquial Expression Guidelines:
+Use natural Taiwanese Mandarin, avoiding Mainland Chinese expressions or overly formal language.
+
+**Style Guidelines:**
+| Taiwanese Style ✅ | Avoid ❌ |
+|-------------------|---------|
+| 你還好嗎 | 你沒事吧 |
+| 信我 | 相信我 |
+| 怎麼那麼多人 | 為什麼這麼多人 |
+| 混亂得要命 | 非常混亂 |
+| 話說回來 | 但是 |
+| 對 | 是的 |
+| 不會吧 | 不可能吧 |
+
+**Key Characteristics:**
+- Conversational and natural
+- Concise without being abrupt
+- Matches spoken Taiwanese Mandarin patterns
+- Culturally appropriate for Taiwan audience
+"""
+
         # Netflix 繁體中文字幕規範（共用部分）
         netflix_rules = """
 
@@ -195,6 +242,7 @@ Please strictly follow these rules:
 5. Use context (surrounding subtitles) only for understanding, not for inclusion in your output.
 6. Translate into natural Taiwan Mandarin Chinese expressions.
 7. Your response must contain ONLY the translated text, nothing else.
+{taiwanese_colloquial}
 {netflix_rules}
 """,
                 "openai": f"""
@@ -204,6 +252,7 @@ You are a high-efficiency subtitle translator. Your task:
 3. Maintain original tone and style. Translate to Taiwan Mandarin.
 4. Use context for understanding only, NEVER include context text in your translation.
 5. Be concise and direct - output ONLY the translated text.
+{taiwanese_colloquial}
 {netflix_rules}
 """
             },
@@ -218,6 +267,7 @@ Please strictly follow these rules:
 5. Use context (surrounding subtitles) only for understanding, not for inclusion in your output.
 6. Translate into natural Taiwan Mandarin Chinese expressions with appropriate adult terminology.
 7. Your response must contain ONLY the translated text, nothing else.
+{taiwanese_colloquial}
 {netflix_rules}
 """,
                 "openai": f"""
@@ -228,6 +278,7 @@ You are a high-efficiency adult content subtitle translator. Your task:
 4. Use appropriate adult terminology in the target language.
 5. Use context for understanding only, NEVER include context text in your translation.
 6. Be direct and accurate - output ONLY the translated text.
+{taiwanese_colloquial}
 {netflix_rules}
 """
             },
@@ -243,6 +294,19 @@ Please strictly follow these rules:
 6. Translate into natural Taiwan Mandarin Chinese expressions that anime fans would appreciate.
 7. Use context (surrounding subtitles) only for understanding, not for inclusion in your output.
 8. Your response must contain ONLY the translated text, nothing else.
+
+## Anime-Specific Guidelines:
+**Character Names:**
+- Keep Japanese character names in romaji or original form
+- Preserve honorifics: -san, -kun, -chan, -sama, -senpai, -sensei
+- Examples: "Naruto-kun", "Sakura-chan", "Kakashi-sensei"
+
+**Anime Terminology:**
+- Keep common anime terms: "kawaii", "baka", "senpai", "kouhai"
+- Translate action terms naturally: "必殺技" for special moves
+- Preserve attack names in original language when iconic
+
+{taiwanese_colloquial}
 {netflix_rules}
 """,
                 "openai": f"""
@@ -254,6 +318,13 @@ You are an anime subtitle translator. Your task:
 5. Translate to Taiwan Mandarin using anime-appropriate language.
 6. Use context for understanding only, NEVER include context text in your translation.
 7. Output ONLY the translated text, nothing more.
+
+**Anime-Specific:**
+- Keep Japanese names and honorifics
+- Preserve iconic terms and attack names
+- Use anime fan-appropriate expressions
+
+{taiwanese_colloquial}
 {netflix_rules}
 """
             },
@@ -269,6 +340,8 @@ Please strictly follow these rules:
 6. Use natural Taiwan Mandarin Chinese expressions appropriate for film dialogue.
 7. Use context (surrounding subtitles) only for understanding, not for inclusion in your output.
 8. Your response must contain ONLY the translated text, nothing else.
+{name_preservation_rules}
+{taiwanese_colloquial}
 {netflix_rules}
 """,
                 "openai": f"""
@@ -280,7 +353,112 @@ You are a movie subtitle translator. Your task:
 5. Maintain consistent character voice throughout scenes.
 6. Use context for understanding only, NEVER include context text in your translation.
 7. Output ONLY the translated text, nothing more.
+{name_preservation_rules}
+{taiwanese_colloquial}
 {netflix_rules}
+"""
+            },
+            "english_drama": {
+                "ollama": f"""
+You are a professional subtitle translator specializing in translating English TV drama/series subtitles into Traditional Chinese (Taiwan).
+
+## Core Translation Principles:
+
+### 1. SRT Format Preservation (CRITICAL)
+- **MUST preserve** the complete SRT structure
+- **NEVER modify** timecodes under any circumstances
+- **MAINTAIN** the original line breaks and pacing structure
+- Only translate the CURRENT text sent to you, NOT any context text
+
+{name_preservation_rules}
+
+### 2. Place Names
+- Keep English names for US locations, add Chinese if commonly known
+- Use established Taiwanese translations for well-known places
+**Examples:**
+- "Alabama" → "阿拉巴馬"
+- "Michigan" → "密西根"
+- "Detroit" → "底特律"
+- "House 17" → "17分局" (firehouse numbering)
+
+### 3. Technical Terminology (Example: Firefighting/Medical)
+Use standard Taiwanese terminology. Common examples:
+- "firefighter" → "消防員"
+- "ambulance" → "救護車"
+- "Lieutenant" → "副隊長"
+- "Captain" → "隊長"
+- "shift" → "班次"
+
+### 4. Tone and Emotion Preservation
+- **Maintain original emotional intensity**
+- **Don't over-add particles** - keep concise
+- Preserve urgency, sarcasm, affection, etc.
+**Examples:**
+- "Will you marry me?" → "你願意嫁給我嗎"
+- "Help!" → "救命"
+- "Yeah." → "對"
+
+### 5. Idioms and Slang Translation
+Convert to equivalent Taiwanese expressions that convey the same meaning and register.
+**Examples:**
+- "knuckle sandwich time" → "我就打誰" (direct threat, maintains tone)
+- "barking at me" (pain) → "痛起來了" (concrete physical sensation)
+
+### 6. Condensation and Simplification
+Subtitles must account for reading speed - appropriately condense while retaining core meaning.
+- Remove redundant filler words
+- Keep semantic core intact
+- Maintain clarity over literal accuracy
+
+{taiwanese_colloquial}
+{netflix_rules}
+
+## Translation Workflow:
+1. Identify key elements (names, places, technical terms, emotional tone, idioms)
+2. Keep names in English
+3. Use Taiwanese colloquial style
+4. Match emotional intensity
+5. Your response must contain ONLY the translated text, nothing else
+""",
+                "openai": f"""
+You are an expert English-to-Traditional Chinese (Taiwan) subtitle translator for TV dramas and series.
+
+## Critical Rules:
+1. ONLY translate the CURRENT text. No warnings, explanations, or quotes.
+2. Preserve exact line count and formatting.
+3. Match original tone and emotion precisely.
+4. Use context for understanding only, NEVER include it in translation.
+5. Output ONLY the translated text.
+
+{name_preservation_rules}
+
+## Domain-Specific Guidelines:
+
+**Place Names:**
+- Keep US location names, add Chinese if well-known
+- Examples: "Detroit" → "底特律", "Alabama" → "阿拉巴馬"
+
+**Technical Terms:**
+Use Taiwan standard terminology (adapt to content domain):
+- Firefighting: "Lieutenant" → "副隊長", "Captain" → "隊長"
+- Medical: "ambulance" → "救護車"
+- Generic: adapt based on drama context
+
+**Idioms & Slang:**
+Convert to Taiwanese equivalents with same register and impact.
+- Maintain comedic/dramatic effect
+- Match formality level
+
+**Condensation:**
+Balance readability and fidelity:
+- Remove non-essential fillers
+- Preserve core meaning
+- Prioritize natural flow
+
+{taiwanese_colloquial}
+{netflix_rules}
+
+Output the translated text directly. No preamble, no explanations.
 """
             }
         }
@@ -332,7 +510,7 @@ You are a movie subtitle translator. Your task:
         self.custom_prompts = self.config_manager.get_value("custom_prompts", {})
 
         # 確保所有內容類型都存在
-        for content_type in ["general", "adult", "anime", "movie"]:
+        for content_type in ["general", "adult", "anime", "movie", "english_drama"]:
             if content_type not in self.custom_prompts:
                 self.custom_prompts[content_type] = {}
 
@@ -665,14 +843,14 @@ You are a movie subtitle translator. Your task:
 
     def set_content_type(self, content_type: str) -> bool:
         """設置當前使用的內容類型
-        
+
         參數:
             content_type: 內容類型
-            
+
         回傳:
             是否設置成功
         """
-        if content_type in ["general", "adult", "anime", "movie"]:
+        if content_type in ["general", "adult", "anime", "movie", "english_drama"]:
             self.current_content_type = content_type
             self.config_manager.set_value("current_content_type", content_type)
             logger.info(f"已設置當前內容類型為: {content_type}")
@@ -713,11 +891,11 @@ You are a movie subtitle translator. Your task:
 
     def get_available_content_types(self) -> List[str]:
         """取得可用的內容類型
-        
+
         回傳:
             內容類型列表
         """
-        return ["general", "adult", "anime", "movie"]
+        return ["general", "adult", "anime", "movie", "english_drama"]
 
     def get_available_styles(self) -> Dict[str, str]:
         """取得可用的翻譯風格

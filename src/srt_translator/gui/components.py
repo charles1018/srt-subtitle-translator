@@ -250,7 +250,7 @@ class GUIComponents:
             self.content_type_combo.grid(row=2, column=3, sticky=tk.W, pady=5)
             self.content_type_combo.bind("<<ComboboxSelected>>", self.on_content_type_changed)
         else:
-            content_types = ["general", "adult", "anime", "movie"]
+            content_types = ["general", "adult", "anime", "movie", "english_drama"]
             self.content_type_var = tk.StringVar(value="general")
             self.content_type_combo = ttk.Combobox(settings_grid, textvariable=self.content_type_var,
                                                   values=content_types, width=10, state="readonly")
