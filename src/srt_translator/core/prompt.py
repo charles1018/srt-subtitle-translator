@@ -360,6 +360,25 @@ You are a movie subtitle translator. Your task:
             },
             "english_drama": {
                 "ollama": f"""
+⚠️ **ABSOLUTE PRIORITY RULE #1 - CONJUNCTION PRESERVATION** ⚠️
+🚨 **THIS RULE OVERRIDES ALL OTHER CONSIDERATIONS** 🚨
+
+**IF the [CURRENT] sentence ends with a conjunction (when, if, because, although, while, before, after, unless, though, since, until, as, etc.):**
+  → YOU **MUST** preserve that conjunction in your translation
+  → DO NOT remove it, DO NOT omit it, DO NOT "complete" the sentence
+  → KEEP the translation incomplete, matching the original structure
+
+**Examples (MANDATORY):**
+  ✅ CORRECT: "...see if Krista orders it when" → "...看看克里斯塔會不會訂購當" or "...看看當克里斯塔會不會訂購時"
+  ❌ WRONG: "...see if Krista orders it when" → "...看看克里斯塔會不會訂購" (missing "when")
+
+  ✅ CORRECT: "I will call you if" → "我會打給你如果" or "如果...我會打給你"
+  ❌ WRONG: "I will call you if" → "我會打給你" (missing "if")
+
+**WHY THIS MATTERS:** Conjunctions connect to the NEXT subtitle. Removing them breaks semantic continuity and confuses viewers.
+
+---
+
 You are a professional subtitle translator specializing in translating English TV drama/series subtitles into Traditional Chinese (Taiwan).
 
 ⚠️ **CRITICAL INSTRUCTION** (違反此規則將導致翻譯無效):
@@ -368,11 +387,6 @@ You are a professional subtitle translator specializing in translating English T
 - [CONTEXT_BEFORE] and [CONTEXT_AFTER] are for understanding ONLY
 - **NEVER combine multiple sentences** into one translation
 - **If the current sentence seems incomplete, still translate ONLY that sentence**
-- **For sentences ending with conjunctions** (when, if, because, although, while, before, after, unless, though, etc.):
-  * MUST preserve the conjunction in your translation
-  * KEEP the sentence incomplete - do NOT try to "complete" or "cut off" the sentence
-  * Example: "...see if Krista orders it when" → "...看看當克里斯塔會不會訂購時" or "...看看克里斯塔會不會訂購當" (保留 when 的語境)
-  * Example: "I will call you if" → "我會打給你如果" (NOT "我會打給你")
 - Your output must contain ONLY the translation of [CURRENT], no other text
 
 ## Core Translation Principles:
@@ -435,6 +449,25 @@ Subtitles must account for reading speed - appropriately condense while retainin
 5. Your response must contain ONLY the translated text, nothing else
 """,
                 "openai": f"""
+⚠️ **ABSOLUTE PRIORITY RULE #1 - CONJUNCTION PRESERVATION** ⚠️
+🚨 **THIS RULE OVERRIDES ALL OTHER CONSIDERATIONS** 🚨
+
+**IF the [CURRENT] sentence ends with a conjunction (when, if, because, although, while, before, after, unless, though, since, until, as, etc.):**
+  → YOU **MUST** preserve that conjunction in your translation
+  → DO NOT remove it, DO NOT omit it, DO NOT "complete" the sentence
+  → KEEP the translation incomplete, matching the original structure
+
+**Examples (MANDATORY):**
+  ✅ CORRECT: "...see if Krista orders it when" → "...看看克里斯塔會不會訂購當" or "...看看當克里斯塔會不會訂購時"
+  ❌ WRONG: "...see if Krista orders it when" → "...看看克里斯塔會不會訂購" (missing "when")
+
+  ✅ CORRECT: "I will call you if" → "我會打給你如果" or "如果...我會打給你"
+  ❌ WRONG: "I will call you if" → "我會打給你" (missing "if")
+
+**WHY THIS MATTERS:** Conjunctions connect to the NEXT subtitle. Removing them breaks semantic continuity and confuses viewers.
+
+---
+
 You are an expert English-to-Traditional Chinese (Taiwan) subtitle translator for TV dramas and series.
 
 ⚠️ **CRITICAL INSTRUCTION** (違反此規則將導致翻譯無效):
@@ -443,11 +476,6 @@ You are an expert English-to-Traditional Chinese (Taiwan) subtitle translator fo
 - [CONTEXT_BEFORE] and [CONTEXT_AFTER] are for understanding ONLY
 - **NEVER combine multiple sentences** into one translation
 - **If the current sentence seems incomplete, still translate ONLY that sentence**
-- **For sentences ending with conjunctions** (when, if, because, although, while, before, after, unless, though, etc.):
-  * MUST preserve the conjunction in your translation
-  * KEEP the sentence incomplete - do NOT try to "complete" or "cut off" the sentence
-  * Example: "...see if Krista orders it when" → "...看看當克里斯塔會不會訂購時" or "...看看克里斯塔會不會訂購當" (保留 when 的語境)
-  * Example: "I will call you if" → "我會打給你如果" (NOT "我會打給你")
 - Your output must contain ONLY the translation of [CURRENT], no other text
 
 ## Critical Rules:
@@ -628,12 +656,34 @@ Output the translated text directly. No preamble, no explanations.
             context_before = context_texts
             context_after = []
 
+        # 檢測句子是否以連接詞結尾
+        conjunctions = ['when', 'if', 'because', 'although', 'while', 'before', 'after',
+                       'unless', 'though', 'since', 'until', 'as', 'where', 'whereas']
+        text_lower = text.strip().lower()
+        ends_with_conjunction = any(text_lower.endswith(f' {conj}') for conj in conjunctions)
+
         # 構建新格式的 user message
-        user_content_parts = [
+        user_content_parts = []
+
+        # 如果以連接詞結尾，添加超強警告
+        if ends_with_conjunction:
+            detected_conj = next(conj for conj in conjunctions if text_lower.endswith(f' {conj}'))
+            user_content_parts.extend([
+                "🚨 **MANDATORY WARNING** 🚨",
+                f"The [CURRENT] sentence ends with the conjunction '{detected_conj.upper()}'.",
+                f"YOU **MUST** PRESERVE '{detected_conj.upper()}' in your translation.",
+                "DO NOT remove it. DO NOT omit it. DO NOT \"complete\" the sentence.",
+                "Keep the translation incomplete, matching the original structure.",
+                "",
+                "---",
+                ""
+            ])
+
+        user_content_parts.extend([
             "[CURRENT] (請只翻譯這一句):",
             text,
             ""
-        ]
+        ])
 
         if context_before:
             user_content_parts.append("[CONTEXT_BEFORE] (前文參考，不要翻譯):")
