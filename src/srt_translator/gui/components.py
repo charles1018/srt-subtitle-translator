@@ -520,15 +520,108 @@ class GUIComponents:
     def open_cache_manager(self):
         """開啟快取管理器"""
         try:
+            # 創建快取管理視窗
+            dialog = tk.Toplevel(self.root)
+            dialog.title("快取管理")
+            dialog.geometry("600x400")
+            dialog.transient(self.root)
+            dialog.grab_set()
+
             # 使用快取服務
             cache_service = ServiceFactory.get_cache_service()
-            cache_stats = cache_service.get_cache_stats()
 
-            # 顯示快取統計資訊
-            stats_text = "\n".join([f"{k}: {v}" for k, v in cache_stats.items() if k != "top_used"])
-            messagebox.showinfo("快取統計", f"快取統計資訊:\n\n{stats_text}")
+            # 標題區域
+            title_frame = ttk.Frame(dialog)
+            title_frame.pack(fill=tk.X, padx=20, pady=(20, 10))
+            ttk.Label(title_frame, text="翻譯快取管理", font=("", 14, "bold")).pack()
 
-            # TODO: 將來實現完整的快取管理界面
+            # 統計資訊區域
+            stats_frame = ttk.LabelFrame(dialog, text="快取統計資訊")
+            stats_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+
+            # 使用 Text widget 顯示統計資訊
+            stats_text = scrolledtext.ScrolledText(stats_frame, height=15, wrap=tk.WORD)
+            stats_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+            # 定義更新統計資訊的函數
+            def refresh_stats():
+                try:
+                    cache_stats = cache_service.get_cache_stats()
+                    stats_text.config(state=tk.NORMAL)
+                    stats_text.delete(1.0, tk.END)
+
+                    # 格式化顯示統計資訊
+                    stats_text.insert(tk.END, "═" * 60 + "\n")
+                    stats_text.insert(tk.END, "  快取統計資訊\n")
+                    stats_text.insert(tk.END, "═" * 60 + "\n\n")
+
+                    for key, value in cache_stats.items():
+                        if key == "top_used":
+                            stats_text.insert(tk.END, "\n最常使用的翻譯（前5筆）:\n")
+                            stats_text.insert(tk.END, "-" * 60 + "\n")
+                            if value:
+                                for i, item in enumerate(value, 1):
+                                    stats_text.insert(tk.END, f"  {i}. 使用次數: {item.get('use_count', 0)}\n")
+                                    original = item.get('original_text', '')
+                                    if len(original) > 40:
+                                        original = original[:40] + "..."
+                                    stats_text.insert(tk.END, f"     原文: {original}\n\n")
+                            else:
+                                stats_text.insert(tk.END, "  無資料\n\n")
+                        else:
+                            # 格式化鍵名
+                            key_display = key.replace("_", " ").title()
+                            stats_text.insert(tk.END, f"{key_display}:  {value}\n")
+
+                    stats_text.config(state=tk.DISABLED)
+                except Exception as e:
+                    logger.error(f"重新整理快取統計時發生錯誤: {format_exception(e)}")
+                    messagebox.showerror("錯誤", f"重新整理快取統計時發生錯誤: {e!s}")
+
+            # 初始載入統計資訊
+            refresh_stats()
+
+            # 按鈕區域
+            button_frame = ttk.Frame(dialog)
+            button_frame.pack(fill=tk.X, padx=20, pady=(0, 20))
+
+            # 清除快取按鈕（左側）
+            def clear_cache_action():
+                # 顯示確認對話框
+                result = messagebox.askyesno(
+                    "確認清除",
+                    "確定要清除所有翻譯快取嗎？\n\n"
+                    "此操作無法復原，但會自動建立備份。\n"
+                    "清除後下次翻譯需重新向 AI 請求。",
+                    icon='warning'
+                )
+
+                if result:
+                    try:
+                        # 清除所有快取
+                        success = cache_service.clear_all_cache()
+
+                        if success:
+                            messagebox.showinfo("成功", "已成功清除所有快取！")
+                            # 重新整理統計資訊
+                            refresh_stats()
+                        else:
+                            messagebox.showerror("錯誤", "清除快取時發生錯誤，請查看日誌檔案。")
+                    except Exception as e:
+                        logger.error(f"清除快取時發生錯誤: {format_exception(e)}")
+                        messagebox.showerror("錯誤", f"清除快取時發生錯誤: {e!s}")
+
+            clear_btn = ttk.Button(button_frame, text="清除所有快取", command=clear_cache_action)
+            clear_btn.pack(side=tk.LEFT, padx=(0, 10))
+
+            # 重新整理按鈕
+            refresh_btn = ttk.Button(button_frame, text="重新整理統計", command=refresh_stats)
+            refresh_btn.pack(side=tk.LEFT, padx=(0, 10))
+
+            # 關閉按鈕（右側）
+            close_btn = ttk.Button(button_frame, text="關閉", command=dialog.destroy)
+            close_btn.pack(side=tk.RIGHT)
+
         except Exception as e:
             logger.error(f"開啟快取管理器時發生錯誤: {format_exception(e)}")
             messagebox.showerror("錯誤", f"開啟快取管理器時發生錯誤: {e!s}")
@@ -686,7 +779,8 @@ class GUIComponents:
                     self.root.after(0, lambda: self._show_extraction_result(progress_dialog, dialog, result))
                 except Exception as e:
                     logger.error(f"提取字幕時發生錯誤: {format_exception(e)}")
-                    self.root.after(0, lambda: messagebox.showerror("錯誤", f"提取字幕時發生錯誤: {e!s}"))
+                    error_msg = str(e)
+                    self.root.after(0, lambda: messagebox.showerror("錯誤", f"提取字幕時發生錯誤: {error_msg}"))
                     self.root.after(0, progress_dialog.destroy)
 
             # 在背景執行提取
