@@ -298,7 +298,7 @@ class TranslationService:
             progress_service.set_total(total_subtitles)
 
             # 設定上下文窗口大小
-            context_window = 5  # 上下文窗口大小 (每側)
+            context_window = 3  # 上下文窗口大小 (每側，從 5 改為 3 以減少 AI 混淆)
 
             # 計算批次大小
             batch_size = min(20, parallel_requests * 2)

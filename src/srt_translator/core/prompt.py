@@ -362,6 +362,14 @@ You are a movie subtitle translator. Your task:
                 "ollama": f"""
 You are a professional subtitle translator specializing in translating English TV drama/series subtitles into Traditional Chinese (Taiwan).
 
+⚠️ **CRITICAL INSTRUCTION** (違反此規則將導致翻譯無效):
+- You will receive EXACTLY ONE sentence marked as [CURRENT]
+- ONLY translate the [CURRENT] sentence, NOTHING ELSE
+- [CONTEXT_BEFORE] and [CONTEXT_AFTER] are for understanding ONLY
+- **NEVER combine multiple sentences** into one translation
+- **If the current sentence seems incomplete, still translate ONLY that sentence**
+- Your output must contain ONLY the translation of [CURRENT], no other text
+
 ## Core Translation Principles:
 
 ### 1. SRT Format Preservation (CRITICAL)
@@ -423,6 +431,14 @@ Subtitles must account for reading speed - appropriately condense while retainin
 """,
                 "openai": f"""
 You are an expert English-to-Traditional Chinese (Taiwan) subtitle translator for TV dramas and series.
+
+⚠️ **CRITICAL INSTRUCTION** (違反此規則將導致翻譯無效):
+- You will receive EXACTLY ONE sentence marked as [CURRENT]
+- ONLY translate the [CURRENT] sentence, NOTHING ELSE
+- [CONTEXT_BEFORE] and [CONTEXT_AFTER] are for understanding ONLY
+- **NEVER combine multiple sentences** into one translation
+- **If the current sentence seems incomplete, still translate ONLY that sentence**
+- Your output must contain ONLY the translation of [CURRENT], no other text
 
 ## Critical Rules:
 1. ONLY translate the CURRENT text. No warnings, explanations, or quotes.
@@ -573,31 +589,67 @@ Output the translated text directly. No preamble, no explanations.
 
     def get_optimized_message(self, text: str, context_texts: List[str], llm_type: str, model_name: str) -> List[Dict[str, str]]:
         """根據不同LLM和模型生成優化的提示訊息格式
-        
+
         參數:
             text: 要翻譯的文字
-            context_texts: 上下文文本列表
+            context_texts: 上下文文本列表（包含前文、當前文本、後文）
             llm_type: LLM類型 (如 "ollama" 或 "openai")
             model_name: 模型名稱
-            
+
         回傳:
             適合API請求的訊息列表
         """
         # 獲取基本提示詞
         prompt = self.get_prompt(llm_type)
 
+        # 構建結構化的上下文訊息
+        # context_texts 包含當前字幕及其前後文，需要分離出來
+        context_before = []
+        context_after = []
+
+        # 找出當前文本在 context_texts 中的位置
+        try:
+            current_index = context_texts.index(text)
+            context_before = context_texts[:current_index]
+            context_after = context_texts[current_index + 1:]
+        except ValueError:
+            # 如果找不到當前文本（極少數情況），使用原有方式
+            logger.warning(f"無法在上下文中找到當前文本，使用舊格式")
+            context_before = context_texts
+            context_after = []
+
+        # 構建新格式的 user message
+        user_content_parts = [
+            "[CURRENT] (請只翻譯這一句):",
+            text,
+            ""
+        ]
+
+        if context_before:
+            user_content_parts.append("[CONTEXT_BEFORE] (前文參考，不要翻譯):")
+            for ctx in context_before:
+                user_content_parts.append(f"- {ctx}")
+            user_content_parts.append("")
+
+        if context_after:
+            user_content_parts.append("[CONTEXT_AFTER] (後文參考，不要翻譯):")
+            for ctx in context_after:
+                user_content_parts.append(f"- {ctx}")
+
+        user_message = "\n".join(user_content_parts)
+
         # 為不同的LLM類型創建不同格式的訊息
         if llm_type == "openai" or llm_type == "anthropic":
             # OpenAI/Anthropic的訊息格式
             messages = [
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": f"待翻譯文本:\n{text}\n\n上下文僅供理解參考(不要包含在翻譯中):\n{', '.join(context_texts)}"}
+                {"role": "user", "content": user_message}
             ]
         else:
             # Ollama等其他LLM的訊息格式
             messages = [
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": f"待翻譯文本:\n{text}\n\n上下文僅供理解參考(不要包含在翻譯中):\n{', '.join(context_texts)}"}
+                {"role": "user", "content": user_message}
             ]
 
         return messages

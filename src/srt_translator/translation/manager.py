@@ -167,7 +167,7 @@ class TranslationManager:
         self.batch_shrink_rate = 0.5   # 每次失敗後減少的倍率
 
         # 上下文視窗大小
-        self.context_window = get_config("model", "context_window", 5)  # 上下文視窗大小 (每側)
+        self.context_window = get_config("model", "context_window", 3)  # 上下文視窗大小 (每側，從 5 改為 3 以減少 AI 混淆)
 
         # 重試設定
         self.max_retries = get_config("model", "max_retries", 3)
