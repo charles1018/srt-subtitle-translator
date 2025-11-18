@@ -368,6 +368,11 @@ You are a professional subtitle translator specializing in translating English T
 - [CONTEXT_BEFORE] and [CONTEXT_AFTER] are for understanding ONLY
 - **NEVER combine multiple sentences** into one translation
 - **If the current sentence seems incomplete, still translate ONLY that sentence**
+- **For sentences ending with conjunctions** (when, if, because, although, while, before, after, unless, though, etc.):
+  * MUST preserve the conjunction in your translation
+  * KEEP the sentence incomplete - do NOT try to "complete" or "cut off" the sentence
+  * Example: "...see if Krista orders it when" → "...看看當克里斯塔會不會訂購時" or "...看看克里斯塔會不會訂購當" (保留 when 的語境)
+  * Example: "I will call you if" → "我會打給你如果" (NOT "我會打給你")
 - Your output must contain ONLY the translation of [CURRENT], no other text
 
 ## Core Translation Principles:
@@ -438,6 +443,11 @@ You are an expert English-to-Traditional Chinese (Taiwan) subtitle translator fo
 - [CONTEXT_BEFORE] and [CONTEXT_AFTER] are for understanding ONLY
 - **NEVER combine multiple sentences** into one translation
 - **If the current sentence seems incomplete, still translate ONLY that sentence**
+- **For sentences ending with conjunctions** (when, if, because, although, while, before, after, unless, though, etc.):
+  * MUST preserve the conjunction in your translation
+  * KEEP the sentence incomplete - do NOT try to "complete" or "cut off" the sentence
+  * Example: "...see if Krista orders it when" → "...看看當克里斯塔會不會訂購時" or "...看看克里斯塔會不會訂購當" (保留 when 的語境)
+  * Example: "I will call you if" → "我會打給你如果" (NOT "我會打給你")
 - Your output must contain ONLY the translation of [CURRENT], no other text
 
 ## Critical Rules:
