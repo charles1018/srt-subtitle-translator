@@ -774,6 +774,14 @@ class CacheService:
         """
         return self.cache_manager.clear_cache_by_model(model_name)
 
+    def clear_all_cache(self) -> bool:
+        """清空所有快取
+
+        回傳:
+            是否成功清空
+        """
+        return self.cache_manager.clear_all_cache()
+
     def get_cache_stats(self) -> Dict[str, Any]:
         """獲取快取統計資訊
         
