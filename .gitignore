@@ -46,7 +46,7 @@ env/
 Thumbs.db
 
 # uv package manager
-uv.lock
+# Note: uv.lock should be committed for reproducible builds
 
 # Development and testing
 .pytest_cache/
