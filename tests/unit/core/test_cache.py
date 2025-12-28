@@ -22,7 +22,7 @@ class TestCacheManager:
         manager = CacheManager(str(cache_db_path))
         yield manager
         # 確保連線關閉
-        if hasattr(manager, 'conn') and manager.conn:
+        if hasattr(manager, "conn") and manager.conn:
             manager.conn.close()
 
     def test_cache_manager_initialization(self, cache_manager, cache_db_path):
@@ -39,7 +39,7 @@ class TestCacheManager:
             assert manager1 is manager2
         finally:
             # 確保關閉連線
-            if hasattr(manager1, 'conn') and manager1.conn:
+            if hasattr(manager1, "conn") and manager1.conn:
                 manager1.conn.close()
 
     def test_database_initialization(self, cache_db_path, ensure_cache_cleanup):
@@ -52,13 +52,11 @@ class TestCacheManager:
 
             # 檢查表格存在
             with sqlite3.connect(str(cache_db_path)) as conn:
-                cursor = conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='translations'"
-                )
+                cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='translations'")
                 assert cursor.fetchone() is not None
         finally:
             # 確保關閉連線
-            if hasattr(manager, 'conn') and manager.conn:
+            if hasattr(manager, "conn") and manager.conn:
                 manager.conn.close()
 
     def test_cache_stats_initialization(self, cache_manager):
@@ -83,7 +81,7 @@ class TestCacheManagerOperations:
         manager = CacheManager(str(cache_path))
         yield manager
         # 確保連線關閉
-        if hasattr(manager, 'conn') and manager.conn:
+        if hasattr(manager, "conn") and manager.conn:
             manager.conn.close()
 
     def test_cache_initialization_creates_data_dir(self, temp_dir, ensure_cache_cleanup):
@@ -96,7 +94,7 @@ class TestCacheManagerOperations:
             assert cache_path.exists()
         finally:
             # 確保關閉連線
-            if hasattr(manager, 'conn') and manager.conn:
+            if hasattr(manager, "conn") and manager.conn:
                 manager.conn.close()
 
     def test_default_db_path_handling(self, ensure_cache_cleanup):
@@ -109,7 +107,7 @@ class TestCacheManagerOperations:
             assert manager.db_path != ""
         finally:
             # 確保關閉連線
-            if hasattr(manager, 'conn') and manager.conn:
+            if hasattr(manager, "conn") and manager.conn:
                 manager.conn.close()
 
 
@@ -123,7 +121,7 @@ class TestCacheGetSet:
         manager = CacheManager(str(cache_path))
         yield manager
         # 確保連線關閉
-        if hasattr(manager, 'conn') and manager.conn:
+        if hasattr(manager, "conn") and manager.conn:
             manager.conn.close()
 
     def test_store_and_get_translation_basic(self, cache_manager):
@@ -227,7 +225,7 @@ class TestCacheMemoryManagement:
         manager.max_memory_cache = 10  # 設定小的限制以便測試
         yield manager
         # 確保連線關閉
-        if hasattr(manager, 'conn') and manager.conn:
+        if hasattr(manager, "conn") and manager.conn:
             manager.conn.close()
 
     def test_memory_cache_auto_cleanup(self, cache_manager):
@@ -269,7 +267,7 @@ class TestCacheDatabaseMaintenance:
         manager = CacheManager(str(cache_path))
         yield manager
         # 確保連線關閉
-        if hasattr(manager, 'conn') and manager.conn:
+        if hasattr(manager, "conn") and manager.conn:
             manager.conn.close()
 
     def test_create_backup(self, cache_manager, temp_dir):
@@ -349,7 +347,7 @@ class TestCacheStatistics:
         manager = CacheManager(str(cache_path))
         yield manager
         # 確保連線關閉
-        if hasattr(manager, 'conn') and manager.conn:
+        if hasattr(manager, "conn") and manager.conn:
             manager.conn.close()
 
     def test_get_cache_stats_basic(self, cache_manager):
@@ -418,7 +416,7 @@ class TestCacheImportExport:
         manager = CacheManager(str(cache_path))
         yield manager
         # 確保連線關閉
-        if hasattr(manager, 'conn') and manager.conn:
+        if hasattr(manager, "conn") and manager.conn:
             manager.conn.close()
 
     def test_export_cache(self, cache_manager, temp_dir):
@@ -436,7 +434,8 @@ class TestCacheImportExport:
         assert export_path.exists()
 
         import json
-        with open(export_path, encoding='utf-8') as f:
+
+        with open(export_path, encoding="utf-8") as f:
             data = json.load(f)
 
         assert "version" in data
@@ -479,13 +478,14 @@ class TestCacheConfigAndMaintenance:
         manager = CacheManager(str(cache_path))
         yield manager
         # 確保連線關閉
-        if hasattr(manager, 'conn') and manager.conn:
+        if hasattr(manager, "conn") and manager.conn:
             manager.conn.close()
 
     def test_update_config(self, cache_manager):
         """測試更新配置"""
         # 修改配置
         from srt_translator.core.config import ConfigManager
+
         config = ConfigManager.get_instance("cache")
         config.set_value("max_memory_cache", 50)
         config.set_value("auto_cleanup_days", 15)
@@ -504,6 +504,7 @@ class TestCacheConfigAndMaintenance:
 
         # 降低記憶體快取限制
         from srt_translator.core.config import ConfigManager
+
         config = ConfigManager.get_instance("cache")
         config.set_value("max_memory_cache", 5)
 
@@ -546,12 +547,14 @@ class TestCacheConfigAndMaintenance:
         """測試新資料庫的版本檢查"""
         # 新建的資料庫應該設定版本
         import sqlite3
+
         with sqlite3.connect(cache_manager.db_path) as conn:
             cursor = conn.execute("SELECT value FROM cache_metadata WHERE key = 'version'")
             result = cursor.fetchone()
             assert result is not None
             # 版本應該是當前版本
             from srt_translator.core.cache import CACHE_VERSION
+
             assert result[0] == CACHE_VERSION
 
     def test_compute_context_hash(self, cache_manager):

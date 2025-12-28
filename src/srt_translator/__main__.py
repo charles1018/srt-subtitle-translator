@@ -6,11 +6,13 @@ from typing import Any, Dict, List, Optional
 
 try:
     from tkinterdnd2 import TkinterDnD
+
     TKDND_AVAILABLE = True
 except ImportError:
     TKDND_AVAILABLE = False
     from tkinter import Tk as TkBase
-    TkinterDnD = type('TkinterDnD', (object,), {'Tk': TkBase})
+
+    TkinterDnD = type("TkinterDnD", (object,), {"Tk": TkBase})
 
 # 從新創建的模組導入
 from srt_translator.core.config import ConfigManager, get_config, set_config
@@ -20,13 +22,11 @@ from srt_translator.utils import AppError, check_internet_connection, format_exc
 # 設定日誌
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/app.log', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s",
+    handlers=[logging.FileHandler("logs/app.log", encoding="utf-8"), logging.StreamHandler()],
 )
-logger = logging.getLogger('SRTTranslator')
+logger = logging.getLogger("SRTTranslator")
+
 
 class App:
     """字幕翻譯應用程式主類"""
@@ -78,13 +78,7 @@ class App:
 
     def _ensure_directories(self) -> None:
         """確保必要的目錄存在"""
-        directories = [
-            "data",
-            "data/checkpoints",
-            "config",
-            "logs",
-            "data/terms_dictionaries"
-        ]
+        directories = ["data", "data/checkpoints", "config", "logs", "data/terms_dictionaries"]
 
         for directory in directories:
             os.makedirs(directory, exist_ok=True)
@@ -108,11 +102,11 @@ class App:
         self.gui = GUIComponents(
             self.root,
             self.start_translation,  # 開始翻譯的回調函數
-            self.toggle_pause,       # 暫停/繼續翻譯的回調函數
-            self.stop_translation,   # 停止翻譯的回調函數
-            self._update_progress,   # 更新進度的回調函數
+            self.toggle_pause,  # 暫停/繼續翻譯的回調函數
+            self.stop_translation,  # 停止翻譯的回調函數
+            self._update_progress,  # 更新進度的回調函數
             self._translation_completed,  # 翻譯完成的回調函數
-            prompt_manager
+            prompt_manager,
         )
 
         # 設置介面
@@ -146,13 +140,11 @@ class App:
         theme = get_config("user", "theme", "default")
         if theme == "dark":
             self.root.tk_setPalette(
-                background='#2E2E2E',
-                foreground='#FFFFFF',
-                activeBackground='#4A4A4A',
-                activeForeground='#FFFFFF')
+                background="#2E2E2E", foreground="#FFFFFF", activeBackground="#4A4A4A", activeForeground="#FFFFFF"
+            )
         else:
             # 恢復預設主題
-            self.root.tk_setPalette(background=self.root.cget('background'))
+            self.root.tk_setPalette(background=self.root.cget("background"))
 
     def update_model_list(self, event=None) -> None:
         """根據選擇的 LLM 類型更新模型列表"""
@@ -162,12 +154,11 @@ class App:
             def async_update_models():
                 try:
                     import asyncio
+
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
                     try:
-                        models = loop.run_until_complete(
-                            self.model_service.get_available_models(llm_type)
-                        )
+                        models = loop.run_until_complete(self.model_service.get_available_models(llm_type))
 
                         # 在主線程更新 UI
                         self.root.after(0, lambda: self._update_model_dropdown(models, llm_type))
@@ -228,6 +219,7 @@ class App:
         except ImportError:
             # 如果設定視窗模組不存在，使用舊有的設定方式
             from tkinter import messagebox
+
             messagebox.showinfo("功能開發中", "進階設定功能正在開發中")
 
     def start_translation(self) -> None:
@@ -263,7 +255,7 @@ class App:
             display_mode,
             llm_type,
             self._update_progress,
-            self._translation_completed
+            self._translation_completed,
         )
 
         if not success:
@@ -288,7 +280,7 @@ class App:
             "llm_type": self.gui.llm_type.get(),
             "model_name": self.gui.model_combo.get(),
             "parallel_requests": int(self.gui.parallel_requests.get()),
-            "display_mode": self.gui.display_mode.get()
+            "display_mode": self.gui.display_mode.get(),
         }
 
         # 更新設定
@@ -318,10 +310,11 @@ class App:
         # 處理檔案衝突
         if extra_data and extra_data.get("type") == "file_conflict":
             from tkinter import messagebox
+
             response = messagebox.askyesnocancel(
                 "檔案已存在",
                 f"檔案 {extra_data['path']} 已存在。\n是否覆蓋？\n'是' = 覆蓋\n'否' = 重新命名\n'取消' = 跳過",
-                icon="warning"
+                icon="warning",
             )
             result = "overwrite" if response is True else "rename" if response is False else "skip"
             extra_data["queue"].put(result)
@@ -330,7 +323,7 @@ class App:
         # 一般進度更新
         if current >= 0 and total >= 0:
             percentage = int((current / total) * 100) if total > 0 else 0
-            self.gui.progress_bar['value'] = percentage
+            self.gui.progress_bar["value"] = percentage
             self.gui.status_label.config(text=f"正在翻譯第 {current}/{total} 句字幕 ({percentage}%)")
             self.root.update_idletasks()
 
@@ -358,17 +351,19 @@ class App:
         """播放通知音效"""
         try:
             import winsound
+
             winsound.MessageBeep(winsound.MB_ICONASTERISK)
         except:
             # 在非Windows系統上，嘗試其他方法播放聲音
             try:
                 import subprocess
+
                 os_name = os.name
-                if os_name == 'posix':  # macOS or Linux
-                    if 'darwin' in os.sys.platform:  # macOS
-                        subprocess.call(['afplay', '/System/Library/Sounds/Tink.aiff'])
+                if os_name == "posix":  # macOS or Linux
+                    if "darwin" in os.sys.platform:  # macOS
+                        subprocess.call(["afplay", "/System/Library/Sounds/Tink.aiff"])
                     else:  # Linux
-                        subprocess.call(['paplay', '/usr/share/sounds/freedesktop/stereo/complete.oga'])
+                        subprocess.call(["paplay", "/usr/share/sounds/freedesktop/stereo/complete.oga"])
             except:
                 # 如果上述方法都不可用，靜默失敗
                 pass
@@ -377,6 +372,7 @@ class App:
         """處理視窗關閉事件"""
         if self.task_manager.is_any_running():
             from tkinter import messagebox
+
             if messagebox.askokcancel("確認", "正在進行翻譯，確定要關閉程式嗎？"):
                 self.task_manager.stop_all()
                 self._save_user_settings()
@@ -393,6 +389,7 @@ class App:
         """運行應用程式"""
         self.root.mainloop()
 
+
 def main() -> None:
     """主程式入口點"""
     try:
@@ -402,12 +399,15 @@ def main() -> None:
         # 處理應用程式自定義錯誤
         logger.error(f"應用程式錯誤: {format_exception(e)}")
         from tkinter import messagebox
+
         messagebox.showerror("應用程式錯誤", str(e))
     except Exception as e:
         # 處理未捕獲的錯誤
         logger.error(f"未預期的錯誤: {format_exception(e)}")
         from tkinter import messagebox
+
         messagebox.showerror("未預期的錯誤", f"發生未預期的錯誤:\n{e!s}")
+
 
 # 主程式進入點
 if __name__ == "__main__":

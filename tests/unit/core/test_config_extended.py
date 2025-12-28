@@ -20,6 +20,7 @@ from srt_translator.core.config import ConfigManager, get_config, set_config
 # 備份與還原功能測試
 # ============================================================
 
+
 class TestConfigBackupRestore:
     """測試配置備份與還原功能"""
 
@@ -51,7 +52,7 @@ class TestConfigBackupRestore:
         backup_path = config_manager.create_backup()
 
         # 讀取備份內容
-        with open(backup_path, encoding='utf-8') as f:
+        with open(backup_path, encoding="utf-8") as f:
             backup_data = json.load(f)
 
         # 驗證元數據存在
@@ -148,6 +149,7 @@ class TestConfigBackupRestore:
 # ============================================================
 # 配置驗證詳細測試
 # ============================================================
+
 
 class TestConfigValidationExtended:
     """測試配置驗證的擴展功能"""
@@ -345,11 +347,11 @@ class TestConfigValidationExtended:
         """測試驗證權重總和不為 1.0"""
         ConfigManager._instances = {}
         manager = ConfigManager("model")
-        manager.set_value("translation_capability_weight", {
-            "translation": 0.5,
-            "multilingual": 0.3,
-            "context_handling": 0.1
-        }, auto_save=False)
+        manager.set_value(
+            "translation_capability_weight",
+            {"translation": 0.5, "multilingual": 0.3, "context_handling": 0.1},
+            auto_save=False,
+        )
 
         errors = manager.validate_config("model")
         assert "translation_capability_weight" in errors
@@ -358,6 +360,7 @@ class TestConfigValidationExtended:
 # ============================================================
 # 輔助方法測試
 # ============================================================
+
 
 class TestConfigHelperMethods:
     """測試配置輔助方法"""
@@ -401,6 +404,7 @@ class TestConfigHelperMethods:
 # 監聽器異常處理測試
 # ============================================================
 
+
 class TestConfigListenerExceptions:
     """測試監聽器異常處理"""
 
@@ -415,6 +419,7 @@ class TestConfigListenerExceptions:
 
     def test_listener_exception_handled(self, config_manager):
         """測試監聽器拋出異常時被捕獲"""
+
         def failing_listener(config_type, config):
             raise RuntimeError("Listener error")
 
@@ -449,6 +454,7 @@ class TestConfigListenerExceptions:
 # 錯誤處理擴展測試
 # ============================================================
 
+
 class TestConfigErrorHandlingExtended:
     """測試配置錯誤處理的擴展情況"""
 
@@ -477,7 +483,7 @@ class TestConfigErrorHandlingExtended:
     def test_import_config_corrupted_json(self, config_manager, temp_dir):
         """測試匯入損壞的 JSON 文件"""
         corrupted_file = temp_dir / "corrupted.json"
-        with open(corrupted_file, 'w') as f:
+        with open(corrupted_file, "w") as f:
             f.write("{ invalid json {{")
 
         result = config_manager.import_config(str(corrupted_file))
@@ -501,6 +507,7 @@ class TestConfigErrorHandlingExtended:
 # ============================================================
 # 複雜場景測試
 # ============================================================
+
 
 class TestConfigComplexScenarios:
     """測試配置管理的複雜場景"""
@@ -532,23 +539,9 @@ class TestConfigComplexScenarios:
         manager = ConfigManager("app")
 
         # 測試深度合併
-        default = {
-            "level1": {
-                "level2": {
-                    "key1": "value1",
-                    "key2": "value2"
-                }
-            }
-        }
+        default = {"level1": {"level2": {"key1": "value1", "key2": "value2"}}}
 
-        loaded = {
-            "level1": {
-                "level2": {
-                    "key2": "new_value2",
-                    "key3": "value3"
-                }
-            }
-        }
+        loaded = {"level1": {"level2": {"key2": "new_value2", "key3": "value3"}}}
 
         merged = manager._merge_configs(default, loaded)
 
@@ -584,6 +577,7 @@ class TestConfigComplexScenarios:
 # ============================================================
 # 全域函數擴展測試
 # ============================================================
+
 
 class TestGlobalFunctionsExtended:
     """測試全域配置函數的擴展功能"""

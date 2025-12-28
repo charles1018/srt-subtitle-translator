@@ -20,7 +20,7 @@ def reset_config_manager():
     if config_dir.exists():
         for config_file in config_dir.glob("*.json"):
             try:
-                config_backup[config_file.name] = config_file.read_text(encoding='utf-8')
+                config_backup[config_file.name] = config_file.read_text(encoding="utf-8")
             except Exception:
                 pass
 
@@ -33,7 +33,7 @@ def reset_config_manager():
     if config_dir.exists():
         for filename, content in config_backup.items():
             try:
-                (config_dir / filename).write_text(content, encoding='utf-8')
+                (config_dir / filename).write_text(content, encoding="utf-8")
             except Exception:
                 pass
 
@@ -54,8 +54,11 @@ class TestConfigManager:
         # 重置單例
         ConfigManager._instances = {}
         # 修改配置目錄為臨時目錄
-        monkeypatch.setattr(ConfigManager, "__init__",
-            lambda self, config_type="app": self._test_init(config_type, str(temp_config_dir)))
+        monkeypatch.setattr(
+            ConfigManager,
+            "__init__",
+            lambda self, config_type="app": self._test_init(config_type, str(temp_config_dir)),
+        )
 
         # 添加測試用的初始化方法
         def _test_init(self, config_type, config_dir):
@@ -267,6 +270,7 @@ class TestConfigListeners:
 
     def test_add_listener(self, config_manager):
         """測試添加監聽器"""
+
         def listener(config_type, config):
             pass
 
@@ -275,6 +279,7 @@ class TestConfigListeners:
 
     def test_remove_listener(self, config_manager):
         """測試移除監聽器"""
+
         def listener(config_type, config):
             pass
 
@@ -297,6 +302,7 @@ class TestConfigListeners:
 
     def test_listener_does_not_duplicate(self, config_manager):
         """測試不重複添加相同監聽器"""
+
         def listener(config_type, config):
             pass
 
@@ -352,7 +358,7 @@ class TestConfigImportExport:
 
         # 驗證檔案存在且格式正確
         assert export_path.exists()
-        with open(export_path, encoding='utf-8') as f:
+        with open(export_path, encoding="utf-8") as f:
             data = json.load(f)
         assert "metadata" in data
         assert "config" in data
@@ -455,7 +461,7 @@ class TestConfigErrorHandling:
         # 建立損壞的配置檔案
         config_path = temp_dir / "config" / "app_config.json"
         config_path.parent.mkdir(exist_ok=True)
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             f.write("invalid json{{{")
 
         # 載入應該使用預設值
@@ -482,7 +488,7 @@ class TestConfigErrorHandling:
         """測試匯入無效格式的配置檔案"""
         # 建立無效格式的檔案
         invalid_path = temp_dir / "invalid_config.json"
-        with open(invalid_path, 'w', encoding='utf-8') as f:
+        with open(invalid_path, "w", encoding="utf-8") as f:
             json.dump({"invalid": "format"}, f)
 
         result = config_manager.import_config(str(invalid_path))

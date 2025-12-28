@@ -10,11 +10,7 @@ class TestLoggingConfig:
 
     def test_setup_logger_basic(self, temp_dir):
         """測試基本的日誌記錄器設置"""
-        logger = setup_logger(
-            name="test_logger",
-            log_file="test.log",
-            log_dir=str(temp_dir)
-        )
+        logger = setup_logger(name="test_logger", log_file="test.log", log_dir=str(temp_dir))
 
         assert logger is not None
         assert logger.name == "test_logger"
@@ -29,21 +25,13 @@ class TestLoggingConfig:
     def test_setup_logger_creates_log_dir(self, temp_dir):
         """測試自動創建日誌目錄"""
         log_dir = temp_dir / "new_logs"
-        logger = setup_logger(
-            name="test",
-            log_file="test.log",
-            log_dir=str(log_dir)
-        )
+        logger = setup_logger(name="test", log_file="test.log", log_dir=str(log_dir))
 
         assert log_dir.exists()
 
     def test_setup_logger_custom_level(self, temp_dir):
         """測試自定義日誌等級"""
-        logger = setup_logger(
-            name="test_info",
-            level=logging.INFO,
-            log_dir=str(temp_dir)
-        )
+        logger = setup_logger(name="test_info", level=logging.INFO, log_dir=str(temp_dir))
 
         assert logger.level == logging.INFO
 
@@ -59,11 +47,7 @@ class TestLoggingConfig:
     def test_logger_writes_to_file(self, temp_dir):
         """測試日誌寫入文件"""
         log_file = "test_write.log"
-        logger = setup_logger(
-            name="test_write",
-            log_file=log_file,
-            log_dir=str(temp_dir)
-        )
+        logger = setup_logger(name="test_write", log_file=log_file, log_dir=str(temp_dir))
 
         test_message = "Test log message"
         logger.info(test_message)

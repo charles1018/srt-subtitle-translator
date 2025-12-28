@@ -28,20 +28,17 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # 確保日誌目錄存在
-os.makedirs('logs', exist_ok=True)
+os.makedirs("logs", exist_ok=True)
 
 # 避免重複添加處理程序
 if not logger.handlers:
     handler = TimedRotatingFileHandler(
-        filename='logs/services.log',
-        when='midnight',
-        interval=1,
-        backupCount=7,
-        encoding='utf-8'
+        filename="logs/services.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
     )
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+
 
 # 服務工廠類 - 統一管理所有服務的創建和訪問
 class ServiceFactory:
@@ -51,27 +48,27 @@ class ServiceFactory:
     _instances = {}
 
     @classmethod
-    def get_translation_service(cls) -> 'TranslationService':
+    def get_translation_service(cls) -> "TranslationService":
         """獲取翻譯服務實例"""
         return cls._get_service_instance(TranslationService)
 
     @classmethod
-    def get_model_service(cls) -> 'ModelService':
+    def get_model_service(cls) -> "ModelService":
         """獲取模型服務實例"""
         return cls._get_service_instance(ModelService)
 
     @classmethod
-    def get_cache_service(cls) -> 'CacheService':
+    def get_cache_service(cls) -> "CacheService":
         """獲取快取服務實例"""
         return cls._get_service_instance(CacheService)
 
     @classmethod
-    def get_file_service(cls) -> 'FileService':
+    def get_file_service(cls) -> "FileService":
         """獲取檔案服務實例"""
         return cls._get_service_instance(FileService)
 
     @classmethod
-    def get_progress_service(cls) -> 'ProgressService':
+    def get_progress_service(cls) -> "ProgressService":
         """獲取進度追蹤服務實例"""
         return cls._get_service_instance(ProgressService)
 
@@ -87,12 +84,13 @@ class ServiceFactory:
     def reset_services(cls) -> None:
         """重置所有服務實例（主要用於測試）"""
         for service_name in list(cls._instances.keys()):
-            if hasattr(cls._instances[service_name], 'cleanup'):
+            if hasattr(cls._instances[service_name], "cleanup"):
                 try:
                     cls._instances[service_name].cleanup()
                 except Exception as e:
                     logger.error(f"清理服務 {service_name} 時發生錯誤: {e!s}")
         cls._instances.clear()
+
 
 # 翻譯服務 - 處理翻譯相關的功能
 class TranslationService:
@@ -116,7 +114,7 @@ class TranslationService:
             "failed_translations": 0,
             "processing_time": 0,
             "start_time": None,
-            "end_time": None
+            "end_time": None,
         }
 
         # 專有名詞詞典 (用於統一翻譯)
@@ -140,13 +138,13 @@ class TranslationService:
 
     async def translate_text(self, text: str, context_texts: List[str], llm_type: str, model_name: str) -> str:
         """翻譯單一文本
-        
+
         參數:
             text: 要翻譯的文本
             context_texts: 上下文文本列表
             llm_type: LLM類型 (如 "ollama" 或 "openai")
             model_name: 模型名稱
-            
+
         回傳:
             翻譯後的文本
         """
@@ -171,7 +169,7 @@ class TranslationService:
             messages = self.prompt_manager.get_optimized_message(text, context_texts, llm_type, model_name)
 
             # 使用客戶端執行翻譯
-            if hasattr(client, 'translate_with_retry'):
+            if hasattr(client, "translate_with_retry"):
                 translation = await client.translate_with_retry(text, context_texts, model_name)
             else:
                 translation = await client.translate_text(text, context_texts, model_name)
@@ -184,7 +182,7 @@ class TranslationService:
 
             # 更新統計資料
             end_time = time.time()
-            self.stats["processing_time"] += (end_time - start_time)
+            self.stats["processing_time"] += end_time - start_time
 
             return translation
 
@@ -193,16 +191,17 @@ class TranslationService:
             logger.error(f"翻譯文本時發生錯誤: {e!s}")
             return f"[翻譯錯誤: {e!s}]"
 
-    async def translate_batch(self, texts_with_context: List[Tuple[str, List[str]]],
-                            llm_type: str, model_name: str, concurrent_limit: int = 5) -> List[str]:
+    async def translate_batch(
+        self, texts_with_context: List[Tuple[str, List[str]]], llm_type: str, model_name: str, concurrent_limit: int = 5
+    ) -> List[str]:
         """批量翻譯多個文本
-        
+
         參數:
             texts_with_context: 文本和上下文的列表，格式為 [(text, context_texts), ...]
             llm_type: LLM類型 (如 "ollama" 或 "openai")
             model_name: 模型名稱
             concurrent_limit: 並行請求限制
-            
+
         回傳:
             翻譯結果列表
         """
@@ -215,12 +214,10 @@ class TranslationService:
         client = await self.model_service.get_translation_client(llm_type)
 
         # 檢查客戶端是否支持批量翻譯
-        if hasattr(client, 'translate_batch'):
+        if hasattr(client, "translate_batch"):
             # 使用原生批量翻譯功能
             batch_results = await client.translate_batch(
-                texts_with_context,
-                model_name,
-                concurrent_limit=concurrent_limit
+                texts_with_context, model_name, concurrent_limit=concurrent_limit
             )
 
             # 對每個結果進行後處理
@@ -255,13 +252,20 @@ class TranslationService:
 
         return results
 
-    async def translate_subtitle_file(self, file_path: str, source_lang: str, target_lang: str,
-                                    model_name: str, parallel_requests: int,
-                                    display_mode: str, llm_type: str,
-                                    progress_callback: Callable = None,
-                                    complete_callback: Callable = None) -> Tuple[bool, str]:
+    async def translate_subtitle_file(
+        self,
+        file_path: str,
+        source_lang: str,
+        target_lang: str,
+        model_name: str,
+        parallel_requests: int,
+        display_mode: str,
+        llm_type: str,
+        progress_callback: Callable = None,
+        complete_callback: Callable = None,
+    ) -> Tuple[bool, str]:
         """翻譯字幕檔案
-        
+
         參數:
             file_path: 字幕檔案路徑
             source_lang: 來源語言
@@ -272,7 +276,7 @@ class TranslationService:
             llm_type: LLM類型 (如 "ollama" 或 "openai")
             progress_callback: 進度回調函數
             complete_callback: 完成回調函數
-            
+
         回傳:
             (成功與否, 輸出路徑或錯誤消息)
         """
@@ -288,7 +292,7 @@ class TranslationService:
             self.key_terms_dict = {}
 
             # 載入字幕檔案
-            subs = pysrt.open(file_path, encoding='utf-8')
+            subs = pysrt.open(file_path, encoding="utf-8")
             total_subtitles = len(subs)
 
             # 設定進度回調
@@ -321,12 +325,7 @@ class TranslationService:
                     texts_with_context.append((subs[idx].text, context_texts))
 
                 # 批量翻譯
-                translations = await self.translate_batch(
-                    texts_with_context,
-                    llm_type,
-                    model_name,
-                    parallel_requests
-                )
+                translations = await self.translate_batch(texts_with_context, llm_type, model_name, parallel_requests)
 
                 # 應用翻譯結果
                 for batch_idx, idx in enumerate(batch_indices):
@@ -343,7 +342,7 @@ class TranslationService:
                 return False, "無法建立輸出路徑"
 
             # 保存檔案
-            subs.save(output_path, encoding='utf-8')
+            subs.save(output_path, encoding="utf-8")
 
             # 更新結束時間
             self.stats["end_time"] = time.time()
@@ -377,11 +376,11 @@ class TranslationService:
 
     def _post_process_translation(self, original_text: str, translated_text: str) -> str:
         """對翻譯結果進行後處理，包括專有名詞統一和移除標點符號
-        
+
         參數:
             original_text: 原始文字
             translated_text: 翻譯文字
-            
+
         回傳:
             後處理後的翻譯文字
         """
@@ -390,7 +389,7 @@ class TranslationService:
 
         # 1. 處理專有名詞統一
         # 使用正則表達式識別可能的專有名詞（假設專有名詞通常是2-6個漢字的連續序列）
-        potential_terms = re.findall(r'[\u4e00-\u9fff]{2,6}', translated_text)
+        potential_terms = re.findall(r"[\u4e00-\u9fff]{2,6}", translated_text)
 
         # 對於每個潛在的專有名詞，檢查是否已在詞典中
         for term in potential_terms:
@@ -408,24 +407,24 @@ class TranslationService:
 
         # 2. 移除中文標點符號，用空格替換
         # 定義中文標點符號
-        cn_punctuation = r'，。！？；：""''（）【】《》〈〉、…—～·「」『』〔〕'
+        cn_punctuation = r'，。！？；：""' "（）【】《》〈〉、…—～·「」『』〔〕"
         # 將標點符號替換為空格
         for punct in cn_punctuation:
-            translated_text = translated_text.replace(punct, ' ')
+            translated_text = translated_text.replace(punct, " ")
 
         # 替換英文標點符號
         en_punctuation = r',.!?;:"\'()[]<>-_'
         for punct in en_punctuation:
-            translated_text = translated_text.replace(punct, ' ')
+            translated_text = translated_text.replace(punct, " ")
 
         # 處理連續空格
-        translated_text = re.sub(r'\s+', ' ', translated_text)
+        translated_text = re.sub(r"\s+", " ", translated_text)
 
         return translated_text.strip()
 
     def _apply_translation(self, subtitle, translation: str, display_mode: str) -> None:
         """根據顯示模式套用翻譯結果
-        
+
         參數:
             subtitle: 字幕對象
             translation: 翻譯文本
@@ -443,7 +442,7 @@ class TranslationService:
 
     def _save_key_terms_dictionary(self, file_path: str) -> None:
         """儲存專有名詞詞典到檔案
-        
+
         參數:
             file_path: 原始檔案路徑，用於生成詞典檔名
         """
@@ -460,7 +459,7 @@ class TranslationService:
             os.makedirs(os.path.dirname(dict_path), exist_ok=True)
 
             # 儲存詞典
-            with open(dict_path, 'w', encoding='utf-8') as f:
+            with open(dict_path, "w", encoding="utf-8") as f:
                 json.dump(self.key_terms_dict, f, ensure_ascii=False, indent=2)
 
             logger.info(f"已儲存 {len(self.key_terms_dict)} 個專有名詞到檔案: {dict_path}")
@@ -469,7 +468,7 @@ class TranslationService:
 
     def get_stats(self) -> Dict[str, Any]:
         """獲取翻譯統計資訊
-        
+
         回傳:
             包含統計資訊的字典
         """
@@ -483,13 +482,17 @@ class TranslationService:
 
         # 計算成功率
         if stats["total_translations"] > 0:
-            stats["success_rate"] = ((stats["total_translations"] - stats["failed_translations"]) / stats["total_translations"]) * 100
+            stats["success_rate"] = (
+                (stats["total_translations"] - stats["failed_translations"]) / stats["total_translations"]
+            ) * 100
         else:
             stats["success_rate"] = 0
 
         # 計算平均處理時間
         if stats["total_translations"] - stats["cached_translations"] > 0:
-            stats["average_processing_time"] = stats["processing_time"] / (stats["total_translations"] - stats["cached_translations"])
+            stats["average_processing_time"] = stats["processing_time"] / (
+                stats["total_translations"] - stats["cached_translations"]
+            )
         else:
             stats["average_processing_time"] = 0
 
@@ -497,7 +500,7 @@ class TranslationService:
 
     def get_elapsed_time(self) -> float:
         """獲取翻譯耗時（秒）
-        
+
         回傳:
             翻譯耗時（秒）
         """
@@ -509,7 +512,7 @@ class TranslationService:
 
     def get_elapsed_time_str(self) -> str:
         """獲取格式化的翻譯耗時
-        
+
         回傳:
             格式化的耗時字串
         """
@@ -533,6 +536,7 @@ class TranslationService:
         # 目前沒有特殊清理需求
         pass
 
+
 # 模型服務 - 管理和加載各種模型
 class ModelService:
     """模型服務，管理和加載LLM模型"""
@@ -554,7 +558,7 @@ class ModelService:
         try:
             openai_key_path = get_config("app", "openai_key_path", "openapi_api_key.txt")
             if os.path.exists(openai_key_path):
-                with open(openai_key_path, encoding='utf-8') as f:
+                with open(openai_key_path, encoding="utf-8") as f:
                     self.api_keys["openai"] = f.read().strip()
                 logger.info("已載入 OpenAI API 金鑰")
             else:
@@ -566,7 +570,7 @@ class ModelService:
         try:
             anthropic_key_path = get_config("app", "anthropic_key_path", "anthropic_api_key.txt")
             if os.path.exists(anthropic_key_path):
-                with open(anthropic_key_path, encoding='utf-8') as f:
+                with open(anthropic_key_path, encoding="utf-8") as f:
                     self.api_keys["anthropic"] = f.read().strip()
                 logger.info("已載入 Anthropic API 金鑰")
         except Exception as e:
@@ -574,10 +578,10 @@ class ModelService:
 
     async def get_translation_client(self, llm_type: str) -> TranslationClient:
         """獲取翻譯客戶端實例
-        
+
         參數:
             llm_type: LLM類型 (如 "ollama" 或 "openai")
-            
+
         回傳:
             翻譯客戶端實例
         """
@@ -594,10 +598,10 @@ class ModelService:
         netflix_enabled = get_config("user", "netflix_style_enabled", False)
         netflix_style_config = {
             "enabled": netflix_enabled,  # 從配置讀取啟用狀態
-            "auto_fix": True,            # 自動修正格式問題
-            "strict_mode": False,        # 非嚴格模式（警告但不阻止）
-            "max_chars_per_line": 16,    # 每行最多 16 個字符
-            "max_lines": 2               # 最多 2 行
+            "auto_fix": True,  # 自動修正格式問題
+            "strict_mode": False,  # 非嚴格模式（警告但不阻止）
+            "max_chars_per_line": 16,  # 每行最多 16 個字符
+            "max_lines": 2,  # 最多 2 行
         }
 
         client = TranslationClient(
@@ -605,7 +609,7 @@ class ModelService:
             base_url=base_url,
             api_key=api_key,
             cache_db_path=cache_db_path,
-            netflix_style_config=netflix_style_config
+            netflix_style_config=netflix_style_config,
         )
         await client.__aenter__()
 
@@ -617,10 +621,10 @@ class ModelService:
 
     async def get_available_models(self, llm_type: str) -> List[str]:
         """獲取可用的模型列表
-        
+
         參數:
             llm_type: LLM類型 (如 "ollama" 或 "openai")
-            
+
         回傳:
             模型名稱列表
         """
@@ -630,11 +634,11 @@ class ModelService:
 
     def get_model_info(self, model_name: str, provider: str = None) -> Dict[str, Any]:
         """獲取模型的詳細資訊
-        
+
         參數:
             model_name: 模型名稱
             provider: 提供者 (如 "ollama" 或 "openai")
-            
+
         回傳:
             模型資訊字典
         """
@@ -642,11 +646,11 @@ class ModelService:
 
     def get_recommended_model(self, task_type: str = "translation", provider: str = None) -> str:
         """根據任務類型獲取推薦模型
-        
+
         參數:
             task_type: 任務類型 (如 "translation" 或 "literary")
             provider: 提供者 (如 "ollama" 或 "openai")
-            
+
         回傳:
             推薦的模型名稱
         """
@@ -657,11 +661,11 @@ class ModelService:
 
     async def test_model_connection(self, model_name: str, provider: str) -> Dict[str, Any]:
         """測試與模型的連線
-        
+
         參數:
             model_name: 模型名稱
             provider: 提供者 (如 "ollama" 或 "openai")
-            
+
         回傳:
             測試結果字典
         """
@@ -670,7 +674,7 @@ class ModelService:
 
     async def get_provider_status(self) -> Dict[str, bool]:
         """獲取各提供者的連線狀態
-        
+
         回傳:
             提供者狀態字典
         """
@@ -678,17 +682,17 @@ class ModelService:
 
     def save_api_key(self, provider: str, api_key: str) -> bool:
         """儲存 API 金鑰
-        
+
         參數:
             provider: 提供者 (如 "openai" 或 "anthropic")
             api_key: API 金鑰
-            
+
         回傳:
             是否儲存成功
         """
         try:
             key_path = get_config("app", f"{provider}_key_path", f"{provider}_api_key.txt")
-            with open(key_path, 'w', encoding='utf-8') as f:
+            with open(key_path, "w", encoding="utf-8") as f:
                 f.write(api_key)
 
             # 更新緩存
@@ -712,6 +716,7 @@ class ModelService:
 
         self.translation_clients.clear()
 
+
 # 快取服務 - 管理翻譯結果快取
 class CacheService:
     """快取服務，管理翻譯結果的快取"""
@@ -727,12 +732,12 @@ class CacheService:
 
     def get_translation(self, source_text: str, context_texts: List[str], model_name: str) -> Optional[str]:
         """從快取獲取翻譯結果
-        
+
         參數:
             source_text: 原始文本
             context_texts: 上下文文本列表
             model_name: 模型名稱
-            
+
         回傳:
             翻譯結果，若不存在則回傳 None
         """
@@ -740,13 +745,13 @@ class CacheService:
 
     def store_translation(self, source_text: str, target_text: str, context_texts: List[str], model_name: str) -> bool:
         """將翻譯結果儲存到快取
-        
+
         參數:
             source_text: 原始文本
             target_text: 翻譯結果
             context_texts: 上下文文本列表
             model_name: 模型名稱
-            
+
         回傳:
             是否儲存成功
         """
@@ -754,10 +759,10 @@ class CacheService:
 
     def clear_old_cache(self, days_threshold: int = 30) -> int:
         """清理舊的快取
-        
+
         參數:
             days_threshold: 天數閾值，超過此天數的快取將被刪除
-            
+
         回傳:
             刪除的快取數量
         """
@@ -765,10 +770,10 @@ class CacheService:
 
     def clear_cache_by_model(self, model_name: str) -> int:
         """按模型清理快取
-        
+
         參數:
             model_name: 模型名稱
-            
+
         回傳:
             刪除的快取數量
         """
@@ -784,7 +789,7 @@ class CacheService:
 
     def get_cache_stats(self) -> Dict[str, Any]:
         """獲取快取統計資訊
-        
+
         回傳:
             包含統計資訊的字典
         """
@@ -792,7 +797,7 @@ class CacheService:
 
     def optimize_database(self) -> bool:
         """最佳化快取資料庫
-        
+
         回傳:
             是否最佳化成功
         """
@@ -800,10 +805,10 @@ class CacheService:
 
     def export_cache(self, output_path: str) -> bool:
         """匯出快取到檔案
-        
+
         參數:
             output_path: 輸出檔案路徑
-            
+
         回傳:
             是否匯出成功
         """
@@ -811,10 +816,10 @@ class CacheService:
 
     def import_cache(self, input_path: str) -> Tuple[bool, int]:
         """從檔案匯入快取
-        
+
         參數:
             input_path: 輸入檔案路徑
-            
+
         回傳:
             (是否匯入成功, 匯入的快取數量)
         """
@@ -824,6 +829,7 @@ class CacheService:
         """清理資源"""
         # 目前沒有特殊清理需求
         pass
+
 
 # 檔案服務 - 管理檔案操作
 class FileService:
@@ -837,7 +843,7 @@ class FileService:
 
     def select_files(self) -> List[str]:
         """通過對話框選擇檔案
-        
+
         回傳:
             選定的檔案路徑列表
         """
@@ -845,7 +851,7 @@ class FileService:
 
     def select_directory(self) -> str:
         """選擇目錄
-        
+
         回傳:
             選定的目錄路徑
         """
@@ -853,11 +859,11 @@ class FileService:
 
     def scan_directory(self, directory: str, recursive: bool = True) -> List[str]:
         """掃描目錄下的字幕檔案
-        
+
         參數:
             directory: 目錄路徑
             recursive: 是否遞迴掃描子目錄
-            
+
         回傳:
             找到的檔案路徑列表
         """
@@ -865,11 +871,11 @@ class FileService:
 
     def get_subtitle_info(self, file_path: str, force_refresh: bool = False) -> Dict[str, Any]:
         """獲取字幕檔案的資訊
-        
+
         參數:
             file_path: 檔案路徑
             force_refresh: 是否強制重新讀取
-            
+
         回傳:
             字幕檔案資訊字典
         """
@@ -877,12 +883,12 @@ class FileService:
 
     def get_output_path(self, file_path: str, target_lang: str, progress_callback=None) -> Optional[str]:
         """獲取輸出檔案路徑並處理衝突
-        
+
         參數:
             file_path: 原始檔案路徑
             target_lang: 目標語言
             progress_callback: 進度回調函數
-            
+
         回傳:
             輸出檔案路徑，若失敗則回傳 None
         """
@@ -890,7 +896,7 @@ class FileService:
 
     def set_batch_settings(self, settings: Dict[str, Any]) -> None:
         """設定批次處理設定
-        
+
         參數:
             settings: 批次處理設定字典
         """
@@ -898,7 +904,7 @@ class FileService:
 
     def get_batch_settings(self) -> Dict[str, Any]:
         """獲取批次處理設定
-        
+
         回傳:
             批次處理設定字典
         """
@@ -906,11 +912,11 @@ class FileService:
 
     def convert_subtitle_format(self, input_path: str, target_format: str) -> Optional[str]:
         """轉換字幕檔案格式
-        
+
         參數:
             input_path: 輸入檔案路徑
             target_format: 目標格式
-            
+
         回傳:
             輸出檔案路徑，若失敗則回傳 None
         """
@@ -918,11 +924,11 @@ class FileService:
 
     def extract_subtitle(self, video_path: str, callback=None) -> Optional[str]:
         """從影片檔案中提取字幕
-        
+
         參數:
             video_path: 影片檔案路徑
             callback: 回調函數
-            
+
         回傳:
             字幕檔案路徑，若失敗則回傳 None
         """
@@ -930,10 +936,10 @@ class FileService:
 
     def load_api_key(self, file_path: str = "openapi_api_key.txt") -> str:
         """載入API金鑰
-        
+
         參數:
             file_path: API金鑰檔案路徑
-            
+
         回傳:
             API金鑰
         """
@@ -941,11 +947,11 @@ class FileService:
 
     def save_api_key(self, api_key: str, file_path: str = "openapi_api_key.txt") -> bool:
         """儲存API金鑰
-        
+
         參數:
             api_key: API金鑰
             file_path: API金鑰檔案路徑
-            
+
         回傳:
             是否儲存成功
         """
@@ -953,14 +959,14 @@ class FileService:
 
     def handle_drop(self, event) -> List[str]:
         """處理檔案拖放事件
-        
+
         參數:
             event: 拖放事件
-            
+
         回傳:
             檔案路徑列表
         """
-        if hasattr(self.file_handler, 'handle_drop'):
+        if hasattr(self.file_handler, "handle_drop"):
             return self.file_handler.handle_drop(event)
         return []
 
@@ -968,6 +974,7 @@ class FileService:
         """清理資源"""
         # 目前沒有特殊清理需求
         pass
+
 
 # 進度追蹤服務 - 管理進度回調和統計
 class ProgressService:
@@ -986,7 +993,7 @@ class ProgressService:
 
     def register_progress_callback(self, callback: Callable) -> None:
         """註冊進度回調函數
-        
+
         參數:
             callback: 進度回調函數
         """
@@ -994,7 +1001,7 @@ class ProgressService:
 
     def register_complete_callback(self, callback: Callable) -> None:
         """註冊完成回調函數
-        
+
         參數:
             callback: 完成回調函數
         """
@@ -1002,7 +1009,7 @@ class ProgressService:
 
     def set_total(self, total: int) -> None:
         """設置總進度
-        
+
         參數:
             total: 總數量
         """
@@ -1013,7 +1020,7 @@ class ProgressService:
 
     def set_progress(self, current: int) -> None:
         """設置當前進度
-        
+
         參數:
             current: 當前數量
         """
@@ -1025,7 +1032,7 @@ class ProgressService:
 
     def increment_progress(self, increment: int = 1) -> None:
         """增加進度
-        
+
         參數:
             increment: 增量
         """
@@ -1050,7 +1057,7 @@ class ProgressService:
 
     def get_progress_percentage(self) -> float:
         """獲取進度百分比
-        
+
         回傳:
             進度百分比 (0-100)
         """
@@ -1060,7 +1067,7 @@ class ProgressService:
 
     def get_elapsed_time(self) -> float:
         """獲取耗時（秒）
-        
+
         回傳:
             耗時（秒）
         """
@@ -1074,7 +1081,7 @@ class ProgressService:
 
     def get_elapsed_time_str(self) -> str:
         """獲取格式化的耗時
-        
+
         回傳:
             格式化的耗時字串
         """
@@ -1095,7 +1102,7 @@ class ProgressService:
 
     def get_estimated_remaining_time(self) -> float:
         """獲取估計剩餘時間（秒）
-        
+
         回傳:
             估計剩餘時間（秒）
         """
@@ -1113,7 +1120,7 @@ class ProgressService:
 
     def get_estimated_remaining_time_str(self) -> str:
         """獲取格式化的估計剩餘時間
-        
+
         回傳:
             格式化的估計剩餘時間字串
         """
@@ -1145,16 +1152,25 @@ class ProgressService:
         self.complete_callback = None
         self.reset()
 
+
 # 翻譯任務 - 封裝單個翻譯任務
 class TranslationTask(threading.Thread):
     """封裝單個翻譯任務的執行緒類"""
 
-    def __init__(self, file_path: str, source_lang: str, target_lang: str,
-                 model_name: str, parallel_requests: int,
-                 display_mode: str, llm_type: str,
-                 progress_callback=None, complete_callback=None):
+    def __init__(
+        self,
+        file_path: str,
+        source_lang: str,
+        target_lang: str,
+        model_name: str,
+        parallel_requests: int,
+        display_mode: str,
+        llm_type: str,
+        progress_callback=None,
+        complete_callback=None,
+    ):
         """初始化翻譯任務
-        
+
         參數:
             file_path: 字幕檔案路徑
             source_lang: 來源語言
@@ -1197,6 +1213,7 @@ class TranslationTask(threading.Thread):
 
     def _run_async(self):
         """在新的事件循環中執行非同步翻譯"""
+
         async def async_run():
             # 初始化服務
             self.translation_service = ServiceFactory.get_translation_service()
@@ -1211,7 +1228,7 @@ class TranslationTask(threading.Thread):
                 self.display_mode,
                 self.llm_type,
                 self._progress_wrapper,
-                self._complete_wrapper
+                self._complete_wrapper,
             )
 
         # 建立新的事件循環
@@ -1268,6 +1285,7 @@ class TranslationTask(threading.Thread):
         """檢查任務是否仍在執行"""
         return super().is_alive() and self._is_running
 
+
 # 翻譯任務管理器 - 管理多個翻譯任務
 class TranslationTaskManager:
     """翻譯任務管理器，管理多個翻譯任務"""
@@ -1283,13 +1301,20 @@ class TranslationTaskManager:
 
         logger.info("翻譯任務管理器初始化完成")
 
-    def start_translation(self, files: List[str],
-                        source_lang: str, target_lang: str,
-                        model_name: str, parallel_requests: int,
-                        display_mode: str, llm_type: str,
-                        progress_callback=None, complete_callback=None) -> bool:
+    def start_translation(
+        self,
+        files: List[str],
+        source_lang: str,
+        target_lang: str,
+        model_name: str,
+        parallel_requests: int,
+        display_mode: str,
+        llm_type: str,
+        progress_callback=None,
+        complete_callback=None,
+    ) -> bool:
         """開始翻譯多個檔案
-        
+
         參數:
             files: 字幕檔案路徑列表
             source_lang: 來源語言
@@ -1300,7 +1325,7 @@ class TranslationTaskManager:
             llm_type: LLM類型
             progress_callback: 進度回調函數
             complete_callback: 完成回調函數
-            
+
         回傳:
             是否成功啟動翻譯
         """
@@ -1323,7 +1348,7 @@ class TranslationTaskManager:
                 display_mode,
                 llm_type,
                 progress_callback,
-                self._complete_wrapper(file_path, complete_callback)
+                self._complete_wrapper(file_path, complete_callback),
             )
 
             self.tasks[file_path] = task
@@ -1334,6 +1359,7 @@ class TranslationTaskManager:
 
     def _complete_wrapper(self, file_path: str, original_callback):
         """包裝完成回調函數，以便追蹤已完成的檔案數"""
+
         def wrapper(message, elapsed_time):
             """內部包裝函數，在執行原始回調前更新完成計數"""
             self.completed_files += 1
@@ -1374,7 +1400,7 @@ class TranslationTaskManager:
 
     def is_any_running(self) -> bool:
         """檢查是否有任務正在執行
-        
+
         回傳:
             是否有任務正在執行
         """
@@ -1382,7 +1408,7 @@ class TranslationTaskManager:
 
     def is_all_paused(self) -> bool:
         """檢查是否所有任務都已暫停
-        
+
         回傳:
             是否所有任務都已暫停
         """
@@ -1392,7 +1418,7 @@ class TranslationTaskManager:
 
     def get_active_task_count(self) -> int:
         """獲取活躍任務數量
-        
+
         回傳:
             活躍任務數量
         """
@@ -1402,8 +1428,10 @@ class TranslationTaskManager:
         """清理資源"""
         self.stop_all()
 
+
 # 測試程式碼
 if __name__ == "__main__":
+
     async def test():
         try:
             # 設定測試模式
@@ -1425,9 +1453,7 @@ if __name__ == "__main__":
             text = "こんにちは、世界"
             context = ["前の文", "こんにちは、世界", "次の文"]
 
-            result = await translation_service.translate_text(
-                text, context, "ollama", "mistral"
-            )
+            result = await translation_service.translate_text(text, context, "ollama", "mistral")
             print(f"翻譯結果: {result}")
 
             # 測試快取服務
@@ -1441,6 +1467,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"測試失敗: {e!s}")
             import traceback
+
             traceback.print_exc()
 
     # 執行測試

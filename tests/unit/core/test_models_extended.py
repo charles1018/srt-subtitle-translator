@@ -32,14 +32,14 @@ class TestModelManagerAPIKeyOperations:
         test_key = "sk-test-key-123456"
         key_file = temp_dir / "test_api_key.txt"
 
-        with patch('srt_translator.core.models.get_config', return_value=str(key_file)):
+        with patch("srt_translator.core.models.get_config", return_value=str(key_file)):
             result = manager.save_api_key("openai", test_key)
 
             assert result is True
             assert manager.api_keys.get("openai") == test_key
             # 驗證檔案已建立
             assert key_file.exists()
-            assert key_file.read_text(encoding='utf-8') == test_key
+            assert key_file.read_text(encoding="utf-8") == test_key
 
     def test_save_api_key_clears_cache(self, manager, temp_dir):
         """測試儲存 API 金鑰會清除快取"""
@@ -50,7 +50,7 @@ class TestModelManagerAPIKeyOperations:
         test_key = "sk-test-key-123456"
         key_file = temp_dir / "test_api_key.txt"
 
-        with patch('srt_translator.core.models.get_config', return_value=str(key_file)):
+        with patch("srt_translator.core.models.get_config", return_value=str(key_file)):
             manager.save_api_key("openai", test_key)
 
             # 驗證快取已清除
@@ -60,8 +60,8 @@ class TestModelManagerAPIKeyOperations:
     def test_save_api_key_error_handling(self, manager):
         """測試儲存 API 金鑰錯誤處理"""
         # 使用無效路徑
-        with patch('srt_translator.core.models.get_config', return_value="/invalid/path/key.txt"):
-            with patch('os.makedirs', side_effect=PermissionError("Access denied")):
+        with patch("srt_translator.core.models.get_config", return_value="/invalid/path/key.txt"):
+            with patch("os.makedirs", side_effect=PermissionError("Access denied")):
                 result = manager.save_api_key("openai", "test-key")
                 # 應該返回 False
                 assert result is False
@@ -71,7 +71,7 @@ class TestModelManagerAPIKeyOperations:
         test_key = "sk-ant-test-123456"
         key_file = temp_dir / "anthropic_api_key.txt"
 
-        with patch('srt_translator.core.models.get_config', return_value=str(key_file)):
+        with patch("srt_translator.core.models.get_config", return_value=str(key_file)):
             result = manager.save_api_key("anthropic", test_key)
 
             assert result is True
@@ -99,10 +99,7 @@ class TestModelManagerConfigOperations:
 
     def test_update_config_success(self, manager):
         """測試成功更新配置"""
-        new_config = {
-            "cache_expiry": 1200,
-            "connect_timeout": 10
-        }
+        new_config = {"cache_expiry": 1200, "connect_timeout": 10}
 
         result = manager.update_config(new_config)
 
@@ -117,9 +114,7 @@ class TestModelManagerConfigOperations:
         manager.cache_time["test"] = 1234567890
 
         # 更新重要配置項
-        new_config = {
-            "ollama_url": "http://newhost:11434"
-        }
+        new_config = {"ollama_url": "http://newhost:11434"}
 
         manager.update_config(new_config)
 
@@ -129,9 +124,7 @@ class TestModelManagerConfigOperations:
 
     def test_update_config_default_model(self, manager):
         """測試更新預設模型配置"""
-        new_config = {
-            "default_ollama_model": "mistral"
-        }
+        new_config = {"default_ollama_model": "mistral"}
 
         manager.update_config(new_config)
 
@@ -142,9 +135,7 @@ class TestModelManagerConfigOperations:
     def test_update_config_model_patterns(self, manager):
         """測試更新模型模式配置"""
         new_patterns = ["llama", "mistral", "custom"]
-        new_config = {
-            "model_patterns": new_patterns
-        }
+        new_config = {"model_patterns": new_patterns}
 
         manager.update_config(new_config)
 
@@ -308,13 +299,7 @@ class TestModelManagerOllamaModelsAsync:
     @pytest.mark.asyncio
     async def test_get_ollama_models_api_tags_format(self, manager):
         """測試從 /api/tags 端點獲取模型（標準格式）"""
-        mock_response = {
-            "models": [
-                {"name": "llama3"},
-                {"name": "mistral"},
-                {"name": "qwen"}
-            ]
-        }
+        mock_response = {"models": [{"name": "llama3"}, {"name": "mistral"}, {"name": "qwen"}]}
 
         async def mock_get(*args, **kwargs):
             mock_resp = AsyncMock()
@@ -322,7 +307,7 @@ class TestModelManagerOllamaModelsAsync:
             mock_resp.json = AsyncMock(return_value=mock_response)
             return mock_resp
 
-        with patch.object(manager, '_init_async_session', return_value=None):
+        with patch.object(manager, "_init_async_session", return_value=None):
             manager.session = AsyncMock()
             manager.session.get = mock_get
 
@@ -337,12 +322,7 @@ class TestModelManagerOllamaModelsAsync:
     @pytest.mark.asyncio
     async def test_get_ollama_models_dict_format(self, manager):
         """測試模型以字典格式返回"""
-        mock_response = {
-            "models": {
-                "llama3": {"size": "4.7GB"},
-                "mistral": {"size": "4.1GB"}
-            }
-        }
+        mock_response = {"models": {"llama3": {"size": "4.7GB"}, "mistral": {"size": "4.1GB"}}}
 
         async def mock_get(*args, **kwargs):
             mock_resp = AsyncMock()
@@ -350,7 +330,7 @@ class TestModelManagerOllamaModelsAsync:
             mock_resp.json = AsyncMock(return_value=mock_response)
             return mock_resp
 
-        with patch.object(manager, '_init_async_session', return_value=None):
+        with patch.object(manager, "_init_async_session", return_value=None):
             manager.session = AsyncMock()
             manager.session.get = mock_get
 
@@ -362,10 +342,7 @@ class TestModelManagerOllamaModelsAsync:
     @pytest.mark.asyncio
     async def test_get_ollama_models_list_format(self, manager):
         """測試模型以列表格式返回（無 'models' 鍵）"""
-        mock_response = [
-            {"name": "llama3"},
-            {"name": "mistral"}
-        ]
+        mock_response = [{"name": "llama3"}, {"name": "mistral"}]
 
         async def mock_get(*args, **kwargs):
             mock_resp = AsyncMock()
@@ -373,7 +350,7 @@ class TestModelManagerOllamaModelsAsync:
             mock_resp.json = AsyncMock(return_value=mock_response)
             return mock_resp
 
-        with patch.object(manager, '_init_async_session', return_value=None):
+        with patch.object(manager, "_init_async_session", return_value=None):
             manager.session = AsyncMock()
             manager.session.get = mock_get
 
@@ -385,12 +362,13 @@ class TestModelManagerOllamaModelsAsync:
     @pytest.mark.asyncio
     async def test_get_ollama_models_api_error_fallback(self, manager):
         """測試 API 錯誤時使用預設模型"""
+
         async def mock_get(*args, **kwargs):
             mock_resp = AsyncMock()
             mock_resp.status = 500
             return mock_resp
 
-        with patch.object(manager, '_init_async_session', return_value=None):
+        with patch.object(manager, "_init_async_session", return_value=None):
             manager.session = AsyncMock()
             manager.session.get = mock_get
 
@@ -403,11 +381,7 @@ class TestModelManagerOllamaModelsAsync:
     @pytest.mark.asyncio
     async def test_get_ollama_models_includes_default(self, manager):
         """測試結果包含預設模型"""
-        mock_response = {
-            "models": [
-                {"name": "mistral"}
-            ]
-        }
+        mock_response = {"models": [{"name": "mistral"}]}
 
         async def mock_get(*args, **kwargs):
             mock_resp = AsyncMock()
@@ -415,7 +389,7 @@ class TestModelManagerOllamaModelsAsync:
             mock_resp.json = AsyncMock(return_value=mock_response)
             return mock_resp
 
-        with patch.object(manager, '_init_async_session', return_value=None):
+        with patch.object(manager, "_init_async_session", return_value=None):
             manager.session = AsyncMock()
             manager.session.get = mock_get
 
@@ -431,11 +405,7 @@ class TestModelManagerOllamaModelsAsync:
         # 創建超過 20 個模型來觸發過濾
         models = [{"name": f"model_{i}"} for i in range(25)]
         # 添加一些符合模式的模型
-        models.extend([
-            {"name": "llama3"},
-            {"name": "mistral"},
-            {"name": "qwen"}
-        ])
+        models.extend([{"name": "llama3"}, {"name": "mistral"}, {"name": "qwen"}])
 
         mock_response = {"models": models}
 
@@ -445,7 +415,7 @@ class TestModelManagerOllamaModelsAsync:
             mock_resp.json = AsyncMock(return_value=mock_response)
             return mock_resp
 
-        with patch.object(manager, '_init_async_session', return_value=None):
+        with patch.object(manager, "_init_async_session", return_value=None):
             manager.session = AsyncMock()
             manager.session.get = mock_get
 
@@ -455,7 +425,7 @@ class TestModelManagerOllamaModelsAsync:
             # 過濾後應該保留符合模式的模型
             model_ids = [m.id for m in result]
             # 至少應該有符合模式的模型
-            assert any(pattern in ' '.join(model_ids).lower() for pattern in manager.model_patterns)
+            assert any(pattern in " ".join(model_ids).lower() for pattern in manager.model_patterns)
 
 
 class TestModelManagerOpenAIModelsAsync:
@@ -491,14 +461,10 @@ class TestModelManagerOpenAIModelsAsync:
     async def test_get_openai_models_sorting(self, manager):
         """測試模型按翻譯優先級排序"""
         # Mock OpenAI client
-        mock_models = [
-            MagicMock(id="gpt-3.5-turbo"),
-            MagicMock(id="gpt-4"),
-            MagicMock(id="gpt-4o")
-        ]
+        mock_models = [MagicMock(id="gpt-3.5-turbo"), MagicMock(id="gpt-4"), MagicMock(id="gpt-4o")]
 
-        with patch('srt_translator.core.models.OPENAI_AVAILABLE', True):
-            with patch('srt_translator.core.models.OpenAI') as mock_client:
+        with patch("srt_translator.core.models.OPENAI_AVAILABLE", True):
+            with patch("srt_translator.core.models.OpenAI") as mock_client:
                 mock_instance = MagicMock()
                 mock_instance.models.list.return_value = mock_models
                 mock_client.return_value = mock_instance
@@ -518,11 +484,11 @@ class TestModelManagerOpenAIModelsAsync:
         mock_models = [
             MagicMock(id="gpt-3.5-turbo"),
             MagicMock(id="gpt-3.5-turbo-0301"),  # 應該被排除
-            MagicMock(id="gpt-4")
+            MagicMock(id="gpt-4"),
         ]
 
-        with patch('srt_translator.core.models.OPENAI_AVAILABLE', True):
-            with patch('srt_translator.core.models.OpenAI') as mock_client:
+        with patch("srt_translator.core.models.OPENAI_AVAILABLE", True):
+            with patch("srt_translator.core.models.OpenAI") as mock_client:
                 mock_instance = MagicMock()
                 mock_instance.models.list.return_value = mock_models
                 mock_client.return_value = mock_instance
@@ -536,8 +502,8 @@ class TestModelManagerOpenAIModelsAsync:
     @pytest.mark.asyncio
     async def test_get_openai_models_error_handling(self, manager):
         """測試 API 錯誤時的處理"""
-        with patch('srt_translator.core.models.OPENAI_AVAILABLE', True):
-            with patch('srt_translator.core.models.OpenAI') as mock_client:
+        with patch("srt_translator.core.models.OPENAI_AVAILABLE", True):
+            with patch("srt_translator.core.models.OpenAI") as mock_client:
                 mock_client.side_effect = Exception("API Error")
 
                 result = await manager._get_openai_models_async(api_key="test-key")

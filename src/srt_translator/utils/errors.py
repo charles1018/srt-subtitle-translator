@@ -36,6 +36,7 @@ from typing import Any, Dict, Optional
 
 # ================ 錯誤處理類 ================
 
+
 class AppError(Exception):
     """應用程式自定義基礎異常類"""
 
@@ -62,7 +63,7 @@ class AppError(Exception):
             "error_code": self.error_code,
             "message": self.message,
             "details": self.details,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     def to_json(self) -> str:
@@ -157,5 +158,3 @@ class TimeoutError(AppError):
 
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(message, 2000, details)
-
-

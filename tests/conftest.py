@@ -24,6 +24,7 @@ sys.path.insert(0, str(SRC_DIR))
 # 基礎 Fixtures
 # ============================================================
 
+
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
     """提供臨時目錄，測試結束後自動清理
@@ -64,6 +65,7 @@ def sample_srt_file(temp_dir: Path, sample_srt_content: str) -> Path:
 # ============================================================
 # 配置相關 Fixtures
 # ============================================================
+
 
 @pytest.fixture
 def mock_config_data() -> dict:
@@ -107,6 +109,7 @@ def config_file(temp_dir: Path, mock_config_data: dict) -> Path:
 # Cache 相關 Fixtures
 # ============================================================
 
+
 @pytest.fixture
 def mock_cache_data() -> dict:
     """提供模擬快取資料"""
@@ -120,6 +123,7 @@ def mock_cache_data() -> dict:
 # ============================================================
 # pytest 配置 Hooks
 # ============================================================
+
 
 def pytest_configure(config):
     """pytest 啟動時的配置"""

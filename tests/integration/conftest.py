@@ -100,7 +100,7 @@ def integration_env(temp_dir):
     yield env
 
     # 6. 清理（確保資料庫連線關閉）
-    if cache_manager and hasattr(cache_manager, 'conn') and cache_manager.conn:
+    if cache_manager and hasattr(cache_manager, "conn") and cache_manager.conn:
         cache_manager.conn.close()
 
     # 重置單例
@@ -117,6 +117,7 @@ def mock_translation_api():
     提供一個 mock 的非同步翻譯函數，用於測試翻譯流程
     而無需實際呼叫 API。
     """
+
     async def mock_translate(text, source_lang="en", target_lang="zh-TW", **kwargs):
         """模擬翻譯函數"""
         # 簡單的模擬：將英文轉換為固定的中文
@@ -206,4 +207,5 @@ def integration_cleanup():
 
     # 強制垃圾回收
     import gc
+
     gc.collect()

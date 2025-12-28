@@ -13,6 +13,7 @@ import tiktoken
 # 嘗試導入 OpenAI 客戶端
 try:
     from openai import AsyncOpenAI
+
     OPENAI_AVAILABLE = True
 except ImportError:
     OPENAI_AVAILABLE = False
@@ -29,14 +30,10 @@ logger.setLevel(logging.DEBUG)
 # 確保日誌目錄存在
 import os
 
-os.makedirs('logs', exist_ok=True)
+os.makedirs("logs", exist_ok=True)
 
 handler = TimedRotatingFileHandler(
-    filename='logs/srt_translator.log',
-    when='midnight',
-    interval=1,
-    backupCount=7,
-    encoding='utf-8'
+    filename="logs/srt_translator.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
 )
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
 handler.setFormatter(formatter)
@@ -45,6 +42,7 @@ logger.addHandler(handler)
 # 避免重複添加處理程序
 if len(logger.handlers) > 1:
     logger.handlers = [logger.handlers[-1]]
+
 
 # 定義 API 錯誤類型
 class ApiErrorType(Enum):
@@ -61,6 +59,7 @@ class ApiErrorType(Enum):
         CONTENT_FILTER: 內容被 API 安全過濾器攔截
         UNKNOWN: 未知錯誤類型
     """
+
     RATE_LIMIT = "rate_limit"
     TIMEOUT = "timeout"
     CONNECTION = "connection"
@@ -69,9 +68,11 @@ class ApiErrorType(Enum):
     CONTENT_FILTER = "content_filter"
     UNKNOWN = "unknown"
 
+
 @dataclass
 class ApiMetrics:
     """API 使用量和效能指標"""
+
     total_requests: int = 0
     successful_requests: int = 0
     failed_requests: int = 0
@@ -124,7 +125,7 @@ class ApiMetrics:
             "cache_hit_rate": f"{self.get_cache_hit_rate():.2f}%",
             "average_response_time": f"{self.get_average_response_time():.2f}s",
             "total_tokens": self.total_tokens,
-            "estimated_cost": f"${self.total_cost:.4f}"
+            "estimated_cost": f"${self.total_cost:.4f}",
         }
 
 
@@ -175,15 +176,13 @@ class AdaptiveConcurrencyController:
             # 回應快，增加並發
             self.current = min(self.current + 1, self.max)
             logger.debug(
-                f"並發數增加: {self.current - 1} -> {self.current} "
-                f"(平均回應時間: {self.avg_response_time:.2f}s)"
+                f"並發數增加: {self.current - 1} -> {self.current} (平均回應時間: {self.avg_response_time:.2f}s)"
             )
         elif self.avg_response_time > 1.5 and self.current > self.min:
             # 回應慢，降低並發
             self.current = max(self.current - 1, self.min)
             logger.debug(
-                f"並發數降低: {self.current + 1} -> {self.current} "
-                f"(平均回應時間: {self.avg_response_time:.2f}s)"
+                f"並發數降低: {self.current + 1} -> {self.current} (平均回應時間: {self.avg_response_time:.2f}s)"
             )
 
         return self.current
@@ -207,17 +206,19 @@ class AdaptiveConcurrencyController:
             "min_concurrency": self.min,
             "max_concurrency": self.max,
             "avg_response_time": f"{self.avg_response_time:.2f}s",
-            "sample_count": self.sample_count
+            "sample_count": self.sample_count,
         }
 
 
 class TranslationClient:
-    def __init__(self,
-                 llm_type: str,
-                 base_url: str = "http://localhost:11434",
-                 api_key: str = None,
-                 cache_db_path: str = "data/translation_cache.db",
-                 netflix_style_config: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        llm_type: str,
+        base_url: str = "http://localhost:11434",
+        api_key: str = None,
+        cache_db_path: str = "data/translation_cache.db",
+        netflix_style_config: Optional[Dict[str, Any]] = None,
+    ):
         """
         初始化翻譯客戶端
 
@@ -234,7 +235,7 @@ class TranslationClient:
                 - max_lines: 最多行數（預設: 2）
         """
         self.llm_type = llm_type
-        self.base_url = base_url if llm_type == 'ollama' else "https://api.openai.com/v1"
+        self.base_url = base_url if llm_type == "ollama" else "https://api.openai.com/v1"
         self.cache_manager = CacheManager(cache_db_path)
         self.prompt_manager = PromptManager()
         self.session = None
@@ -244,36 +245,25 @@ class TranslationClient:
         # 連線池設定
         self.conn_limit = 10  # 最大連線數
         self.conn_timeout = aiohttp.ClientTimeout(
-            total=60,      # 總逾時
-            connect=10,    # 連線逾時
-            sock_connect=10, # Socket 連線逾時
-            sock_read=30   # Socket 讀取逾時
+            total=60,  # 總逾時
+            connect=10,  # 連線逾時
+            sock_connect=10,  # Socket 連線逾時
+            sock_read=30,  # Socket 讀取逾時
         )
 
         # 回退機制設定
         self.fallback_models = {
-            'openai': {
-                'gpt-4': ['gpt-3.5-turbo'],
-                'gpt-4-turbo': ['gpt-4', 'gpt-3.5-turbo'],
-                'gpt-3.5-turbo': []
-            },
-            'ollama': {
-                'llama3': ['mistral'],
-                'mixtral': ['mistral', 'tinyllama'],
-                'mistral': ['tinyllama']
-            }
+            "openai": {"gpt-4": ["gpt-3.5-turbo"], "gpt-4-turbo": ["gpt-4", "gpt-3.5-turbo"], "gpt-3.5-turbo": []},
+            "ollama": {"llama3": ["mistral"], "mixtral": ["mistral", "tinyllama"], "mistral": ["tinyllama"]},
         }
 
         # OpenAI 客戶端最佳化
-        if llm_type == 'openai':
+        if llm_type == "openai":
             if not OPENAI_AVAILABLE:
                 logger.error("未安裝 OpenAI 客戶端函式庫，OpenAI 模式不可用")
                 raise ImportError("請安裝 OpenAI Python 套件: pip install openai")
 
-            self.openai_client = AsyncOpenAI(
-                api_key=api_key,
-                timeout=self.conn_timeout
-            )
+            self.openai_client = AsyncOpenAI(api_key=api_key, timeout=self.conn_timeout)
 
             # 為各模型載入適當的 tokenizer
             self.tokenizers = {}
@@ -287,9 +277,9 @@ class TranslationClient:
 
             # 價格計算
             self.pricing = {
-                'gpt-3.5-turbo': {'input': 0.0000005, 'output': 0.0000015},  # $0.0005 / 1K input, $0.0015 / 1K output
-                'gpt-4': {'input': 0.00003, 'output': 0.00006},  # $0.03 / 1K input, $0.06 / 1K output
-                'gpt-4-turbo': {'input': 0.00001, 'output': 0.00003}  # $0.01 / 1K input, $0.03 / 1K output
+                "gpt-3.5-turbo": {"input": 0.0000005, "output": 0.0000015},  # $0.0005 / 1K input, $0.0015 / 1K output
+                "gpt-4": {"input": 0.00003, "output": 0.00006},  # $0.03 / 1K input, $0.06 / 1K output
+                "gpt-4-turbo": {"input": 0.00001, "output": 0.00003},  # $0.01 / 1K input, $0.03 / 1K output
             }
         else:
             self.openai_client = None
@@ -305,7 +295,7 @@ class TranslationClient:
                     auto_fix=netflix_config.get("auto_fix", True),
                     strict_mode=netflix_config.get("strict_mode", False),
                     max_chars_per_line=netflix_config.get("max_chars_per_line", 16),
-                    max_lines=netflix_config.get("max_lines", 2)
+                    max_lines=netflix_config.get("max_lines", 2),
                 )
                 logger.info("Netflix 風格後處理器已啟用")
             except Exception as e:
@@ -314,26 +304,20 @@ class TranslationClient:
                 self.post_processor = None
 
         # 自適應並發控制器
-        self.concurrency_controller = AdaptiveConcurrencyController(
-            initial=3,
-            min_concurrent=2,
-            max_concurrent=10
-        )
-        logger.info(
-            f"自適應並發控制器已啟用: 初始並發數={self.concurrency_controller.get_current()}"
-        )
+        self.concurrency_controller = AdaptiveConcurrencyController(initial=3, min_concurrent=2, max_concurrent=10)
+        logger.info(f"自適應並發控制器已啟用: 初始並發數={self.concurrency_controller.get_current()}")
 
     def _load_tokenizers(self):
         """載入各 OpenAI 模型的 tokenizer"""
         try:
             # 為不同模型載入適當的 tokenizer
-            if 'gpt-4' in self.tokenizers:
+            if "gpt-4" in self.tokenizers:
                 return  # 已經載入
 
             models = {
-                'gpt-3.5-turbo': 'cl100k_base',  # 適用於 gpt-3.5-turbo 和 gpt-4
-                'gpt-4': 'cl100k_base',
-                'gpt-4-turbo': 'cl100k_base'
+                "gpt-3.5-turbo": "cl100k_base",  # 適用於 gpt-3.5-turbo 和 gpt-4
+                "gpt-4": "cl100k_base",
+                "gpt-4-turbo": "cl100k_base",
             }
 
             for model, encoding_name in models.items():
@@ -350,23 +334,20 @@ class TranslationClient:
 
     async def __aenter__(self):
         """使用非同步上下文管理器初始化"""
-        if self.llm_type == 'ollama':
+        if self.llm_type == "ollama":
             # 使用 TCP 連接器以自定義連線限制
             connector = aiohttp.TCPConnector(
                 limit=self.conn_limit,
                 limit_per_host=self.conn_limit,
-                ssl=False  # Ollama 通常是本機執行，不需要 SSL
+                ssl=False,  # Ollama 通常是本機執行，不需要 SSL
             )
-            self.session = aiohttp.ClientSession(
-                connector=connector,
-                timeout=self.conn_timeout
-            )
+            self.session = aiohttp.ClientSession(connector=connector, timeout=self.conn_timeout)
             logger.debug(f"初始化 aiohttp.ClientSession for Ollama，連線限制: {self.conn_limit}")
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """非同步上下文管理器清理"""
-        if self.session and self.llm_type == 'ollama':
+        if self.session and self.llm_type == "ollama":
             await self.session.close()
             logger.debug("關閉 aiohttp.ClientSession")
 
@@ -383,7 +364,7 @@ class TranslationClient:
                 tokenizer = self.tokenizers[model]
             else:
                 # 尋找相容的 tokenizer
-                for m in ['gpt-4', 'gpt-3.5-turbo']:
+                for m in ["gpt-4", "gpt-3.5-turbo"]:
                     if m in self.tokenizers:
                         tokenizer = self.tokenizers[m]
                         break
@@ -398,7 +379,7 @@ class TranslationClient:
                 total_tokens += 4
 
                 # 計算內容的標記
-                content = message.get('content', '')
+                content = message.get("content", "")
                 if content:
                     tokens = tokenizer.encode(content)
                     total_tokens += len(tokens)
@@ -422,7 +403,7 @@ class TranslationClient:
             # 計算所有內容字元
             content_tokens = 0
             for message in messages:
-                content = message.get('content', '')
+                content = message.get("content", "")
 
                 # 檢測內容語言類型（使用簡單啟發式）
                 is_mostly_cjk = self._is_mostly_cjk(content)
@@ -438,7 +419,7 @@ class TranslationClient:
         except Exception as e:
             logger.error(f"估算 token 數量時發生錯誤: {e!s}")
             # 極為粗略的估計，確保回傳值
-            total_chars = sum(len(m.get('content', '')) for m in messages)
+            total_chars = sum(len(m.get("content", "")) for m in messages)
             return int(total_chars / 3) + 10
 
     def _is_mostly_cjk(self, text: str) -> bool:
@@ -452,7 +433,7 @@ class TranslationClient:
 
     async def _check_rate_limit(self, model: str, tokens: int) -> None:
         """檢查並處理 OpenAI 速率限制"""
-        if self.llm_type != 'openai':
+        if self.llm_type != "openai":
             return
 
         # 清理舊的記錄
@@ -487,8 +468,7 @@ class TranslationClient:
             # 請求或 token 數接近上限時，使用指數退避而不是固定等待
             # 根據接近限制的程度來調整退避程度
             rate_usage = max(
-                requests_per_minute / self.max_requests_per_minute,
-                tokens_per_minute / self.max_tokens_per_minute
+                requests_per_minute / self.max_requests_per_minute, tokens_per_minute / self.max_tokens_per_minute
             )
 
             # 當使用率 > 95% 時，增加更長的退避
@@ -538,7 +518,7 @@ class TranslationClient:
             "max_time": 120,
             "on_backoff": lambda details: logger.debug(
                 f"重試 {details['tries']} 次，等待 {details['wait']} 秒，錯誤: {details['exception']}"
-            )
+            ),
         }
 
         # 根據錯誤類型自定義策略
@@ -547,49 +527,42 @@ class TranslationClient:
                 **base_strategy,
                 "max_tries": 8,
                 "max_time": 300,  # 更長時間等待率限制恢復
-                "factor": 1.5     # 更溫和的退避因子
+                "factor": 1.5,  # 更溫和的退避因子
             }
         elif error_type == ApiErrorType.TIMEOUT:
             return {
                 **base_strategy,
                 "max_tries": 4,
                 "max_time": 180,
-                "factor": 2.0     # 更陡峭的退避因子
+                "factor": 2.0,  # 更陡峭的退避因子
             }
         elif error_type == ApiErrorType.CONNECTION:
             return {
                 **base_strategy,
                 "max_tries": 6,
-                "jitter": None,   # 去除抖動，使退避更可預測
-                "factor": 1.5
+                "jitter": None,  # 去除抖動，使退避更可預測
+                "factor": 1.5,
             }
         elif error_type == ApiErrorType.SERVER:
-            return {
-                **base_strategy,
-                "max_tries": 4,
-                "factor": 2.0
-            }
+            return {**base_strategy, "max_tries": 4, "factor": 2.0}
         elif error_type == ApiErrorType.AUTHENTICATION:
             return {
                 **base_strategy,
-                "max_tries": 2,   # 驗證錯誤不太可能通過重試解決
-                "max_time": 30
+                "max_tries": 2,  # 驗證錯誤不太可能通過重試解決
+                "max_time": 30,
             }
         elif error_type == ApiErrorType.CONTENT_FILTER:
             return {
                 **base_strategy,
-                "max_tries": 1,   # 內容過濾錯誤不應重試
-                "max_time": 1
+                "max_tries": 1,  # 內容過濾錯誤不應重試
+                "max_time": 1,
             }
         else:  # UNKNOWN
             return base_strategy
 
-    async def translate_with_retry(self,
-                                  text: str,
-                                  context_texts: List[str],
-                                  model_name: str,
-                                  max_tries: int = 3,
-                                  use_fallback: bool = True) -> str:
+    async def translate_with_retry(
+        self, text: str, context_texts: List[str], model_name: str, max_tries: int = 3, use_fallback: bool = True
+    ) -> str:
         """使用自定義重試和回退策略翻譯文字"""
         original_model = model_name
         tries = 0
@@ -624,7 +597,7 @@ class TranslationClient:
 
                 # 根據錯誤類型決定等待時間
                 if error_type == ApiErrorType.RATE_LIMIT:
-                    wait_time = 2.0 ** tries
+                    wait_time = 2.0**tries
                     logger.info(f"速率限制錯誤，等待 {wait_time} 秒後重試")
                     await asyncio.sleep(wait_time)
                 elif error_type == ApiErrorType.TIMEOUT or error_type == ApiErrorType.CONNECTION:
@@ -665,9 +638,9 @@ class TranslationClient:
         messages = self.prompt_manager.get_optimized_message(text, context_texts, self.llm_type, model_name)
 
         try:
-            if self.llm_type == 'openai':
+            if self.llm_type == "openai":
                 result = await self._translate_with_openai(messages, model_name)
-            elif self.llm_type == 'ollama':
+            elif self.llm_type == "ollama":
                 result = await self._translate_with_ollama(messages, model_name)
             else:
                 raise ValueError(f"不支援的 LLM 類型: {self.llm_type}")
@@ -731,13 +704,13 @@ class TranslationClient:
         import re
 
         # 檢查原文是否為單行（不包含換行符）
-        if '\n' not in original_text:
+        if "\n" not in original_text:
             # 移除所有換行符和多餘的空白字符
-            cleaned = re.sub(r'\s+', ' ', translated_text)
+            cleaned = re.sub(r"\s+", " ", translated_text)
             cleaned = cleaned.strip()
 
             if cleaned != translated_text:
-                logger.debug(f"已清理單行翻譯中的換行符")
+                logger.debug("已清理單行翻譯中的換行符")
 
             return cleaned
 
@@ -786,7 +759,7 @@ class TranslationClient:
             # 計算費用
             if model_name in self.pricing:
                 price = self.pricing[model_name]
-                cost = (input_tokens * price['input'] / 1000) + (output_tokens * price['output'] / 1000)
+                cost = (input_tokens * price["input"] / 1000) + (output_tokens * price["output"] / 1000)
                 self.metrics.total_cost += cost
                 logger.debug(f"OpenAI API 翻譯費用: ${cost:.6f} ({input_tokens} 輸入 + {output_tokens} 輸出 tokens)")
 
@@ -802,32 +775,23 @@ class TranslationClient:
         if not self.session:
             raise RuntimeError("Ollama 客戶端未初始化，請使用非同步上下文管理器")
 
-        payload = {
-            "model": model_name,
-            "messages": messages,
-            "temperature": 0.1,
-            "stream": False
-        }
+        payload = {"model": model_name, "messages": messages, "temperature": 0.1, "stream": False}
 
         api_url = f"{self.base_url}/api/chat"
 
         try:
             logger.debug(f"發送 Ollama API 請求: {api_url}")
-            async with self.session.post(
-                api_url,
-                json=payload,
-                timeout=self.conn_timeout
-            ) as response:
+            async with self.session.post(api_url, json=payload, timeout=self.conn_timeout) as response:
                 response.raise_for_status()
                 result = await response.json()
 
                 # 處理不同的 Ollama API 回應格式
-                if 'choices' in result and len(result['choices']) > 0:
+                if "choices" in result and len(result["choices"]) > 0:
                     # 標準 OpenAI 格式
-                    translation = result['choices'][0]['message']['content'].strip()
-                elif 'response' in result:
+                    translation = result["choices"][0]["message"]["content"].strip()
+                elif "response" in result:
                     # 舊版 Ollama 格式
-                    translation = result['response'].strip()
+                    translation = result["response"].strip()
                 else:
                     logger.warning(f"未知的 Ollama API 回應格式: {result}")
                     # 嘗試從結果中提取任何文字內容
@@ -846,8 +810,9 @@ class TranslationClient:
             logger.error(f"Ollama API 請求失敗: {e!s}")
             raise
 
-    async def translate_batch(self, texts: List[Tuple[str, List[str]]], model_name: str,
-                              concurrent_limit: int = 5) -> List[str]:
+    async def translate_batch(
+        self, texts: List[Tuple[str, List[str]]], model_name: str, concurrent_limit: int = 5
+    ) -> List[str]:
         """批量翻譯多個字幕，帶有並發控制"""
         if not texts:
             return []
@@ -915,7 +880,7 @@ class TranslationClient:
     async def is_api_available(self) -> bool:
         """檢查 API 是否可用"""
         try:
-            if self.llm_type == 'openai':
+            if self.llm_type == "openai":
                 # 簡單檢查 OpenAI API 連線性
                 if not self.api_key:
                     logger.warning("OpenAI API 金鑰未提供")
@@ -934,7 +899,7 @@ class TranslationClient:
                     logger.error(f"OpenAI API 連線測試失敗: {e!s}")
                     return False
 
-            elif self.llm_type == 'ollama':
+            elif self.llm_type == "ollama":
                 if not self.session:
                     # 如果 session 未初始化，臨時建立一個
                     async with aiohttp.ClientSession() as session:
@@ -969,8 +934,10 @@ class TranslationClient:
         self.metrics = ApiMetrics()
         logger.info("已重置 API 使用指標")
 
+
 # 測試程式碼
 if __name__ == "__main__":
+
     async def test():
         try:
             # 讀取 API 金鑰
@@ -982,8 +949,8 @@ if __name__ == "__main__":
                 api_key = None
 
             # 選擇測試模式
-            llm_type = 'ollama' if not api_key else 'openai'
-            model = 'llama3' if llm_type == 'ollama' else 'gpt-3.5-turbo'
+            llm_type = "ollama" if not api_key else "openai"
+            model = "llama3" if llm_type == "ollama" else "gpt-3.5-turbo"
 
             # 初始化客戶端
             client = TranslationClient(llm_type=llm_type, api_key=api_key)
@@ -1009,11 +976,11 @@ if __name__ == "__main__":
                 texts = [
                     ("こんにちは", ["前一句", "こんにちは", "後一句"]),
                     ("さようなら", ["前一句", "さようなら", "後一句"]),
-                    ("ありがとう", ["前一句", "ありがとう", "後一句"])
+                    ("ありがとう", ["前一句", "ありがとう", "後一句"]),
                 ]
                 batch_results = await client.translate_batch(texts, model)
                 for i, res in enumerate(batch_results):
-                    print(f"批量翻譯 {i+1}: {res}")
+                    print(f"批量翻譯 {i + 1}: {res}")
 
                 # 顯示指標
                 print("\nAPI 使用指標:")
@@ -1024,6 +991,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"測試發生錯誤: {e!s}")
             import traceback
+
             traceback.print_exc()
 
     # 執行測試

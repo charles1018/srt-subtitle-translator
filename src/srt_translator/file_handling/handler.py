@@ -13,6 +13,7 @@ import chardet
 # Try importing tkinterdnd2
 try:
     from tkinterdnd2 import *
+
     TKDND_AVAILABLE = True
 except ImportError:
     TKDND_AVAILABLE = False
@@ -20,12 +21,14 @@ except ImportError:
 # Try importing subtitle related packages
 try:
     import pysrt
+
     PYSRT_AVAILABLE = True
 except ImportError:
     PYSRT_AVAILABLE = False
 
 try:
     import webvtt
+
     WEBVTT_AVAILABLE = True
 except ImportError:
     WEBVTT_AVAILABLE = False
@@ -39,16 +42,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # Ensure logs directory exists
-os.makedirs('logs', exist_ok=True)
+os.makedirs("logs", exist_ok=True)
 
 # Avoid adding handlers multiple times
 if not logger.handlers:
     handler = logging.handlers.TimedRotatingFileHandler(
-        filename='logs/file_handler.log',
-        when='midnight',
-        interval=1,
-        backupCount=7,
-        encoding='utf-8'
+        filename="logs/file_handler.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
     )
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
     handler.setFormatter(formatter)
@@ -60,7 +59,7 @@ class SubtitleInfo:
 
     def __init__(self, file_path: str):
         """Initialize subtitle information
-        
+
         Args:
             file_path: Path to the subtitle file
         """
@@ -78,64 +77,64 @@ class SubtitleInfo:
 
     def _detect_format(self, file_path: str) -> str:
         """Detect subtitle file format
-        
+
         Args:
             file_path: Path to the subtitle file
-            
+
         Returns:
             Format of the subtitle file
         """
         ext = os.path.splitext(file_path)[1].lower()
-        if ext == '.srt':
-            return 'srt'
-        elif ext == '.vtt':
-            return 'vtt'
-        elif ext in ['.ssa', '.ass']:
-            return 'ass'
-        elif ext == '.sub':
-            return 'sub'
+        if ext == ".srt":
+            return "srt"
+        elif ext == ".vtt":
+            return "vtt"
+        elif ext in [".ssa", ".ass"]:
+            return "ass"
+        elif ext == ".sub":
+            return "sub"
         else:
-            return 'unknown'
+            return "unknown"
 
     def _detect_encoding(self, file_path: str) -> str:
         """Detect file encoding
-        
+
         Args:
             file_path: Path to the file
-            
+
         Returns:
             Detected encoding
         """
         try:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 raw_data = f.read(4096)  # Read the first 4KB for detection
                 result = chardet.detect(raw_data)
-                encoding = result['encoding'] or 'utf-8'
-                confidence = result['confidence']
+                encoding = result["encoding"] or "utf-8"
+                confidence = result["confidence"]
 
                 # If confidence is low, try more methods
                 if confidence < 0.7:
                     # Check BOM markers
-                    if raw_data.startswith(b'\xef\xbb\xbf'):
-                        encoding = 'utf-8-sig'
-                    elif raw_data.startswith(b'\xff\xfe'):
-                        encoding = 'utf-16-le'
-                    elif raw_data.startswith(b'\xfe\xff'):
-                        encoding = 'utf-16-be'
+                    if raw_data.startswith(b"\xef\xbb\xbf"):
+                        encoding = "utf-8-sig"
+                    elif raw_data.startswith(b"\xff\xfe"):
+                        encoding = "utf-16-le"
+                    elif raw_data.startswith(b"\xfe\xff"):
+                        encoding = "utf-16-be"
 
                 return encoding
         except Exception as e:
             logger.error(f"Error detecting file encoding: {e!s}")
-            return 'utf-8'  # Default to UTF-8
+            return "utf-8"  # Default to UTF-8
 
     def _parse_subtitle_file(self) -> None:
         """Parse subtitle file to get more information"""
         try:
-            if self.format == 'srt' and PYSRT_AVAILABLE:
+            if self.format == "srt" and PYSRT_AVAILABLE:
                 self._parse_srt_file()
-            elif self.format == 'vtt' and WEBVTT_AVAILABLE:
+            elif self.format == "vtt" and WEBVTT_AVAILABLE:
                 self._parse_vtt_file()
-            elif self.format in ['ass', 'ssa']:
+            elif self.format in ["ass", "ssa"]:
                 self._parse_ass_file()
             # Other formats can be added as needed
         except Exception as e:
@@ -177,7 +176,7 @@ class SubtitleInfo:
                     logger.warning(f"Error calculating VTT duration: {e!s}")
 
             # Try to detect language
-            content = '\n'.join([caption.text for caption in vtt])
+            content = "\n".join([caption.text for caption in vtt])
             self._detect_language_from_text(content)
         except Exception as e:
             logger.error(f"Error parsing VTT file: {e!s}")
@@ -185,11 +184,11 @@ class SubtitleInfo:
     def _parse_ass_file(self) -> None:
         """Parse ASS/SSA file"""
         try:
-            with open(self.file_path, encoding=self.encoding, errors='replace') as f:
+            with open(self.file_path, encoding=self.encoding, errors="replace") as f:
                 content = f.read()
 
             # Use regular expressions to extract subtitle dialogues
-            dialogue_pattern = re.compile(r'Dialogue: [^,]*,([^,]*),([^,]*),')
+            dialogue_pattern = re.compile(r"Dialogue: [^,]*,([^,]*),([^,]*),")
             matches = dialogue_pattern.findall(content)
 
             self.subtitle_count = len(matches)
@@ -199,7 +198,7 @@ class SubtitleInfo:
                 # Try to parse the end time from the last dialogue
                 try:
                     last_end_time = matches[-1][1]  # Format is usually 0:00:00.00
-                    h, m, s = last_end_time.split(':')
+                    h, m, s = last_end_time.split(":")
                     self.duration = int(h) * 3600 + int(m) * 60 + float(s)
                 except Exception as e:
                     logger.warning(f"Error calculating ASS duration: {e!s}")
@@ -211,7 +210,7 @@ class SubtitleInfo:
 
     def _detect_language_from_content(self, subs) -> None:
         """Detect language from subtitle content
-        
+
         Args:
             subs: Subtitle content
         """
@@ -221,14 +220,14 @@ class SubtitleInfo:
         try:
             # Join some subtitle text for language detection
             sample_size = min(10, self.subtitle_count)
-            sample_text = '\n'.join([subs[i].text for i in range(sample_size)])
+            sample_text = "\n".join([subs[i].text for i in range(sample_size)])
             self._detect_language_from_text(sample_text)
         except Exception as e:
             logger.warning(f"Error detecting language from subtitle content: {e!s}")
 
     def _detect_language_from_text(self, text: str) -> None:
         """Detect language from text
-        
+
         Args:
             text: Text to detect language from
         """
@@ -239,19 +238,19 @@ class SubtitleInfo:
         # Check for common language features
 
         # Japanese characters
-        japanese_chars = len(re.findall(r'[\u3040-\u309F\u30A0-\u30FF]', text))
+        japanese_chars = len(re.findall(r"[\u3040-\u309F\u30A0-\u30FF]", text))
 
         # Chinese characters
-        chinese_chars = len(re.findall(r'[\u4E00-\u9FFF]', text))
+        chinese_chars = len(re.findall(r"[\u4E00-\u9FFF]", text))
 
         # Korean characters
-        korean_chars = len(re.findall(r'[\uAC00-\uD7A3]', text))
+        korean_chars = len(re.findall(r"[\uAC00-\uD7A3]", text))
 
         # English and other Latin languages
-        latin_chars = len(re.findall(r'[a-zA-Z]', text))
+        latin_chars = len(re.findall(r"[a-zA-Z]", text))
 
         # Count total characters (excluding whitespace)
-        total_chars = len(re.sub(r'\s', '', text))
+        total_chars = len(re.sub(r"\s", "", text))
         if total_chars == 0:
             return
 
@@ -263,21 +262,21 @@ class SubtitleInfo:
 
         # Determine language based on ratios
         if jp_ratio > 0.3:
-            self.languages.append('日文')
+            self.languages.append("日文")
         if cn_ratio > 0.3:
-            self.languages.append('中文')
+            self.languages.append("中文")
         if kr_ratio > 0.3:
-            self.languages.append('韓文')
+            self.languages.append("韓文")
         if latin_ratio > 0.5:
-            self.languages.append('英文')
+            self.languages.append("英文")
 
         # If no language detected, mark as unknown
         if not self.languages:
-            self.languages.append('未知')
+            self.languages.append("未知")
 
     def get_summary(self) -> Dict[str, Any]:
         """Get subtitle file summary information
-        
+
         Returns:
             Summary information dictionary
         """
@@ -289,16 +288,16 @@ class SubtitleInfo:
             "字幕數量": self.subtitle_count,
             "時長": self._format_duration(self.duration),
             "檔案大小": self._format_size(self.file_size),
-            "語言": ', '.join(self.languages) if self.languages else '未知',
-            "最後修改": datetime.fromtimestamp(self.last_modified).strftime('%Y-%m-%d %H:%M:%S')
+            "語言": ", ".join(self.languages) if self.languages else "未知",
+            "最後修改": datetime.fromtimestamp(self.last_modified).strftime("%Y-%m-%d %H:%M:%S"),
         }
 
     def _format_duration(self, seconds: float) -> str:
         """Format time as hours:minutes:seconds
-        
+
         Args:
             seconds: Time in seconds
-            
+
         Returns:
             Formatted time string
         """
@@ -316,10 +315,10 @@ class SubtitleInfo:
 
     def _format_size(self, size_bytes: int) -> str:
         """Format file size
-        
+
         Args:
             size_bytes: Size in bytes
-            
+
         Returns:
             Formatted size string
         """
@@ -339,13 +338,13 @@ class FileHandler:
     _lock = threading.Lock()
 
     @classmethod
-    def get_instance(cls, root: tk.Tk = None, config_section: str = "file") -> 'FileHandler':
+    def get_instance(cls, root: tk.Tk = None, config_section: str = "file") -> "FileHandler":
         """Get file handler singleton instance
-        
+
         Args:
             root: Tkinter root window
             config_section: Configuration section to use
-            
+
         Returns:
             FileHandler instance
         """
@@ -360,7 +359,7 @@ class FileHandler:
 
     def __init__(self, root: tk.Tk = None, config_section: str = "file"):
         """Initialize file handler
-        
+
         Args:
             root: Tkinter root window
             config_section: Configuration section to use
@@ -372,26 +371,32 @@ class FileHandler:
         self.config_manager = ConfigManager.get_instance(config_section)
 
         # Language suffix mapping
-        self.lang_suffix = self.config_manager.get_value("lang_suffix", {
-            "繁體中文": ".zh_tw",
-            "簡體中文": ".zh_cn",
-            "英文": ".en",
-            "日文": ".jp",
-            "韓文": ".kr",
-            "法文": ".fr",
-            "德文": ".de",
-            "西班牙文": ".es",
-            "俄文": ".ru"
-        })
+        self.lang_suffix = self.config_manager.get_value(
+            "lang_suffix",
+            {
+                "繁體中文": ".zh_tw",
+                "簡體中文": ".zh_cn",
+                "英文": ".en",
+                "日文": ".jp",
+                "韓文": ".kr",
+                "法文": ".fr",
+                "德文": ".de",
+                "西班牙文": ".es",
+                "俄文": ".ru",
+            },
+        )
 
         # Supported subtitle formats
-        self.supported_formats = self.config_manager.get_value("supported_formats", [
-            (".srt", "SRT subtitle file"),
-            (".vtt", "WebVTT subtitle file"),
-            (".ass", "ASS subtitle file"),
-            (".ssa", "SSA subtitle file"),
-            (".sub", "SUB subtitle file")
-        ])
+        self.supported_formats = self.config_manager.get_value(
+            "supported_formats",
+            [
+                (".srt", "SRT subtitle file"),
+                (".vtt", "WebVTT subtitle file"),
+                (".ass", "ASS subtitle file"),
+                (".ssa", "SSA subtitle file"),
+                (".sub", "SUB subtitle file"),
+            ],
+        )
 
         # Cache for subtitle file information
         self.subtitle_info_cache = {}
@@ -400,12 +405,15 @@ class FileHandler:
         self.last_directory = self.config_manager.get_value("last_directory", "")
 
         # Batch settings
-        self.batch_settings = self.config_manager.get_value("batch_settings", {
-            "name_pattern": "{filename}_{language}{ext}",
-            "overwrite_mode": "ask",  # ask, overwrite, rename, skip
-            "output_directory": "",
-            "preserve_folder_structure": True
-        })
+        self.batch_settings = self.config_manager.get_value(
+            "batch_settings",
+            {
+                "name_pattern": "{filename}_{language}{ext}",
+                "overwrite_mode": "ask",  # ask, overwrite, rename, skip
+                "output_directory": "",
+                "preserve_folder_structure": True,
+            },
+        )
 
         # Thread lock for thread safety
         self._lock = threading.RLock()
@@ -414,7 +422,7 @@ class FileHandler:
 
     def add_language_suffix(self, language: str, suffix: str) -> None:
         """Add or update language suffix mapping
-        
+
         Args:
             language: Language name
             suffix: File suffix to use
@@ -426,11 +434,15 @@ class FileHandler:
 
     def select_files(self) -> List[str]:
         """Select files via dialog
-        
+
         Returns:
             List of selected file paths
         """
-        initial_dir = self.last_directory if self.last_directory and os.path.exists(self.last_directory) else os.path.expanduser("~")
+        initial_dir = (
+            self.last_directory
+            if self.last_directory and os.path.exists(self.last_directory)
+            else os.path.expanduser("~")
+        )
 
         # Build filetypes filter
         filetypes = []
@@ -441,9 +453,7 @@ class FileHandler:
 
         try:
             files = filedialog.askopenfilenames(
-                title="Select subtitle files",
-                initialdir=initial_dir,
-                filetypes=filetypes
+                title="Select subtitle files", initialdir=initial_dir, filetypes=filetypes
             )
 
             if files:
@@ -476,19 +486,20 @@ class FileHandler:
 
     def select_directory(self) -> str:
         """Select directory
-        
+
         Returns:
             Selected directory path
         """
-        initial_dir = self.batch_settings["output_directory"] if os.path.exists(self.batch_settings["output_directory"]) else self.last_directory
+        initial_dir = (
+            self.batch_settings["output_directory"]
+            if os.path.exists(self.batch_settings["output_directory"])
+            else self.last_directory
+        )
         if not os.path.exists(initial_dir):
             initial_dir = os.path.expanduser("~")
 
         try:
-            directory = filedialog.askdirectory(
-                title="Select output directory",
-                initialdir=initial_dir
-            )
+            directory = filedialog.askdirectory(title="Select output directory", initialdir=initial_dir)
 
             if directory:
                 with self._lock:
@@ -506,10 +517,10 @@ class FileHandler:
 
     def handle_drop(self, event) -> List[str]:
         """Handle file drop event
-        
+
         Args:
             event: Drop event
-            
+
         Returns:
             List of valid file paths
         """
@@ -523,7 +534,7 @@ class FileHandler:
 
             for file in files:
                 # Remove braces from file paths on Windows
-                file = file.strip('{}')
+                file = file.strip("{}")
 
                 # Check if it's a directory
                 if os.path.isdir(file):
@@ -540,7 +551,10 @@ class FileHandler:
                     else:
                         logger.warning(f"Unsupported file format: {file}")
                         if self.root:
-                            messagebox.showwarning("Warning", f"File {os.path.basename(file)} is not a supported subtitle format and will be skipped")
+                            messagebox.showwarning(
+                                "Warning",
+                                f"File {os.path.basename(file)} is not a supported subtitle format and will be skipped",
+                            )
                 else:
                     logger.warning(f"Dropped item is not a valid file or directory: {file}")
 
@@ -557,11 +571,11 @@ class FileHandler:
 
     def scan_directory(self, directory: str, recursive: bool = True) -> List[str]:
         """Scan directory for subtitle files
-        
+
         Args:
             directory: Directory path
             recursive: Whether to scan subdirectories recursively
-            
+
         Returns:
             List of subtitle file paths
         """
@@ -592,11 +606,11 @@ class FileHandler:
 
     def get_subtitle_info(self, file_path: str, force_refresh: bool = False) -> Dict[str, Any]:
         """Get subtitle file information
-        
+
         Args:
             file_path: File path
             force_refresh: Whether to force refresh the cached information
-            
+
         Returns:
             Subtitle information dictionary
         """
@@ -620,7 +634,7 @@ class FileHandler:
 
     def set_batch_settings(self, settings: Dict[str, Any]) -> None:
         """Set batch processing settings
-        
+
         Args:
             settings: Settings dictionary
         """
@@ -632,12 +646,12 @@ class FileHandler:
 
     def get_output_path(self, file_path: str, target_lang: str, progress_callback=None) -> Optional[str]:
         """Get output file path and handle conflicts
-        
+
         Args:
             file_path: Source file path
             target_lang: Target language
             progress_callback: Progress callback function
-            
+
         Returns:
             Output file path, or None if failed
         """
@@ -679,8 +693,8 @@ class FileHandler:
                 language=target_lang.lower(),
                 suffix=lang_suffix.replace(".", ""),
                 ext=ext,
-                date=datetime.now().strftime('%Y%m%d'),
-                time=datetime.now().strftime('%H%M%S')
+                date=datetime.now().strftime("%Y%m%d"),
+                time=datetime.now().strftime("%H%M%S"),
             )
 
             # If output filename doesn't have an extension, add the original extension
@@ -746,10 +760,10 @@ class FileHandler:
 
     def load_api_key(self, file_path: str = "openapi_api_key.txt") -> str:
         """Load API key
-        
+
         Args:
             file_path: API key file path
-            
+
         Returns:
             API key string
         """
@@ -762,7 +776,7 @@ class FileHandler:
 
             # Try to read from file
             if os.path.exists(file_path):
-                with open(file_path, encoding='utf-8') as f:
+                with open(file_path, encoding="utf-8") as f:
                     api_key = f.read().strip()
 
                 if api_key:
@@ -777,16 +791,16 @@ class FileHandler:
 
     def save_api_key(self, api_key: str, file_path: str = "openapi_api_key.txt") -> bool:
         """Save API key
-        
+
         Args:
             api_key: API key string
             file_path: Output file path
-            
+
         Returns:
             Whether the operation was successful
         """
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(api_key)
             logger.info(f"Saved API key to file: {file_path}")
             return True
@@ -796,11 +810,11 @@ class FileHandler:
 
     def convert_subtitle_format(self, input_path: str, target_format: str) -> Optional[str]:
         """Convert subtitle file format
-        
+
         Args:
             input_path: Input file path
             target_format: Target format (without dot)
-            
+
         Returns:
             Output file path, or None if failed
         """
@@ -827,12 +841,7 @@ class FileHandler:
 
             # Handle file already exists case
             if os.path.exists(output_path):
-                output_path = self._get_unique_path(
-                    output_dir,
-                    base_name,
-                    "_converted",
-                    f".{target_format}"
-                )
+                output_path = self._get_unique_path(output_dir, base_name, "_converted", f".{target_format}")
 
             # Convert between different formats
             if source_format == "srt" and target_format == "vtt":
@@ -853,7 +862,7 @@ class FileHandler:
 
     def _convert_srt_to_vtt(self, srt_path: str, vtt_path: str) -> None:
         """Convert SRT format to VTT format
-        
+
         Args:
             srt_path: SRT file path
             vtt_path: VTT file path
@@ -866,13 +875,13 @@ class FileHandler:
         subs = pysrt.open(srt_path, encoding=encoding)
 
         # Write VTT file
-        with open(vtt_path, 'w', encoding='utf-8') as f:
+        with open(vtt_path, "w", encoding="utf-8") as f:
             f.write("WEBVTT\n\n")
 
             for sub in subs:
                 # Convert time format (00:00:00,000 -> 00:00:00.000)
-                start = sub.start.to_time().strftime('%H:%M:%S.%f')[:-3]
-                end = sub.end.to_time().strftime('%H:%M:%S.%f')[:-3]
+                start = sub.start.to_time().strftime("%H:%M:%S.%f")[:-3]
+                end = sub.end.to_time().strftime("%H:%M:%S.%f")[:-3]
 
                 # Write subtitle
                 f.write(f"{start} --> {end}\n")
@@ -880,7 +889,7 @@ class FileHandler:
 
     def _convert_vtt_to_srt(self, vtt_path: str, srt_path: str) -> None:
         """Convert VTT format to SRT format
-        
+
         Args:
             vtt_path: VTT file path
             srt_path: SRT file path
@@ -892,11 +901,11 @@ class FileHandler:
         vtt = webvtt.read(vtt_path)
 
         # Write SRT file
-        with open(srt_path, 'w', encoding='utf-8') as f:
+        with open(srt_path, "w", encoding="utf-8") as f:
             for i, caption in enumerate(vtt, 1):
                 # Convert time format (00:00:00.000 -> 00:00:00,000)
-                start = caption.start.replace('.', ',')
-                end = caption.end.replace('.', ',')
+                start = caption.start.replace(".", ",")
+                end = caption.end.replace(".", ",")
 
                 # Write subtitle
                 f.write(f"{i}\n")
@@ -905,11 +914,11 @@ class FileHandler:
 
     def extract_subtitle(self, video_path: str, callback=None) -> Optional[str]:
         """Extract subtitle from video file
-        
+
         Args:
             video_path: Video file path
             callback: Callback function
-            
+
         Returns:
             Subtitle file path, or None if failed
         """
@@ -930,19 +939,18 @@ class FileHandler:
 
             # Ensure output path does not exist
             if os.path.exists(output_path):
-                output_path = self._get_unique_path(
-                    output_dir,
-                    base_name,
-                    "_extracted",
-                    ".srt"
-                )
+                output_path = self._get_unique_path(output_dir, base_name, "_extracted", ".srt")
 
             # Extract subtitle command
             cmd = [
-                "ffmpeg", "-i", video_path,
-                "-map", "0:s:0", # Select first subtitle track
-                "-c", "copy",
-                output_path
+                "ffmpeg",
+                "-i",
+                video_path,
+                "-map",
+                "0:s:0",  # Select first subtitle track
+                "-c",
+                "copy",
+                output_path,
             ]
 
             # Execute command
@@ -975,10 +983,10 @@ class FileHandler:
 # Global functions for easy access
 def get_file_handler(root: tk.Tk = None) -> FileHandler:
     """Get file handler instance
-    
+
     Args:
         root: Tkinter root window
-        
+
     Returns:
         FileHandler instance
     """
@@ -987,10 +995,10 @@ def get_file_handler(root: tk.Tk = None) -> FileHandler:
 
 def select_files(root: tk.Tk = None) -> List[str]:
     """Select subtitle files
-    
+
     Args:
         root: Tkinter root window
-        
+
     Returns:
         List of selected file paths
     """
@@ -1000,10 +1008,10 @@ def select_files(root: tk.Tk = None) -> List[str]:
 
 def get_subtitle_info(file_path: str) -> Dict[str, Any]:
     """Get subtitle file information
-    
+
     Args:
         file_path: Subtitle file path
-        
+
     Returns:
         Subtitle information dictionary
     """
@@ -1013,11 +1021,11 @@ def get_subtitle_info(file_path: str) -> Dict[str, Any]:
 
 def scan_directory(directory: str, recursive: bool = True) -> List[str]:
     """Scan directory for subtitle files
-    
+
     Args:
         directory: Directory path
         recursive: Whether to scan subdirectories recursively
-        
+
     Returns:
         List of subtitle file paths
     """
@@ -1029,7 +1037,7 @@ def scan_directory(directory: str, recursive: bool = True) -> List[str]:
 if __name__ == "__main__":
     # Setup console logging for testing
     console_handler = logging.StreamHandler()
-    console_formatter = logging.Formatter('%(levelname)s - %(message)s')
+    console_formatter = logging.Formatter("%(levelname)s - %(message)s")
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 
@@ -1070,10 +1078,7 @@ if __name__ == "__main__":
 
     # Test batch settings
     print("\n5. Testing batch settings")
-    new_settings = {
-        "name_pattern": "{filename}_{language}_{date}{ext}",
-        "overwrite_mode": "rename"
-    }
+    new_settings = {"name_pattern": "{filename}_{language}_{date}{ext}", "overwrite_mode": "rename"}
     file_handler.set_batch_settings(new_settings)
     print(f"Updated batch settings: {file_handler.batch_settings}")
 

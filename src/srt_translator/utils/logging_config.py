@@ -13,10 +13,7 @@ LOG_FORMAT = "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s"
 
 
 def setup_logger(
-    name: str,
-    log_file: Optional[str] = None,
-    level: int = logging.DEBUG,
-    log_dir: str = 'logs'
+    name: str, log_file: Optional[str] = None, level: int = logging.DEBUG, log_dir: str = "logs"
 ) -> logging.Logger:
     """設定並返回日誌記錄器
 
@@ -42,11 +39,7 @@ def setup_logger(
             # 檔案處理程序（每日輪替）
             file_path = os.path.join(log_dir, log_file)
             handler = TimedRotatingFileHandler(
-                filename=file_path,
-                when='midnight',
-                interval=1,
-                backupCount=7,
-                encoding='utf-8'
+                filename=file_path, when="midnight", interval=1, backupCount=7, encoding="utf-8"
             )
         else:
             # 控制台處理程序
@@ -60,7 +53,7 @@ def setup_logger(
     return logger
 
 
-def setup_root_logger(log_file: str = 'app.log', level: int = logging.INFO):
+def setup_root_logger(log_file: str = "app.log", level: int = logging.INFO):
     """設定根日誌記錄器
 
     參數:
@@ -71,14 +64,10 @@ def setup_root_logger(log_file: str = 'app.log', level: int = logging.INFO):
 
     # 避免重複配置
     if not root_logger.handlers:
-        os.makedirs('logs', exist_ok=True)
+        os.makedirs("logs", exist_ok=True)
 
         handler = TimedRotatingFileHandler(
-            filename=f'logs/{log_file}',
-            when='midnight',
-            interval=1,
-            backupCount=7,
-            encoding='utf-8'
+            filename=f"logs/{log_file}", when="midnight", interval=1, backupCount=7, encoding="utf-8"
         )
         formatter = logging.Formatter(LOG_FORMAT)
         handler.setFormatter(formatter)

@@ -18,16 +18,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # 確保日誌目錄存在
-os.makedirs('logs', exist_ok=True)
+os.makedirs("logs", exist_ok=True)
 
 # 避免重複添加處理程序
 if not logger.handlers:
     handler = logging.handlers.TimedRotatingFileHandler(
-        filename='logs/cache.log',
-        when='midnight',
-        interval=1,
-        backupCount=7,
-        encoding='utf-8'
+        filename="logs/cache.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
     )
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
     handler.setFormatter(formatter)
@@ -35,6 +31,7 @@ if not logger.handlers:
 
 # 快取版本，用於不同版本間的快取相容性
 CACHE_VERSION = "1.1"
+
 
 class CacheManager:
     """快取管理器，處理翻譯結果的本地儲存和檢索"""
@@ -44,12 +41,12 @@ class CacheManager:
     _lock = threading.Lock()
 
     @classmethod
-    def get_instance(cls, db_path: str = None) -> 'CacheManager':
+    def get_instance(cls, db_path: str = None) -> "CacheManager":
         """獲取快取管理器的單例實例
-        
+
         參數:
             db_path: 快取資料庫路徑，若為None則使用配置中的路徑
-            
+
         回傳:
             快取管理器實例
         """
@@ -65,7 +62,7 @@ class CacheManager:
 
     def __init__(self, db_path: str = "data/translation_cache.db"):
         """初始化快取管理器
-        
+
         參數:
             db_path: 快取資料庫路徑
         """
@@ -77,12 +74,7 @@ class CacheManager:
 
         self.db_path = db_path
         self.memory_cache = {}  # 記憶體快取層
-        self.stats = {
-            "total_queries": 0,
-            "cache_hits": 0,
-            "db_errors": 0,
-            "last_cleanup": None
-        }
+        self.stats = {"total_queries": 0, "cache_hits": 0, "db_errors": 0, "last_cleanup": None}
 
         # 讀取配置
         cache_config = ConfigManager.get_instance("cache")
@@ -103,6 +95,7 @@ class CacheManager:
 
     def _init_db(self):
         """初始化快取資料庫並添加效能優化"""
+
         def adapt_datetime(dt):
             return dt.isoformat()
 
@@ -169,22 +162,15 @@ class CacheManager:
 
             if not result:
                 # 新建快取，設定版本
+                conn.execute("INSERT INTO cache_metadata (key, value) VALUES (?, ?)", ("version", CACHE_VERSION))
                 conn.execute(
-                    "INSERT INTO cache_metadata (key, value) VALUES (?, ?)",
-                    ("version", CACHE_VERSION)
-                )
-                conn.execute(
-                    "INSERT INTO cache_metadata (key, value) VALUES (?, ?)",
-                    ("created_at", datetime.now().isoformat())
+                    "INSERT INTO cache_metadata (key, value) VALUES (?, ?)", ("created_at", datetime.now().isoformat())
                 )
             elif result[0] != CACHE_VERSION:
                 # 快取版本不匹配，清理舊數據
                 logger.warning(f"快取版本不匹配: 目前={result[0]}, 需要={CACHE_VERSION}")
                 conn.execute("DELETE FROM translations")
-                conn.execute(
-                    "UPDATE cache_metadata SET value = ? WHERE key = 'version'",
-                    (CACHE_VERSION,)
-                )
+                conn.execute("UPDATE cache_metadata SET value = ? WHERE key = 'version'", (CACHE_VERSION,))
         except sqlite3.Error as e:
             logger.error(f"檢查快取版本時發生錯誤: {e!s}")
 
@@ -230,12 +216,12 @@ class CacheManager:
 
     def get_cached_translation(self, source_text: str, context_texts: List[str], model_name: str) -> Optional[str]:
         """獲取快取的翻譯結果，先檢查記憶體，再檢查資料庫
-        
+
         參數:
             source_text: 原始文字
             context_texts: 上下文文本列表
             model_name: 模型名稱
-            
+
         回傳:
             翻譯結果，如果快取中不存在則返回None
         """
@@ -259,28 +245,31 @@ class CacheManager:
         # 檢查資料庫快取
         try:
             with sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
-                cursor = conn.execute("""
+                cursor = conn.execute(
+                    """
                     SELECT target_text, usage_count 
                     FROM translations 
                     WHERE source_text = ? AND context_hash = ? AND model_name = ?
-                """, (source_text, context_hash, model_name))
+                """,
+                    (source_text, context_hash, model_name),
+                )
 
                 result = cursor.fetchone()
                 if result:
                     target_text, usage_count = result
                     # 更新使用統計
-                    conn.execute("""
+                    conn.execute(
+                        """
                         UPDATE translations 
                         SET usage_count = ?, last_used = ?
                         WHERE source_text = ? AND context_hash = ? AND model_name = ?
-                    """, (usage_count + 1, datetime.now(), source_text, context_hash, model_name))
+                    """,
+                        (usage_count + 1, datetime.now(), source_text, context_hash, model_name),
+                    )
 
                     # 添加到記憶體快取
                     with self._cache_lock:
-                        self.memory_cache[cache_key] = {
-                            "target_text": target_text,
-                            "last_accessed": time.time()
-                        }
+                        self.memory_cache[cache_key] = {"target_text": target_text, "last_accessed": time.time()}
 
                         # 快取過大時清理 (超過 120% 才觸發)
                         if len(self.memory_cache) > self.max_memory_cache * 1.2:
@@ -296,13 +285,13 @@ class CacheManager:
 
     def store_translation(self, source_text: str, target_text: str, context_texts: List[str], model_name: str) -> bool:
         """儲存翻譯結果到快取
-        
+
         參數:
             source_text: 原始文字
             target_text: 翻譯結果
             context_texts: 上下文文本列表
             model_name: 模型名稱
-            
+
         回傳:
             是否成功儲存
         """
@@ -316,10 +305,7 @@ class CacheManager:
         # 添加到記憶體快取
         cache_key = self._generate_cache_key(source_text, context_hash, model_name)
         with self._cache_lock:
-            self.memory_cache[cache_key] = {
-                "target_text": target_text,
-                "last_accessed": time.time()
-            }
+            self.memory_cache[cache_key] = {"target_text": target_text, "last_accessed": time.time()}
 
             # 快取過大時清理 (超過 120% 才觸發)
             if len(self.memory_cache) > self.max_memory_cache * 1.2:
@@ -328,11 +314,14 @@ class CacheManager:
         # 儲存到資料庫
         try:
             with sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT OR REPLACE INTO translations 
                     (source_text, target_text, context_hash, model_name, created_at, usage_count, last_used)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (source_text, target_text, context_hash, model_name, datetime.now(), 1, datetime.now()))
+                """,
+                    (source_text, target_text, context_hash, model_name, datetime.now(), 1, datetime.now()),
+                )
             return True
         except sqlite3.Error as e:
             self.stats["db_errors"] += 1
@@ -346,21 +335,14 @@ class CacheManager:
         threshold = int(self.max_memory_cache * 0.7)
 
         # 詳細日誌
-        logger.debug(
-            f"快取清理檢查: 當前大小={current_size}, "
-            f"限制={self.max_memory_cache}, "
-            f"閾值={threshold}"
-        )
+        logger.debug(f"快取清理檢查: 當前大小={current_size}, 限制={self.max_memory_cache}, 閾值={threshold}")
 
         if current_size <= threshold:
             logger.debug("快取大小未超過閾值，跳過清理")
             return
 
         # 按最後存取時間排序
-        sorted_items = sorted(
-            self.memory_cache.items(),
-            key=lambda x: x[1]["last_accessed"]
-        )
+        sorted_items = sorted(self.memory_cache.items(), key=lambda x: x[1]["last_accessed"])
 
         # 保留 70% 最近使用的項目
         keep_count = int(self.max_memory_cache * 0.7)
@@ -379,7 +361,7 @@ class CacheManager:
 
     def _auto_cleanup(self, conn, days_threshold: int = None):
         """自動清理過期快取
-        
+
         參數:
             conn: 資料庫連接
             days_threshold: 天數閾值，超過此天數的紀錄將被刪除
@@ -405,15 +387,12 @@ class CacheManager:
 
             # 執行清理
             threshold_date = current_time - timedelta(days=days_threshold)
-            conn.execute(
-                "DELETE FROM translations WHERE last_used < ?",
-                (threshold_date,)
-            )
+            conn.execute("DELETE FROM translations WHERE last_used < ?", (threshold_date,))
 
             # 更新上次清理時間
             conn.execute(
                 "INSERT OR REPLACE INTO cache_metadata (key, value) VALUES (?, ?)",
-                ("last_cleanup", current_time.isoformat())
+                ("last_cleanup", current_time.isoformat()),
             )
 
             self.stats["last_cleanup"] = current_time.isoformat()
@@ -423,10 +402,10 @@ class CacheManager:
 
     def clear_old_cache(self, days_threshold: int = None) -> int:
         """手動清理過期快取 (超過一定天數的舊資料)
-        
+
         參數:
             days_threshold: 天數閾值，超過此天數的紀錄將被刪除
-            
+
         回傳:
             刪除的記錄數量
         """
@@ -439,16 +418,13 @@ class CacheManager:
 
         try:
             with sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
-                cursor = conn.execute(
-                    "DELETE FROM translations WHERE last_used < ?",
-                    (threshold_date,)
-                )
+                cursor = conn.execute("DELETE FROM translations WHERE last_used < ?", (threshold_date,))
                 deleted_count = cursor.rowcount
 
                 # 更新上次清理時間
                 conn.execute(
                     "INSERT OR REPLACE INTO cache_metadata (key, value) VALUES (?, ?)",
-                    ("last_cleanup", datetime.now().isoformat())
+                    ("last_cleanup", datetime.now().isoformat()),
                 )
 
                 self.stats["last_cleanup"] = datetime.now().isoformat()
@@ -468,27 +444,21 @@ class CacheManager:
 
     def clear_cache_by_model(self, model_name: str) -> int:
         """按模型清理快取
-        
+
         參數:
             model_name: 模型名稱
-            
+
         回傳:
             刪除的記錄數量
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    "DELETE FROM translations WHERE model_name = ?",
-                    (model_name,)
-                )
+                cursor = conn.execute("DELETE FROM translations WHERE model_name = ?", (model_name,))
                 deleted_count = cursor.rowcount
 
             # 清理記憶體快取中相關條目
             with self._cache_lock:
-                keys_to_remove = [
-                    key for key in self.memory_cache
-                    if key.split("|")[2] == model_name
-                ]
+                keys_to_remove = [key for key in self.memory_cache if key.split("|")[2] == model_name]
                 for key in keys_to_remove:
                     del self.memory_cache[key]
 
@@ -501,7 +471,7 @@ class CacheManager:
 
     def get_cache_stats(self) -> Dict[str, Any]:
         """獲取快取統計資訊
-        
+
         回傳:
             包含統計資訊的字典
         """
@@ -517,9 +487,7 @@ class CacheManager:
                 stats["db_size_mb"] = os.path.getsize(self.db_path) / (1024 * 1024)
 
                 # 獲取按模型分類的快取統計
-                cursor = conn.execute(
-                    "SELECT model_name, COUNT(*) FROM translations GROUP BY model_name"
-                )
+                cursor = conn.execute("SELECT model_name, COUNT(*) FROM translations GROUP BY model_name")
                 stats["models"] = {row[0]: row[1] for row in cursor.fetchall()}
 
                 # 獲取使用率最高的10個快取
@@ -528,13 +496,7 @@ class CacheManager:
                     "FROM translations ORDER BY usage_count DESC LIMIT 10"
                 )
                 stats["top_used"] = [
-                    {
-                        "source": row[0],
-                        "target": row[1],
-                        "count": row[2],
-                        "model": row[3]
-                    }
-                    for row in cursor.fetchall()
+                    {"source": row[0], "target": row[1], "count": row[2], "model": row[3]} for row in cursor.fetchall()
                 ]
 
                 # 計算命中率
@@ -555,10 +517,10 @@ class CacheManager:
 
     def export_cache(self, output_path: str) -> bool:
         """匯出快取資料到JSON檔案
-        
+
         參數:
             output_path: 輸出檔案路徑
-            
+
         回傳:
             是否成功匯出
         """
@@ -575,13 +537,13 @@ class CacheManager:
                 data = {
                     "version": CACHE_VERSION,
                     "exported_at": datetime.now().isoformat(),
-                    "entries": [dict(row) for row in cursor.fetchall()]
+                    "entries": [dict(row) for row in cursor.fetchall()],
                 }
 
                 # 確保輸出目錄存在
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-                with open(output_path, 'w', encoding='utf-8') as f:
+                with open(output_path, "w", encoding="utf-8") as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
 
                 logger.info(f"已匯出 {len(data['entries'])} 條快取記錄到 {output_path}")
@@ -592,10 +554,10 @@ class CacheManager:
 
     def import_cache(self, input_path: str) -> Tuple[bool, int]:
         """從JSON檔案匯入快取資料
-        
+
         參數:
             input_path: 輸入檔案路徑
-            
+
         回傳:
             (是否成功匯入, 匯入的記錄數量)
         """
@@ -604,7 +566,7 @@ class CacheManager:
                 logger.error(f"匯入檔案不存在: {input_path}")
                 return False, 0
 
-            with open(input_path, encoding='utf-8') as f:
+            with open(input_path, encoding="utf-8") as f:
                 data = json.load(f)
 
             # 檢查版本相容性
@@ -627,19 +589,22 @@ class CacheManager:
                         created_at = entry.get("created_at", datetime.now().isoformat())
                         usage_count = entry.get("usage_count", 1)
 
-                        conn.execute("""
+                        conn.execute(
+                            """
                             INSERT OR IGNORE INTO translations 
                             (source_text, target_text, context_hash, model_name, created_at, usage_count, last_used)
                             VALUES (?, ?, ?, ?, ?, ?, ?)
-                        """, (
-                            entry["source_text"],
-                            entry["target_text"],
-                            entry["context_hash"],
-                            entry["model_name"],
-                            created_at,
-                            usage_count,
-                            datetime.now()
-                        ))
+                        """,
+                            (
+                                entry["source_text"],
+                                entry["target_text"],
+                                entry["context_hash"],
+                                entry["model_name"],
+                                created_at,
+                                usage_count,
+                                datetime.now(),
+                            ),
+                        )
                         if conn.total_changes > 0:
                             imported_count += 1
                     except (KeyError, sqlite3.Error) as e:
@@ -658,7 +623,7 @@ class CacheManager:
 
     def optimize_database(self) -> bool:
         """最佳化資料庫以提高效能
-        
+
         回傳:
             是否成功最佳化
         """
@@ -674,7 +639,7 @@ class CacheManager:
 
     def clear_all_cache(self) -> bool:
         """清空所有快取
-        
+
         回傳:
             是否成功清空
         """
@@ -698,11 +663,11 @@ class CacheManager:
 
     def search_cache(self, keyword: str, model_name: str = None) -> List[Dict[str, Any]]:
         """搜尋快取
-        
+
         參數:
             keyword: 搜尋關鍵字
             model_name: 限定模型名稱（可選）
-            
+
         回傳:
             符合條件的快取記錄列表
         """
@@ -745,13 +710,16 @@ class CacheManager:
             if len(self.memory_cache) > self.max_memory_cache:
                 self._clean_memory_cache()
 
-        logger.info(f"已更新快取設定: max_memory_cache={self.max_memory_cache}, auto_cleanup_days={self.auto_cleanup_days}")
+        logger.info(
+            f"已更新快取設定: max_memory_cache={self.max_memory_cache}, auto_cleanup_days={self.auto_cleanup_days}"
+        )
+
 
 # 測試程式碼
 if __name__ == "__main__":
     # 設定控制台日誌以便於測試
     console_handler = logging.StreamHandler()
-    console_formatter = logging.Formatter('%(levelname)s - %(message)s')
+    console_formatter = logging.Formatter("%(levelname)s - %(message)s")
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 

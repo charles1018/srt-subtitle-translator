@@ -28,14 +28,14 @@ def ensure_cache_cleanup():
 
         # 1. 關閉資料庫連線（如果有的話）
         try:
-            if hasattr(manager, 'conn') and manager.conn is not None:
+            if hasattr(manager, "conn") and manager.conn is not None:
                 manager.conn.close()
                 manager.conn = None
         except Exception:
             pass  # 忽略關閉錯誤
 
         # 2. 清理記憶體快取
-        if hasattr(manager, 'memory_cache'):
+        if hasattr(manager, "memory_cache"):
             manager.memory_cache.clear()
 
         # 3. 重置單例
@@ -66,7 +66,7 @@ def safe_cache_manager(temp_dir, ensure_cache_cleanup):
 
     # 明確關閉連線
     try:
-        if hasattr(manager, 'conn') and manager.conn is not None:
+        if hasattr(manager, "conn") and manager.conn is not None:
             manager.conn.close()
             manager.conn = None
     except Exception:
@@ -89,6 +89,7 @@ def isolated_cache_db(temp_dir):
             # ... 執行測試
     """
     import uuid
+
     # 使用 UUID 確保每個測試都有唯一的資料庫檔案
     unique_name = f"test_cache_{uuid.uuid4().hex[:8]}.db"
     cache_path = temp_dir / unique_name
@@ -106,6 +107,7 @@ def close_all_db_connections():
 
     # 測試後：關閉所有可能的資料庫連線
     import gc
+
     gc.collect()  # 觸發垃圾回收
 
     # 等待系統釋放資源

@@ -19,6 +19,7 @@ from srt_translator.services.factory import ServiceFactory
 # 測試前準備：Mock 所有服務
 # ============================================================
 
+
 @pytest.fixture(autouse=True)
 def reset_service_factory():
     """在每個測試前重置 ServiceFactory"""
@@ -42,8 +43,7 @@ def mock_all_services(mock_translation_client, mock_translation_responses):
     )
     mock_translation_service.translate_batch = AsyncMock(
         side_effect=lambda texts_with_context, llm_type, model, concurrent: [
-            mock_translation_responses.get(text, f"[Mock] {text}")
-            for text, context in texts_with_context
+            mock_translation_responses.get(text, f"[Mock] {text}") for text, context in texts_with_context
         ]
     )
     mock_translation_service.cleanup = Mock()
@@ -77,19 +77,19 @@ def mock_all_services(mock_translation_client, mock_translation_responses):
 
     # 將 mock 服務註冊到 ServiceFactory
     ServiceFactory._instances = {
-        'TranslationService': mock_translation_service,
-        'ModelService': mock_model_service,
-        'CacheService': mock_cache_service,
-        'FileService': mock_file_service,
-        'ProgressService': mock_progress_service,
+        "TranslationService": mock_translation_service,
+        "ModelService": mock_model_service,
+        "CacheService": mock_cache_service,
+        "FileService": mock_file_service,
+        "ProgressService": mock_progress_service,
     }
 
     yield {
-        'translation': mock_translation_service,
-        'model': mock_model_service,
-        'cache': mock_cache_service,
-        'file': mock_file_service,
-        'progress': mock_progress_service,
+        "translation": mock_translation_service,
+        "model": mock_model_service,
+        "cache": mock_cache_service,
+        "file": mock_file_service,
+        "progress": mock_progress_service,
     }
 
 
@@ -97,13 +97,10 @@ def mock_all_services(mock_translation_client, mock_translation_responses):
 # 測試 1: 基本單檔案翻譯（使用 TranslationService）
 # ============================================================
 
+
 @pytest.mark.asyncio
 async def test_basic_single_file_translation_service(
-    copy_sample_srt: Path,
-    e2e_temp_dir: Path,
-    mock_all_services,
-    srt_comparator,
-    assert_srt_valid
+    copy_sample_srt: Path, e2e_temp_dir: Path, mock_all_services, srt_comparator, assert_srt_valid
 ):
     """測試基本的單檔案翻譯流程（使用 TranslationService）
 
@@ -118,18 +115,13 @@ async def test_basic_single_file_translation_service(
     output_file = str(e2e_temp_dir / "output.srt")
 
     # 設定 FileService 的輸出路徑
-    mock_all_services['file'].get_output_path.return_value = output_file
+    mock_all_services["file"].get_output_path.return_value = output_file
 
     # 直接使用 TranslationService 測試翻譯
     translation_service = ServiceFactory.get_translation_service()
 
     # 測試翻譯單一文本
-    result = await translation_service.translate_text(
-        "Hello, world!",
-        ["Hello, world!"],
-        "openai",
-        "test-model"
-    )
+    result = await translation_service.translate_text("Hello, world!", ["Hello, world!"], "openai", "test-model")
 
     # 驗證翻譯結果
     assert result == "你好，世界！", "應該返回正確的翻譯"
@@ -140,12 +132,7 @@ async def test_basic_single_file_translation_service(
         ("This is a test subtitle.", ["This is a test subtitle."]),
     ]
 
-    results = await translation_service.translate_batch(
-        texts_with_context,
-        "openai",
-        "test-model",
-        2
-    )
+    results = await translation_service.translate_batch(texts_with_context, "openai", "test-model", 2)
 
     # 驗證批量翻譯結果
     assert len(results) == 2, "應該返回 2 個翻譯結果"
@@ -156,6 +143,7 @@ async def test_basic_single_file_translation_service(
 # ============================================================
 # 測試 2: 測試 SRT 檔案比對工具
 # ============================================================
+
 
 def test_srt_comparator(sample_srt_path: Path, srt_comparator):
     """測試 SRT 檔案比對工具
@@ -177,6 +165,7 @@ def test_srt_comparator(sample_srt_path: Path, srt_comparator):
 # ============================================================
 # 測試 3: 測試 SRT 檔案驗證工具
 # ============================================================
+
 
 def test_srt_validation(sample_srt_path: Path, invalid_srt_path: Path, assert_srt_valid):
     """測試 SRT 檔案驗證工具
@@ -203,6 +192,7 @@ def test_srt_validation(sample_srt_path: Path, invalid_srt_path: Path, assert_sr
 # 測試 4: 測試 Mock 翻譯客戶端
 # ============================================================
 
+
 @pytest.mark.asyncio
 async def test_mock_translation_client(mock_translation_client, mock_translation_responses):
     """測試 Mock 翻譯客戶端
@@ -212,11 +202,7 @@ async def test_mock_translation_client(mock_translation_client, mock_translation
     2. 批量翻譯功能正常
     """
     # 測試單一翻譯
-    result = await mock_translation_client.translate_text(
-        "Hello, world!",
-        ["Hello, world!"],
-        "test-model"
-    )
+    result = await mock_translation_client.translate_text("Hello, world!", ["Hello, world!"], "test-model")
     assert result == "你好，世界！", "應該返回正確的翻譯"
 
     # 測試批量翻譯
@@ -224,10 +210,7 @@ async def test_mock_translation_client(mock_translation_client, mock_translation
         ("Hello, world!", ["Hello, world!"]),
         ("This is a test subtitle.", ["This is a test subtitle."]),
     ]
-    results = await mock_translation_client.translate_batch(
-        texts_with_context,
-        "test-model"
-    )
+    results = await mock_translation_client.translate_batch(texts_with_context, "test-model")
 
     assert len(results) == 2, "應該返回 2 個翻譯結果"
     assert results[0] == "你好，世界！", "第一個翻譯應該正確"
@@ -237,6 +220,7 @@ async def test_mock_translation_client(mock_translation_client, mock_translation
 # ============================================================
 # 測試 5: 測試 ServiceFactory Mock 設定
 # ============================================================
+
 
 def test_service_factory_mocking(mock_all_services):
     """測試 ServiceFactory Mock 設定
@@ -253,8 +237,8 @@ def test_service_factory_mocking(mock_all_services):
     progress_service = ServiceFactory.get_progress_service()
 
     # 驗證它們都是 mock 實例
-    assert translation_service == mock_all_services['translation'], "TranslationService 應該被 mock"
-    assert model_service == mock_all_services['model'], "ModelService 應該被 mock"
-    assert cache_service == mock_all_services['cache'], "CacheService 應該被 mock"
-    assert file_service == mock_all_services['file'], "FileService 應該被 mock"
-    assert progress_service == mock_all_services['progress'], "ProgressService 應該被 mock"
+    assert translation_service == mock_all_services["translation"], "TranslationService 應該被 mock"
+    assert model_service == mock_all_services["model"], "ModelService 應該被 mock"
+    assert cache_service == mock_all_services["cache"], "CacheService 應該被 mock"
+    assert file_service == mock_all_services["file"], "FileService 應該被 mock"
+    assert progress_service == mock_all_services["progress"], "ProgressService 應該被 mock"

@@ -13,11 +13,7 @@ class TestModelInfo:
 
     def test_model_info_creation(self):
         """測試基本的 ModelInfo 建立"""
-        model = ModelInfo(
-            id="test-model",
-            provider="ollama",
-            name="Test Model"
-        )
+        model = ModelInfo(id="test-model", provider="ollama", name="Test Model")
 
         assert model.id == "test-model"
         assert model.provider == "ollama"
@@ -38,11 +34,7 @@ class TestModelInfo:
     def test_model_info_to_dict(self):
         """測試 ModelInfo 轉換為字典"""
         model = ModelInfo(
-            id="test-model",
-            provider="ollama",
-            name="Test Model",
-            description="A test model",
-            tags=["test", "demo"]
+            id="test-model", provider="ollama", name="Test Model", description="A test model", tags=["test", "demo"]
         )
 
         result = model.to_dict()
@@ -56,16 +48,9 @@ class TestModelInfo:
 
     def test_model_info_with_capabilities(self):
         """測試帶有能力評分的 ModelInfo"""
-        capabilities = {
-            "translation": 0.8,
-            "context_handling": 0.7
-        }
+        capabilities = {"translation": 0.8, "context_handling": 0.7}
 
-        model = ModelInfo(
-            id="advanced-model",
-            provider="openai",
-            capabilities=capabilities
-        )
+        model = ModelInfo(id="advanced-model", provider="openai", capabilities=capabilities)
 
         assert model.capabilities == capabilities
         assert model.to_dict()["capabilities"] == capabilities
@@ -88,21 +73,13 @@ class TestModelInfo:
 
     def test_model_info_custom_parallel(self):
         """測試自定義並行數量"""
-        model = ModelInfo(
-            id="fast-model",
-            provider="ollama",
-            parallel=20
-        )
+        model = ModelInfo(id="fast-model", provider="ollama", parallel=20)
 
         assert model.parallel == 20
 
     def test_model_info_context_length(self):
         """測試自定義上下文長度"""
-        model = ModelInfo(
-            id="large-context",
-            provider="openai",
-            context_length=32000
-        )
+        model = ModelInfo(id="large-context", provider="openai", context_length=32000)
 
         assert model.context_length == 32000
 
@@ -132,9 +109,9 @@ class TestModelManagerInit:
 
         assert manager is not None
         assert manager.config_file == temp_config_file
-        assert hasattr(manager, 'config')
-        assert hasattr(manager, 'model_database')
-        assert hasattr(manager, 'cached_models')
+        assert hasattr(manager, "config")
+        assert hasattr(manager, "model_database")
+        assert hasattr(manager, "cached_models")
 
     def test_singleton_pattern(self, temp_config_file):
         """測試單例模式"""
@@ -254,11 +231,11 @@ class TestModelManagerAPIKeys:
         # 建立 API 金鑰檔案
         api_key_file = temp_dir / "test_api_key.txt"
         test_key = "sk-test-key-12345"
-        with open(api_key_file, 'w', encoding='utf-8') as f:
+        with open(api_key_file, "w", encoding="utf-8") as f:
             f.write(test_key)
 
         # Mock get_config 以返回測試檔案路徑
-        with patch('srt_translator.core.models.get_config', return_value=str(api_key_file)):
+        with patch("srt_translator.core.models.get_config", return_value=str(api_key_file)):
             # 重新載入
             manager._load_api_keys()
 
@@ -292,10 +269,7 @@ class TestModelManagerDatabase:
     def test_model_database_has_openai_models(self, manager):
         """測試模型資料庫包含 OpenAI 模型"""
         # 檢查是否有任何 OpenAI 模型
-        openai_models = [
-            model for model in manager.model_database.values()
-            if model.provider == "openai"
-        ]
+        openai_models = [model for model in manager.model_database.values() if model.provider == "openai"]
         assert len(openai_models) > 0
 
     def test_model_database_models_are_model_info(self, manager):
@@ -447,7 +421,7 @@ class TestModelManagerHelpers:
         ]
 
         # 應該有過濾方法
-        if hasattr(manager, 'filter_translation_models'):
+        if hasattr(manager, "filter_translation_models"):
             filtered = manager.filter_translation_models(test_models)
             # 驗證過濾結果
             assert isinstance(filtered, list)
@@ -459,7 +433,7 @@ class TestModelManagerHelpers:
         assert len(manager.model_patterns) > 0
 
         # 常見模型應該在模式中
-        common_patterns = ['llama', 'gpt', 'qwen']
+        common_patterns = ["llama", "gpt", "qwen"]
         matches = any(pattern in manager.model_patterns for pattern in common_patterns)
         assert matches  # 至少有一個常見模式
 
@@ -739,15 +713,12 @@ class TestModelManagerSync:
     def test_get_model_list_ollama(self, manager):
         """測試同步獲取 Ollama 模型列表"""
         # Mock 非同步方法
-        mock_models = [
-            ModelInfo(id="llama3", provider="ollama"),
-            ModelInfo(id="mistral", provider="ollama")
-        ]
+        mock_models = [ModelInfo(id="llama3", provider="ollama"), ModelInfo(id="mistral", provider="ollama")]
 
         # 使用 AsyncMock
         mock_coro = AsyncMock(return_value=mock_models)
 
-        with patch.object(manager, 'get_model_list_async', mock_coro):
+        with patch.object(manager, "get_model_list_async", mock_coro):
             # 呼叫同步方法
             result = manager.get_model_list("ollama")
 
@@ -761,7 +732,7 @@ class TestModelManagerSync:
     def test_get_model_list_invalid_type(self, manager):
         """測試無效的 LLM 類型"""
         # Mock get_model_list_async 返回空列表
-        with patch.object(manager, 'get_model_list_async', return_value=AsyncMock(return_value=[])):
+        with patch.object(manager, "get_model_list_async", return_value=AsyncMock(return_value=[])):
             result = manager.get_model_list("invalid_type")
             assert isinstance(result, list)
 
@@ -861,7 +832,7 @@ class TestModelManagerAsync:
         manager.cache_time["ollama"] = time.time() - manager.cache_expiry - 100
 
         # Mock _get_ollama_models_async 返回預設模型
-        with patch.object(manager, '_get_ollama_models_async', return_value=[]):
+        with patch.object(manager, "_get_ollama_models_async", return_value=[]):
             result = await manager.get_model_list_async("ollama")
 
             assert isinstance(result, list)
@@ -894,7 +865,7 @@ class TestModelManagerAsync:
         manager.cache_time["ollama"] = time.time() - manager.cache_expiry - 10
 
         # Mock 方法拋出錯誤
-        with patch.object(manager, '_get_ollama_models_async', side_effect=Exception("Network error")):
+        with patch.object(manager, "_get_ollama_models_async", side_effect=Exception("Network error")):
             result = await manager.get_model_list_async("ollama")
 
             # 應該返回過期的快取
@@ -910,7 +881,7 @@ class TestModelManagerAsync:
     async def test_get_model_list_async_error_no_cache(self, manager):
         """測試獲取模型時發生錯誤且無快取（Ollama）"""
         # Mock 方法拋出錯誤
-        with patch.object(manager, '_get_ollama_models_async', side_effect=Exception("Network error")):
+        with patch.object(manager, "_get_ollama_models_async", side_effect=Exception("Network error")):
             result = await manager.get_model_list_async("ollama")
 
             # 應該返回預設模型
@@ -927,7 +898,7 @@ class TestModelManagerAsync:
         # Mock _get_openai_models_async 返回模型
         mock_models = [ModelInfo(id="gpt-4", provider="openai")]
 
-        with patch.object(manager, '_get_openai_models_async', return_value=mock_models):
+        with patch.object(manager, "_get_openai_models_async", return_value=mock_models):
             result = await manager.get_model_list_async("openai", api_key="test-key")
 
             assert isinstance(result, list)
@@ -942,7 +913,7 @@ class TestModelManagerAsync:
     async def test_get_model_list_async_openai_error(self, manager):
         """測試 OpenAI 獲取失敗返回預設模型"""
         # Mock 方法拋出錯誤
-        with patch.object(manager, '_get_openai_models_async', side_effect=Exception("API error")):
+        with patch.object(manager, "_get_openai_models_async", side_effect=Exception("API error")):
             result = await manager.get_model_list_async("openai")
 
             # 應該返回預設 OpenAI 模型
@@ -960,9 +931,9 @@ class TestModelManagerAsync:
         # Mock _get_anthropic_models_async 返回模型
         mock_models = [ModelInfo(id="claude-3", provider="anthropic")]
 
-        with patch.object(manager, '_get_anthropic_models_async', return_value=mock_models):
+        with patch.object(manager, "_get_anthropic_models_async", return_value=mock_models):
             # 需要 mock ANTHROPIC_AVAILABLE
-            with patch('srt_translator.core.models.ANTHROPIC_AVAILABLE', True):
+            with patch("srt_translator.core.models.ANTHROPIC_AVAILABLE", True):
                 result = await manager.get_model_list_async("anthropic", api_key="test-key")
 
                 assert isinstance(result, list)
@@ -975,8 +946,8 @@ class TestModelManagerAsync:
     async def test_get_model_list_async_anthropic_error(self, manager):
         """測試 Anthropic 獲取失敗返回預設模型"""
         # Mock 方法拋出錯誤
-        with patch.object(manager, '_get_anthropic_models_async', side_effect=Exception("API error")):
-            with patch('srt_translator.core.models.ANTHROPIC_AVAILABLE', True):
+        with patch.object(manager, "_get_anthropic_models_async", side_effect=Exception("API error")):
+            with patch("srt_translator.core.models.ANTHROPIC_AVAILABLE", True):
                 result = await manager.get_model_list_async("anthropic")
 
                 # 應該返回預設 Anthropic 模型

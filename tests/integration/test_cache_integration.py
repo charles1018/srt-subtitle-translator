@@ -3,7 +3,6 @@
 測試 CacheManager 與其他模組的整合互動。
 """
 
-
 from srt_translator.core.cache import CacheManager
 
 
@@ -24,12 +23,7 @@ class TestCacheConfigIntegration:
 
         # 儲存一些測試資料
         for i in range(20):
-            cache_manager.store_translation(
-                f"source_{i}",
-                f"target_{i}",
-                [],
-                "test-model"
-            )
+            cache_manager.store_translation(f"source_{i}", f"target_{i}", [], "test-model")
 
         # 驗證記憶體快取有資料
         initial_cache_size = len(cache_manager.memory_cache)
@@ -51,7 +45,7 @@ class TestCacheConfigIntegration:
         cache1.store_translation("hello", "你好", [], "gpt-4")
 
         # 關閉連線
-        if hasattr(cache1, 'conn') and cache1.conn:
+        if hasattr(cache1, "conn") and cache1.conn:
             cache1.conn.close()
 
         # 重置單例
@@ -64,7 +58,7 @@ class TestCacheConfigIntegration:
         assert cached == "你好"
 
         # 清理
-        if hasattr(cache2, 'conn') and cache2.conn:
+        if hasattr(cache2, "conn") and cache2.conn:
             cache2.conn.close()
 
 

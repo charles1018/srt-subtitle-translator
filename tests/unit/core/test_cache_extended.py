@@ -23,6 +23,7 @@ from srt_translator.core.cache import CACHE_VERSION, CacheManager
 # 資料庫初始化與復原測試
 # ============================================================
 
+
 class TestCacheDatabase:
     """測試資料庫初始化與復原"""
 
@@ -57,7 +58,7 @@ class TestCacheDatabase:
         shutil.copy(cache_path, backup_path)
 
         # 損壞原資料庫
-        with open(cache_path, 'w') as f:
+        with open(cache_path, "w") as f:
             f.write("corrupted data")
 
         # 嘗試復原
@@ -71,7 +72,7 @@ class TestCacheDatabase:
         cache_path = temp_dir / "corrupt_cache.db"
 
         # 創建損壞的資料庫
-        with open(cache_path, 'w') as f:
+        with open(cache_path, "w") as f:
             f.write("corrupted")
 
         manager = CacheManager(str(cache_path))
@@ -106,11 +107,14 @@ class TestCacheDatabase:
                 )
             """)
             conn.execute("INSERT INTO cache_metadata (key, value) VALUES (?, ?)", ("version", "0.9"))
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO translations
                 (source_text, target_text, context_hash, model_name, created_at, usage_count, last_used)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, ("old", "舊的", "hash", "model", datetime.now(), 1, datetime.now()))
+            """,
+                ("old", "舊的", "hash", "model", datetime.now(), 1, datetime.now()),
+            )
 
         # 創建管理器（應該清理舊數據）
         manager = CacheManager(str(cache_path))
@@ -129,7 +133,7 @@ class TestCacheDatabase:
         backup_path = f"{cache_manager.db_path}.bak"
         assert Path(backup_path).exists()
 
-    @patch('shutil.copy')
+    @patch("shutil.copy")
     def test_create_backup_failure(self, mock_copy, cache_manager):
         """測試備份失敗"""
         mock_copy.side_effect = Exception("Backup failed")
@@ -140,6 +144,7 @@ class TestCacheDatabase:
 # ============================================================
 # 快取操作擴展測試
 # ============================================================
+
 
 class TestCacheOperationsExtended:
     """測試快取操作的擴展功能"""
@@ -193,7 +198,7 @@ class TestCacheOperationsExtended:
         cache_manager._clean_memory_cache()
         assert len(cache_manager.memory_cache) == 1
 
-    @patch('sqlite3.connect')
+    @patch("sqlite3.connect")
     def test_get_cached_translation_db_error(self, mock_connect, cache_manager):
         """測試獲取翻譯時資料庫錯誤"""
         mock_connect.side_effect = sqlite3.Error("Database error")
@@ -202,7 +207,7 @@ class TestCacheOperationsExtended:
         assert result is None
         assert cache_manager.stats["db_errors"] > 0
 
-    @patch('sqlite3.connect')
+    @patch("sqlite3.connect")
     def test_store_translation_db_error(self, mock_connect, cache_manager):
         """測試儲存翻譯時資料庫錯誤"""
         # 先成功一次初始化資料庫
@@ -217,6 +222,7 @@ class TestCacheOperationsExtended:
 # ============================================================
 # 清理與維護測試
 # ============================================================
+
 
 class TestCacheCleanup:
     """測試快取清理與維護功能"""
@@ -235,7 +241,7 @@ class TestCacheCleanup:
         with sqlite3.connect(cache_manager.db_path) as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO cache_metadata (key, value) VALUES (?, ?)",
-                ("last_cleanup", datetime.now().isoformat())
+                ("last_cleanup", datetime.now().isoformat()),
             )
 
         # 再次嘗試清理（應該跳過）
@@ -247,8 +253,7 @@ class TestCacheCleanup:
         # 設置無效的日期格式
         with sqlite3.connect(cache_manager.db_path) as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO cache_metadata (key, value) VALUES (?, ?)",
-                ("last_cleanup", "invalid_date")
+                "INSERT OR REPLACE INTO cache_metadata (key, value) VALUES (?, ?)", ("last_cleanup", "invalid_date")
             )
 
             # 執行清理（應該繼續執行）
@@ -259,17 +264,20 @@ class TestCacheCleanup:
         # 添加舊快取
         old_date = datetime.now() - timedelta(days=60)
         with sqlite3.connect(cache_manager.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO translations
                 (source_text, target_text, context_hash, model_name, created_at, usage_count, last_used)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, ("old", "舊的", "hash", "model", old_date, 1, old_date))
+            """,
+                ("old", "舊的", "hash", "model", old_date, 1, old_date),
+            )
 
         # 清理超過 30 天的
         deleted = cache_manager.clear_old_cache(days_threshold=30)
         assert deleted >= 1
 
-    @patch('sqlite3.connect')
+    @patch("sqlite3.connect")
     def test_clear_old_cache_db_error(self, mock_connect, cache_manager):
         """測試清理舊快取時資料庫錯誤"""
         mock_connect.side_effect = sqlite3.Error("Database error")
@@ -294,7 +302,7 @@ class TestCacheCleanup:
         result = cache_manager.get_cached_translation("text2", [], "model_b")
         assert result == "譯文2"
 
-    @patch('sqlite3.connect')
+    @patch("sqlite3.connect")
     def test_clear_cache_by_model_db_error(self, mock_connect, cache_manager):
         """測試按模型清理時資料庫錯誤"""
         mock_connect.side_effect = sqlite3.Error("Database error")
@@ -306,7 +314,7 @@ class TestCacheCleanup:
         result = cache_manager.optimize_database()
         assert result is True
 
-    @patch('sqlite3.connect')
+    @patch("sqlite3.connect")
     def test_optimize_database_error(self, mock_connect, cache_manager):
         """測試優化資料庫錯誤"""
         mock_connect.side_effect = sqlite3.Error("Optimization error")
@@ -328,7 +336,7 @@ class TestCacheCleanup:
         assert stats.get("total_records", 0) == 0
         assert len(cache_manager.memory_cache) == 0
 
-    @patch('sqlite3.connect')
+    @patch("sqlite3.connect")
     def test_clear_all_cache_error(self, mock_connect, cache_manager):
         """測試清空快取時錯誤"""
         # 先成功一次
@@ -343,6 +351,7 @@ class TestCacheCleanup:
 # ============================================================
 # 匯入匯出測試
 # ============================================================
+
 
 class TestCacheImportExport:
     """測試快取匯入匯出功能"""
@@ -366,13 +375,13 @@ class TestCacheImportExport:
         assert export_path.exists()
 
         # 驗證內容
-        with open(export_path, encoding='utf-8') as f:
+        with open(export_path, encoding="utf-8") as f:
             data = json.load(f)
         assert "version" in data
         assert "entries" in data
         assert len(data["entries"]) >= 1
 
-    @patch('builtins.open')
+    @patch("builtins.open")
     def test_export_cache_error(self, mock_open, cache_manager, temp_dir):
         """測試匯出快取錯誤"""
         mock_open.side_effect = Exception("Export error")
@@ -389,11 +398,8 @@ class TestCacheImportExport:
         """測試匯入版本不匹配的快取"""
         # 創建版本不匹配的匯出文件
         export_path = temp_dir / "old_version.json"
-        data = {
-            "version": "0.5",
-            "entries": []
-        }
-        with open(export_path, 'w', encoding='utf-8') as f:
+        data = {"version": "0.5", "entries": []}
+        with open(export_path, "w", encoding="utf-8") as f:
             json.dump(data, f)
 
         result, count = cache_manager.import_cache(str(export_path))
@@ -411,18 +417,18 @@ class TestCacheImportExport:
                     "source_text": "hello",
                     "target_text": "你好",
                     "context_hash": "hash",
-                    "model_name": "model1"
-                }  # 有效條目
-            ]
+                    "model_name": "model1",
+                },  # 有效條目
+            ],
         }
-        with open(export_path, 'w', encoding='utf-8') as f:
+        with open(export_path, "w", encoding="utf-8") as f:
             json.dump(data, f)
 
         result, count = cache_manager.import_cache(str(export_path))
         assert result is True
         assert count == 1  # 只匯入了1個有效條目
 
-    @patch('builtins.open')
+    @patch("builtins.open")
     def test_import_cache_error(self, mock_open, cache_manager):
         """測試匯入快取錯誤"""
         mock_open.side_effect = Exception("Import error")
@@ -434,6 +440,7 @@ class TestCacheImportExport:
 # ============================================================
 # 統計與搜尋測試
 # ============================================================
+
 
 class TestCacheStatsAndSearch:
     """測試快取統計與搜尋功能"""
@@ -466,7 +473,7 @@ class TestCacheStatsAndSearch:
         assert "memory_cache_size" in stats
         assert stats["total_records"] >= 5
 
-    @patch('sqlite3.connect')
+    @patch("sqlite3.connect")
     def test_get_cache_stats_db_error(self, mock_connect, cache_manager):
         """測試獲取統計時資料庫錯誤"""
         mock_connect.side_effect = sqlite3.Error("Stats error")
@@ -497,7 +504,7 @@ class TestCacheStatsAndSearch:
         assert len(results) >= 1
         assert all(r["model_name"] == "model_a" for r in results)
 
-    @patch('sqlite3.connect')
+    @patch("sqlite3.connect")
     def test_search_cache_db_error(self, mock_connect, cache_manager):
         """測試搜尋時資料庫錯誤"""
         mock_connect.side_effect = sqlite3.Error("Search error")
@@ -523,6 +530,7 @@ class TestCacheStatsAndSearch:
 # ============================================================
 # 哈希與鍵值生成測試
 # ============================================================
+
 
 class TestCacheHashingAndKeys:
     """測試快取哈希與鍵值生成"""

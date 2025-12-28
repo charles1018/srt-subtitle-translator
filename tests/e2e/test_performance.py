@@ -20,6 +20,7 @@ from srt_translator.services.factory import ServiceFactory
 # 測試前準備：Mock 所有服務
 # ============================================================
 
+
 @pytest.fixture(autouse=True)
 def reset_service_factory():
     """在每個測試前重置 ServiceFactory"""
@@ -37,10 +38,7 @@ def mock_all_services_for_performance(mock_translation_client, mock_translation_
         return mock_translation_responses.get(text, f"[Mock翻譯] {text}")
 
     async def mock_translate_batch(texts_with_context, llm_type, model, concurrent_limit=5):
-        return [
-            mock_translation_responses.get(text, f"[Mock翻譯] {text}")
-            for text, context in texts_with_context
-        ]
+        return [mock_translation_responses.get(text, f"[Mock翻譯] {text}") for text, context in texts_with_context]
 
     # 建立 Mock TranslationService
     mock_translation_service = Mock()
@@ -97,19 +95,19 @@ def mock_all_services_for_performance(mock_translation_client, mock_translation_
 
     # 註冊到 ServiceFactory
     ServiceFactory._instances = {
-        'TranslationService': mock_translation_service,
-        'ModelService': mock_model_service,
-        'CacheService': mock_cache_service,
-        'FileService': mock_file_service,
-        'ProgressService': mock_progress_service,
+        "TranslationService": mock_translation_service,
+        "ModelService": mock_model_service,
+        "CacheService": mock_cache_service,
+        "FileService": mock_file_service,
+        "ProgressService": mock_progress_service,
     }
 
     yield {
-        'translation': mock_translation_service,
-        'model': mock_model_service,
-        'cache': mock_cache_service,
-        'file': mock_file_service,
-        'progress': mock_progress_service,
+        "translation": mock_translation_service,
+        "model": mock_model_service,
+        "cache": mock_cache_service,
+        "file": mock_file_service,
+        "progress": mock_progress_service,
     }
 
 
@@ -117,11 +115,9 @@ def mock_all_services_for_performance(mock_translation_client, mock_translation_
 # 效能與效率測試（2 個測試）
 # ============================================================
 
+
 @pytest.mark.asyncio
-async def test_translation_speed(
-    sample_srt_path: Path,
-    mock_all_services_for_performance
-):
+async def test_translation_speed(sample_srt_path: Path, mock_all_services_for_performance):
     """測試 1：翻譯速度測試
 
     驗證：
@@ -133,19 +129,14 @@ async def test_translation_speed(
     translation_service = ServiceFactory.get_translation_service()
 
     # 讀取輸入檔案
-    input_subs = pysrt.open(str(sample_srt_path), encoding='utf-8')
+    input_subs = pysrt.open(str(sample_srt_path), encoding="utf-8")
     assert len(input_subs) == 3, "測試檔案應有 3 個字幕"
 
     # 測試 1：單個翻譯速度
     single_times = []
     for sub in input_subs:
         start_time = time.time()
-        translation = await translation_service.translate_text(
-            sub.text,
-            [sub.text],
-            "openai",
-            "test-model"
-        )
+        translation = await translation_service.translate_text(sub.text, [sub.text], "openai", "test-model")
         duration = time.time() - start_time
         single_times.append(duration)
 
@@ -158,10 +149,7 @@ async def test_translation_speed(
 
     start_time = time.time()
     batch_translations = await translation_service.translate_batch(
-        texts_with_context,
-        "openai",
-        "test-model",
-        concurrent_limit=3
+        texts_with_context, "openai", "test-model", concurrent_limit=3
     )
     batch_time = time.time() - start_time
 
@@ -170,15 +158,13 @@ async def test_translation_speed(
 
     # 驗證批量翻譯有效率優勢（應該更快或接近）
     total_single_time = sum(single_times)
-    assert batch_time <= total_single_time * 1.5, \
+    assert batch_time <= total_single_time * 1.5, (
         f"批量翻譯時間 {batch_time:.3f}s 應該不超過單個總時間 {total_single_time:.3f}s 的 1.5 倍"
+    )
 
 
 @pytest.mark.asyncio
-async def test_cache_performance(
-    sample_srt_path: Path,
-    mock_all_services_for_performance
-):
+async def test_cache_performance(sample_srt_path: Path, mock_all_services_for_performance):
     """測試 2：快取效能測試
 
     驗證：
@@ -191,18 +177,13 @@ async def test_cache_performance(
     cache_service = ServiceFactory.get_cache_service()
 
     # 讀取輸入檔案
-    input_subs = pysrt.open(str(sample_srt_path), encoding='utf-8')
+    input_subs = pysrt.open(str(sample_srt_path), encoding="utf-8")
     test_text = input_subs[0].text
     model_name = "test-model"
 
     # 第一次翻譯（無快取）
     start_time = time.time()
-    result1 = await translation_service.translate_text(
-        test_text,
-        [test_text],
-        "openai",
-        model_name
-    )
+    result1 = await translation_service.translate_text(test_text, [test_text], "openai", model_name)
     first_time = time.time() - start_time
 
     # 儲存到快取
@@ -218,8 +199,7 @@ async def test_cache_performance(
     assert cached == result1, "快取結果應該與第一次翻譯相同"
 
     # 驗證快取速度優勢（快取讀取應該更快）
-    assert cache_time <= first_time, \
-        f"快取讀取時間 {cache_time:.6f}s 應該不超過首次翻譯時間 {first_time:.6f}s"
+    assert cache_time <= first_time, f"快取讀取時間 {cache_time:.6f}s 應該不超過首次翻譯時間 {first_time:.6f}s"
 
     # 測試多次快取命中
     cache_service._hits.clear()  # 重置快取命中記錄
@@ -236,12 +216,9 @@ async def test_cache_performance(
 # 邊緣情況測試（3 個測試）
 # ============================================================
 
+
 @pytest.mark.asyncio
-async def test_large_file_processing(
-    very_large_srt_path: Path,
-    e2e_temp_dir: Path,
-    mock_all_services_for_performance
-):
+async def test_large_file_processing(very_large_srt_path: Path, e2e_temp_dir: Path, mock_all_services_for_performance):
     """測試 3：大型檔案處理
 
     驗證：
@@ -253,7 +230,7 @@ async def test_large_file_processing(
     translation_service = ServiceFactory.get_translation_service()
 
     # 讀取大型檔案
-    input_subs = pysrt.open(str(very_large_srt_path), encoding='utf-8')
+    input_subs = pysrt.open(str(very_large_srt_path), encoding="utf-8")
     assert len(input_subs) >= 100, "應該有至少 100 個字幕"
 
     # 準備批量翻譯資料
@@ -262,10 +239,7 @@ async def test_large_file_processing(
     # 批量翻譯大型檔案
     start_time = time.time()
     translations = await translation_service.translate_batch(
-        texts_with_context,
-        "openai",
-        "test-model",
-        concurrent_limit=5
+        texts_with_context, "openai", "test-model", concurrent_limit=5
     )
     duration = time.time() - start_time
 
@@ -284,9 +258,7 @@ async def test_large_file_processing(
 
 @pytest.mark.asyncio
 async def test_long_subtitle_processing(
-    long_subtitle_srt_path: Path,
-    mock_all_services_for_performance,
-    mock_translation_responses
+    long_subtitle_srt_path: Path, mock_all_services_for_performance, mock_translation_responses
 ):
     """測試 4：極長字幕處理
 
@@ -299,7 +271,7 @@ async def test_long_subtitle_processing(
     translation_service = ServiceFactory.get_translation_service()
 
     # 讀取包含超長字幕的檔案
-    input_subs = pysrt.open(str(long_subtitle_srt_path), encoding='utf-8')
+    input_subs = pysrt.open(str(long_subtitle_srt_path), encoding="utf-8")
     assert len(input_subs) >= 3, "應該有至少 3 個字幕"
 
     # 驗證第一個字幕超長
@@ -309,10 +281,7 @@ async def test_long_subtitle_processing(
     # 翻譯超長字幕
     start_time = time.time()
     long_translation = await translation_service.translate_text(
-        first_subtitle,
-        [first_subtitle],
-        "openai",
-        "test-model"
+        first_subtitle, [first_subtitle], "openai", "test-model"
     )
     long_duration = time.time() - start_time
 
@@ -328,22 +297,15 @@ async def test_long_subtitle_processing(
     assert len(normal_subtitle) < 100, "第二個字幕應該是普通長度"
 
     normal_translation = await translation_service.translate_text(
-        normal_subtitle,
-        [normal_subtitle],
-        "openai",
-        "test-model"
+        normal_subtitle, [normal_subtitle], "openai", "test-model"
     )
 
     # 驗證普通字幕翻譯
-    assert normal_translation == mock_translation_responses[normal_subtitle], \
-        "普通字幕翻譯應該正確"
+    assert normal_translation == mock_translation_responses[normal_subtitle], "普通字幕翻譯應該正確"
 
 
 @pytest.mark.asyncio
-async def test_special_characters_processing(
-    special_chars_srt_path: Path,
-    mock_all_services_for_performance
-):
+async def test_special_characters_processing(special_chars_srt_path: Path, mock_all_services_for_performance):
     """測試 5：特殊字符處理
 
     驗證：
@@ -355,22 +317,19 @@ async def test_special_characters_processing(
     translation_service = ServiceFactory.get_translation_service()
 
     # 讀取包含特殊字符的檔案
-    input_subs = pysrt.open(str(special_chars_srt_path), encoding='utf-8')
+    input_subs = pysrt.open(str(special_chars_srt_path), encoding="utf-8")
     assert len(input_subs) >= 5, "應該有至少 5 個字幕"
 
     # 翻譯所有包含特殊字符的字幕
     translations = []
     for sub in input_subs:
-        translation = await translation_service.translate_text(
-            sub.text,
-            [sub.text],
-            "openai",
-            "test-model"
+        translation = await translation_service.translate_text(sub.text, [sub.text], "openai", "test-model")
+        translations.append(
+            {
+                "original": sub.text,
+                "translation": translation,
+            }
         )
-        translations.append({
-            "original": sub.text,
-            "translation": translation,
-        })
 
     # 驗證翻譯結果
     assert len(translations) == len(input_subs), "所有字幕都應該被翻譯"

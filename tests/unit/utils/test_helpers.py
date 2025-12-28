@@ -29,6 +29,7 @@ from srt_translator.utils.helpers import (
 # 文本處理工具測試
 # ============================================================
 
+
 class TestTextProcessing:
     """測試文本處理工具"""
 
@@ -39,10 +40,10 @@ class TestTextProcessing:
 
     def test_clean_text_control_chars(self):
         """測試移除控制字符"""
-        text = "Hello\x00\x1FWorld"
+        text = "Hello\x00\x1fWorld"
         result = clean_text(text)
         assert "\x00" not in result
-        assert "\x1F" not in result
+        assert "\x1f" not in result
 
     def test_clean_text_empty(self):
         """測試空文本"""
@@ -135,6 +136,7 @@ class TestTextProcessing:
 # 字幕處理工具測試
 # ============================================================
 
+
 class TestSubtitleProcessing:
     """測試字幕處理工具"""
 
@@ -217,6 +219,7 @@ class TestSubtitleProcessing:
 # 時間和格式工具測試
 # ============================================================
 
+
 class TestTimeAndFormat:
     """測試時間和格式工具"""
 
@@ -259,6 +262,7 @@ class TestTimeAndFormat:
 # ============================================================
 # 快取工具測試
 # ============================================================
+
 
 class TestMemoryCache:
     """測試 MemoryCache 類"""
@@ -314,6 +318,7 @@ class TestMemoryCache:
 # ============================================================
 # 進度追踪工具測試
 # ============================================================
+
 
 class TestProgressTracker:
     """測試 ProgressTracker 類"""

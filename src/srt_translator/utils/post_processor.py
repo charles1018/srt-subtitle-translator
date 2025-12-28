@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ProcessingWarning:
     """處理警告資訊"""
+
     code: str
     message: str
     line_number: Optional[int] = None
@@ -26,6 +27,7 @@ class ProcessingWarning:
 @dataclass
 class ProcessingResult:
     """處理結果"""
+
     text: str
     warnings: List[ProcessingWarning] = field(default_factory=list)
     auto_fixed: int = 0
@@ -51,38 +53,33 @@ class NetflixStylePostProcessor:
 
     # 標點符號映射表
     PUNCTUATION_MAP = {
-        ',': '，',
-        ';': '；',
-        ':': '：',
-        '!': '！',
-        '?': '？',
+        ",": "，",
+        ";": "；",
+        ":": "：",
+        "!": "！",
+        "?": "？",
         # 省略號特殊處理
-        '...': '⋯',
-        '。。。': '⋯',
-        '…': '⋯',  # U+2026 -> U+22EF
+        "...": "⋯",
+        "。。。": "⋯",
+        "…": "⋯",  # U+2026 -> U+22EF
     }
 
     # 引號映射表
     QUOTE_MAP = {
-        '"': ('「', '」'),
-        "'": ('「', '」'),
-        '"': ('「', '」'),
-        '"': ('「', '」'),
-        ''': ('「', '」'),
-        ''': ('「', '」'),
+        '"': ("「", "」"),
+        "'": ("「", "」"),
+        '"': ("「", "」"),
+        '"': ("「", "」"),
+        """: ('「', '」'),
+        """: ("「", "」"),
     }
 
     # 全形數字轉半形
-    FULLWIDTH_TO_HALFWIDTH = str.maketrans(
-        '０１２３４５６７８９',
-        '0123456789'
-    )
+    FULLWIDTH_TO_HALFWIDTH = str.maketrans("０１２３４５６７８９", "0123456789")
 
-    def __init__(self,
-                 auto_fix: bool = True,
-                 strict_mode: bool = False,
-                 max_chars_per_line: int = 16,
-                 max_lines: int = 2):
+    def __init__(
+        self, auto_fix: bool = True, strict_mode: bool = False, max_chars_per_line: int = 16, max_lines: int = 2
+    ):
         """初始化後處理器
 
         參數:
@@ -152,7 +149,7 @@ class NetflixStylePostProcessor:
 
         # 替換常見的半形標點為全形
         for half, full in self.PUNCTUATION_MAP.items():
-            if half == '...' or half == '。。。' or half == '…':
+            if half == "..." or half == "。。。" or half == "…":
                 continue  # 省略號在 _fix_ellipsis 中處理
 
             if half in text:
@@ -161,10 +158,7 @@ class NetflixStylePostProcessor:
         if text != original:
             result.auto_fixed += 1
             result.add_warning(
-                'PUNCT_FIXED',
-                '已自動轉換半形標點為全形中文標點',
-                original_text=original,
-                fixed_text=text
+                "PUNCT_FIXED", "已自動轉換半形標點為全形中文標點", original_text=original, fixed_text=text
             )
 
         return text
@@ -197,16 +191,11 @@ class NetflixStylePostProcessor:
                     # 奇數次出現 -> 開引號，偶數次 -> 閉引號
                     quote = open_quote if i % 2 == 1 else close_quote
                     new_parts.append(quote + part)
-                text = ''.join(new_parts)
+                text = "".join(new_parts)
 
         if text != original:
             result.auto_fixed += 1
-            result.add_warning(
-                'QUOTE_FIXED',
-                '已自動轉換引號為中文引號「」',
-                original_text=original,
-                fixed_text=text
-            )
+            result.add_warning("QUOTE_FIXED", "已自動轉換引號為中文引號「」", original_text=original, fixed_text=text)
 
         return text
 
@@ -227,7 +216,7 @@ class NetflixStylePostProcessor:
 
         # 先處理數字中的全形逗號（臨時轉為半形），然後轉換全形數字為半形
         # 這樣可以統一處理數字分隔符
-        text = re.sub(r'([０-９])，([０-９])', r'\1,\2', text)
+        text = re.sub(r"([０-９])，([０-９])", r"\1,\2", text)
 
         # 轉換全形數字為半形
         text = text.translate(self.FULLWIDTH_TO_HALFWIDTH)
@@ -235,15 +224,15 @@ class NetflixStylePostProcessor:
         # 移除四位數中的逗號分隔符（如 1,234 -> 1234，但保留五位數以上的）
         # 使用正則表達式匹配 1-3 位數字 + 逗號 + 3 位數字（共4位）
         # 只匹配沒有前後數字的情況（避免誤刪大數字中的逗號）
-        text = re.sub(r'(?<!\d)(\d{1,3}),(\d{3})(?!\d)', r'\1\2', text)
+        text = re.sub(r"(?<!\d)(\d{1,3}),(\d{3})(?!\d)", r"\1\2", text)
 
         if text != original:
             result.auto_fixed += 1
             result.add_warning(
-                'NUMBER_FIXED',
-                '已自動轉換數字格式（全形轉半形，移除四位數逗號）',
+                "NUMBER_FIXED",
+                "已自動轉換數字格式（全形轉半形，移除四位數逗號）",
                 original_text=original,
-                fixed_text=text
+                fixed_text=text,
             )
 
         return text
@@ -268,23 +257,18 @@ class NetflixStylePostProcessor:
 
         # 替換各種省略號為統一格式
         # ... -> ⋯
-        text = re.sub(r'\.{3,}', '⋯', text)
+        text = re.sub(r"\.{3,}", "⋯", text)
         # 。。。 -> ⋯
-        text = text.replace('。。。', '⋯')
+        text = text.replace("。。。", "⋯")
         # U+2026 (…) -> U+22EF (⋯)
-        text = text.replace('…', '⋯')
+        text = text.replace("…", "⋯")
 
         # 移除省略號後多餘的句號
-        text = re.sub(r'⋯\.', '⋯', text)
+        text = re.sub(r"⋯\.", "⋯", text)
 
         if text != original:
             result.auto_fixed += 1
-            result.add_warning(
-                'ELLIPSIS_FIXED',
-                '已自動統一省略號格式為 ⋯',
-                original_text=original,
-                fixed_text=text
-            )
+            result.add_warning("ELLIPSIS_FIXED", "已自動統一省略號格式為 ⋯", original_text=original, fixed_text=text)
 
         return text
 
@@ -304,29 +288,26 @@ class NetflixStylePostProcessor:
             return text
 
         original = text
-        lines = text.split('\n')
+        lines = text.split("\n")
         fixed_lines = []
 
         for line in lines:
             stripped = line.rstrip()
             # 移除行尾的 。 或 ，
-            if stripped.endswith('。') or stripped.endswith('，'):
+            if stripped.endswith("。") or stripped.endswith("，"):
                 stripped = stripped[:-1]
                 # 保留原始的尾隨空白（如果有）
-                trailing_space = line[len(line.rstrip()):]
+                trailing_space = line[len(line.rstrip()) :]
                 fixed_lines.append(stripped + trailing_space)
             else:
                 fixed_lines.append(line)
 
-        text = '\n'.join(fixed_lines)
+        text = "\n".join(fixed_lines)
 
         if text != original:
             result.auto_fixed += 1
             result.add_warning(
-                'LINE_END_PUNCT_REMOVED',
-                '已自動移除行尾的句號和逗號',
-                original_text=original,
-                fixed_text=text
+                "LINE_END_PUNCT_REMOVED", "已自動移除行尾的句號和逗號", original_text=original, fixed_text=text
             )
 
         return text
@@ -353,9 +334,9 @@ class NetflixStylePostProcessor:
         # 定義斷行優先級 (pattern, offset)
         # offset: 0=在匹配字符前斷行, 1=在匹配字符後斷行
         split_points = [
-            (r'[，、]', 1),      # 逗號、頓號後
-            (r'[和與或但]', 0),  # 連接詞前
-            (r'\s', 1),          # 空格後
+            (r"[，、]", 1),  # 逗號、頓號後
+            (r"[和與或但]", 0),  # 連接詞前
+            (r"\s", 1),  # 空格後
         ]
 
         result = []
@@ -363,7 +344,7 @@ class NetflixStylePostProcessor:
 
         while len(remaining) > max_chars:
             best_pos = -1
-            best_priority = float('inf')
+            best_priority = float("inf")
 
             # 尋找最佳斷點(接近中間位置的優先)
             for pattern, offset in split_points:
@@ -405,7 +386,7 @@ class NetflixStylePostProcessor:
         回傳:
             修正後的文本(如果 auto_fix=True)
         """
-        lines = text.split('\n')
+        lines = text.split("\n")
         fixed_lines = []
         needs_fix = False
 
@@ -423,11 +404,11 @@ class NetflixStylePostProcessor:
                     result.auto_fixed += 1
 
                     result.add_warning(
-                        'LINE_TOO_LONG_AUTO_FIXED',
-                        f'第 {i} 行超過限制 ({char_count} 字符)，已自動分割為 {len(split_lines)} 行',
+                        "LINE_TOO_LONG_AUTO_FIXED",
+                        f"第 {i} 行超過限制 ({char_count} 字符)，已自動分割為 {len(split_lines)} 行",
                         line_number=i,
                         original_text=line_stripped,
-                        fixed_text='\n'.join(split_lines)
+                        fixed_text="\n".join(split_lines),
                     )
 
                     logger.debug(
@@ -438,10 +419,10 @@ class NetflixStylePostProcessor:
                     # 不自動修正，只發出警告
                     fixed_lines.append(line_stripped)
                     result.add_warning(
-                        'LINE_TOO_LONG',
-                        f'第 {i} 行超過字符限制: {char_count} 字符 (最多 {self.max_chars_per_line} 字符)',
+                        "LINE_TOO_LONG",
+                        f"第 {i} 行超過字符限制: {char_count} 字符 (最多 {self.max_chars_per_line} 字符)",
                         line_number=i,
-                        original_text=line_stripped
+                        original_text=line_stripped,
                     )
             else:
                 fixed_lines.append(line_stripped)
@@ -449,12 +430,12 @@ class NetflixStylePostProcessor:
         # 檢查行數(在分割後)
         if len(fixed_lines) > self.max_lines:
             result.add_warning(
-                'TOO_MANY_LINES',
-                f'超過最大行數限制: {len(fixed_lines)} 行 (最多 {self.max_lines} 行)',
-                line_number=len(fixed_lines)
+                "TOO_MANY_LINES",
+                f"超過最大行數限制: {len(fixed_lines)} 行 (最多 {self.max_lines} 行)",
+                line_number=len(fixed_lines),
             )
 
-        return '\n'.join(fixed_lines) if needs_fix else text
+        return "\n".join(fixed_lines) if needs_fix else text
 
     def _check_question_marks(self, text: str, result: ProcessingResult) -> None:
         """檢查問號使用
@@ -466,28 +447,16 @@ class NetflixStylePostProcessor:
             result: 處理結果對象
         """
         # 檢查雙問號
-        if '？？' in text or '??' in text:
-            result.add_warning(
-                'DOUBLE_QUESTION_MARK',
-                '不應使用雙問號 (？？)',
-                original_text=text
-            )
+        if "？？" in text or "??" in text:
+            result.add_warning("DOUBLE_QUESTION_MARK", "不應使用雙問號 (？？)", original_text=text)
 
         # 檢查雙驚嘆號
-        if '！！' in text or '!!' in text:
-            result.add_warning(
-                'DOUBLE_EXCLAMATION',
-                '不應使用雙驚嘆號 (！！)',
-                original_text=text
-            )
+        if "！！" in text or "!!" in text:
+            result.add_warning("DOUBLE_EXCLAMATION", "不應使用雙驚嘆號 (！！)", original_text=text)
 
         # 檢查混合標點 !?
-        if '!?' in text or '！？' in text or '?!' in text or '？！' in text:
-            result.add_warning(
-                'MIXED_PUNCTUATION',
-                '不應使用混合驚嘆問號 (!? 或 ?!)',
-                original_text=text
-            )
+        if "!?" in text or "！？" in text or "?!" in text or "？！" in text:
+            result.add_warning("MIXED_PUNCTUATION", "不應使用混合驚嘆問號 (!? 或 ?!)", original_text=text)
 
     def format_warnings(self, result: ProcessingResult) -> str:
         """格式化警告訊息為可讀字符串
@@ -511,4 +480,4 @@ class NetflixStylePostProcessor:
                 lines.append(f"   原文: {warning.original_text[:50]}...")
                 lines.append(f"   修正: {warning.fixed_text[:50]}...")
 
-        return '\n'.join(lines)
+        return "\n".join(lines)

@@ -23,6 +23,7 @@ sys.path.insert(0, str(SRC_DIR))
 # E2E 測試目錄與檔案 Fixtures
 # ============================================================
 
+
 @pytest.fixture
 def e2e_temp_dir() -> Generator[Path, None, None]:
     """提供 E2E 測試專用的臨時目錄
@@ -137,6 +138,7 @@ def special_chars_srt_path(fixtures_dir: Path) -> Path:
 # Mock 服務 Fixtures
 # ============================================================
 
+
 @pytest.fixture
 def mock_translation_responses() -> Dict[str, str]:
     """提供 Mock 翻譯回應
@@ -159,36 +161,29 @@ def mock_translation_responses() -> Dict[str, str]:
         "Multiple files can be processed.": "可以處理多個檔案。",
         "Thank you for using our tool.": "感謝您使用我們的工具。",
         "Enjoy your translation experience!": "享受您的翻譯體驗！",
-
         # 日文 -> 繁體中文
         "こんにちは、世界！": "你好，世界！",
         "これはテスト字幕です。": "這是測試字幕。",
         "翻訳システムへようこそ。": "歡迎使用翻譯系統。",
-
         # 簡體中文 -> 繁體中文
         "你好，世界！": "你好，世界！",
         "这是一个测试字幕。": "這是一個測試字幕。",
         "欢迎使用翻译系统。": "歡迎使用翻譯系統。",
-
         # 批量測試檔案 (file1.srt)
         "Welcome to batch translation test.": "歡迎使用批量翻譯測試。",
         "This is the first file.": "這是第一個檔案。",
         "It contains three subtitles.": "它包含三個字幕。",
-
         # 批量測試檔案 (file2.srt)
         "Batch processing is efficient.": "批量處理很高效。",
         "Multiple files can be translated simultaneously.": "多個檔案可以同時翻譯。",
         "This improves productivity.": "這提升了生產力。",
-
         # 批量測試檔案 (file3.srt)
         "Testing batch translation feature.": "測試批量翻譯功能。",
         "All files should be processed correctly.": "所有檔案都應正確處理。",
         "Quality should remain consistent.": "品質應保持一致。",
-
         # 長字幕測試
         "Normal subtitle after long one.": "長字幕後的普通字幕。",
         "Testing continues.": "測試繼續。",
-
         # 特殊字符測試
         "Special characters test: 你好世界! 🌍🚀": "特殊字符測試：你好世界！🌍🚀",
         "Emojis: 😀😎🎉 ❤️💯✨": "表情符號：😀😎🎉 ❤️💯✨",
@@ -240,7 +235,7 @@ def mock_model_service(mock_translation_client):
 
     這樣可以避免實際初始化模型客戶端。
     """
-    with patch('srt_translator.services.factory.ModelService') as MockModelService:
+    with patch("srt_translator.services.factory.ModelService") as MockModelService:
         mock_service = Mock()
         mock_service.get_translation_client = AsyncMock(return_value=mock_translation_client)
         mock_service.get_available_models = AsyncMock(return_value=["test-model"])
@@ -255,15 +250,11 @@ def mock_cache_service():
 
     預設快取為空，可以用於測試快取行為。
     """
-    with patch('srt_translator.services.factory.CacheService') as MockCacheService:
+    with patch("srt_translator.services.factory.CacheService") as MockCacheService:
         mock_service = Mock()
         mock_service.get_translation = Mock(return_value=None)  # 預設無快取
         mock_service.store_translation = Mock(return_value=True)
-        mock_service.get_cache_stats = Mock(return_value={
-            "total_entries": 0,
-            "cache_size_mb": 0,
-            "hit_rate": 0
-        })
+        mock_service.get_cache_stats = Mock(return_value={"total_entries": 0, "cache_size_mb": 0, "hit_rate": 0})
         MockCacheService.return_value = mock_service
         yield mock_service
 
@@ -271,6 +262,7 @@ def mock_cache_service():
 # ============================================================
 # 測試輔助工具
 # ============================================================
+
 
 class SRTComparator:
     """SRT 檔案比對工具
@@ -291,8 +283,8 @@ class SRTComparator:
             是否相同
         """
         try:
-            subs1 = pysrt.open(str(file1), encoding='utf-8')
-            subs2 = pysrt.open(str(file2), encoding='utf-8')
+            subs1 = pysrt.open(str(file1), encoding="utf-8")
+            subs2 = pysrt.open(str(file2), encoding="utf-8")
 
             if len(subs1) != len(subs2):
                 return False
@@ -323,7 +315,7 @@ class SRTComparator:
             字幕文字列表
         """
         try:
-            subs = pysrt.open(str(file_path), encoding='utf-8')
+            subs = pysrt.open(str(file_path), encoding="utf-8")
             return [sub.text.strip() for sub in subs]
         except Exception as e:
             print(f"讀取 SRT 檔案時發生錯誤: {e}")
@@ -342,6 +334,7 @@ def assert_srt_valid():
 
     用於驗證 SRT 檔案格式是否正確。
     """
+
     def _assert_valid(file_path: Path) -> None:
         """驗證 SRT 檔案格式
 
@@ -354,14 +347,14 @@ def assert_srt_valid():
         assert file_path.exists(), f"SRT 檔案不存在: {file_path}"
 
         try:
-            subs = pysrt.open(str(file_path), encoding='utf-8')
+            subs = pysrt.open(str(file_path), encoding="utf-8")
             assert len(subs) > 0, "SRT 檔案不應該是空的"
 
             for i, sub in enumerate(subs):
-                assert sub.text.strip(), f"字幕 {i+1} 的文字不應該是空的"
-                assert sub.start is not None, f"字幕 {i+1} 缺少開始時間"
-                assert sub.end is not None, f"字幕 {i+1} 缺少結束時間"
-                assert sub.start < sub.end, f"字幕 {i+1} 的開始時間應該早於結束時間"
+                assert sub.text.strip(), f"字幕 {i + 1} 的文字不應該是空的"
+                assert sub.start is not None, f"字幕 {i + 1} 缺少開始時間"
+                assert sub.end is not None, f"字幕 {i + 1} 缺少結束時間"
+                assert sub.start < sub.end, f"字幕 {i + 1} 的開始時間應該早於結束時間"
         except Exception as e:
             pytest.fail(f"SRT 檔案格式無效: {e}")
 
@@ -371,6 +364,7 @@ def assert_srt_valid():
 # ============================================================
 # 環境設定 Fixtures
 # ============================================================
+
 
 @pytest.fixture(autouse=True)
 def setup_e2e_environment(e2e_temp_dir: Path, monkeypatch):
@@ -398,6 +392,7 @@ def setup_e2e_environment(e2e_temp_dir: Path, monkeypatch):
 # ============================================================
 # pytest 配置
 # ============================================================
+
 
 def pytest_configure(config):
     """pytest 啟動時的配置"""

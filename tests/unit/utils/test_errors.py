@@ -178,11 +178,7 @@ class TestJSONSerialization:
 
     def test_to_json_with_details(self):
         """測試帶詳細信息的 JSON 序列化"""
-        details = {
-            "file": "test.srt",
-            "line": 42,
-            "severity": "high"
-        }
+        details = {"file": "test.srt", "line": 42, "severity": "high"}
         error = AppError("Error with details", details=details)
         json_str = error.to_json()
 

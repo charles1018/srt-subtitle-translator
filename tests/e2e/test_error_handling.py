@@ -20,6 +20,7 @@ from srt_translator.utils.errors import FileError, NetworkError, TranslationErro
 # API 錯誤處理測試（3 個測試）
 # ============================================================
 
+
 @pytest.mark.asyncio
 async def test_api_call_failure(sample_srt_path: Path):
     """測試 1：API 呼叫失敗
@@ -35,8 +36,7 @@ async def test_api_call_failure(sample_srt_path: Path):
     # Mock 翻譯客戶端返回錯誤
     mock_client = AsyncMock()
     mock_client.translate_text.side_effect = NetworkError(
-        "API call failed",
-        details={"status_code": 500, "message": "Internal Server Error"}
+        "API call failed", details={"status_code": 500, "message": "Internal Server Error"}
     )
 
     # Mock 翻譯服務
@@ -54,18 +54,13 @@ async def test_api_call_failure(sample_srt_path: Path):
     mock_translation_service.translate_text = mock_translate_with_error
 
     # 註冊到服務工廠
-    ServiceFactory._instances['TranslationService'] = mock_translation_service
+    ServiceFactory._instances["TranslationService"] = mock_translation_service
 
     # 獲取翻譯服務
     translation_service = ServiceFactory.get_translation_service()
 
     # 執行翻譯（預期會失敗）
-    result = await translation_service.translate_text(
-        "Hello, world!",
-        [],
-        "openai",
-        "test-model"
-    )
+    result = await translation_service.translate_text("Hello, world!", [], "openai", "test-model")
 
     # 驗證錯誤處理
     assert "[翻譯失敗]" in result, "應該返回錯誤訊息"
@@ -103,29 +98,21 @@ async def test_api_response_format_error():
 
         # 檢查返回值是否有效
         if result is None or not isinstance(result, str):
-            raise TranslationError(
-                "API 返回格式無效",
-                details={"expected": "str", "got": type(result).__name__}
-            )
+            raise TranslationError("API 返回格式無效", details={"expected": "str", "got": type(result).__name__})
 
         return result
 
     mock_translation_service.translate_text = mock_translate_with_format_error
 
     # 註冊到服務工廠
-    ServiceFactory._instances['TranslationService'] = mock_translation_service
+    ServiceFactory._instances["TranslationService"] = mock_translation_service
 
     # 獲取翻譯服務
     translation_service = ServiceFactory.get_translation_service()
 
     # 執行翻譯（預期會拋出異常）
     with pytest.raises(TranslationError) as exc_info:
-        await translation_service.translate_text(
-            "Hello, world!",
-            [],
-            "openai",
-            "test-model"
-        )
+        await translation_service.translate_text("Hello, world!", [], "openai", "test-model")
 
     # 驗證錯誤訊息
     assert "無效" in str(exc_info.value), "錯誤訊息應該包含 '無效'"
@@ -165,10 +152,7 @@ async def test_api_rate_limit():
 
         if call_count == 1:
             # 第一次呼叫：速率限制
-            raise NetworkError(
-                "Rate limit exceeded",
-                details={"status_code": 429, "retry_after": 1}
-            )
+            raise NetworkError("Rate limit exceeded", details={"status_code": 429, "retry_after": 1})
         else:
             # 第二次呼叫：成功
             return "你好，世界！"
@@ -198,18 +182,13 @@ async def test_api_rate_limit():
     mock_translation_service.translate_text = mock_translate_with_retry
 
     # 註冊到服務工廠
-    ServiceFactory._instances['TranslationService'] = mock_translation_service
+    ServiceFactory._instances["TranslationService"] = mock_translation_service
 
     # 獲取翻譯服務
     translation_service = ServiceFactory.get_translation_service()
 
     # 執行翻譯（第一次失敗，第二次成功）
-    result = await translation_service.translate_text(
-        "Hello, world!",
-        [],
-        "openai",
-        "test-model"
-    )
+    result = await translation_service.translate_text("Hello, world!", [], "openai", "test-model")
 
     # 驗證重試機制
     assert result == "你好，世界！", "應該在重試後成功"
@@ -222,6 +201,7 @@ async def test_api_rate_limit():
 # ============================================================
 # 檔案錯誤處理測試（4 個測試）
 # ============================================================
+
 
 def test_invalid_srt_format(invalid_srt_path: Path):
     """測試 4：無效 SRT 格式
@@ -236,21 +216,17 @@ def test_invalid_srt_format(invalid_srt_path: Path):
 
     # 嘗試讀取無效格式的 SRT 檔案
     try:
-        subs = pysrt.open(str(invalid_srt_path), encoding='utf-8')
+        subs = pysrt.open(str(invalid_srt_path), encoding="utf-8")
 
         # 檢查是否為有效的 SRT 格式
         if len(subs) == 0:
-            raise FileError(
-                "SRT 檔案格式無效或為空",
-                details={"file_path": str(invalid_srt_path)}
-            )
+            raise FileError("SRT 檔案格式無效或為空", details={"file_path": str(invalid_srt_path)})
 
         # 驗證每個字幕的格式
         for i, sub in enumerate(subs):
             if not sub.text or not sub.text.strip():
                 raise FileError(
-                    f"字幕 {i+1} 的文字內容無效",
-                    details={"index": i+1, "file_path": str(invalid_srt_path)}
+                    f"字幕 {i + 1} 的文字內容無效", details={"index": i + 1, "file_path": str(invalid_srt_path)}
                 )
 
     except FileError as e:
@@ -282,14 +258,11 @@ def test_file_not_found():
         if not non_existent_path.exists():
             raise FileError(
                 f"檔案不存在: {non_existent_path}",
-                details={
-                    "file_path": str(non_existent_path),
-                    "suggestion": "請確認檔案路徑是否正確"
-                }
+                details={"file_path": str(non_existent_path), "suggestion": "請確認檔案路徑是否正確"},
             )
 
         # 如果檔案存在，嘗試讀取
-        subs = pysrt.open(str(non_existent_path), encoding='utf-8')
+        subs = pysrt.open(str(non_existent_path), encoding="utf-8")
 
     except FileError as e:
         # 驗證錯誤處理
@@ -318,7 +291,7 @@ def test_empty_srt_file(fixtures_dir: Path):
 
     # 讀取空檔案
     try:
-        subs = pysrt.open(str(empty_srt_path), encoding='utf-8')
+        subs = pysrt.open(str(empty_srt_path), encoding="utf-8")
 
         # 檢查是否為空
         if len(subs) == 0:
@@ -327,8 +300,8 @@ def test_empty_srt_file(fixtures_dir: Path):
                 details={
                     "file_path": str(empty_srt_path),
                     "subtitle_count": 0,
-                    "suggestion": "請確認檔案是否包含有效的字幕內容"
-                }
+                    "suggestion": "請確認檔案是否包含有效的字幕內容",
+                },
             )
 
     except FileError as e:
@@ -352,7 +325,7 @@ def test_file_permission_error(e2e_temp_dir: Path):
     """
     # 建立測試檔案
     test_file = e2e_temp_dir / "test_readonly.srt"
-    test_file.write_text("1\n00:00:00,000 --> 00:00:01,000\nTest subtitle\n", encoding='utf-8')
+    test_file.write_text("1\n00:00:00,000 --> 00:00:01,000\nTest subtitle\n", encoding="utf-8")
 
     # 驗證檔案存在
     assert test_file.exists(), "測試檔案應該存在"
@@ -366,11 +339,7 @@ def test_file_permission_error(e2e_temp_dir: Path):
     except PermissionError:
         # 將系統錯誤包裝為應用程式錯誤
         error = FileError(
-            "檔案權限錯誤：無法寫入檔案",
-            details={
-                "file_path": str(test_file),
-                "suggestion": "請檢查檔案權限設定"
-            }
+            "檔案權限錯誤：無法寫入檔案", details={"file_path": str(test_file), "suggestion": "請檢查檔案權限設定"}
         )
 
         # 驗證錯誤處理

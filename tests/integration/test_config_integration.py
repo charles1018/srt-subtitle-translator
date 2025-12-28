@@ -27,7 +27,7 @@ class TestConfigBasicIntegration:
         assert config_path.exists()
 
         # 驗證配置內容
-        with open(config_path, encoding='utf-8') as f:
+        with open(config_path, encoding="utf-8") as f:
             config_data = json.load(f)
 
         assert "app" in config_data
@@ -39,7 +39,7 @@ class TestConfigBasicIntegration:
         config_path = integration_env["config_path"]
 
         # 讀取初始配置
-        with open(config_path, encoding='utf-8') as f:
+        with open(config_path, encoding="utf-8") as f:
             initial_config = json.load(f)
 
         # 修改配置
@@ -50,7 +50,7 @@ class TestConfigBasicIntegration:
         config_path.write_text(json.dumps(test_config, indent=2), encoding="utf-8")
 
         # 重新讀取驗證
-        with open(config_path, encoding='utf-8') as f:
+        with open(config_path, encoding="utf-8") as f:
             loaded_config = json.load(f)
 
         assert loaded_config["app"]["version"] == "2.0.0"

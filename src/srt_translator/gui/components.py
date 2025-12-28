@@ -15,6 +15,7 @@ from srt_translator.utils import format_exception
 # 嘗試匯入拖放功能模組
 try:
     from tkinterdnd2 import DND_FILES, TkinterDnD
+
     TKDND_AVAILABLE = True
 except ImportError:
     TKDND_AVAILABLE = False
@@ -24,29 +25,34 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # 確保日誌目錄存在
-os.makedirs('logs', exist_ok=True)
+os.makedirs("logs", exist_ok=True)
 
 # 避免重複添加處理程序
 if not logger.handlers:
     handler = TimedRotatingFileHandler(
-        filename='logs/gui.log',
-        when='midnight',
-        interval=1,
-        backupCount=7,
-        encoding='utf-8'
+        filename="logs/gui.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
     )
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
+
 class GUIComponents:
     """GUI 元件類別，用於建立和管理翻譯器介面"""
 
-    def __init__(self, root, start_callback, pause_callback, stop_callback,
-                 progress_callback, complete_callback, prompt_manager=None):
+    def __init__(
+        self,
+        root,
+        start_callback,
+        pause_callback,
+        stop_callback,
+        progress_callback,
+        complete_callback,
+        prompt_manager=None,
+    ):
         """
         初始化 GUI 元件
-        
+
         參數：
             root: Tkinter 根視窗
             start_callback: 開始翻譯的回呼函式
@@ -96,15 +102,18 @@ class GUIComponents:
         try:
             # 從配置管理器獲取主題設定
             theme_config = ConfigManager.get_instance("theme")
-            self.colors = theme_config.get_value("colors", {
-                "primary": "#3498db",
-                "secondary": "#2ecc71",
-                "background": "#f0f0f0",
-                "text": "#333333",
-                "accent": "#e74c3c",
-                "button": "#3498db",
-                "button_hover": "#2980b9"
-            })
+            self.colors = theme_config.get_value(
+                "colors",
+                {
+                    "primary": "#3498db",
+                    "secondary": "#2ecc71",
+                    "background": "#f0f0f0",
+                    "text": "#333333",
+                    "accent": "#e74c3c",
+                    "button": "#3498db",
+                    "button_hover": "#2980b9",
+                },
+            )
         except Exception as e:
             logger.error(f"載入主題設定失敗: {format_exception(e)}")
             # 預設主題色彩
@@ -115,7 +124,7 @@ class GUIComponents:
                 "text": "#333333",
                 "accent": "#e74c3c",
                 "button": "#3498db",
-                "button_hover": "#2980b9"
+                "button_hover": "#2980b9",
             }
 
     def create_menu(self):
@@ -195,7 +204,7 @@ class GUIComponents:
         # 如果支援拖放，設置拖放目標
         if TKDND_AVAILABLE:
             self.file_listbox.drop_target_register(DND_FILES)
-            self.file_listbox.dnd_bind('<<Drop>>', self.handle_drop)
+            self.file_listbox.dnd_bind("<<Drop>>", self.handle_drop)
 
             # 新增拖放提示
             drop_label = ttk.Label(file_frame, text="支援拖放檔案", foreground="gray")
@@ -212,16 +221,22 @@ class GUIComponents:
         # 語言設定
         ttk.Label(settings_grid, text="來源語言:").grid(row=0, column=0, sticky=tk.W, pady=5)
         source_langs = ["日文", "英文", "韓文", "簡體中文", "繁體中文"]
-        ttk.Combobox(settings_grid, textvariable=self.source_lang, values=source_langs, width=10, state="readonly").grid(row=0, column=1, sticky=tk.W, pady=5)
+        ttk.Combobox(
+            settings_grid, textvariable=self.source_lang, values=source_langs, width=10, state="readonly"
+        ).grid(row=0, column=1, sticky=tk.W, pady=5)
 
         ttk.Label(settings_grid, text="目標語言:").grid(row=1, column=0, sticky=tk.W, pady=5)
         target_langs = ["繁體中文", "英文", "日文", "韓文", "簡體中文"]
-        ttk.Combobox(settings_grid, textvariable=self.target_lang, values=target_langs, width=10, state="readonly").grid(row=1, column=1, sticky=tk.W, pady=5)
+        ttk.Combobox(
+            settings_grid, textvariable=self.target_lang, values=target_langs, width=10, state="readonly"
+        ).grid(row=1, column=1, sticky=tk.W, pady=5)
 
         # LLM 類型和模型選擇
         ttk.Label(settings_grid, text="LLM類型:").grid(row=2, column=0, sticky=tk.W, pady=5)
         llm_types = ["ollama", "openai"]
-        self.llm_combobox = ttk.Combobox(settings_grid, textvariable=self.llm_type, values=llm_types, width=10, state="readonly")
+        self.llm_combobox = ttk.Combobox(
+            settings_grid, textvariable=self.llm_type, values=llm_types, width=10, state="readonly"
+        )
         self.llm_combobox.grid(row=2, column=1, sticky=tk.W, pady=5)
 
         ttk.Label(settings_grid, text="模型:").grid(row=3, column=0, sticky=tk.W, pady=5)
@@ -232,28 +247,34 @@ class GUIComponents:
         ttk.Label(settings_grid, text="顯示模式:").grid(row=0, column=2, sticky=tk.W, pady=5, padx=(10, 0))
         # 修改：確保顯示模式的值與 translation_manager.py 中使用的值一致
         display_modes = ["雙語對照", "僅顯示翻譯", "翻譯在上", "原文在上"]
-        self.display_mode_combo = ttk.Combobox(settings_grid, textvariable=self.display_mode, values=display_modes, width=10, state="readonly")
+        self.display_mode_combo = ttk.Combobox(
+            settings_grid, textvariable=self.display_mode, values=display_modes, width=10, state="readonly"
+        )
         self.display_mode_combo.grid(row=0, column=3, sticky=tk.W, pady=5)
         self.display_mode_combo.bind("<<ComboboxSelected>>", self.on_display_mode_changed)
 
         ttk.Label(settings_grid, text="並行請求:").grid(row=1, column=2, sticky=tk.W, pady=5, padx=(10, 0))
         parallel_options = ["1", "2", "3", "4", "5", "10", "15", "20"]
-        ttk.Combobox(settings_grid, textvariable=self.parallel_requests, values=parallel_options, width=5, state="readonly").grid(row=1, column=3, sticky=tk.W, pady=5)
+        ttk.Combobox(
+            settings_grid, textvariable=self.parallel_requests, values=parallel_options, width=5, state="readonly"
+        ).grid(row=1, column=3, sticky=tk.W, pady=5)
 
         # 內容類型
         ttk.Label(settings_grid, text="內容類型:").grid(row=2, column=2, sticky=tk.W, pady=5, padx=(10, 0))
         if self.prompt_manager:
             content_types = self.prompt_manager.get_available_content_types()
             self.content_type_var = tk.StringVar(value=self.prompt_manager.current_content_type)
-            self.content_type_combo = ttk.Combobox(settings_grid, textvariable=self.content_type_var,
-                                                  values=content_types, width=10, state="readonly")
+            self.content_type_combo = ttk.Combobox(
+                settings_grid, textvariable=self.content_type_var, values=content_types, width=10, state="readonly"
+            )
             self.content_type_combo.grid(row=2, column=3, sticky=tk.W, pady=5)
             self.content_type_combo.bind("<<ComboboxSelected>>", self.on_content_type_changed)
         else:
             content_types = ["general", "adult", "anime", "movie", "english_drama"]
             self.content_type_var = tk.StringVar(value="general")
-            self.content_type_combo = ttk.Combobox(settings_grid, textvariable=self.content_type_var,
-                                                  values=content_types, width=10, state="readonly")
+            self.content_type_combo = ttk.Combobox(
+                settings_grid, textvariable=self.content_type_var, values=content_types, width=10, state="readonly"
+            )
             self.content_type_combo.grid(row=2, column=3, sticky=tk.W, pady=5)
 
         # 翻譯風格
@@ -261,24 +282,23 @@ class GUIComponents:
         if self.prompt_manager:
             styles = list(self.prompt_manager.get_available_styles().keys())
             self.style_var = tk.StringVar(value=self.prompt_manager.current_style)
-            self.style_combo = ttk.Combobox(settings_grid, textvariable=self.style_var,
-                                           values=styles, width=10, state="readonly")
+            self.style_combo = ttk.Combobox(
+                settings_grid, textvariable=self.style_var, values=styles, width=10, state="readonly"
+            )
             self.style_combo.grid(row=3, column=3, sticky=tk.W, pady=5)
             self.style_combo.bind("<<ComboboxSelected>>", self.on_style_changed)
         else:
             styles = ["standard", "literal", "localized", "specialized"]
             self.style_var = tk.StringVar(value="standard")
-            self.style_combo = ttk.Combobox(settings_grid, textvariable=self.style_var,
-                                           values=styles, width=10, state="readonly")
+            self.style_combo = ttk.Combobox(
+                settings_grid, textvariable=self.style_var, values=styles, width=10, state="readonly"
+            )
             self.style_combo.grid(row=3, column=3, sticky=tk.W, pady=5)
 
         # Netflix 風格選項
         ttk.Label(settings_grid, text="Netflix 風格:").grid(row=4, column=2, sticky=tk.W, pady=5, padx=(10, 0))
         self.netflix_checkbox = ttk.Checkbutton(
-            settings_grid,
-            text="啟用",
-            variable=self.netflix_style_enabled,
-            command=self.on_netflix_style_changed
+            settings_grid, text="啟用", variable=self.netflix_style_enabled, command=self.on_netflix_style_changed
         )
         self.netflix_checkbox.grid(row=4, column=3, sticky=tk.W, pady=5)
 
@@ -310,24 +330,36 @@ class GUIComponents:
 
         # 建立按鈕樣式
         style = ttk.Style()
-        style.configure("Primary.TButton", foreground="white", background=self.colors["primary"], font=("Arial", 10, "bold"))
+        style.configure(
+            "Primary.TButton", foreground="white", background=self.colors["primary"], font=("Arial", 10, "bold")
+        )
         style.map("Primary.TButton", background=[("active", self.colors["button_hover"])])
 
-        style.configure("Success.TButton", foreground="white", background=self.colors["secondary"], font=("Arial", 10, "bold"))
+        style.configure(
+            "Success.TButton", foreground="white", background=self.colors["secondary"], font=("Arial", 10, "bold")
+        )
         style.map("Success.TButton", background=[("active", "#27ae60")])  # 深綠色
 
-        style.configure("Danger.TButton", foreground="white", background=self.colors["accent"], font=("Arial", 10, "bold"))
+        style.configure(
+            "Danger.TButton", foreground="white", background=self.colors["accent"], font=("Arial", 10, "bold")
+        )
         style.map("Danger.TButton", background=[("active", "#c0392b")])  # 深紅色
 
         # 建立並放置按鈕
-        self.start_button = ttk.Button(button_frame, text="開始翻譯", command=self.start_callback, style="Success.TButton", width=15)
+        self.start_button = ttk.Button(
+            button_frame, text="開始翻譯", command=self.start_callback, style="Success.TButton", width=15
+        )
         self.start_button.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.pause_button = ttk.Button(button_frame, text="暫停", command=self.toggle_pause, style="Primary.TButton", width=15)
+        self.pause_button = ttk.Button(
+            button_frame, text="暫停", command=self.toggle_pause, style="Primary.TButton", width=15
+        )
         self.pause_button.pack(side=tk.LEFT, padx=(0, 10))
         self.pause_button.config(state=tk.DISABLED)
 
-        self.stop_button = ttk.Button(button_frame, text="停止", command=self.stop_callback, style="Danger.TButton", width=15)
+        self.stop_button = ttk.Button(
+            button_frame, text="停止", command=self.stop_callback, style="Danger.TButton", width=15
+        )
         self.stop_button.pack(side=tk.LEFT)
         self.stop_button.config(state=tk.DISABLED)
 
@@ -562,7 +594,7 @@ class GUIComponents:
                             if value:
                                 for i, item in enumerate(value, 1):
                                     stats_text.insert(tk.END, f"  {i}. 使用次數: {item.get('use_count', 0)}\n")
-                                    original = item.get('original_text', '')
+                                    original = item.get("original_text", "")
                                     if len(original) > 40:
                                         original = original[:40] + "..."
                                     stats_text.insert(tk.END, f"     原文: {original}\n\n")
@@ -593,7 +625,7 @@ class GUIComponents:
                     "確定要清除所有翻譯快取嗎？\n\n"
                     "此操作無法復原，但會自動建立備份。\n"
                     "清除後下次翻譯需重新向 AI 請求。",
-                    icon='warning'
+                    icon="warning",
                 )
 
                 if result:
@@ -657,16 +689,22 @@ class GUIComponents:
 
         ttk.Label(format_frame, text="目標格式:").pack(side=tk.LEFT, padx=(0, 10))
         self.target_format_var = tk.StringVar(value="srt")
-        format_combo = ttk.Combobox(format_frame, textvariable=self.target_format_var,
-                                   values=["srt", "vtt", "ass"], width=10, state="readonly")
+        format_combo = ttk.Combobox(
+            format_frame, textvariable=self.target_format_var, values=["srt", "vtt", "ass"], width=10, state="readonly"
+        )
         format_combo.pack(side=tk.LEFT)
 
         # 轉換按鈕
         button_frame = ttk.Frame(dialog)
         button_frame.pack(fill=tk.X, padx=20, pady=20)
 
-        ttk.Button(button_frame, text="轉換", command=lambda: self._convert_subtitle_format(dialog),
-                  style="Primary.TButton", width=15).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(
+            button_frame,
+            text="轉換",
+            command=lambda: self._convert_subtitle_format(dialog),
+            style="Primary.TButton",
+            width=15,
+        ).pack(side=tk.RIGHT, padx=5)
         ttk.Button(button_frame, text="取消", command=dialog.destroy, width=15).pack(side=tk.RIGHT, padx=5)
 
     def _select_file_for_conversion(self):
@@ -723,29 +761,29 @@ class GUIComponents:
 
         ttk.Label(track_frame, text="字幕軌道:").pack(side=tk.LEFT, padx=(0, 10))
         self.subtitle_track_var = tk.StringVar(value="1")
-        track_combo = ttk.Combobox(track_frame, textvariable=self.subtitle_track_var,
-                                  values=["1", "2", "3", "all"], width=10, state="readonly")
+        track_combo = ttk.Combobox(
+            track_frame, textvariable=self.subtitle_track_var, values=["1", "2", "3", "all"], width=10, state="readonly"
+        )
         track_combo.pack(side=tk.LEFT)
 
         # 提取按鈕
         button_frame = ttk.Frame(dialog)
         button_frame.pack(fill=tk.X, padx=20, pady=20)
 
-        ttk.Button(button_frame, text="提取", command=lambda: self._extract_subtitle_from_video(dialog),
-                  style="Primary.TButton", width=15).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(
+            button_frame,
+            text="提取",
+            command=lambda: self._extract_subtitle_from_video(dialog),
+            style="Primary.TButton",
+            width=15,
+        ).pack(side=tk.RIGHT, padx=5)
         ttk.Button(button_frame, text="取消", command=dialog.destroy, width=15).pack(side=tk.RIGHT, padx=5)
 
     def _select_video_for_extraction(self):
         """選擇要提取字幕的影片檔案"""
-        filetypes = [
-            ("影片檔案", "*.mp4 *.mkv *.avi *.mov *.wmv"),
-            ("所有檔案", "*.*")
-        ]
+        filetypes = [("影片檔案", "*.mp4 *.mkv *.avi *.mov *.wmv"), ("所有檔案", "*.*")]
 
-        file = filedialog.askopenfilename(
-            title="選擇影片檔案",
-            filetypes=filetypes
-        )
+        file = filedialog.askopenfilename(title="選擇影片檔案", filetypes=filetypes)
 
         if file:
             self.extract_file_var.set(file)
@@ -861,10 +899,10 @@ class GUIComponents:
             button_frame = ttk.Frame(dialog)
             button_frame.pack(fill=tk.X, pady=10)
 
-            ttk.Button(button_frame, text="清理快取",
-                      command=lambda: self._clean_cache(dialog)).pack(side=tk.LEFT, padx=10)
-            ttk.Button(button_frame, text="關閉",
-                      command=dialog.destroy).pack(side=tk.RIGHT, padx=10)
+            ttk.Button(button_frame, text="清理快取", command=lambda: self._clean_cache(dialog)).pack(
+                side=tk.LEFT, padx=10
+            )
+            ttk.Button(button_frame, text="關閉", command=dialog.destroy).pack(side=tk.RIGHT, padx=10)
 
         except Exception as e:
             logger.error(f"開啟統計報告時發生錯誤: {format_exception(e)}")
@@ -933,9 +971,10 @@ SRT字幕翻譯器 V1.0.0
 
 class PromptEditorWindow:
     """提示詞編輯器視窗"""
+
     def __init__(self, parent, prompt_manager):
         """初始化提示詞編輯器視窗
-        
+
         參數:
             parent: 父窗口
             prompt_manager: 提示詞管理器
@@ -960,16 +999,18 @@ class PromptEditorWindow:
         ttk.Label(options_frame, text="內容類型:").pack(side=tk.LEFT, padx=(0, 5))
         content_types = prompt_manager.get_available_content_types()
         self.content_type_var = tk.StringVar(value=prompt_manager.current_content_type)
-        content_type_combo = ttk.Combobox(options_frame, textvariable=self.content_type_var,
-                                          values=content_types, state="readonly", width=12)
+        content_type_combo = ttk.Combobox(
+            options_frame, textvariable=self.content_type_var, values=content_types, state="readonly", width=12
+        )
         content_type_combo.pack(side=tk.LEFT, padx=(0, 10))
         content_type_combo.bind("<<ComboboxSelected>>", self.load_prompt)
 
         # LLM 類型選擇
         ttk.Label(options_frame, text="LLM類型:").pack(side=tk.LEFT, padx=(10, 5))
         self.llm_type_var = tk.StringVar(value="ollama")
-        llm_type_combo = ttk.Combobox(options_frame, textvariable=self.llm_type_var,
-                                      values=["ollama", "openai"], state="readonly", width=8)
+        llm_type_combo = ttk.Combobox(
+            options_frame, textvariable=self.llm_type_var, values=["ollama", "openai"], state="readonly", width=8
+        )
         llm_type_combo.pack(side=tk.LEFT)
         llm_type_combo.bind("<<ComboboxSelected>>", self.load_prompt)
 
@@ -987,7 +1028,9 @@ class PromptEditorWindow:
 
         # 建立按鈕
         ttk.Button(button_frame, text="儲存", command=self.save_prompt, width=10).pack(side=tk.RIGHT, padx=(5, 0))
-        ttk.Button(button_frame, text="重置為預設", command=self.reset_to_default, width=15).pack(side=tk.RIGHT, padx=(5, 0))
+        ttk.Button(button_frame, text="重置為預設", command=self.reset_to_default, width=15).pack(
+            side=tk.RIGHT, padx=(5, 0)
+        )
         ttk.Button(button_frame, text="匯出", command=self.export_prompt, width=10).pack(side=tk.RIGHT, padx=(5, 0))
         ttk.Button(button_frame, text="匯入", command=self.import_prompt, width=10).pack(side=tk.RIGHT, padx=(5, 0))
         ttk.Button(button_frame, text="分析提示詞", command=self.analyze_prompt, width=12).pack(side=tk.LEFT)
@@ -1040,7 +1083,7 @@ class PromptEditorWindow:
             title="匯出提示詞",
             defaultextension=".json",
             filetypes=[("JSON檔案", "*.json"), ("所有檔案", "*.*")],
-            initialfile=f"prompt_{content_type}_{datetime.now().strftime('%Y%m%d')}.json"
+            initialfile=f"prompt_{content_type}_{datetime.now().strftime('%Y%m%d')}.json",
         )
 
         if file_path:
@@ -1053,8 +1096,7 @@ class PromptEditorWindow:
     def import_prompt(self):
         """從檔案匯入提示詞"""
         file_path = filedialog.askopenfilename(
-            title="匯入提示詞",
-            filetypes=[("JSON檔案", "*.json"), ("所有檔案", "*.*")]
+            title="匯入提示詞", filetypes=[("JSON檔案", "*.json"), ("所有檔案", "*.*")]
         )
 
         if file_path:
@@ -1078,19 +1120,19 @@ class PromptEditorWindow:
         # 顯示分析結果
         result_text = f"""提示詞分析結果:
 
-字數: {analysis['length']} 字元
-單詞數: {analysis['word_count']} 單詞
+字數: {analysis["length"]} 字元
+單詞數: {analysis["word_count"]} 單詞
 
-品質評分 ({analysis['quality_score']}/100):
-- 清晰度: {analysis['clarity']}/5
-- 特異性: {analysis['specificity']}/5
-- 完整性: {analysis['completeness']}/5
-- 格式評分: {analysis['formatting_score']}/5
+品質評分 ({analysis["quality_score"]}/100):
+- 清晰度: {analysis["clarity"]}/5
+- 特異性: {analysis["specificity"]}/5
+- 完整性: {analysis["completeness"]}/5
+- 格式評分: {analysis["formatting_score"]}/5
 
 特性:
-- 包含規則: {'是' if analysis['contains_rules'] else '否'}
-- 包含範例: {'是' if analysis['contains_examples'] else '否'}
-- 包含約束條件: {'是' if analysis['contains_constraints'] else '否'}
+- 包含規則: {"是" if analysis["contains_rules"] else "否"}
+- 包含範例: {"是" if analysis["contains_examples"] else "否"}
+- 包含約束條件: {"是" if analysis["contains_constraints"] else "否"}
 """
         messagebox.showinfo("提示詞分析", result_text)
 
@@ -1099,7 +1141,7 @@ class PromptEditorWindow:
 if __name__ == "__main__":
     # 設定控制台日誌以便於測試
     console_handler = logging.StreamHandler()
-    console_formatter = logging.Formatter('%(levelname)s - %(message)s')
+    console_formatter = logging.Formatter("%(levelname)s - %(message)s")
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 
@@ -1146,13 +1188,7 @@ if __name__ == "__main__":
 
         # 初始化 GUI 元件
         gui = GUIComponents(
-            root,
-            start_callback,
-            pause_callback,
-            stop_callback,
-            progress_callback,
-            complete_callback,
-            prompt_manager
+            root, start_callback, pause_callback, stop_callback, progress_callback, complete_callback, prompt_manager
         )
 
         # 設置介面

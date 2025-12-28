@@ -22,6 +22,7 @@ from srt_translator.services.factory import ServiceFactory
 # 測試前準備：Mock 所有服務
 # ============================================================
 
+
 @pytest.fixture(autouse=True)
 def reset_service_factory():
     """在每個測試前重置 ServiceFactory"""
@@ -39,10 +40,7 @@ def mock_all_services_for_batch(mock_translation_client, mock_translation_respon
         return mock_translation_responses.get(text, f"[Mock翻譯] {text}")
 
     async def mock_translate_batch(texts_with_context, llm_type, model, concurrent_limit=5):
-        return [
-            mock_translation_responses.get(text, f"[Mock翻譯] {text}")
-            for text, context in texts_with_context
-        ]
+        return [mock_translation_responses.get(text, f"[Mock翻譯] {text}") for text, context in texts_with_context]
 
     # 建立 Mock TranslationService
     mock_translation_service = Mock()
@@ -94,19 +92,19 @@ def mock_all_services_for_batch(mock_translation_client, mock_translation_respon
 
     # 註冊到 ServiceFactory
     ServiceFactory._instances = {
-        'TranslationService': mock_translation_service,
-        'ModelService': mock_model_service,
-        'CacheService': mock_cache_service,
-        'FileService': mock_file_service,
-        'ProgressService': mock_progress_service,
+        "TranslationService": mock_translation_service,
+        "ModelService": mock_model_service,
+        "CacheService": mock_cache_service,
+        "FileService": mock_file_service,
+        "ProgressService": mock_progress_service,
     }
 
     yield {
-        'translation': mock_translation_service,
-        'model': mock_model_service,
-        'cache': mock_cache_service,
-        'file': mock_file_service,
-        'progress': mock_progress_service,
+        "translation": mock_translation_service,
+        "model": mock_model_service,
+        "cache": mock_cache_service,
+        "file": mock_file_service,
+        "progress": mock_progress_service,
     }
 
 
@@ -114,12 +112,10 @@ def mock_all_services_for_batch(mock_translation_client, mock_translation_respon
 # 批量翻譯測試（3 個測試）
 # ============================================================
 
+
 @pytest.mark.asyncio
 async def test_small_batch_translation(
-    batch_srt_files: List[Path],
-    e2e_temp_dir: Path,
-    mock_all_services_for_batch,
-    assert_srt_valid
+    batch_srt_files: List[Path], e2e_temp_dir: Path, mock_all_services_for_batch, assert_srt_valid
 ):
     """測試 1：小批量翻譯（2-3 個檔案）
 
@@ -136,30 +132,20 @@ async def test_small_batch_translation(
     # 處理每個檔案
     for input_file in batch_srt_files:
         # 讀取輸入檔案
-        input_subs = pysrt.open(str(input_file), encoding='utf-8')
+        input_subs = pysrt.open(str(input_file), encoding="utf-8")
         output_subs = pysrt.SubRipFile()
 
         # 翻譯每個字幕
         for sub in input_subs:
-            translation = await translation_service.translate_text(
-                sub.text,
-                [sub.text],
-                "openai",
-                "test-model"
-            )
+            translation = await translation_service.translate_text(sub.text, [sub.text], "openai", "test-model")
 
             # 建立新字幕（保持時間軸）
-            new_sub = pysrt.SubRipItem(
-                index=sub.index,
-                start=sub.start,
-                end=sub.end,
-                text=translation
-            )
+            new_sub = pysrt.SubRipItem(index=sub.index, start=sub.start, end=sub.end, text=translation)
             output_subs.append(new_sub)
 
         # 儲存輸出檔案
         output_file = e2e_temp_dir / f"translated_{input_file.name}"
-        output_subs.save(str(output_file), encoding='utf-8')
+        output_subs.save(str(output_file), encoding="utf-8")
         output_files.append(output_file)
 
     # 驗證輸出
@@ -171,7 +157,7 @@ async def test_small_batch_translation(
         assert_srt_valid(output_file)
 
         # 驗證字幕數量
-        output_subs = pysrt.open(str(output_file), encoding='utf-8')
+        output_subs = pysrt.open(str(output_file), encoding="utf-8")
         assert len(output_subs) == 3, "每個檔案應有 3 個字幕"
 
 
@@ -181,7 +167,7 @@ async def test_mixed_language_batch_translation(
     sample_japanese_srt_path: Path,
     sample_simplified_chinese_srt_path: Path,
     e2e_temp_dir: Path,
-    mock_all_services_for_batch
+    mock_all_services_for_batch,
 ):
     """測試 2：混合語言批量翻譯
 
@@ -203,21 +189,20 @@ async def test_mixed_language_batch_translation(
     # 處理每個語言的檔案
     for input_file, language in test_files:
         # 讀取輸入檔案
-        input_subs = pysrt.open(str(input_file), encoding='utf-8')
+        input_subs = pysrt.open(str(input_file), encoding="utf-8")
 
         # 翻譯第一個字幕
         translation = await translation_service.translate_text(
-            input_subs[0].text,
-            [input_subs[0].text],
-            "openai",
-            "test-model"
+            input_subs[0].text, [input_subs[0].text], "openai", "test-model"
         )
 
-        results.append({
-            "language": language,
-            "original": input_subs[0].text,
-            "translation": translation,
-        })
+        results.append(
+            {
+                "language": language,
+                "original": input_subs[0].text,
+                "translation": translation,
+            }
+        )
 
     # 驗證結果
     assert len(results) == 3, "應該有 3 個翻譯結果"
@@ -225,8 +210,9 @@ async def test_mixed_language_batch_translation(
     # 驗證每個翻譯都成功
     for result in results:
         assert result["translation"], f"{result['language']} 翻譯不應該為空"
-        assert result["translation"] != result["original"] or "你好" in result["original"], \
+        assert result["translation"] != result["original"] or "你好" in result["original"], (
             f"{result['language']} 應該被翻譯（除非已經是中文）"
+        )
 
     # 驗證所有翻譯都是 "你好，世界！"（根據 mock 回應）
     assert results[0]["translation"] == "你好，世界！", "英文翻譯應該正確"
@@ -236,10 +222,7 @@ async def test_mixed_language_batch_translation(
 
 @pytest.mark.asyncio
 async def test_batch_translation_error_handling(
-    batch_srt_files: List[Path],
-    invalid_srt_path: Path,
-    e2e_temp_dir: Path,
-    mock_all_services_for_batch
+    batch_srt_files: List[Path], invalid_srt_path: Path, e2e_temp_dir: Path, mock_all_services_for_batch
 ):
     """測試 3：批量翻譯錯誤處理
 
@@ -259,7 +242,7 @@ async def test_batch_translation_error_handling(
     for input_file in test_files:
         try:
             # 讀取輸入檔案
-            input_subs = pysrt.open(str(input_file), encoding='utf-8')
+            input_subs = pysrt.open(str(input_file), encoding="utf-8")
 
             # 檢查檔案是否有效（至少有一個字幕）
             if len(input_subs) == 0:
@@ -267,24 +250,25 @@ async def test_batch_translation_error_handling(
 
             # 翻譯第一個字幕
             translation = await translation_service.translate_text(
-                input_subs[0].text,
-                [input_subs[0].text],
-                "openai",
-                "test-model"
+                input_subs[0].text, [input_subs[0].text], "openai", "test-model"
             )
 
-            results.append({
-                "file": input_file.name,
-                "success": True,
-                "translation": translation,
-            })
+            results.append(
+                {
+                    "file": input_file.name,
+                    "success": True,
+                    "translation": translation,
+                }
+            )
 
         except Exception as e:
-            results.append({
-                "file": input_file.name,
-                "success": False,
-                "error": str(e),
-            })
+            results.append(
+                {
+                    "file": input_file.name,
+                    "success": False,
+                    "error": str(e),
+                }
+            )
 
     # 驗證結果
     assert len(results) == len(test_files), "所有檔案都應該被處理"
@@ -305,11 +289,9 @@ async def test_batch_translation_error_handling(
 # 並發處理測試（3 個測試）
 # ============================================================
 
+
 @pytest.mark.asyncio
-async def test_concurrent_translation_correctness(
-    mock_all_services_for_batch,
-    mock_translation_responses
-):
+async def test_concurrent_translation_correctness(mock_all_services_for_batch, mock_translation_responses):
     """測試 4：並發翻譯正確性
 
     驗證：
@@ -330,10 +312,7 @@ async def test_concurrent_translation_correctness(
     ]
 
     # 並發翻譯（使用 asyncio.gather）
-    tasks = [
-        translation_service.translate_text(text, [text], "openai", "test-model")
-        for text in test_texts
-    ]
+    tasks = [translation_service.translate_text(text, [text], "openai", "test-model") for text in test_texts]
     results = await asyncio.gather(*tasks)
 
     # 驗證結果
@@ -346,10 +325,7 @@ async def test_concurrent_translation_correctness(
 
 
 @pytest.mark.asyncio
-async def test_concurrent_batch_translation(
-    batch_srt_files: List[Path],
-    mock_all_services_for_batch
-):
+async def test_concurrent_batch_translation(batch_srt_files: List[Path], mock_all_services_for_batch):
     """測試 5：並發批量翻譯（使用 translate_batch）
 
     驗證：
@@ -363,17 +339,14 @@ async def test_concurrent_batch_translation(
     # 讀取所有檔案的字幕
     all_texts_with_context = []
     for input_file in batch_srt_files:
-        input_subs = pysrt.open(str(input_file), encoding='utf-8')
+        input_subs = pysrt.open(str(input_file), encoding="utf-8")
         for sub in input_subs:
             all_texts_with_context.append((sub.text, [sub.text]))
 
     # 批量翻譯（並發限制 = 3）
     start_time = time.time()
     translations = await translation_service.translate_batch(
-        all_texts_with_context,
-        "openai",
-        "test-model",
-        concurrent_limit=3
+        all_texts_with_context, "openai", "test-model", concurrent_limit=3
     )
     batch_duration = time.time() - start_time
 
@@ -387,10 +360,7 @@ async def test_concurrent_batch_translation(
 
 
 @pytest.mark.asyncio
-async def test_concurrent_limit_behavior(
-    mock_all_services_for_batch,
-    mock_translation_responses
-):
+async def test_concurrent_limit_behavior(mock_all_services_for_batch, mock_translation_responses):
     """測試 6：並發限制行為
 
     驗證：
@@ -423,23 +393,17 @@ async def test_concurrent_limit_behavior(
         # 批量翻譯
         start_time = time.time()
         translations = await translation_service.translate_batch(
-            texts_with_context,
-            "openai",
-            "test-model",
-            concurrent_limit=concurrent_limit
+            texts_with_context, "openai", "test-model", concurrent_limit=concurrent_limit
         )
         duration = time.time() - start_time
 
         # 驗證結果
-        assert len(translations) == len(test_texts), \
-            f"並發限制 {concurrent_limit} - 翻譯數量應該一致"
+        assert len(translations) == len(test_texts), f"並發限制 {concurrent_limit} - 翻譯數量應該一致"
 
         # 驗證所有翻譯都正確
         for text, translation in zip(test_texts, translations):
             expected = mock_translation_responses[text]
-            assert translation == expected, \
-                f"並發限制 {concurrent_limit} - 翻譯 '{text}' 應該正確"
+            assert translation == expected, f"並發限制 {concurrent_limit} - 翻譯 '{text}' 應該正確"
 
         # 驗證速度合理（Mock 應該很快）
-        assert duration < 5.0, \
-            f"並發限制 {concurrent_limit} - 應該在 5 秒內完成，實際 {duration:.2f} 秒"
+        assert duration < 5.0, f"並發限制 {concurrent_limit} - 應該在 5 秒內完成，實際 {duration:.2f} 秒"

@@ -14,12 +14,14 @@ import aiohttp
 try:
     import openai
     from openai import AsyncOpenAI, OpenAI
+
     OPENAI_AVAILABLE = True
 except ImportError:
     OPENAI_AVAILABLE = False
 
 try:
     import anthropic
+
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     ANTHROPIC_AVAILABLE = False
@@ -32,24 +34,22 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # 確保日誌目錄存在
-os.makedirs('logs', exist_ok=True)
+os.makedirs("logs", exist_ok=True)
 
 # 避免重複添加處理程序
 if not logger.handlers:
     handler = TimedRotatingFileHandler(
-        filename='logs/model_manager.log',
-        when='midnight',
-        interval=1,
-        backupCount=7,
-        encoding='utf-8'
+        filename="logs/model_manager.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
     )
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
+
 @dataclass
 class ModelInfo:
     """模型資訊資料類別"""
+
     id: str  # 模型 ID/名稱
     provider: str  # 提供者(ollama, openai 等)
     name: str = ""  # 顯示名稱(如不同於 ID)
@@ -75,26 +75,21 @@ class ModelInfo:
             "parallel": self.parallel,
             "tags": self.tags,
             "capabilities": self.capabilities,
-            "available": self.available
+            "available": self.available,
         }
 
     async def test_model_connection(self, model_name: str, provider: str, api_key: str = None) -> Dict[str, Any]:
         """測試與模型的連線
-        
+
         參數:
             model_name: 模型名稱
             provider: 提供者 (如 "ollama", "openai" 或 "anthropic")
             api_key: API 金鑰 (可選)
-            
+
         回傳:
             測試結果字典，包含成功與否、回應時間和錯誤訊息
         """
-        result = {
-            "success": False,
-            "message": "",
-            "response_time": None,
-            "error": None
-        }
+        result = {"success": False, "message": "", "response_time": None, "error": None}
 
         try:
             start_time = time.time()
@@ -130,10 +125,10 @@ class ModelInfo:
 
     async def _test_ollama_connection(self, model_name: str) -> Tuple[bool, str]:
         """測試 Ollama 模型連線
-        
+
         參數:
             model_name: 模型名稱
-            
+
         回傳:
             (是否成功, 訊息)
         """
@@ -142,11 +137,7 @@ class ModelInfo:
 
         try:
             # 建構一個簡單的請求
-            payload = {
-                "model": model_name,
-                "prompt": "你好",
-                "stream": False
-            }
+            payload = {"model": model_name, "prompt": "你好", "stream": False}
 
             url = f"{self.base_url}/api/generate"
             async with self.session.post(url, json=payload, timeout=10) as response:
@@ -154,7 +145,7 @@ class ModelInfo:
                     return False, f"API 返回非 200 狀態碼: {response.status}"
 
                 result = await response.json()
-                if result.get('response'):
+                if result.get("response"):
                     return True, "模型回應正常"
                 else:
                     return False, "模型回應格式異常"
@@ -168,10 +159,10 @@ class ModelInfo:
 
     def set_default_ollama_model(self, model_name: str) -> bool:
         """設置預設的 Ollama 模型
-        
+
         參數:
             model_name: 模型名稱
-            
+
         回傳:
             是否設置成功
         """
@@ -221,6 +212,7 @@ class ModelInfo:
 
         logger.info("模型管理器資源已釋放")
 
+
 class ModelManager:
     """模型管理器，負責管理、載入和監控不同的大型語言模型"""
 
@@ -229,12 +221,12 @@ class ModelManager:
     _lock = threading.Lock()
 
     @classmethod
-    def get_instance(cls, config_file: str = None) -> 'ModelManager':
+    def get_instance(cls, config_file: str = None) -> "ModelManager":
         """獲取模型管理器的單例實例
-        
+
         參數:
             config_file: 配置檔案路徑，若為None則使用預設路徑
-            
+
         回傳:
             模型管理器實例
         """
@@ -249,7 +241,7 @@ class ModelManager:
 
     def __init__(self, config_file: str = "config/model_config.json"):
         """初始化模型管理器
-        
+
         參數:
             config_file: 配置檔案路徑
         """
@@ -266,11 +258,27 @@ class ModelManager:
         self.default_ollama_model = self.config.get("default_ollama_model", "llama3")
 
         # 常見模型模式，用於過濾
-        self.model_patterns = self.config.get("model_patterns", [
-            'llama', 'mixtral', 'aya', 'yi', 'qwen', 'solar',
-            'mistral', 'openchat', 'neural', 'phi', 'stable',
-            'dolphin', 'vicuna', 'zephyr', 'gemma', 'deepseek'
-        ])
+        self.model_patterns = self.config.get(
+            "model_patterns",
+            [
+                "llama",
+                "mixtral",
+                "aya",
+                "yi",
+                "qwen",
+                "solar",
+                "mistral",
+                "openchat",
+                "neural",
+                "phi",
+                "stable",
+                "dolphin",
+                "vicuna",
+                "zephyr",
+                "gemma",
+                "deepseek",
+            ],
+        )
 
         # 快取設定
         self.cached_models: Dict[str, List[ModelInfo]] = {}
@@ -312,7 +320,7 @@ class ModelManager:
         try:
             openai_key_path = get_config("app", "openai_key_path", "openapi_api_key.txt")
             if os.path.exists(openai_key_path):
-                with open(openai_key_path, encoding='utf-8') as f:
+                with open(openai_key_path, encoding="utf-8") as f:
                     self.api_keys["openai"] = f.read().strip()
                 logger.info("已載入 OpenAI API 金鑰")
             else:
@@ -324,7 +332,7 @@ class ModelManager:
         try:
             anthropic_key_path = get_config("app", "anthropic_key_path", "anthropic_api_key.txt")
             if os.path.exists(anthropic_key_path):
-                with open(anthropic_key_path, encoding='utf-8') as f:
+                with open(anthropic_key_path, encoding="utf-8") as f:
                     self.api_keys["anthropic"] = f.read().strip()
                 logger.info("已載入 Anthropic API 金鑰")
         except Exception as e:
@@ -346,11 +354,7 @@ class ModelManager:
                 recommended_for="專業翻譯，需要最高品質",
                 parallel=25,
                 tags=["advanced", "fast", "accurate"],
-                capabilities={
-                    "translation": 0.98,
-                    "multilingual": 0.99,
-                    "context_handling": 0.98
-                }
+                capabilities={"translation": 0.98, "multilingual": 0.99, "context_handling": 0.98},
             ),
             "gpt-4-turbo": ModelInfo(
                 id="gpt-4-turbo",
@@ -362,11 +366,7 @@ class ModelManager:
                 recommended_for="專業翻譯，需要高品質",
                 parallel=20,
                 tags=["advanced", "accurate"],
-                capabilities={
-                    "translation": 0.96,
-                    "multilingual": 0.95,
-                    "context_handling": 0.96
-                }
+                capabilities={"translation": 0.96, "multilingual": 0.95, "context_handling": 0.96},
             ),
             "gpt-4": ModelInfo(
                 id="gpt-4",
@@ -378,11 +378,7 @@ class ModelManager:
                 recommended_for="專業翻譯，需要高品質",
                 parallel=15,
                 tags=["advanced", "stable"],
-                capabilities={
-                    "translation": 0.94,
-                    "multilingual": 0.93,
-                    "context_handling": 0.95
-                }
+                capabilities={"translation": 0.94, "multilingual": 0.93, "context_handling": 0.95},
             ),
             "gpt-3.5-turbo-16k": ModelInfo(
                 id="gpt-3.5-turbo-16k",
@@ -394,11 +390,7 @@ class ModelManager:
                 recommended_for="包含較多上下文的一般翻譯",
                 parallel=30,
                 tags=["balanced", "extended_context"],
-                capabilities={
-                    "translation": 0.88,
-                    "multilingual": 0.86,
-                    "context_handling": 0.90
-                }
+                capabilities={"translation": 0.88, "multilingual": 0.86, "context_handling": 0.90},
             ),
             "gpt-3.5-turbo": ModelInfo(
                 id="gpt-3.5-turbo",
@@ -410,12 +402,8 @@ class ModelManager:
                 recommended_for="日常翻譯，最具成本效益",
                 parallel=35,
                 tags=["balanced", "economic"],
-                capabilities={
-                    "translation": 0.85,
-                    "multilingual": 0.84,
-                    "context_handling": 0.82
-                }
-            )
+                capabilities={"translation": 0.85, "multilingual": 0.84, "context_handling": 0.82},
+            ),
         }
 
         # Ollama 常用模型資訊
@@ -430,11 +418,7 @@ class ModelManager:
                 recommended_for="一般翻譯任務，具有良好的多語言能力",
                 parallel=2,
                 tags=["free", "local", "multilingual"],
-                capabilities={
-                    "translation": 0.82,
-                    "multilingual": 0.78,
-                    "context_handling": 0.80
-                }
+                capabilities={"translation": 0.82, "multilingual": 0.78, "context_handling": 0.80},
             ),
             "mixtral": ModelInfo(
                 id="mixtral",
@@ -446,11 +430,7 @@ class ModelManager:
                 recommended_for="需要處理長上下文的翻譯任務",
                 parallel=1,
                 tags=["free", "local", "extended_context"],
-                capabilities={
-                    "translation": 0.84,
-                    "multilingual": 0.80,
-                    "context_handling": 0.88
-                }
+                capabilities={"translation": 0.84, "multilingual": 0.80, "context_handling": 0.88},
             ),
             "mistral": ModelInfo(
                 id="mistral",
@@ -462,11 +442,7 @@ class ModelManager:
                 recommended_for="需要快速處理的翻譯任務",
                 parallel=2,
                 tags=["free", "local", "fast"],
-                capabilities={
-                    "translation": 0.78,
-                    "multilingual": 0.75,
-                    "context_handling": 0.76
-                }
+                capabilities={"translation": 0.78, "multilingual": 0.75, "context_handling": 0.76},
             ),
             "qwen": ModelInfo(
                 id="qwen",
@@ -478,12 +454,7 @@ class ModelManager:
                 recommended_for="中文翻譯任務",
                 parallel=2,
                 tags=["free", "local", "chinese"],
-                capabilities={
-                    "translation": 0.80,
-                    "multilingual": 0.75,
-                    "context_handling": 0.78,
-                    "chinese": 0.90
-                }
+                capabilities={"translation": 0.80, "multilingual": 0.75, "context_handling": 0.78, "chinese": 0.90},
             ),
             "deepseek": ModelInfo(
                 id="deepseek",
@@ -495,12 +466,8 @@ class ModelManager:
                 recommended_for="文學或專業領域翻譯",
                 parallel=1,
                 tags=["free", "local", "specialized"],
-                capabilities={
-                    "translation": 0.83,
-                    "multilingual": 0.76,
-                    "context_handling": 0.85
-                }
-            )
+                capabilities={"translation": 0.83, "multilingual": 0.76, "context_handling": 0.85},
+            ),
         }
 
         # Anthropic 模型資訊
@@ -515,11 +482,7 @@ class ModelManager:
                 recommended_for="專業翻譯、文學翻譯",
                 parallel=10,
                 tags=["advanced", "accurate"],
-                capabilities={
-                    "translation": 0.98,
-                    "multilingual": 0.97,
-                    "context_handling": 0.99
-                }
+                capabilities={"translation": 0.98, "multilingual": 0.97, "context_handling": 0.99},
             ),
             "claude-3-sonnet-20240229": ModelInfo(
                 id="claude-3-sonnet-20240229",
@@ -531,11 +494,7 @@ class ModelManager:
                 recommended_for="一般翻譯任務",
                 parallel=15,
                 tags=["balanced", "fast"],
-                capabilities={
-                    "translation": 0.93,
-                    "multilingual": 0.92,
-                    "context_handling": 0.94
-                }
+                capabilities={"translation": 0.93, "multilingual": 0.92, "context_handling": 0.94},
             ),
             "claude-3-haiku-20240307": ModelInfo(
                 id="claude-3-haiku-20240307",
@@ -547,12 +506,8 @@ class ModelManager:
                 recommended_for="大批量翻譯任務",
                 parallel=25,
                 tags=["fast", "economic"],
-                capabilities={
-                    "translation": 0.88,
-                    "multilingual": 0.86,
-                    "context_handling": 0.87
-                }
-            )
+                capabilities={"translation": 0.88, "multilingual": 0.86, "context_handling": 0.87},
+            ),
         }
 
         # 合併所有模型資訊到資料庫
@@ -573,7 +528,7 @@ class ModelManager:
                     total=self.request_timeout,
                     connect=self.connect_timeout,
                     sock_connect=self.connect_timeout,
-                    sock_read=self.request_timeout
+                    sock_read=self.request_timeout,
                 )
                 self.session = aiohttp.ClientSession(timeout=timeout)
                 logger.debug("已初始化非同步 HTTP 客戶端")
@@ -588,11 +543,11 @@ class ModelManager:
 
     async def get_model_list_async(self, llm_type: str, api_key: str = None) -> List[ModelInfo]:
         """非同步獲取模型列表
-        
+
         參數:
             llm_type: LLM類型 (如 "ollama" 或 "openai")
             api_key: API金鑰 (可選)
-            
+
         回傳:
             ModelInfo物件列表
         """
@@ -689,7 +644,7 @@ class ModelManager:
                 name=self.default_ollama_model.capitalize(),
                 description="預設 Ollama 模型",
                 pricing="免費(本機執行)",
-                recommended_for="一般翻譯任務"
+                recommended_for="一般翻譯任務",
             )
         return model
 
@@ -705,7 +660,7 @@ class ModelManager:
                 name="GPT-3.5 Turbo",
                 description="OpenAI 的經濟型模型",
                 pricing="低",
-                recommended_for="一般翻譯任務"
+                recommended_for="一般翻譯任務",
             )
         return model
 
@@ -721,16 +676,16 @@ class ModelManager:
                 name="Claude 3 Haiku",
                 description="Anthropic 的快速模型",
                 pricing="低",
-                recommended_for="一般翻譯任務"
+                recommended_for="一般翻譯任務",
             )
         return model
 
     async def _get_anthropic_models_async(self, api_key: str) -> List[ModelInfo]:
         """非同步獲取 Anthropic 模型列表
-        
+
         參數:
             api_key: Anthropic API金鑰
-            
+
         回傳:
             Anthropic ModelInfo物件列表
         """
@@ -750,11 +705,7 @@ class ModelManager:
                     recommended_for="專業翻譯、文學翻譯",
                     parallel=10,
                     tags=["advanced", "accurate"],
-                    capabilities={
-                        "translation": 0.98,
-                        "multilingual": 0.97,
-                        "context_handling": 0.99
-                    }
+                    capabilities={"translation": 0.98, "multilingual": 0.97, "context_handling": 0.99},
                 ),
                 ModelInfo(
                     id="claude-3-sonnet-20240229",
@@ -766,11 +717,7 @@ class ModelManager:
                     recommended_for="一般翻譯任務",
                     parallel=15,
                     tags=["balanced", "fast"],
-                    capabilities={
-                        "translation": 0.93,
-                        "multilingual": 0.92,
-                        "context_handling": 0.94
-                    }
+                    capabilities={"translation": 0.93, "multilingual": 0.92, "context_handling": 0.94},
                 ),
                 ModelInfo(
                     id="claude-3-haiku-20240307",
@@ -782,12 +729,8 @@ class ModelManager:
                     recommended_for="大批量翻譯任務",
                     parallel=25,
                     tags=["fast", "economic"],
-                    capabilities={
-                        "translation": 0.88,
-                        "multilingual": 0.86,
-                        "context_handling": 0.87
-                    }
-                )
+                    capabilities={"translation": 0.88, "multilingual": 0.86, "context_handling": 0.87},
+                ),
             ]
 
             # 驗證 API 金鑰是否有效
@@ -795,9 +738,7 @@ class ModelManager:
             try:
                 # 簡單呼叫以驗證 API 金鑰
                 response = client.messages.create(
-                    model="claude-3-haiku-20240307",
-                    max_tokens=10,
-                    messages=[{"role": "user", "content": "Hi"}]
+                    model="claude-3-haiku-20240307", max_tokens=10, messages=[{"role": "user", "content": "Hi"}]
                 )
                 # 呼叫成功，API 金鑰有效
                 for model in anthropic_models:
@@ -815,10 +756,10 @@ class ModelManager:
 
     def get_default_model(self, llm_type: str) -> str:
         """返回預設模型，針對翻譯進行最佳化
-        
+
         參數:
             llm_type: LLM類型 (如 "ollama", "openai" 或 "anthropic")
-            
+
         回傳:
             預設模型名稱
         """
@@ -830,11 +771,11 @@ class ModelManager:
 
     def get_model_info(self, model_name: str, provider: str = None) -> Dict[str, Any]:
         """獲取模型的詳細資訊
-        
+
         參數:
             model_name: 模型名稱
             provider: 提供者 (如 "ollama" 或 "openai")
-            
+
         回傳:
             模型資訊字典
         """
@@ -855,76 +796,69 @@ class ModelManager:
                 "description": "OpenAI 最強大的翻譯模型，速度快且精確",
                 "pricing": "高",
                 "recommended_for": "專業翻譯，需要最高品質",
-                "parallel": 20
+                "parallel": 20,
             },
             "gpt-4-turbo": {
                 "description": "強大的翻譯模型，適合需要高品質翻譯的場合",
                 "pricing": "高",
                 "recommended_for": "專業翻譯，需要高品質",
-                "parallel": 15
+                "parallel": 15,
             },
             "gpt-4": {
                 "description": "強大而穩定的翻譯模型",
                 "pricing": "高",
                 "recommended_for": "專業翻譯，需要高品質",
-                "parallel": 10
+                "parallel": 10,
             },
             "gpt-3.5-turbo-16k": {
                 "description": "具有較大上下文視窗的翻譯模型",
                 "pricing": "中",
                 "recommended_for": "包含較多上下文的翻譯",
-                "parallel": 25
+                "parallel": 25,
             },
             "gpt-3.5-turbo": {
                 "description": "平衡經濟性和翻譯品質的模型",
                 "pricing": "低",
                 "recommended_for": "日常翻譯，最具成本效益",
-                "parallel": 30
-            }
+                "parallel": 30,
+            },
         }
         if model_name in openai_models:
-            return {
-                "id": model_name,
-                "name": model_name,
-                "provider": "openai",
-                **openai_models[model_name]
-            }
+            return {"id": model_name, "name": model_name, "provider": "openai", **openai_models[model_name]}
         return {}
 
     def get_recommended_model(self, task_type: str = "translation", provider: str = None) -> Optional[ModelInfo]:
         """根據任務類型獲取推薦模型
-        
+
         參數:
             task_type: 任務類型 (如 "translation", "literary", "technical", "subtitle")
             provider: 提供者 (如 "ollama", "openai" 或 "anthropic")
-            
+
         回傳:
             推薦的模型資訊，若無適合的則回傳 None
         """
-        available_providers = [provider] if provider else self.config.get("default_providers", ["ollama", "openai", "anthropic"])
+        available_providers = (
+            [provider] if provider else self.config.get("default_providers", ["ollama", "openai", "anthropic"])
+        )
 
         # 定義不同任務的能力權重
         task_weights = {
-            "translation": {
-                "translation": 0.7,
-                "multilingual": 0.2,
-                "context_handling": 0.1
-            },
+            "translation": {"translation": 0.7, "multilingual": 0.2, "context_handling": 0.1},
             "literary": {  # 文學翻譯
                 "translation": 0.5,
                 "multilingual": 0.2,
-                "context_handling": 0.3
+                "context_handling": 0.3,
             },
             "technical": {  # 技術文件翻譯
                 "translation": 0.6,
                 "multilingual": 0.1,
-                "context_handling": 0.3
+                "context_handling": 0.3,
             },
             "subtitle": {  # 字幕翻譯
                 "translation": 0.5,
                 "multilingual": 0.3,
-                "context_handling": 0.2
-            }
+                "context_handling": 0.2,
+            },
         }
 
         weights = task_weights.get(task_type, task_weights["translation"])
@@ -965,11 +899,11 @@ class ModelManager:
 
     async def _test_openai_connection(self, model_name: str, api_key: str) -> Tuple[bool, str]:
         """測試 OpenAI 模型連線
-        
+
         參數:
             model_name: 模型名稱
             api_key: API 金鑰
-            
+
         回傳:
             (是否成功, 訊息)
         """
@@ -982,9 +916,7 @@ class ModelManager:
         try:
             client = OpenAI(api_key=api_key)
             response = client.chat.completions.create(
-                model=model_name,
-                messages=[{"role": "user", "content": "Hello"}],
-                max_tokens=5
+                model=model_name, messages=[{"role": "user", "content": "Hello"}], max_tokens=5
             )
 
             if response and response.choices and len(response.choices) > 0:
@@ -1005,11 +937,11 @@ class ModelManager:
 
     async def _test_anthropic_connection(self, model_name: str, api_key: str) -> Tuple[bool, str]:
         """測試 Anthropic 模型連線
-        
+
         參數:
             model_name: 模型名稱
             api_key: API 金鑰
-            
+
         回傳:
             (是否成功, 訊息)
         """
@@ -1022,9 +954,7 @@ class ModelManager:
         try:
             client = anthropic.Anthropic(api_key=api_key)
             response = client.messages.create(
-                model=model_name,
-                max_tokens=10,
-                messages=[{"role": "user", "content": "Hello"}]
+                model=model_name, max_tokens=10, messages=[{"role": "user", "content": "Hello"}]
             )
 
             if response and response.content:
@@ -1045,15 +975,11 @@ class ModelManager:
 
     async def get_provider_status(self) -> Dict[str, bool]:
         """獲取各提供者的連線狀態
-        
+
         回傳:
             包含各提供者狀態的字典
         """
-        status = {
-            "ollama": False,
-            "openai": False,
-            "anthropic": False
-        }
+        status = {"ollama": False, "openai": False, "anthropic": False}
 
         # 檢查 Ollama 連線
         try:
@@ -1083,7 +1009,7 @@ class ModelManager:
 
     async def _get_ollama_models_async(self) -> List[ModelInfo]:
         """非同步獲取 Ollama 模型列表
-        
+
         回傳:
             Ollama ModelInfo物件列表
         """
@@ -1094,10 +1020,7 @@ class ModelManager:
             models = set()
 
             # 嘗試使用不同的 API 端點獲取模型列表
-            endpoints = [
-                "/api/tags",
-                "/api/models"
-            ]
+            endpoints = ["/api/tags", "/api/models"]
 
             for endpoint in endpoints:
                 try:
@@ -1112,17 +1035,17 @@ class ModelManager:
                         result = await response.json()
 
                         # 處理不同的回應格式
-                        if 'models' in result and isinstance(result['models'], list):
-                            for model in result['models']:
-                                if isinstance(model, dict) and 'name' in model:
-                                    models.add(model['name'])
-                        elif 'models' in result and isinstance(result['models'], dict):
-                            for model_name in result['models'].keys():
+                        if "models" in result and isinstance(result["models"], list):
+                            for model in result["models"]:
+                                if isinstance(model, dict) and "name" in model:
+                                    models.add(model["name"])
+                        elif "models" in result and isinstance(result["models"], dict):
+                            for model_name in result["models"].keys():
                                 models.add(model_name)
                         elif isinstance(result, list):
                             for item in result:
-                                if isinstance(item, dict) and 'name' in item:
-                                    models.add(item['name'])
+                                if isinstance(item, dict) and "name" in item:
+                                    models.add(item["name"])
 
                         # 如果成功獲取了模型，跳出循環
                         if len(models) > 0:
@@ -1174,11 +1097,7 @@ class ModelManager:
                         recommended_for="一般翻譯任務",
                         parallel=2,
                         tags=["free", "local"],
-                        capabilities={
-                            "translation": 0.75,
-                            "multilingual": 0.7,
-                            "context_handling": 0.7
-                        }
+                        capabilities={"translation": 0.75, "multilingual": 0.7, "context_handling": 0.7},
                     )
 
                 model_info_list.append(model_info)
@@ -1198,11 +1117,11 @@ class ModelManager:
 
     def save_api_key(self, provider: str, api_key: str) -> bool:
         """儲存 API 金鑰
-        
+
         參數:
             provider: 提供者 (如 "openai" 或 "anthropic")
             api_key: API 金鑰
-            
+
         回傳:
             是否儲存成功
         """
@@ -1212,7 +1131,7 @@ class ModelManager:
             # 確保目錄存在
             os.makedirs(os.path.dirname(key_path), exist_ok=True)
 
-            with open(key_path, 'w', encoding='utf-8') as f:
+            with open(key_path, "w", encoding="utf-8") as f:
                 f.write(api_key)
 
             # 更新緩存
@@ -1232,22 +1151,22 @@ class ModelManager:
 
     def _format_model_name(self, model_id: str) -> str:
         """格式化模型名稱，使其更易讀
-        
+
         參數:
             model_id: 模型ID
-            
+
         回傳:
             格式化後的模型名稱
         """
         try:
             # 移除版本號和標籤
-            name = re.sub(r'[:@].+', '', model_id)
+            name = re.sub(r"[:@].+", "", model_id)
 
             # 處理常見縮寫
-            name = name.replace('-', ' ').replace('_', ' ')
+            name = name.replace("-", " ").replace("_", " ")
 
             # 分割路徑，只取最後部分
-            parts = name.split('/')
+            parts = name.split("/")
             name = parts[-1]
 
             # 首字母大寫
@@ -1255,20 +1174,20 @@ class ModelManager:
             capitalized = []
             for word in words:
                 # 處理駝峰命名
-                camel_parts = re.findall(r'[A-Z][a-z]*|[a-z]+', word)
+                camel_parts = re.findall(r"[A-Z][a-z]*|[a-z]+", word)
                 camel_parts = [p.capitalize() for p in camel_parts]
-                capitalized.append(' '.join(camel_parts))
+                capitalized.append(" ".join(camel_parts))
 
-            return ' '.join(capitalized)
+            return " ".join(capitalized)
         except Exception:
             return model_id
 
     async def _get_openai_models_async(self, api_key: str) -> List[ModelInfo]:
         """非同步獲取 OpenAI 模型列表
-        
+
         參數:
             api_key: OpenAI API金鑰
-            
+
         回傳:
             OpenAI ModelInfo物件列表
         """
@@ -1295,7 +1214,7 @@ class ModelManager:
                 "gpt-4": 3,
                 "gpt-3.5-turbo-16k": 4,
                 "gpt-3.5-turbo": 5,
-                "gpt-4-vision-preview": 999
+                "gpt-4-vision-preview": 999,
             }
 
             # 過濾模型
@@ -1315,7 +1234,7 @@ class ModelManager:
                             description="OpenAI 模型",
                             pricing="中",
                             recommended_for="一般翻譯任務",
-                            parallel=10
+                            parallel=10,
                         )
 
                     model_list.append(model_info)
@@ -1337,7 +1256,7 @@ class ModelManager:
                             name=self._format_model_name(default_model),
                             description="OpenAI 模型",
                             pricing="中" if "gpt-4" in default_model else "低",
-                            recommended_for="一般翻譯任務"
+                            recommended_for="一般翻譯任務",
                         )
                     model_list.append(model_info)
 
@@ -1352,10 +1271,10 @@ class ModelManager:
 
     def update_config(self, new_config: Dict[str, Any]) -> bool:
         """更新模型管理器配置
-        
+
         參數:
             new_config: 新的配置項字典
-            
+
         回傳:
             是否更新成功
         """
@@ -1380,27 +1299,29 @@ class ModelManager:
             logger.error(f"更新模型管理器配置時發生錯誤: {e!s}")
             return False
 
+
 # 提供便捷的全域函數
 def get_model_info(model_name: str, provider: str = None) -> Dict[str, Any]:
     """全域函數：獲取模型資訊
-    
+
     參數:
         model_name: 模型名稱
         provider: 提供者 (如 "ollama" 或 "openai")
-        
+
     回傳:
         模型資訊字典
     """
     manager = ModelManager.get_instance()
     return manager.get_model_info(model_name, provider)
 
+
 def get_recommended_model(task_type: str = "translation", provider: str = None) -> str:
     """全域函數：根據任務類型獲取推薦模型
-    
+
     參數:
         task_type: 任務類型 (如 "translation" 或 "literary")
         provider: 提供者 (如 "ollama" 或 "openai")
-        
+
     回傳:
         推薦的模型名稱
     """
@@ -1410,22 +1331,25 @@ def get_recommended_model(task_type: str = "translation", provider: str = None) 
         return model_info.id
     return manager.get_default_model(provider or "ollama")
 
+
 async def test_model_connection(model_name: str, provider: str, api_key: str = None) -> Dict[str, Any]:
     """全域函數：測試與模型的連線
-    
+
     參數:
         model_name: 模型名稱
         provider: 提供者 (如 "ollama", "openai" 或 "anthropic")
         api_key: API 金鑰 (可選)
-        
+
     回傳:
         測試結果字典
     """
     manager = ModelManager.get_instance()
     return await manager.test_model_connection(model_name, provider, api_key)
 
+
 # 測試程式碼
 if __name__ == "__main__":
+
     async def test_async():
         try:
             # 讀取 API 金鑰
@@ -1479,6 +1403,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"測試過程中發生錯誤: {e!s}")
             import traceback
+
             traceback.print_exc()
 
     # 執行測試

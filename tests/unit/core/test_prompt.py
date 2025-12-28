@@ -22,7 +22,7 @@ def reset_prompt_config():
     if config_dir.exists():
         for config_file in config_dir.glob("prompt*.json"):
             try:
-                config_backup[config_file.name] = config_file.read_text(encoding='utf-8')
+                config_backup[config_file.name] = config_file.read_text(encoding="utf-8")
             except Exception:
                 pass
 
@@ -36,7 +36,7 @@ def reset_prompt_config():
     if config_dir.exists():
         for filename, content in config_backup.items():
             try:
-                (config_dir / filename).write_text(content, encoding='utf-8')
+                (config_dir / filename).write_text(content, encoding="utf-8")
             except Exception:
                 pass
 
@@ -66,10 +66,10 @@ class TestPromptManagerInit:
 
         assert manager is not None
         assert manager.config_file == temp_config_file
-        assert hasattr(manager, 'default_prompts')
-        assert hasattr(manager, 'custom_prompts')
-        assert hasattr(manager, 'translation_styles')
-        assert hasattr(manager, 'language_pairs')
+        assert hasattr(manager, "default_prompts")
+        assert hasattr(manager, "custom_prompts")
+        assert hasattr(manager, "translation_styles")
+        assert hasattr(manager, "language_pairs")
 
     def test_singleton_pattern(self, temp_config_file):
         """測試單例模式"""
@@ -121,9 +121,9 @@ class TestPromptManagerInit:
         manager = PromptManager(temp_config_file)
 
         # 設定可能為None或有預設值，只要存在這些屬性即可
-        assert hasattr(manager, 'current_content_type')
-        assert hasattr(manager, 'current_style')
-        assert hasattr(manager, 'current_language_pair')
+        assert hasattr(manager, "current_content_type")
+        assert hasattr(manager, "current_style")
+        assert hasattr(manager, "current_language_pair")
 
     def test_templates_directory_created(self, temp_config_file, temp_dir):
         """測試模板目錄自動創建"""
@@ -253,7 +253,7 @@ class TestPromptManagerSetPrompt:
         assert template_file.exists()
 
         # 驗證檔案內容
-        with open(template_file, encoding='utf-8') as f:
+        with open(template_file, encoding="utf-8") as f:
             data = json.load(f)
         assert "ollama" in data
         assert data["ollama"].strip() == new_prompt
@@ -612,7 +612,7 @@ class TestPromptManagerConfigListener:
         new_config = {
             "current_content_type": "anime",
             "current_style": "localized",
-            "current_language_pair": "英文→繁體中文"
+            "current_language_pair": "英文→繁體中文",
         }
 
         manager._config_changed("prompt", new_config)
@@ -655,10 +655,7 @@ class TestPromptManagerFileOperations:
     def test_save_prompt_template(self, manager):
         """測試儲存提示詞模板"""
         # 設置自訂提示詞
-        manager.custom_prompts["test_type"] = {
-            "ollama": "Test prompt for ollama",
-            "openai": "Test prompt for openai"
-        }
+        manager.custom_prompts["test_type"] = {"ollama": "Test prompt for ollama", "openai": "Test prompt for openai"}
 
         # 儲存模板
         result = manager._save_prompt_template("test_type")
@@ -674,12 +671,9 @@ class TestPromptManagerFileOperations:
         template_file = Path(manager.templates_dir) / "general_template.json"
         template_file.parent.mkdir(exist_ok=True)
 
-        template_data = {
-            "ollama": "Custom General Ollama prompt",
-            "openai": "Custom General OpenAI prompt"
-        }
+        template_data = {"ollama": "Custom General Ollama prompt", "openai": "Custom General OpenAI prompt"}
 
-        with open(template_file, 'w', encoding='utf-8') as f:
+        with open(template_file, "w", encoding="utf-8") as f:
             json.dump(template_data, f)
 
         # 重新初始化以載入模板
@@ -698,7 +692,7 @@ class TestPromptManagerFileOperations:
         template_file = Path(manager.templates_dir) / "anime_template.json"
         template_file.parent.mkdir(exist_ok=True)
 
-        with open(template_file, 'w', encoding='utf-8') as f:
+        with open(template_file, "w", encoding="utf-8") as f:
             f.write("invalid json{{{")
 
         # 重新載入自訂提示詞（應該捕獲錯誤不崩潰）

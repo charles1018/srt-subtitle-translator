@@ -22,15 +22,15 @@ from srt_translator.utils.errors import AppError, TranslationError
 from srt_translator.utils.logging_config import setup_logger
 
 # 設置本模組的日誌記錄器
-logger = setup_logger(__name__, log_file='utils.log')
+logger = setup_logger(__name__, log_file="utils.log")
 
 
 def format_exception(e: Exception) -> str:
     """格式化異常信息
-    
+
     參數:
         e: 異常對象
-        
+
     回傳:
         格式化後的異常信息字符串
     """
@@ -46,13 +46,13 @@ def format_exception(e: Exception) -> str:
 
 def safe_execute(func: Callable, *args, default_return=None, **kwargs) -> Any:
     """安全執行函數，捕獲並記錄異常
-    
+
     參數:
         func: 要執行的函數
         *args: 函數參數
         default_return: 出錯時的默認返回值
         **kwargs: 函數關鍵字參數
-        
+
     回傳:
         函數執行結果或default_return（如果出錯）
     """
@@ -65,12 +65,13 @@ def safe_execute(func: Callable, *args, default_return=None, **kwargs) -> Any:
 
 # ================ 文本處理工具 ================
 
+
 def clean_text(text: str) -> str:
     """清理文本，去除多餘空格和特殊字符
-    
+
     參數:
         text: 輸入文本
-        
+
     回傳:
         清理後的文本
     """
@@ -78,44 +79,44 @@ def clean_text(text: str) -> str:
         return ""
 
     # 移除控制字符
-    text = re.sub(r'[\x00-\x1F\x7F]', ' ', text)
+    text = re.sub(r"[\x00-\x1F\x7F]", " ", text)
 
     # 替換多個空格為單個空格
-    text = re.sub(r'\s+', ' ', text)
+    text = re.sub(r"\s+", " ", text)
 
     return text.strip()
 
 
 def detect_language(text: str) -> str:
     """簡易語言檢測
-    
+
     參數:
         text: 輸入文本
-        
+
     回傳:
         檢測到的語言 ('ja', 'en', 'zh-tw', 'zh-cn', 'ko', 'unknown')
     """
     if not text:
-        return 'unknown'
+        return "unknown"
 
     # 樣本文本，避免分析過長
     sample = text[:1000]
 
     # 日文字符特徵
-    jp_chars = re.findall(r'[\u3040-\u309F\u30A0-\u30FF]', sample)
+    jp_chars = re.findall(r"[\u3040-\u309F\u30A0-\u30FF]", sample)
     # 簡體中文特殊字符
-    cn_chars = re.findall(r'[\u4E00-\u9FFF][\u3006\u3007\u3012\u3014\u3015\u3231\u3232\u4E00-\u9FA5]', sample)
+    cn_chars = re.findall(r"[\u4E00-\u9FFF][\u3006\u3007\u3012\u3014\u3015\u3231\u3232\u4E00-\u9FA5]", sample)
     # 繁體中文特殊用字
-    tw_chars = re.findall(r'[\u4E00-\u9FFF][\u3006\u3007\u3036\u3230\u32AF\uF900-\uFAFF]', sample)
+    tw_chars = re.findall(r"[\u4E00-\u9FFF][\u3006\u3007\u3036\u3230\u32AF\uF900-\uFAFF]", sample)
     # 韓文
-    ko_chars = re.findall(r'[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]', sample)
+    ko_chars = re.findall(r"[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]", sample)
     # 英文
-    en_chars = re.findall(r'[a-zA-Z]', sample)
+    en_chars = re.findall(r"[a-zA-Z]", sample)
 
     # 統計非空白字符總數
-    total_chars = len(re.sub(r'\s', '', sample))
+    total_chars = len(re.sub(r"\s", "", sample))
     if total_chars == 0:
-        return 'unknown'
+        return "unknown"
 
     # 計算各語言占比
     jp_ratio = len(jp_chars) / total_chars
@@ -126,25 +127,25 @@ def detect_language(text: str) -> str:
 
     # 根據占比確定語言
     if jp_ratio > 0.1:
-        return 'ja'
+        return "ja"
     elif ko_ratio > 0.1:
-        return 'ko'
+        return "ko"
     elif tw_ratio > cn_ratio and (tw_ratio > 0.05 or cn_ratio > 0.05):
-        return 'zh-tw'
+        return "zh-tw"
     elif cn_ratio > 0.05:
-        return 'zh-cn'
+        return "zh-cn"
     elif en_ratio > 0.5:
-        return 'en'
+        return "en"
 
-    return 'unknown'
+    return "unknown"
 
 
 def standardize_language_code(lang_name: str) -> str:
     """將語言名稱轉換為標準代碼
-    
+
     參數:
         lang_name: 語言名稱
-        
+
     回傳:
         標準語言代碼
     """
@@ -158,7 +159,6 @@ def standardize_language_code(lang_name: str) -> str:
         "zh_tw": "zh-tw",
         "zh-hant": "zh-tw",
         "traditional chinese": "zh-tw",
-
         # 簡體中文
         "簡體中文": "zh-cn",
         "中文(簡體)": "zh-cn",
@@ -167,50 +167,43 @@ def standardize_language_code(lang_name: str) -> str:
         "zh_cn": "zh-cn",
         "zh-hans": "zh-cn",
         "simplified chinese": "zh-cn",
-
         # 日文
         "日文": "ja",
         "日語": "ja",
         "ja": "ja",
         "jp": "ja",
         "japanese": "ja",
-
         # 英文
         "英文": "en",
         "英語": "en",
         "en": "en",
         "english": "en",
-
         # 韓文
         "韓文": "ko",
         "韓語": "ko",
         "ko": "ko",
         "kr": "ko",
         "korean": "ko",
-
         # 法文
         "法文": "fr",
         "法語": "fr",
         "fr": "fr",
         "french": "fr",
-
         # 德文
         "德文": "de",
         "德語": "de",
         "de": "de",
         "german": "de",
-
         # 西班牙文
         "西班牙文": "es",
         "西語": "es",
         "es": "es",
         "spanish": "es",
-
         # 俄文
         "俄文": "ru",
         "俄語": "ru",
         "ru": "ru",
-        "russian": "ru"
+        "russian": "ru",
     }
 
     normalized = lang_name.lower() if isinstance(lang_name, str) else ""
@@ -219,10 +212,10 @@ def standardize_language_code(lang_name: str) -> str:
 
 def get_language_name(lang_code: str) -> str:
     """將標準語言代碼轉換為人類可讀的語言名稱
-    
+
     參數:
         lang_code: 語言代碼
-        
+
     回傳:
         語言名稱
     """
@@ -235,7 +228,7 @@ def get_language_name(lang_code: str) -> str:
         "fr": "法文",
         "de": "德文",
         "es": "西班牙文",
-        "ru": "俄文"
+        "ru": "俄文",
     }
 
     return lang_names.get(lang_code.lower(), "未知語言")
@@ -243,10 +236,10 @@ def get_language_name(lang_code: str) -> str:
 
 def compute_text_hash(text: str) -> str:
     """計算文本的SHA-256哈希值
-    
+
     參數:
         text: 輸入文本
-        
+
     回傳:
         哈希字串
     """
@@ -254,17 +247,17 @@ def compute_text_hash(text: str) -> str:
         return ""
 
     # 使用SHA-256創建哈希
-    return hashlib.sha256(text.encode('utf-8')).hexdigest()
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def truncate_text(text: str, max_length: int = 100, with_ellipsis: bool = True) -> str:
     """截斷文本至指定長度
-    
+
     參數:
         text: 輸入文本
         max_length: 最大長度
         with_ellipsis: 是否添加省略號
-        
+
     回傳:
         截斷後的文本
     """
@@ -272,17 +265,17 @@ def truncate_text(text: str, max_length: int = 100, with_ellipsis: bool = True) 
         return text
 
     if with_ellipsis:
-        return text[:max_length-3] + "..."
+        return text[: max_length - 3] + "..."
     else:
         return text[:max_length]
 
 
 def split_sentences(text: str) -> List[str]:
     """將文本分割為句子
-    
+
     參數:
         text: 輸入文本
-        
+
     回傳:
         句子列表
     """
@@ -290,14 +283,14 @@ def split_sentences(text: str) -> List[str]:
         return []
 
     # 中文標點符號
-    cn_delimiters = r'。！？；'
+    cn_delimiters = r"。！？；"
     # 英文標點符號
-    en_delimiters = r'\.!\?;'
+    en_delimiters = r"\.!\?;"
     # 合并所有分隔符
     all_delimiters = f"[{cn_delimiters}{en_delimiters}]"
 
     # 按標點符號分割，保留標點
-    sentences = re.findall(f'.+?{all_delimiters}+|.+$', text)
+    sentences = re.findall(f".+?{all_delimiters}+|.+$", text)
 
     # 清理空白句子並去除前後空格
     return [s.strip() for s in sentences if s.strip()]
@@ -305,12 +298,13 @@ def split_sentences(text: str) -> List[str]:
 
 # ================ 字幕處理工具 ================
 
+
 def format_srt_time(milliseconds: int) -> str:
     """將毫秒轉換為SRT時間格式 (HH:MM:SS,mmm)
-    
+
     參數:
         milliseconds: 毫秒時間
-        
+
     回傳:
         SRT格式時間字符串
     """
@@ -327,10 +321,10 @@ def format_srt_time(milliseconds: int) -> str:
 
 def parse_srt_time(time_str: str) -> int:
     """解析SRT時間格式為毫秒
-    
+
     參數:
         time_str: SRT格式時間字符串 (HH:MM:SS,mmm)
-        
+
     回傳:
         毫秒時間
     """
@@ -338,7 +332,7 @@ def parse_srt_time(time_str: str) -> int:
         return 0
 
     # 匹配 HH:MM:SS,mmm 格式
-    pattern = r'(\d+):(\d+):(\d+)[,.](\d+)'
+    pattern = r"(\d+):(\d+):(\d+)[,.](\d+)"
     match = re.match(pattern, time_str)
 
     if not match:
@@ -355,11 +349,11 @@ def parse_srt_time(time_str: str) -> int:
 
 def generate_unique_filename(base_path: str, extension: str = None) -> str:
     """生成不會衝突的唯一文件名
-    
+
     參數:
         base_path: 基礎文件路徑
         extension: 文件擴展名(可選)
-        
+
     回傳:
         唯一文件路徑
     """
@@ -369,7 +363,7 @@ def generate_unique_filename(base_path: str, extension: str = None) -> str:
     filename = path.stem
     ext = extension or path.suffix
 
-    if not ext.startswith('.') and ext:
+    if not ext.startswith(".") and ext:
         ext = f".{ext}"
 
     counter = 1
@@ -386,10 +380,10 @@ def generate_unique_filename(base_path: str, extension: str = None) -> str:
 
 def is_valid_subtitle_file(file_path: str) -> bool:
     """檢查文件是否為有效的字幕文件
-    
+
     參數:
         file_path: 文件路徑
-        
+
     回傳:
         是否為有效字幕文件
     """
@@ -397,7 +391,7 @@ def is_valid_subtitle_file(file_path: str) -> bool:
         return False
 
     # 檢查文件擴展名
-    valid_extensions = {'.srt', '.vtt', '.ass', '.ssa', '.sub'}
+    valid_extensions = {".srt", ".vtt", ".ass", ".ssa", ".sub"}
     file_ext = os.path.splitext(file_path)[1].lower()
 
     if file_ext not in valid_extensions:
@@ -405,19 +399,19 @@ def is_valid_subtitle_file(file_path: str) -> bool:
 
     # 檢查文件內容
     try:
-        with open(file_path, encoding='utf-8', errors='ignore') as f:
+        with open(file_path, encoding="utf-8", errors="ignore") as f:
             content = f.read(1024)  # 只讀取開頭部分進行檢查
 
             # 不同格式的特徵
-            if file_ext == '.srt':
+            if file_ext == ".srt":
                 # SRT格式通常以數字索引開頭，然後是時間戳
-                return bool(re.search(r'^\d+\s*\n\d{2}:\d{2}:\d{2},\d{3}\s*-->', content, re.MULTILINE))
-            elif file_ext == '.vtt':
+                return bool(re.search(r"^\d+\s*\n\d{2}:\d{2}:\d{2},\d{3}\s*-->", content, re.MULTILINE))
+            elif file_ext == ".vtt":
                 # VTT格式通常以WEBVTT開頭
-                return 'WEBVTT' in content
-            elif file_ext in {'.ass', '.ssa'}:
+                return "WEBVTT" in content
+            elif file_ext in {".ass", ".ssa"}:
                 # ASS/SSA格式包含特定的節
-                return '[Script Info]' in content or '[V4+ Styles]' in content
+                return "[Script Info]" in content or "[V4+ Styles]" in content
     except Exception as e:
         logger.warning(f"檢查字幕文件 {file_path} 時發生錯誤: {e!s}")
         return False
@@ -428,12 +422,13 @@ def is_valid_subtitle_file(file_path: str) -> bool:
 
 # ================ 時間和格式工具 ================
 
+
 def format_elapsed_time(seconds: float) -> str:
     """格式化耗時為易讀格式
-    
+
     參數:
         seconds: 秒數
-        
+
     回傳:
         格式化的時間字符串
     """
@@ -453,11 +448,11 @@ def format_elapsed_time(seconds: float) -> str:
 
 def format_datetime(dt: datetime = None, format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
     """格式化日期時間
-    
+
     參數:
         dt: 日期時間對象，默認為當前時間
         format_str: 格式化字符串
-        
+
     回傳:
         格式化的日期時間字符串
     """
@@ -469,10 +464,10 @@ def format_datetime(dt: datetime = None, format_str: str = "%Y-%m-%d %H:%M:%S") 
 
 def format_file_size(size_bytes: int) -> str:
     """格式化文件大小
-    
+
     參數:
         size_bytes: 文件大小（字節）
-        
+
     回傳:
         格式化的文件大小字符串
     """
@@ -488,12 +483,13 @@ def format_file_size(size_bytes: int) -> str:
 
 # ================ 進度跟踪工具 ================
 
+
 class ProgressTracker:
     """進度追踪器，支持回調和估計剩餘時間"""
 
     def __init__(self, total: int = 0, description: str = "", callback: Callable = None):
         """初始化進度追踪器
-        
+
         參數:
             total: 總項目數
             description: 進度描述
@@ -524,7 +520,7 @@ class ProgressTracker:
 
     def update(self, current: int = None, increment: int = None, description: str = None):
         """更新進度
-        
+
         參數:
             current: 當前進度
             increment: 增量
@@ -554,7 +550,7 @@ class ProgressTracker:
 
     def increment(self, amount: int = 1, description: str = None):
         """增加進度
-        
+
         參數:
             amount: 增加量
             description: 更新的描述
@@ -563,7 +559,7 @@ class ProgressTracker:
 
     def complete(self, description: str = None):
         """完成進度追踪
-        
+
         參數:
             description: 完成描述
         """
@@ -592,12 +588,12 @@ class ProgressTracker:
                 total=self.total,
                 description=self.description,
                 elapsed=self.get_elapsed_time(),
-                remaining=self.get_estimated_remaining_time()
+                remaining=self.get_estimated_remaining_time(),
             )
 
     def get_elapsed_time(self) -> float:
         """獲取已耗時間（秒）
-        
+
         回傳:
             已耗時間（秒）
         """
@@ -607,7 +603,7 @@ class ProgressTracker:
 
     def get_elapsed_time_str(self) -> str:
         """獲取格式化的已耗時間
-        
+
         回傳:
             格式化的已耗時間字串
         """
@@ -615,7 +611,7 @@ class ProgressTracker:
 
     def get_estimated_remaining_time(self) -> float:
         """獲取估計剩餘時間（秒）
-        
+
         回傳:
             估計剩餘時間（秒）
         """
@@ -644,7 +640,7 @@ class ProgressTracker:
 
     def get_estimated_remaining_time_str(self) -> str:
         """獲取格式化的估計剩餘時間
-        
+
         回傳:
             格式化的估計剩餘時間字串
         """
@@ -652,7 +648,7 @@ class ProgressTracker:
 
     def get_progress_percentage(self) -> float:
         """獲取進度百分比
-        
+
         回傳:
             進度百分比 (0-100)
         """
@@ -662,7 +658,7 @@ class ProgressTracker:
 
     def get_status_text(self) -> str:
         """獲取完整的狀態文本
-        
+
         回傳:
             狀態文本
         """
@@ -673,14 +669,17 @@ class ProgressTracker:
         if self.current >= self.total:
             return f"{self.description}: 完成! ({elapsed})"
         else:
-            return f"{self.description}: {self.current}/{self.total} ({percent:.1f}%) - 已用: {elapsed}, 剩餘: {remaining}"
+            return (
+                f"{self.description}: {self.current}/{self.total} ({percent:.1f}%) - 已用: {elapsed}, 剩餘: {remaining}"
+            )
 
 
 # ================ 網絡檢查工具 ================
 
+
 def check_internet_connection() -> bool:
     """檢查互聯網連接是否正常
-    
+
     回傳:
         是否連接正常
     """
@@ -696,11 +695,11 @@ def check_internet_connection() -> bool:
 
 def check_api_connection(api_url: str, timeout: int = 5) -> bool:
     """檢查API連接是否正常
-    
+
     參數:
         api_url: API URL
         timeout: 超時（秒）
-        
+
     回傳:
         是否連接正常
     """
@@ -715,9 +714,10 @@ def check_api_connection(api_url: str, timeout: int = 5) -> bool:
 
 # ================ 系統信息工具 ================
 
+
 def get_system_info() -> Dict[str, Any]:
     """獲取系統信息
-    
+
     回傳:
         系統信息字典
     """
@@ -734,13 +734,13 @@ def get_system_info() -> Dict[str, Any]:
         "memory": {
             "total": psutil.virtual_memory().total,
             "available": psutil.virtual_memory().available,
-            "percent": psutil.virtual_memory().percent
+            "percent": psutil.virtual_memory().percent,
         },
         "disk": {
-            "total": psutil.disk_usage('/').total,
-            "free": psutil.disk_usage('/').free,
-            "percent": psutil.disk_usage('/').percent
-        }
+            "total": psutil.disk_usage("/").total,
+            "free": psutil.disk_usage("/").free,
+            "percent": psutil.disk_usage("/").percent,
+        },
     }
 
     # 格式化大小數值
@@ -754,7 +754,7 @@ def get_system_info() -> Dict[str, Any]:
 
 def check_python_packages() -> Dict[str, str]:
     """檢查關鍵Python包的版本
-    
+
     回傳:
         包名和版本字典
     """
@@ -762,10 +762,7 @@ def check_python_packages() -> Dict[str, str]:
 
     import pkg_resources
 
-    required_packages = [
-        "pysrt", "tiktoken", "aiohttp", "backoff", "openai",
-        "numpy", "matplotlib", "chardet"
-    ]
+    required_packages = ["pysrt", "tiktoken", "aiohttp", "backoff", "openai", "numpy", "matplotlib", "chardet"]
 
     package_versions = {}
 
@@ -776,9 +773,9 @@ def check_python_packages() -> Dict[str, str]:
             try:
                 # 嘗試直接導入並檢查版本
                 module = importlib.import_module(package)
-                if hasattr(module, '__version__'):
+                if hasattr(module, "__version__"):
                     package_versions[package] = module.__version__
-                elif hasattr(module, 'version'):
+                elif hasattr(module, "version"):
                     package_versions[package] = module.version
                 else:
                     package_versions[package] = "已安裝但無法確定版本"
@@ -790,12 +787,13 @@ def check_python_packages() -> Dict[str, str]:
 
 # ================ 本地化和國際化工具 ================
 
+
 class LocaleManager:
     """本地化管理器，處理多語言文本"""
 
     def __init__(self, locale_dir: str = "locales", default_locale: str = "zh-tw"):
         """初始化本地化管理器
-        
+
         參數:
             locale_dir: 本地化文件目錄
             default_locale: 默認語言代碼
@@ -813,10 +811,10 @@ class LocaleManager:
 
     def _load_locale(self, locale_code: str) -> bool:
         """載入特定語言的翻譯
-        
+
         參數:
             locale_code: 語言代碼
-            
+
         回傳:
             是否成功載入
         """
@@ -827,7 +825,7 @@ class LocaleManager:
 
         try:
             if os.path.exists(locale_file):
-                with open(locale_file, encoding='utf-8') as f:
+                with open(locale_file, encoding="utf-8") as f:
                     self.translations[locale_code] = json.load(f)
                 logger.debug(f"已載入語言文件: {locale_file}")
                 return True
@@ -846,10 +844,10 @@ class LocaleManager:
 
     def set_locale(self, locale_code: str) -> bool:
         """設置當前語言
-        
+
         參數:
             locale_code: 語言代碼
-            
+
         回傳:
             是否成功設置
         """
@@ -868,11 +866,11 @@ class LocaleManager:
 
     def get_text(self, key: str, **kwargs) -> str:
         """獲取本地化文本
-        
+
         參數:
             key: 文本鍵名
             **kwargs: 用於替換的參數
-            
+
         回傳:
             本地化的文本
         """
@@ -898,10 +896,10 @@ class LocaleManager:
 
     def save_translations(self, locale_code: str = None) -> bool:
         """保存翻譯到文件
-        
+
         參數:
             locale_code: 語言代碼，默認為當前語言
-            
+
         回傳:
             是否成功保存
         """
@@ -914,7 +912,7 @@ class LocaleManager:
         locale_file = os.path.join(self.locale_dir, f"{locale_code}.json")
 
         try:
-            with open(locale_file, 'w', encoding='utf-8') as f:
+            with open(locale_file, "w", encoding="utf-8") as f:
                 json.dump(self.translations[locale_code], f, ensure_ascii=False, indent=4)
             logger.info(f"已保存語言文件: {locale_file}")
             return True
@@ -924,12 +922,12 @@ class LocaleManager:
 
     def add_translation(self, key: str, text: str, locale_code: str = None) -> bool:
         """添加或更新翻譯
-        
+
         參數:
             key: 文本鍵名
             text: 翻譯文本
             locale_code: 語言代碼，默認為當前語言
-            
+
         回傳:
             是否成功添加
         """
@@ -948,7 +946,7 @@ class LocaleManager:
 
     def get_available_locales(self) -> List[str]:
         """獲取所有可用的語言
-        
+
         回傳:
             語言代碼列表
         """
@@ -957,7 +955,7 @@ class LocaleManager:
         # 檢查目錄中的語言文件
         if os.path.exists(self.locale_dir):
             for file in os.listdir(self.locale_dir):
-                if file.endswith('.json'):
+                if file.endswith(".json"):
                     locale_code = os.path.splitext(file)[0]
                     if locale_code not in locales:
                         locales.append(locale_code)
@@ -967,12 +965,13 @@ class LocaleManager:
 
 # ================ 快取工具 ================
 
+
 class MemoryCache:
     """簡單的記憶體快取實現"""
 
     def __init__(self, max_size: int = 1000, ttl: int = 3600):
         """初始化記憶體快取
-        
+
         參數:
             max_size: 最大項目數
             ttl: 存活時間（秒）
@@ -982,13 +981,13 @@ class MemoryCache:
         self.ttl = ttl
         self.lock = threading.RLock()
 
-    def get(self, key: str, default = None):
+    def get(self, key: str, default=None):
         """獲取快取項目
-        
+
         參數:
             key: 鍵名
             default: 默認返回值
-            
+
         回傳:
             快取值或默認值
         """
@@ -1008,12 +1007,12 @@ class MemoryCache:
 
     def set(self, key: str, value, ttl: int = None) -> bool:
         """設置快取項目
-        
+
         參數:
             key: 鍵名
             value: 值
             ttl: 此項目的存活時間（秒）
-            
+
         回傳:
             是否成功設置
         """
@@ -1024,20 +1023,16 @@ class MemoryCache:
 
             # 設置快取項目
             expires = time.time() + (ttl if ttl is not None else self.ttl)
-            self.cache[key] = {
-                "value": value,
-                "expires": expires,
-                "last_access": time.time()
-            }
+            self.cache[key] = {"value": value, "expires": expires, "last_access": time.time()}
 
             return True
 
     def delete(self, key: str) -> bool:
         """刪除快取項目
-        
+
         參數:
             key: 鍵名
-            
+
         回傳:
             是否成功刪除
         """
@@ -1074,16 +1069,12 @@ class MemoryCache:
 
     def get_stats(self) -> Dict[str, Any]:
         """獲取快取統計信息
-        
+
         回傳:
             統計信息字典
         """
         with self.lock:
-            stats = {
-                "size": len(self.cache),
-                "max_size": self.max_size,
-                "ttl": self.ttl
-            }
+            stats = {"size": len(self.cache), "max_size": self.max_size, "ttl": self.ttl}
 
             if self.cache:
                 now = time.time()
@@ -1103,27 +1094,22 @@ class MemoryCache:
 
 # ================ 執行常用命令工具 ================
 
+
 def execute_command(command: List[str], timeout: int = 60, capture_output: bool = True) -> Tuple[int, str, str]:
     """執行系統命令
-    
+
     參數:
         command: 命令列表
         timeout: 超時（秒）
         capture_output: 是否捕獲輸出
-        
+
     回傳:
         (返回碼, 標準輸出, 標準錯誤)
     """
     import subprocess
 
     try:
-        result = subprocess.run(
-            command,
-            timeout=timeout,
-            capture_output=capture_output,
-            text=True,
-            check=False
-        )
+        result = subprocess.run(command, timeout=timeout, capture_output=capture_output, text=True, check=False)
 
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
@@ -1134,14 +1120,15 @@ def execute_command(command: List[str], timeout: int = 60, capture_output: bool 
 
 def is_command_available(command: str) -> bool:
     """檢查命令是否可用
-    
+
     參數:
         command: 命令名稱
-        
+
     回傳:
         命令是否可用
     """
     import shutil
+
     return shutil.which(command) is not None
 
 
@@ -1183,8 +1170,11 @@ if __name__ == "__main__":
     print("\n3. 測試進度追踪工具")
 
     def progress_callback(current, total, description, elapsed, remaining):
-        print(f"\r{description}: {current}/{total} ({current/total*100:.1f}%) - "
-              f"已用: {format_elapsed_time(elapsed)}, 剩餘: {format_elapsed_time(remaining)}", end="")
+        print(
+            f"\r{description}: {current}/{total} ({current / total * 100:.1f}%) - "
+            f"已用: {format_elapsed_time(elapsed)}, 剩餘: {format_elapsed_time(remaining)}",
+            end="",
+        )
 
     tracker = ProgressTracker(total=10, description="處理文件", callback=progress_callback)
     tracker.start()
@@ -1201,7 +1191,9 @@ if __name__ == "__main__":
     system_info = get_system_info()
     print(f"操作系統: {system_info['system']} {system_info['version']}")
     print(f"Python版本: {system_info['python_version']}")
-    print(f"記憶體: {system_info['memory']['available_formatted']} 可用 / {system_info['memory']['total_formatted']} 總計")
+    print(
+        f"記憶體: {system_info['memory']['available_formatted']} 可用 / {system_info['memory']['total_formatted']} 總計"
+    )
 
     # 測試本地化工具
     print("\n5. 測試本地化工具")

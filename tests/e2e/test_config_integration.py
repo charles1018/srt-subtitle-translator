@@ -20,6 +20,7 @@ from srt_translator.services.factory import ServiceFactory
 # 配置載入測試（3 個測試）
 # ============================================================
 
+
 def test_load_default_config(e2e_temp_dir: Path):
     """測試 1：預設配置載入
 
@@ -74,10 +75,8 @@ def test_load_custom_config(fixtures_dir: Path, e2e_temp_dir: Path):
         config = ConfigManager.__new__(ConfigManager)
         config.config_type = "user"
         config.config_dir = str(temp_config_dir)  # 強制使用臨時目錄
-        config.config_paths = {
-            "user": str(temp_config_dir / "user_settings.json")
-        }
-        config.default_configs = ConfigManager().__dict__['default_configs']
+        config.config_paths = {"user": str(temp_config_dir / "user_settings.json")}
+        config.default_configs = ConfigManager().__dict__["default_configs"]
         config.listeners = []
         config.configs = {}
         config.load_config()
@@ -123,10 +122,8 @@ def test_invalid_config_handling(fixtures_dir: Path, e2e_temp_dir: Path):
         config = ConfigManager.__new__(ConfigManager)
         config.config_type = "user"
         config.config_dir = str(temp_config_dir)  # 強制使用臨時目錄
-        config.config_paths = {
-            "user": str(temp_config_dir / "user_settings.json")
-        }
-        config.default_configs = ConfigManager().__dict__['default_configs']
+        config.config_paths = {"user": str(temp_config_dir / "user_settings.json")}
+        config.default_configs = ConfigManager().__dict__["default_configs"]
         config.listeners = []
         config.configs = {}
         config.load_config()
@@ -147,9 +144,9 @@ def test_invalid_config_handling(fixtures_dir: Path, e2e_temp_dir: Path):
         assert "display_mode" in errors, "應該檢測到無效的顯示模式"
 
         # 驗證錯誤訊息有意義
-        assert any("無效" in str(msg) or "Invalid" in str(msg).lower()
-                   for msgs in errors.values() for msg in msgs), \
-               "錯誤訊息應該包含 '無效' 或 'Invalid'"
+        assert any("無效" in str(msg) or "Invalid" in str(msg).lower() for msgs in errors.values() for msg in msgs), (
+            "錯誤訊息應該包含 '無效' 或 'Invalid'"
+        )
 
     # 清理
     ConfigManager._instances.clear()
@@ -159,12 +156,9 @@ def test_invalid_config_handling(fixtures_dir: Path, e2e_temp_dir: Path):
 # 配置影響測試（4 個測試）
 # ============================================================
 
+
 @pytest.mark.asyncio
-async def test_model_config_affects_translation(
-    sample_srt_path: Path,
-    mock_translation_client,
-    e2e_temp_dir: Path
-):
+async def test_model_config_affects_translation(sample_srt_path: Path, mock_translation_client, e2e_temp_dir: Path):
     """測試 4：模型設定變更影響翻譯
 
     驗證：
@@ -189,18 +183,13 @@ async def test_model_config_affects_translation(
         # Mock 翻譯服務
         mock_translation_service = Mock()
         mock_translation_service.translate_text = AsyncMock(return_value="使用 GPT-4 翻譯")
-        ServiceFactory._instances['TranslationService'] = mock_translation_service
+        ServiceFactory._instances["TranslationService"] = mock_translation_service
 
         # 獲取翻譯服務
         translation_service = ServiceFactory.get_translation_service()
 
         # 執行翻譯
-        result = await translation_service.translate_text(
-            "Hello, world!",
-            [],
-            "openai",
-            "gpt-4"
-        )
+        result = await translation_service.translate_text("Hello, world!", [], "openai", "gpt-4")
 
         # 驗證使用正確的模型
         mock_translation_service.translate_text.assert_called_once()
@@ -216,12 +205,7 @@ async def test_model_config_affects_translation(
         mock_translation_service.translate_text.return_value = AsyncMock(return_value="使用 GPT-3.5 翻譯")()
 
         # 執行翻譯
-        result2 = await translation_service.translate_text(
-            "Hello, world!",
-            [],
-            "openai",
-            "gpt-3.5-turbo"
-        )
+        result2 = await translation_service.translate_text("Hello, world!", [], "openai", "gpt-3.5-turbo")
 
         # 驗證使用新的模型
         mock_translation_service.translate_text.assert_called_once()
@@ -234,10 +218,7 @@ async def test_model_config_affects_translation(
 
 
 @pytest.mark.asyncio
-async def test_cache_config_affects_behavior(
-    mock_translation_client,
-    e2e_temp_dir: Path
-):
+async def test_cache_config_affects_behavior(mock_translation_client, e2e_temp_dir: Path):
     """測試 5：快取設定變更影響行為
 
     驗證：
@@ -276,7 +257,7 @@ async def test_cache_config_affects_behavior(
         mock_cache_service = Mock()
         mock_cache_service.get_translation = Mock(return_value=None)
         mock_cache_service.store_translation = Mock(return_value=True)
-        ServiceFactory._instances['CacheService'] = mock_cache_service
+        ServiceFactory._instances["CacheService"] = mock_cache_service
 
         # 獲取快取服務
         cache_service = ServiceFactory.get_cache_service()

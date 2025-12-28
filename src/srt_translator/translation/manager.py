@@ -28,37 +28,35 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # 確保日誌目錄存在
-os.makedirs('logs', exist_ok=True)
+os.makedirs("logs", exist_ok=True)
 
 # 避免重複添加處理程序
 if not logger.handlers:
     handler = TimedRotatingFileHandler(
-        filename='logs/translation_manager.log',
-        when='midnight',
-        interval=1,
-        backupCount=7,
-        encoding='utf-8'
+        filename="logs/translation_manager.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
     )
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
+
 @dataclass
 class TranslationStats:
     """翻譯統計資訊類別"""
-    started_at: float = 0                # 開始時間（時間戳）
-    finished_at: float = 0               # 結束時間（時間戳）
-    total_subtitles: int = 0             # 總字幕數
-    translated_count: int = 0            # 已翻譯數量
-    failed_count: int = 0                # 失敗數量
-    skipped_count: int = 0               # 跳過數量
-    cached_count: int = 0                # 快取命中數量
-    total_chars: int = 0                 # 總字元數
-    total_wait_time: float = 0           # 總等待時間
-    total_processing_time: float = 0     # 總處理時間
-    batch_count: int = 0                 # 批次數量
-    retry_count: int = 0                 # 重試次數
-    errors: List[str] = None             # 錯誤訊息列表
+
+    started_at: float = 0  # 開始時間（時間戳）
+    finished_at: float = 0  # 結束時間（時間戳）
+    total_subtitles: int = 0  # 總字幕數
+    translated_count: int = 0  # 已翻譯數量
+    failed_count: int = 0  # 失敗數量
+    skipped_count: int = 0  # 跳過數量
+    cached_count: int = 0  # 快取命中數量
+    total_chars: int = 0  # 總字元數
+    total_wait_time: float = 0  # 總等待時間
+    total_processing_time: float = 0  # 總處理時間
+    batch_count: int = 0  # 批次數量
+    retry_count: int = 0  # 重試次數
+    errors: List[str] = None  # 錯誤訊息列表
 
     def __post_init__(self):
         if self.errors is None:
@@ -101,17 +99,28 @@ class TranslationStats:
             "翻譯速度": f"{self.get_translation_speed():.1f} 字幕/分鐘",
             "字元速度": f"{self.get_char_speed():.1f} 字元/分鐘",
             "批次數": self.batch_count,
-            "重試次數": self.retry_count
+            "重試次數": self.retry_count,
         }
+
 
 class TranslationManager:
     """翻譯管理器類別，處理字幕檔案的翻譯"""
 
-    def __init__(self, file_path: str, source_lang: str, target_lang: str,
-                 model_name: str, parallel_requests: int, progress_callback, complete_callback,
-                 display_mode: str, llm_type: str, api_key: str = None):
+    def __init__(
+        self,
+        file_path: str,
+        source_lang: str,
+        target_lang: str,
+        model_name: str,
+        parallel_requests: int,
+        progress_callback,
+        complete_callback,
+        display_mode: str,
+        llm_type: str,
+        api_key: str = None,
+    ):
         """初始化翻譯管理器
-        
+
         參數:
             file_path: 字幕檔案路徑
             source_lang: 來源語言
@@ -163,11 +172,13 @@ class TranslationManager:
         self.min_batch_size = 1
         self.max_batch_size = 20
         self.adaptive_batch_size = parallel_requests
-        self.batch_growth_rate = 1.5   # 每次成功後增加的倍率
-        self.batch_shrink_rate = 0.5   # 每次失敗後減少的倍率
+        self.batch_growth_rate = 1.5  # 每次成功後增加的倍率
+        self.batch_shrink_rate = 0.5  # 每次失敗後減少的倍率
 
         # 上下文視窗大小
-        self.context_window = get_config("model", "context_window", 3)  # 上下文視窗大小 (每側，從 5 改為 3 以減少 AI 混淆)
+        self.context_window = get_config(
+            "model", "context_window", 3
+        )  # 上下文視窗大小 (每側，從 5 改為 3 以減少 AI 混淆)
 
         # 重試設定
         self.max_retries = get_config("model", "max_retries", 3)
@@ -177,17 +188,17 @@ class TranslationManager:
 
     def _post_process_translation(self, original_text: str, translated_text: str) -> str:
         """對翻譯結果進行後處理，包括專有名詞統一和移除標點符號
-        
+
         參數:
             original_text: 原始文字
             translated_text: 翻譯文字
-            
+
         回傳:
             後處理後的翻譯文字
         """
         # 1. 處理專有名詞統一
         # 使用正則表達式識別可能的專有名詞（假設專有名詞通常是2-6個漢字的連續序列）
-        potential_terms = re.findall(r'[\u4e00-\u9fff]{2,6}', translated_text)
+        potential_terms = re.findall(r"[\u4e00-\u9fff]{2,6}", translated_text)
 
         # 對於每個潛在的專有名詞，檢查是否已在詞典中
         for term in potential_terms:
@@ -205,18 +216,18 @@ class TranslationManager:
 
         # 2. 移除中文標點符號，用空格替換
         # 定義中文標點符號
-        cn_punctuation = r'，。！？；：""''（）【】《》〈〉、…—～·「」『』〔〕'
+        cn_punctuation = r'，。！？；：""' "（）【】《》〈〉、…—～·「」『』〔〕"
         # 將標點符號替換為空格
         for punct in cn_punctuation:
-            translated_text = translated_text.replace(punct, ' ')
+            translated_text = translated_text.replace(punct, " ")
 
         # 替換英文標點符號
         en_punctuation = r',.!?;:"\'()[]<>-_'
         for punct in en_punctuation:
-            translated_text = translated_text.replace(punct, ' ')
+            translated_text = translated_text.replace(punct, " ")
 
         # 處理連續空格
-        translated_text = re.sub(r'\s+', ' ', translated_text)
+        translated_text = re.sub(r"\s+", " ", translated_text)
 
         return translated_text.strip()
 
@@ -235,7 +246,7 @@ class TranslationManager:
             os.makedirs(os.path.dirname(dict_path), exist_ok=True)
 
             # 儲存詞典
-            with open(dict_path, 'w', encoding='utf-8') as f:
+            with open(dict_path, "w", encoding="utf-8") as f:
                 json.dump(self._key_terms_dict, f, ensure_ascii=False, indent=2)
 
             logger.info(f"已儲存 {len(self._key_terms_dict)} 個專有名詞到檔案: {dict_path}")
@@ -263,10 +274,10 @@ class TranslationManager:
                 "translated_indices": list(self.translated_indices),
                 "stats": self.stats,
                 "timestamp": datetime.now().isoformat(),
-                "key_terms_dict": self._key_terms_dict  # 添加專有名詞詞典
+                "key_terms_dict": self._key_terms_dict,  # 添加專有名詞詞典
             }
 
-            with open(self.checkpoint_path, 'wb') as f:
+            with open(self.checkpoint_path, "wb") as f:
                 pickle.dump(checkpoint_data, f)
 
             logger.debug(f"已儲存翻譯進度到檢查點: {self.checkpoint_path}")
@@ -279,14 +290,15 @@ class TranslationManager:
             if not os.path.exists(self.checkpoint_path):
                 return False
 
-            with open(self.checkpoint_path, 'rb') as f:
+            with open(self.checkpoint_path, "rb") as f:
                 checkpoint_data = pickle.load(f)
 
             # 檢查檢查點是否與目前任務相符
-            if (checkpoint_data.get("file_path") == self.file_path and
-                checkpoint_data.get("target_lang") == self.target_lang and
-                checkpoint_data.get("model_name") == self.model_name):
-
+            if (
+                checkpoint_data.get("file_path") == self.file_path
+                and checkpoint_data.get("target_lang") == self.target_lang
+                and checkpoint_data.get("model_name") == self.model_name
+            ):
                 # 恢復已翻譯索引
                 self.translated_indices = set(checkpoint_data.get("translated_indices", []))
 
@@ -307,8 +319,10 @@ class TranslationManager:
                     self.stats.retry_count = saved_stats.retry_count
                     self.stats.errors = saved_stats.errors.copy() if saved_stats.errors else []
 
-                logger.info(f"已從檢查點恢復翻譯進度: {len(self.translated_indices)} 個已翻譯字幕，" +
-                           f"{len(self._key_terms_dict)} 個專有名詞")
+                logger.info(
+                    f"已從檢查點恢復翻譯進度: {len(self.translated_indices)} 個已翻譯字幕，"
+                    + f"{len(self._key_terms_dict)} 個專有名詞"
+                )
                 return True
             else:
                 logger.warning("檢查點與目前任務不符，將重新開始翻譯")
@@ -379,7 +393,7 @@ class TranslationManager:
     def _compute_optimal_batch_size(self, total_subs: int) -> int:
         """根據字幕總數和目前效能計算最佳批次大小"""
         # 基礎邏輯：檔案更大時使用更大的批次
-        if self.llm_type == 'openai':
+        if self.llm_type == "openai":
             # OpenAI有速率限制，使用較小批次
             base_size = min(5, self.parallel_requests)
         else:
@@ -402,7 +416,7 @@ class TranslationManager:
 
     async def _process_subtitle_batch(self, subs: List, batch_indices: List[int]) -> Tuple[int, int, int]:
         """處理一批字幕翻譯
-        
+
         回傳:
             Tuple[成功數, 失敗數, 跳過數]
         """
@@ -437,10 +451,7 @@ class TranslationManager:
         try:
             # 批量翻譯
             translations = await self.translation_service.translate_batch(
-                translation_requests,
-                self.llm_type,
-                self.model_name,
-                self.parallel_requests
+                translation_requests, self.llm_type, self.model_name, self.parallel_requests
             )
 
             # 處理結果
@@ -506,7 +517,7 @@ class TranslationManager:
 
     async def _translate_single_subtitle(self, sub, index: int, all_subs: List) -> bool:
         """翻譯單個字幕
-        
+
         回傳:
             bool: 是否成功翻譯
         """
@@ -596,7 +607,7 @@ class TranslationManager:
             self.stats.started_at = time.time()
 
             # 開啟SRT檔案
-            subs = pysrt.open(self.file_path, encoding='utf-8')
+            subs = pysrt.open(self.file_path, encoding="utf-8")
             self.stats.total_subtitles = len(subs)
 
             # 確定未處理的字幕索引
@@ -620,7 +631,7 @@ class TranslationManager:
                 await self.pause_event.wait()
 
                 # 提取本批次待處理的索引
-                batch_indices = pending_indices[i:i + batch_size]
+                batch_indices = pending_indices[i : i + batch_size]
 
                 # 處理該批次
                 self.stats.batch_count += 1
@@ -632,7 +643,9 @@ class TranslationManager:
                 batch_time = time.time() - batch_start
                 self.stats.total_processing_time += batch_time
 
-                logger.info(f"批次 {self.stats.batch_count} 完成: 成功={success}, 失敗={failed}, 跳過={skipped}, 耗時={batch_time:.2f}秒")
+                logger.info(
+                    f"批次 {self.stats.batch_count} 完成: 成功={success}, 失敗={failed}, 跳過={skipped}, 耗時={batch_time:.2f}秒"
+                )
 
                 # 每批次後儲存進度
                 if self.running:
@@ -655,10 +668,11 @@ class TranslationManager:
                 self._save_key_terms_dictionary()
 
                 # 取得輸出路徑並儲存檔案
-                output_path = self.file_service.get_output_path(self.file_path, self.target_lang,
-                                                               self.progress_callback)
+                output_path = self.file_service.get_output_path(
+                    self.file_path, self.target_lang, self.progress_callback
+                )
                 if output_path:
-                    subs.save(output_path, encoding='utf-8')
+                    subs.save(output_path, encoding="utf-8")
 
                     if self.complete_callback:
                         self.complete_callback(f"翻譯完成 | 檔案已成功儲存為: {output_path}", elapsed_str)
@@ -684,10 +698,22 @@ class TranslationManager:
 
 class TranslationThread(threading.Thread):
     """翻譯執行緒"""
-    def __init__(self, file_path, source_lang, target_lang, model_name, parallel_requests,
-                 display_mode, llm_type, progress_callback=None, complete_callback=None, api_key=None):
+
+    def __init__(
+        self,
+        file_path,
+        source_lang,
+        target_lang,
+        model_name,
+        parallel_requests,
+        display_mode,
+        llm_type,
+        progress_callback=None,
+        complete_callback=None,
+        api_key=None,
+    ):
         """初始化翻譯執行緒
-        
+
         參數:
             file_path: 字幕檔案路徑
             source_lang: 來源語言
@@ -731,6 +757,7 @@ class TranslationThread(threading.Thread):
 
     def _run_async(self):
         """在新的事件循環中執行非同步翻譯"""
+
         async def async_run():
             # 初始化翻譯管理器
             self.manager = TranslationManager(
@@ -743,7 +770,7 @@ class TranslationThread(threading.Thread):
                 self._complete_wrapper,
                 self.display_mode,
                 self.llm_type,
-                self.api_key
+                self.api_key,
             )
 
             # 初始化管理器
@@ -828,7 +855,7 @@ class TranslationThread(threading.Thread):
 
     def get_statistics(self) -> Dict[str, Any]:
         """取得翻譯統計資訊"""
-        if self.manager and hasattr(self.manager, 'stats'):
+        if self.manager and hasattr(self.manager, "stats"):
             return self.manager.stats.get_summary()
         return {}
 
@@ -851,13 +878,20 @@ class TranslationTaskManager:
 
         logger.info("初始化翻譯任務管理器")
 
-    def start_translation(self, files: List[str],
-                        source_lang: str, target_lang: str,
-                        model_name: str, parallel_requests: int,
-                        display_mode: str, llm_type: str,
-                        progress_callback=None, complete_callback=None) -> bool:
+    def start_translation(
+        self,
+        files: List[str],
+        source_lang: str,
+        target_lang: str,
+        model_name: str,
+        parallel_requests: int,
+        display_mode: str,
+        llm_type: str,
+        progress_callback=None,
+        complete_callback=None,
+    ) -> bool:
         """開始翻譯多個檔案
-        
+
         參數:
             files: 字幕檔案路徑列表
             source_lang: 來源語言
@@ -868,7 +902,7 @@ class TranslationTaskManager:
             llm_type: LLM類型
             progress_callback: 進度回調函數
             complete_callback: 完成回調函數
-            
+
         回傳:
             是否成功啟動翻譯
         """
@@ -898,7 +932,7 @@ class TranslationTaskManager:
                 llm_type,
                 progress_callback,
                 self._complete_wrapper(file_path, complete_callback),
-                api_key
+                api_key,
             )
 
             self.tasks[file_path] = task
@@ -909,6 +943,7 @@ class TranslationTaskManager:
 
     def _complete_wrapper(self, file_path: str, original_callback):
         """包裝完成回調函數，以便追蹤已完成的檔案數"""
+
         def wrapper(message, elapsed_time):
             """內部包裝函數，在執行原始回調前更新完成計數"""
             self.completed_files += 1
@@ -949,7 +984,7 @@ class TranslationTaskManager:
 
     def is_any_running(self) -> bool:
         """檢查是否有任務正在執行
-        
+
         回傳:
             是否有任務正在執行
         """
@@ -957,7 +992,7 @@ class TranslationTaskManager:
 
     def is_all_paused(self) -> bool:
         """檢查是否所有任務都已暫停
-        
+
         回傳:
             是否所有任務都已暫停
         """
@@ -967,7 +1002,7 @@ class TranslationTaskManager:
 
     def get_active_task_count(self) -> int:
         """獲取活躍任務數量
-        
+
         回傳:
             活躍任務數量
         """
@@ -978,7 +1013,7 @@ class TranslationTaskManager:
 if __name__ == "__main__":
     # 設定控制台日誌以便於測試
     console_handler = logging.StreamHandler()
-    console_formatter = logging.Formatter('%(levelname)s - %(message)s')
+    console_formatter = logging.Formatter("%(levelname)s - %(message)s")
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 
@@ -1002,6 +1037,7 @@ if __name__ == "__main__":
         print(f"{message} | 耗時: {elapsed_time}")
 
     import sys
+
     if len(sys.argv) > 1:
         test_file = sys.argv[1]
     else:
@@ -1017,15 +1053,7 @@ if __name__ == "__main__":
 
         # 啟動翻譯
         manager.start_translation(
-            [test_file],
-            "日文",
-            "繁體中文",
-            "llama3",
-            2,
-            "雙語對照",
-            "ollama",
-            progress,
-            complete
+            [test_file], "日文", "繁體中文", "llama3", 2, "雙語對照", "ollama", progress, complete
         )
 
         # 等待所有任務完成

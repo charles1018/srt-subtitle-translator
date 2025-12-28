@@ -13,16 +13,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # 確保日誌目錄存在
-os.makedirs('logs', exist_ok=True)
+os.makedirs("logs", exist_ok=True)
 
 # 避免重複添加處理程序
 if not logger.handlers:
     handler = TimedRotatingFileHandler(
-        filename='logs/config_manager.log',
-        when='midnight',
-        interval=1,
-        backupCount=7,
-        encoding='utf-8'
+        filename="logs/config_manager.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
     )
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
     handler.setFormatter(formatter)
@@ -33,15 +29,15 @@ class ConfigManager:
     """配置管理器，統一管理系統的各種配置"""
 
     # 類變量，儲存已建立的配置管理器實例（單例模式）
-    _instances: Dict[str, 'ConfigManager'] = {}
+    _instances: Dict[str, "ConfigManager"] = {}
 
     @classmethod
-    def get_instance(cls, config_type: str = "app") -> 'ConfigManager':
+    def get_instance(cls, config_type: str = "app") -> "ConfigManager":
         """獲取配置管理器實例（單例模式）
-        
+
         參數:
             config_type: 配置類型，用於區分不同的配置管理器實例
-            
+
         回傳:
             配置管理器實例
         """
@@ -51,7 +47,7 @@ class ConfigManager:
 
     def __init__(self, config_type: str = "app"):
         """初始化配置管理器
-        
+
         參數:
             config_type: 配置類型，影響配置檔案的路徑和預設值
         """
@@ -86,7 +82,7 @@ class ConfigManager:
 
     def _get_default_configs(self) -> Dict[str, Dict[str, Any]]:
         """獲取預設配置值
-        
+
         回傳:
             包含各類型預設配置的字典
         """
@@ -98,7 +94,7 @@ class ConfigManager:
                 "checkpoints_dir": "data/checkpoints",
                 "logs_dir": "logs",
                 "cache_expiry": 30,  # 天數
-                "last_update": datetime.now().isoformat()
+                "last_update": datetime.now().isoformat(),
             },
             "user": {
                 "source_lang": "日文",
@@ -110,7 +106,7 @@ class ConfigManager:
                 "theme": "default",
                 "play_sound": True,
                 "auto_save": True,
-                "last_directory": ""
+                "last_directory": "",
             },
             "model": {
                 "ollama_url": "http://localhost:11434",
@@ -119,16 +115,25 @@ class ConfigManager:
                 "connect_timeout": 5,
                 "request_timeout": 10,
                 "model_patterns": [
-                    'llama', 'mixtral', 'aya', 'yi', 'qwen', 'solar',
-                    'mistral', 'openchat', 'neural', 'phi', 'stable',
-                    'dolphin', 'vicuna', 'zephyr', 'gemma', 'deepseek'
+                    "llama",
+                    "mixtral",
+                    "aya",
+                    "yi",
+                    "qwen",
+                    "solar",
+                    "mistral",
+                    "openchat",
+                    "neural",
+                    "phi",
+                    "stable",
+                    "dolphin",
+                    "vicuna",
+                    "zephyr",
+                    "gemma",
+                    "deepseek",
                 ],
                 "default_providers": ["ollama", "openai"],
-                "translation_capability_weight": {
-                    "translation": 0.7,
-                    "multilingual": 0.2,
-                    "context_handling": 0.1
-                }
+                "translation_capability_weight": {"translation": 0.7, "multilingual": 0.2, "context_handling": 0.1},
             },
             "prompt": {
                 "current_content_type": "general",
@@ -147,27 +152,23 @@ class ConfigManager:
                     "法文": ".fr",
                     "德文": ".de",
                     "西班牙文": ".es",
-                    "俄文": ".ru"
+                    "俄文": ".ru",
                 },
                 "supported_formats": [
                     (".srt", "SRT字幕檔"),
                     (".vtt", "WebVTT字幕檔"),
                     (".ass", "ASS字幕檔"),
                     (".ssa", "SSA字幕檔"),
-                    (".sub", "SUB字幕檔")
+                    (".sub", "SUB字幕檔"),
                 ],
                 "batch_settings": {
                     "name_pattern": "{filename}_{language}{ext}",
                     "overwrite_mode": "ask",
                     "output_directory": "",
-                    "preserve_folder_structure": True
-                }
+                    "preserve_folder_structure": True,
+                },
             },
-            "cache": {
-                "db_path": "data/translation_cache.db",
-                "max_memory_cache": 1000,
-                "auto_cleanup_days": 30
-            },
+            "cache": {"db_path": "data/translation_cache.db", "max_memory_cache": 1000, "auto_cleanup_days": 30},
             "theme": {
                 "colors": {
                     "primary": "#3498db",
@@ -176,16 +177,15 @@ class ConfigManager:
                     "text": "#333333",
                     "accent": "#e74c3c",
                     "button": "#3498db",
-                    "button_hover": "#2980b9"
+                    "button_hover": "#2980b9",
                 },
                 "font_size": "medium",
-                "font_family": "Default"
-            }
+                "font_family": "Default",
+            },
         }
 
     def load_config(self) -> None:
-        """載入配置檔案，如果檔案不存在則使用預設值
-        """
+        """載入配置檔案，如果檔案不存在則使用預設值"""
         if self.config_type == "all":
             # 載入所有配置
             for config_type in self.config_paths.keys():
@@ -196,7 +196,7 @@ class ConfigManager:
 
     def _load_specific_config(self, config_type: str) -> None:
         """載入特定類型的配置
-        
+
         參數:
             config_type: 配置類型
         """
@@ -210,7 +210,7 @@ class ConfigManager:
 
         try:
             if os.path.exists(config_path):
-                with open(config_path, encoding='utf-8') as f:
+                with open(config_path, encoding="utf-8") as f:
                     loaded_config = json.load(f)
 
                 # 將預設配置與載入的配置合併
@@ -229,11 +229,11 @@ class ConfigManager:
 
     def _merge_configs(self, default_config: Dict[str, Any], loaded_config: Dict[str, Any]) -> Dict[str, Any]:
         """合併預設配置和載入的配置，確保所有必要的配置項都存在
-        
+
         參數:
             default_config: 預設配置
             loaded_config: 從檔案載入的配置
-            
+
         回傳:
             合併後的配置
         """
@@ -242,8 +242,7 @@ class ConfigManager:
         # 遞迴合併配置
         def merge_dict(base: Dict[str, Any], override: Dict[str, Any]) -> None:
             for key, value in override.items():
-                if (key in base and isinstance(base[key], dict) and
-                    isinstance(value, dict)):
+                if key in base and isinstance(base[key], dict) and isinstance(value, dict):
                     # 遞迴合併嵌套字典
                     merge_dict(base[key], value)
                 else:
@@ -255,7 +254,7 @@ class ConfigManager:
 
     def save_config(self) -> bool:
         """儲存當前配置
-        
+
         回傳:
             是否儲存成功
         """
@@ -272,10 +271,10 @@ class ConfigManager:
 
     def _save_specific_config(self, config_type: str) -> bool:
         """儲存特定類型的配置
-        
+
         參數:
             config_type: 配置類型
-            
+
         回傳:
             是否儲存成功
         """
@@ -296,7 +295,7 @@ class ConfigManager:
                 config["last_update"] = datetime.now().isoformat()
 
             # 儲存到檔案
-            with open(config_path, 'w', encoding='utf-8') as f:
+            with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, ensure_ascii=False, indent=4)
 
             logger.debug(f"已儲存配置: {config_path}")
@@ -315,10 +314,10 @@ class ConfigManager:
 
     def get_config(self, config_type: str = None) -> Dict[str, Any]:
         """獲取完整配置
-        
+
         參數:
             config_type: 配置類型，若為None則使用當前實例的類型
-            
+
         回傳:
             配置字典，若不存在則回傳空字典
         """
@@ -335,12 +334,12 @@ class ConfigManager:
 
     def get_value(self, key: str, config_type: str = None, default: Any = None) -> Any:
         """獲取特定配置值
-        
+
         參數:
             key: 配置鍵，支援點號分隔的路徑（如 "theme.colors.primary"）
             config_type: 配置類型，若為None則使用當前實例的類型
             default: 若配置不存在時的預設回傳值
-            
+
         回傳:
             配置值，若不存在則回傳 default
         """
@@ -365,13 +364,13 @@ class ConfigManager:
 
     def set_value(self, key: str, value: Any, config_type: str = None, auto_save: bool = True) -> bool:
         """設置特定配置值
-        
+
         參數:
             key: 配置鍵，支援點號分隔的路徑
             value: 配置值
             config_type: 配置類型，若為None則使用當前實例的類型
             auto_save: 是否自動儲存配置
-            
+
         回傳:
             是否設置成功
         """
@@ -407,7 +406,7 @@ class ConfigManager:
 
     def add_listener(self, listener_func: callable) -> None:
         """添加配置變更監聽器
-        
+
         參數:
             listener_func: 監聽器函數，接收參數 (config_type, config)
         """
@@ -416,7 +415,7 @@ class ConfigManager:
 
     def remove_listener(self, listener_func: callable) -> None:
         """移除配置變更監聽器
-        
+
         參數:
             listener_func: 要移除的監聽器函數
         """
@@ -425,11 +424,11 @@ class ConfigManager:
 
     def reset_to_default(self, config_type: str = None, keys: List[str] = None) -> bool:
         """重置配置為預設值
-        
+
         參數:
             config_type: 配置類型，若為None則使用當前實例的類型
             keys: 要重置的特定鍵列表，若為None則重置整個配置
-            
+
         回傳:
             是否重置成功
         """
@@ -453,11 +452,11 @@ class ConfigManager:
 
     def export_config(self, export_path: str, config_type: str = None) -> bool:
         """匯出配置到指定路徑
-        
+
         參數:
             export_path: 匯出路徑
             config_type: 配置類型，若為None則使用當前實例的類型
-            
+
         回傳:
             是否匯出成功
         """
@@ -469,16 +468,12 @@ class ConfigManager:
 
             # 準備匯出資料
             export_data = {
-                "metadata": {
-                    "exported_at": datetime.now().isoformat(),
-                    "config_type": config_type,
-                    "version": "1.0.0"
-                },
-                "config": self.get_config(config_type)
+                "metadata": {"exported_at": datetime.now().isoformat(), "config_type": config_type, "version": "1.0.0"},
+                "config": self.get_config(config_type),
             }
 
             # 寫入檔案
-            with open(export_path, 'w', encoding='utf-8') as f:
+            with open(export_path, "w", encoding="utf-8") as f:
                 json.dump(export_data, f, ensure_ascii=False, indent=4)
 
             logger.info(f"已匯出配置至: {export_path}")
@@ -489,19 +484,19 @@ class ConfigManager:
 
     def import_config(self, import_path: str, config_type: str = None, merge: bool = True) -> bool:
         """從檔案匯入配置
-        
+
         參數:
             import_path: 匯入路徑
             config_type: 配置類型，若為None則使用當前實例的類型
             merge: 是否合併現有配置，若為False則完全替換
-            
+
         回傳:
             是否匯入成功
         """
         config_type = config_type or self.config_type
 
         try:
-            with open(import_path, encoding='utf-8') as f:
+            with open(import_path, encoding="utf-8") as f:
                 import_data = json.load(f)
 
             # 驗證匯入資料格式
@@ -534,10 +529,10 @@ class ConfigManager:
 
     def validate_config(self, config_type: str = None) -> Dict[str, List[str]]:
         """驗證配置是否符合預期格式和規則
-        
+
         參數:
             config_type: 配置類型，若為None則使用當前實例的類型
-            
+
         回傳:
             錯誤訊息字典，鍵為配置路徑，值為錯誤訊息列表，空字典表示驗證通過
         """
@@ -552,7 +547,7 @@ class ConfigManager:
             "prompt": self._validate_prompt_config,
             "file": self._validate_file_config,
             "cache": self._validate_cache_config,
-            "theme": self._validate_theme_config
+            "theme": self._validate_theme_config,
         }
 
         # 執行驗證
@@ -583,7 +578,7 @@ class ConfigManager:
 
         # 版本號格式
         version = config.get("version", "")
-        if not isinstance(version, str) or not re.match(r'^\d+\.\d+\.\d+$', version):
+        if not isinstance(version, str) or not re.match(r"^\d+\.\d+\.\d+$", version):
             errors["version"] = ["版本號必須符合 'x.y.z' 格式"]
 
         # 目錄路徑
@@ -638,7 +633,9 @@ class ConfigManager:
 
         # Ollama URL
         ollama_url = config.get("ollama_url", "")
-        if not isinstance(ollama_url, str) or not (ollama_url.startswith("http://") or ollama_url.startswith("https://")):
+        if not isinstance(ollama_url, str) or not (
+            ollama_url.startswith("http://") or ollama_url.startswith("https://")
+        ):
             errors["ollama_url"] = ["必須為有效的 HTTP/HTTPS URL"]
 
         # 逾時設定
@@ -680,8 +677,15 @@ class ConfigManager:
         # 語言對
         language_pair = config.get("current_language_pair", "")
         valid_lang_pairs = [
-            "日文→繁體中文", "英文→繁體中文", "繁體中文→英文", "簡體中文→繁體中文",
-            "韓文→繁體中文", "法文→繁體中文", "德文→繁體中文", "西班牙文→繁體中文", "俄文→繁體中文"
+            "日文→繁體中文",
+            "英文→繁體中文",
+            "繁體中文→英文",
+            "簡體中文→繁體中文",
+            "韓文→繁體中文",
+            "法文→繁體中文",
+            "德文→繁體中文",
+            "西班牙文→繁體中文",
+            "俄文→繁體中文",
         ]
         if language_pair not in valid_lang_pairs:
             errors["current_language_pair"] = [f"無效的語言對，有效選項: {', '.join(valid_lang_pairs)}"]
@@ -716,8 +720,12 @@ class ConfigManager:
             errors["supported_formats"] = ["必須為列表格式"]
         else:
             for i, fmt in enumerate(formats):
-                if (not isinstance(fmt, (list, tuple)) or len(fmt) != 2 or
-                    not isinstance(fmt[0], str) or not isinstance(fmt[1], str)):
+                if (
+                    not isinstance(fmt, (list, tuple))
+                    or len(fmt) != 2
+                    or not isinstance(fmt[0], str)
+                    or not isinstance(fmt[1], str)
+                ):
                     errors[f"supported_formats[{i}]"] = ["必須為 (副檔名, 描述) 的二元組"]
 
         # 批次設定
@@ -768,7 +776,7 @@ class ConfigManager:
             errors["colors"] = ["必須為字典格式"]
         else:
             for key, color in colors.items():
-                if not isinstance(color, str) or not color.startswith("#") or not re.match(r'^#[0-9A-Fa-f]{6}$', color):
+                if not isinstance(color, str) or not color.startswith("#") or not re.match(r"^#[0-9A-Fa-f]{6}$", color):
                     errors[f"colors.{key}"] = ["必須為有效的十六進位色碼 (#RRGGBB)"]
 
         # 字型大小
@@ -780,10 +788,10 @@ class ConfigManager:
 
     def create_backup(self, config_type: str = None) -> Optional[str]:
         """建立配置備份
-        
+
         參數:
             config_type: 配置類型，若為None則使用當前實例的類型
-            
+
         回傳:
             備份檔案路徑，若失敗則回傳 None
         """
@@ -810,11 +818,11 @@ class ConfigManager:
 
     def restore_backup(self, backup_path: str, config_type: str = None) -> bool:
         """從備份還原配置
-        
+
         參數:
             backup_path: 備份檔案路徑
             config_type: 配置類型，若為None則使用當前實例的類型
-            
+
         回傳:
             是否還原成功
         """
@@ -838,10 +846,10 @@ class ConfigManager:
 
     def list_backups(self, config_type: str = None) -> List[Dict[str, Any]]:
         """列出可用的配置備份
-        
+
         參數:
             config_type: 配置類型，若為None則列出所有備份
-            
+
         回傳:
             備份資訊列表，每個項目包含路徑、類型、時間等資訊
         """
@@ -856,7 +864,7 @@ class ConfigManager:
             backup_pattern = f"{config_type}_config_*.json" if config_type else "*_config_*.json"
             for file in Path(backup_dir).glob(backup_pattern):
                 try:
-                    with open(file, encoding='utf-8') as f:
+                    with open(file, encoding="utf-8") as f:
                         data = json.load(f)
 
                     metadata = data.get("metadata", {})
@@ -867,7 +875,7 @@ class ConfigManager:
                         "config_type": metadata.get("config_type", "unknown"),
                         "exported_at": metadata.get("exported_at", "unknown"),
                         "size": file.stat().st_size,
-                        "last_modified": datetime.fromtimestamp(file.stat().st_mtime).isoformat()
+                        "last_modified": datetime.fromtimestamp(file.stat().st_mtime).isoformat(),
                     }
 
                     backups.append(backup_info)
@@ -884,10 +892,10 @@ class ConfigManager:
 
     def is_config_valid(self, config_type: str = None) -> bool:
         """檢查配置是否有效
-        
+
         參數:
             config_type: 配置類型，若為None則使用當前實例的類型
-            
+
         回傳:
             配置是否有效
         """
@@ -896,10 +904,10 @@ class ConfigManager:
 
     def get_config_path(self, config_type: str = None) -> str:
         """獲取配置檔案路徑
-        
+
         參數:
             config_type: 配置類型，若為None則使用當前實例的類型
-            
+
         回傳:
             配置檔案路徑
         """
@@ -910,12 +918,12 @@ class ConfigManager:
 # 全域函數：快速存取配置
 def get_config(config_type: str = "app", key: str = None, default: Any = None) -> Any:
     """全域函數：快速存取配置
-    
+
     參數:
         config_type: 配置類型
         key: 配置鍵，若為None則回傳整個配置
         default: 若配置不存在時的預設回傳值
-        
+
     回傳:
         配置值或整個配置字典
     """
@@ -927,13 +935,13 @@ def get_config(config_type: str = "app", key: str = None, default: Any = None) -
 
 def set_config(config_type: str, key: str, value: Any, auto_save: bool = True) -> bool:
     """全域函數：快速設置配置
-    
+
     參數:
         config_type: 配置類型
         key: 配置鍵
         value: 配置值
         auto_save: 是否自動儲存配置
-        
+
     回傳:
         是否設置成功
     """

@@ -50,6 +50,7 @@ from srt_translator.utils.helpers import (
 # 錯誤處理工具測試
 # ============================================================
 
+
 class TestErrorHandling:
     """測試錯誤處理工具"""
 
@@ -80,6 +81,7 @@ class TestErrorHandling:
 
     def test_safe_execute_success(self):
         """測試成功執行函數"""
+
         def add(a, b):
             return a + b
 
@@ -88,6 +90,7 @@ class TestErrorHandling:
 
     def test_safe_execute_with_exception(self):
         """測試執行失敗時返回默認值"""
+
         def failing_func():
             raise ValueError("Test error")
 
@@ -96,6 +99,7 @@ class TestErrorHandling:
 
     def test_safe_execute_with_kwargs(self):
         """測試帶關鍵字參數的執行"""
+
         def concat(a, b, sep="-"):
             return f"{a}{sep}{b}"
 
@@ -106,6 +110,7 @@ class TestErrorHandling:
 # ============================================================
 # SRT 字幕處理擴展測試
 # ============================================================
+
 
 class TestSubtitleProcessingExtended:
     """測試字幕處理工具的擴展功能"""
@@ -122,7 +127,7 @@ Hello, world!
 00:00:04.000 --> 00:00:06.000
 This is a test."""
         vtt_file = temp_dir / "test.vtt"
-        vtt_file.write_text(vtt_content, encoding='utf-8')
+        vtt_file.write_text(vtt_content, encoding="utf-8")
         assert is_valid_subtitle_file(str(vtt_file)) is True
 
     def test_is_valid_subtitle_file_ass(self, temp_dir):
@@ -134,7 +139,7 @@ ScriptType: v4.00+
 [V4+ Styles]
 Format: Name, Fontname, Fontsize"""
         ass_file = temp_dir / "test.ass"
-        ass_file.write_text(ass_content, encoding='utf-8')
+        ass_file.write_text(ass_content, encoding="utf-8")
         assert is_valid_subtitle_file(str(ass_file)) is True
 
     def test_is_valid_subtitle_file_ssa(self, temp_dir):
@@ -143,19 +148,19 @@ Format: Name, Fontname, Fontsize"""
 Title: Test SSA
 ScriptType: v4.00"""
         ssa_file = temp_dir / "test.ssa"
-        ssa_file.write_text(ssa_content, encoding='utf-8')
+        ssa_file.write_text(ssa_content, encoding="utf-8")
         assert is_valid_subtitle_file(str(ssa_file)) is True
 
     def test_is_valid_subtitle_file_invalid_content(self, temp_dir):
         """測試擴展名正確但內容無效的 SRT 文件"""
         invalid_file = temp_dir / "invalid.srt"
-        invalid_file.write_text("This is not a valid SRT content", encoding='utf-8')
+        invalid_file.write_text("This is not a valid SRT content", encoding="utf-8")
         assert is_valid_subtitle_file(str(invalid_file)) is False
 
     def test_is_valid_subtitle_file_empty(self, temp_dir):
         """測試空的字幕文件"""
         empty_file = temp_dir / "empty.srt"
-        empty_file.write_text("", encoding='utf-8')
+        empty_file.write_text("", encoding="utf-8")
         assert is_valid_subtitle_file(str(empty_file)) is False
 
     def test_is_valid_subtitle_file_none(self):
@@ -165,7 +170,7 @@ ScriptType: v4.00"""
     def test_is_valid_subtitle_file_sub_format(self, temp_dir):
         """測試 SUB 格式（擴展名有效但內容未特別驗證）"""
         sub_file = temp_dir / "test.sub"
-        sub_file.write_text("Some subtitle content", encoding='utf-8')
+        sub_file.write_text("Some subtitle content", encoding="utf-8")
         # SUB 格式沒有特定內容檢查，只要有內容就視為有效
         assert is_valid_subtitle_file(str(sub_file)) is True
 
@@ -257,6 +262,7 @@ ScriptType: v4.00"""
 # 時間格式化工具擴展測試
 # ============================================================
 
+
 class TestTimeFormatExtended:
     """測試時間格式化工具的擴展功能"""
 
@@ -300,6 +306,7 @@ class TestTimeFormatExtended:
 # ============================================================
 # 文本處理擴展測試
 # ============================================================
+
 
 class TestTextProcessingExtended:
     """測試文本處理的擴展功能"""
@@ -348,6 +355,7 @@ class TestTextProcessingExtended:
 # LocaleManager 完整測試
 # ============================================================
 
+
 class TestLocaleManager:
     """測試 LocaleManager 類"""
 
@@ -365,7 +373,7 @@ class TestLocaleManager:
 
         # 創建語言文件
         locale_file = locale_dir / "en.json"
-        locale_file.write_text(json.dumps({"hello": "Hello"}), encoding='utf-8')
+        locale_file.write_text(json.dumps({"hello": "Hello"}), encoding="utf-8")
 
         assert manager.set_locale("en") is True
         assert manager.current_locale == "en"
@@ -409,8 +417,8 @@ class TestLocaleManager:
         manager = LocaleManager(locale_dir=str(locale_dir))
 
         # 創建多個語言文件
-        (locale_dir / "en.json").write_text("{}", encoding='utf-8')
-        (locale_dir / "ja.json").write_text("{}", encoding='utf-8')
+        (locale_dir / "en.json").write_text("{}", encoding="utf-8")
+        (locale_dir / "ja.json").write_text("{}", encoding="utf-8")
 
         available = manager.get_available_locales()
         assert "en" in available or "ja" in available
@@ -421,7 +429,7 @@ class TestLocaleManager:
         manager = LocaleManager(locale_dir=str(locale_dir))
 
         # 創建語言文件
-        (locale_dir / "zh-tw.json").write_text("{}", encoding='utf-8')
+        (locale_dir / "zh-tw.json").write_text("{}", encoding="utf-8")
 
         # 使用各種變體設置語言
         assert manager.set_locale("繁體中文") in [True, False]  # 可能成功或失敗
@@ -430,6 +438,7 @@ class TestLocaleManager:
 # ============================================================
 # MemoryCache 擴展測試
 # ============================================================
+
 
 class TestMemoryCacheExtended:
     """測試 MemoryCache 的擴展功能"""
@@ -474,6 +483,7 @@ class TestMemoryCacheExtended:
 # ============================================================
 # ProgressTracker 擴展測試
 # ============================================================
+
 
 class TestProgressTrackerExtended:
     """測試 ProgressTracker 的擴展功能"""
@@ -534,32 +544,34 @@ class TestProgressTrackerExtended:
 # 網路檢查工具測試（使用 Mock）
 # ============================================================
 
+
 class TestNetworkTools:
     """測試網路檢查工具"""
 
-    @patch('socket.create_connection')
+    @patch("socket.create_connection")
     def test_check_internet_connection_success(self, mock_socket):
         """測試網路連接成功"""
         mock_socket.return_value = Mock()
         result = check_internet_connection()
         assert result is True
 
-    @patch('socket.create_connection')
+    @patch("socket.create_connection")
     def test_check_internet_connection_failure(self, mock_socket):
         """測試網路連接失敗"""
         import socket
+
         mock_socket.side_effect = socket.timeout()
         result = check_internet_connection()
         assert result is False
 
-    @patch('urllib.request.urlopen')
+    @patch("urllib.request.urlopen")
     def test_check_api_connection_success(self, mock_urlopen):
         """測試 API 連接成功"""
         mock_urlopen.return_value = Mock()
         result = check_api_connection("http://example.com/api")
         assert result is True
 
-    @patch('urllib.request.urlopen')
+    @patch("urllib.request.urlopen")
     def test_check_api_connection_failure(self, mock_urlopen):
         """測試 API 連接失敗"""
         mock_urlopen.side_effect = Exception("Connection failed")
@@ -571,18 +583,18 @@ class TestNetworkTools:
 # 系統信息工具測試（使用 Mock）
 # ============================================================
 
+
 class TestSystemInfo:
     """測試系統信息工具"""
 
-    @patch('platform.system')
-    @patch('platform.version')
-    @patch('platform.platform')
-    @patch('platform.python_version')
-    @patch('psutil.cpu_count')
-    @patch('psutil.virtual_memory')
-    @patch('psutil.disk_usage')
-    def test_get_system_info(self, mock_disk, mock_mem, mock_cpu,
-                            mock_py_ver, mock_platform, mock_ver, mock_sys):
+    @patch("platform.system")
+    @patch("platform.version")
+    @patch("platform.platform")
+    @patch("platform.python_version")
+    @patch("psutil.cpu_count")
+    @patch("psutil.virtual_memory")
+    @patch("psutil.disk_usage")
+    def test_get_system_info(self, mock_disk, mock_mem, mock_cpu, mock_py_ver, mock_platform, mock_ver, mock_sys):
         """測試獲取系統信息"""
         # 設置 mock 返回值
         mock_sys.return_value = "Windows"
@@ -592,18 +604,10 @@ class TestSystemInfo:
         mock_cpu.return_value = 8
 
         # Mock memory
-        mock_mem.return_value = MagicMock(
-            total=16000000000,
-            available=8000000000,
-            percent=50.0
-        )
+        mock_mem.return_value = MagicMock(total=16000000000, available=8000000000, percent=50.0)
 
         # Mock disk
-        mock_disk.return_value = MagicMock(
-            total=500000000000,
-            free=250000000000,
-            percent=50.0
-        )
+        mock_disk.return_value = MagicMock(total=500000000000, free=250000000000, percent=50.0)
 
         info = get_system_info()
 
@@ -626,10 +630,11 @@ class TestSystemInfo:
 # 命令執行工具測試（使用 Mock）
 # ============================================================
 
+
 class TestCommandExecution:
     """測試命令執行工具"""
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_command_success(self, mock_run):
         """測試成功執行命令"""
         mock_result = Mock()
@@ -642,7 +647,7 @@ class TestCommandExecution:
         assert returncode == 0
         assert stdout == "Success"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_command_failure(self, mock_run):
         """測試命令執行失敗"""
         mock_result = Mock()
@@ -655,23 +660,24 @@ class TestCommandExecution:
         assert returncode == 1
         assert stderr == "Error"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_command_timeout(self, mock_run):
         """測試命令執行超時"""
         import subprocess
+
         mock_run.side_effect = subprocess.TimeoutExpired("cmd", 1)
 
         returncode, stdout, stderr = execute_command(["sleep", "10"], timeout=1)
         assert returncode == -1
         assert "timed out" in stderr
 
-    @patch('shutil.which')
+    @patch("shutil.which")
     def test_is_command_available_true(self, mock_which):
         """測試命令可用"""
         mock_which.return_value = "/usr/bin/python"
         assert is_command_available("python") is True
 
-    @patch('shutil.which')
+    @patch("shutil.which")
     def test_is_command_available_false(self, mock_which):
         """測試命令不可用"""
         mock_which.return_value = None
