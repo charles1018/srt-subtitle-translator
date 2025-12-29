@@ -18,6 +18,47 @@
 
 ### 🐛 修復
 
+#### 中期代碼審查修復 (ID 7-16)
+- 🔧 **ConfigManager singleton 記憶體洩漏風險** (config.py)
+  - 添加 `ALLOWED_CONFIG_TYPES` frozenset 限制有效的 config_type
+  - 防止任意字串創建無限實例導致記憶體洩漏
+  - **Commit**: 72fff28
+- 🔧 **Rate limit 檢查 IndexError 風險** (client.py)
+  - 在訪問 `request_timestamps[0]` 和 `token_usage[0]` 前添加空列表檢查
+  - 防止極端並發情況下的 IndexError
+  - **Commit**: 72fff28
+- 🔧 **FileHandler Singleton 實作不完整** (handler.py)
+  - 在 `__init__` 添加檢查，防止直接實例化繞過 singleton
+  - 當 singleton 已存在時拋出 RuntimeError
+  - **Commit**: 72fff28
+- 🔧 **subprocess 缺少 timeout** (handler.py)
+  - ffmpeg 版本檢查添加 10 秒 timeout
+  - 字幕提取添加 300 秒 timeout
+  - 添加 TimeoutExpired 異常處理
+  - **Commit**: 72fff28
+- 🔧 **快取清理觸發條件註解不一致** (cache.py)
+  - 更新 `CLEANUP_TRIGGER_RATIO` 註解明確「嚴格超過」語義
+  - 說明使用 `>` 而非 `>=` 的設計意圖
+  - **Commit**: 72fff28
+- 🔧 **編碼偵測只讀取 4KB** (handler.py)
+  - 增加讀取大小至 16KB 以更好偵測 CJK 字符
+  - 優先檢查 BOM（最可靠）
+  - 低置信度時記錄警告
+  - **Commit**: 72fff28
+- 🔧 **語言偵測 regex 缺陷** (helpers.py)
+  - 簡化為通用 CJK 範圍 `[\u4E00-\u9FFF]`
+  - 移除錯誤的雙字符匹配模式
+  - 中文默認返回 `zh-tw`（繁簡體區分困難）
+  - **Commit**: 72fff28
+- 🔧 **RLock 使用註解誤導** (cache.py)
+  - 在 `_clean_memory_cache` 添加顯式鎖（RLock 允許重入）
+  - 更新 docstring 說明重入行為
+  - **Commit**: 72fff28
+- 🔧 **Logger 配置重複風險** (logging_config.py, handler.py)
+  - 使用自定義屬性 `_srt_translator_configured` 標記已配置的 logger
+  - 比檢查 handlers 更可靠（並發安全）
+  - **Commit**: 72fff28
+
 #### 快取系統優化
 - 🔧 修復資料庫連線未正確關閉的問題 (ResourceWarning)
   - 建立自訂 `sqlite_connection()` context manager
@@ -112,6 +153,13 @@
   - 提供詳細的分割日誌和警告
 
 ### ⚡ 效能優化
+
+#### 快取清理演算法優化
+- 🚀 **MemoryCache 清理效能改進** (helpers.py)
+  - 使用 `heapq.nsmallest()` 取代 `sorted()`
+  - 時間複雜度從 O(n log n) 降為 O(n log k)
+  - 僅找出需要刪除的項目，避免完整排序
+  - **Commit**: 72fff28
 
 #### 快取系統優化
 - 🚀 優化快取清理觸發機制
@@ -394,7 +442,7 @@
 
 ---
 
-**最後更新**：2025-01-28
+**最後更新**：2025-12-29
 
 [Unreleased]: https://github.com/charles1018/srt-subtitle-translator/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/charles1018/srt-subtitle-translator/releases/tag/v1.0.0
