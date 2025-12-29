@@ -192,14 +192,25 @@ class CacheManager:
             return False
 
     @lru_cache(maxsize=1000)
-    def _compute_context_hash(self, context_tuple: Tuple[str, ...]) -> str:
+    def _compute_context_hash(self, context_tuple: Tuple[str, ...]) -> str:     
         """計算上下文的雜湊值，使用LRU快取加速"""
-        context_str = "".join([text.strip() for text in context_tuple if text.strip()])
+        parts = []
+        for text in context_tuple:
+            stripped = text.strip()
+            if stripped:
+                parts.append(f"{len(stripped)}:{stripped}")
+        context_str = "|".join(parts)
         return hashlib.md5(context_str.encode()).hexdigest()
 
     def _generate_cache_key(self, source_text: str, context_hash: str, model_name: str) -> str:
         """產生記憶體快取的鍵值"""
         return f"{source_text}|{context_hash}|{model_name}"
+
+    def _is_error_translation(self, text: Optional[str]) -> bool:
+        """判斷是否為錯誤翻譯結果"""
+        if not text:
+            return False
+        return text.strip().startswith("[翻譯錯誤")
 
     def get_cached_translation(self, source_text: str, context_texts: List[str], model_name: str) -> Optional[str]:
         """獲取快取的翻譯結果，先檢查記憶體，再檢查資料庫
@@ -225,9 +236,13 @@ class CacheManager:
         with self._cache_lock:
             cache_key = self._generate_cache_key(source_text, context_hash, model_name)
             if cache_key in self.memory_cache:
-                self.stats["cache_hits"] += 1
-                self.memory_cache[cache_key]["last_accessed"] = time.time()
-                return self.memory_cache[cache_key]["target_text"]
+                cached_text = self.memory_cache[cache_key]["target_text"]
+                if self._is_error_translation(cached_text):
+                    del self.memory_cache[cache_key]
+                else:
+                    self.stats["cache_hits"] += 1
+                    self.memory_cache[cache_key]["last_accessed"] = time.time()
+                    return cached_text
 
         # 檢查資料庫快取
         try:
@@ -244,10 +259,19 @@ class CacheManager:
                 result = cursor.fetchone()
                 if result:
                     target_text, usage_count = result
+                    if self._is_error_translation(target_text):
+                        conn.execute(
+                            """
+                            DELETE FROM translations
+                            WHERE source_text = ? AND context_hash = ? AND model_name = ?
+                        """,
+                            (source_text, context_hash, model_name),
+                        )
+                        return None
                     # 更新使用統計
                     conn.execute(
                         """
-                        UPDATE translations 
+                        UPDATE translations
                         SET usage_count = ?, last_used = ?
                         WHERE source_text = ? AND context_hash = ? AND model_name = ?
                     """,
@@ -284,6 +308,8 @@ class CacheManager:
         """
         # 空文本不儲存
         if not source_text.strip() or not target_text.strip():
+            return False
+        if self._is_error_translation(target_text):
             return False
 
         # 計算上下文雜湊

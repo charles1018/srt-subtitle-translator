@@ -160,6 +160,9 @@ class TranslationService:
             else:
                 translation = await client.translate_text(text, context_texts, model_name)
 
+            if translation and translation.startswith("[翻譯錯誤"):
+                return translation
+
             # 翻譯後處理 - 專有名詞統一與移除標點符號
             translation = self._post_process_translation(text, translation)
 
@@ -208,9 +211,14 @@ class TranslationService:
 
             # 對每個結果進行後處理
             for i, (text, _) in enumerate(texts_with_context):
-                if i < len(batch_results) and batch_results[i]:
-                    # 翻譯後處理
-                    results[i] = self._post_process_translation(text, batch_results[i])
+                if i < len(batch_results):
+                    translation = batch_results[i]
+                    if not translation:
+                        continue
+                    if translation.startswith("[翻譯錯誤"):
+                        results[i] = translation
+                    else:
+                        results[i] = self._post_process_translation(text, translation)
         else:
             # 自行實現批量翻譯
             semaphore = asyncio.Semaphore(concurrent_limit)
