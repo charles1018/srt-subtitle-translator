@@ -245,6 +245,21 @@ class TranslationManager:
         file_hash = hashlib.md5(f"{self.file_path}_{self.target_lang}_{self.model_name}".encode()).hexdigest()[:10]
         return os.path.join(checkpoints_dir, f"checkpoint_{file_hash}.json")
 
+    def _get_subtitle_encoding(self) -> str:
+        """取得字幕檔案的編碼設定"""
+        try:
+            info = self.file_service.get_subtitle_info(self.file_path)
+        except Exception as e:
+            logger.warning(f"取得字幕編碼失敗: {e!s}")
+            return "utf-8"
+
+        if isinstance(info, dict):
+            encoding = info.get("編碼")
+            if isinstance(encoding, str) and encoding.strip():
+                return encoding
+
+        return "utf-8"
+
     def _save_checkpoint(self) -> None:
         """儲存翻譯進度檢查點"""
         try:
@@ -601,7 +616,8 @@ class TranslationManager:
             self.stats.started_at = time.time()
 
             # 開啟SRT檔案
-            subs = pysrt.open(self.file_path, encoding="utf-8")
+            encoding = self._get_subtitle_encoding()
+            subs = pysrt.open(self.file_path, encoding=encoding)
             self.stats.total_subtitles = len(subs)
 
             # 確定未處理的字幕索引

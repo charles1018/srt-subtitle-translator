@@ -286,7 +286,8 @@ class TranslationService:
             self.key_terms_dict = {}
 
             # 載入字幕檔案
-            subs = pysrt.open(file_path, encoding="utf-8")
+            encoding = self._get_subtitle_encoding(file_path)
+            subs = pysrt.open(file_path, encoding=encoding)
             total_subtitles = len(subs)
 
             # 設定進度回調
@@ -433,6 +434,21 @@ class TranslationService:
         else:
             # 預設行為，使用雙語對照
             subtitle.text = f"{subtitle.text}\n{translation}"
+
+    def _get_subtitle_encoding(self, file_path: str) -> str:
+        """取得字幕檔案的編碼設定"""
+        try:
+            info = self.file_service.get_subtitle_info(file_path)
+        except Exception as e:
+            logger.warning(f"取得字幕編碼失敗: {e!s}")
+            return "utf-8"
+
+        if isinstance(info, dict):
+            encoding = info.get("編碼")
+            if isinstance(encoding, str) and encoding.strip():
+                return encoding
+
+        return "utf-8"
 
     def _save_key_terms_dictionary(self, file_path: str) -> None:
         """儲存專有名詞詞典到檔案
