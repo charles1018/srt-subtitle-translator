@@ -598,8 +598,8 @@ class ConfigManager:
 
         # LLM 類型
         llm_type = config.get("llm_type", "")
-        if llm_type not in ["ollama", "openai", "anthropic"]:
-            errors["llm_type"] = ["無效的 LLM 類型，有效選項: ollama, openai, anthropic"]
+        if llm_type not in ["ollama", "openai"]:
+            errors["llm_type"] = ["無效的 LLM 類型，有效選項: ollama, openai"]
 
         # 並行請求數
         parallel = config.get("parallel_requests", 0)
