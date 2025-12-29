@@ -102,7 +102,7 @@ class CacheManager:
         def convert_datetime(s):
             try:
                 return datetime.fromisoformat(s.decode())
-            except:
+            except (ValueError, AttributeError, UnicodeDecodeError):
                 return datetime.now()
 
         sqlite3.register_adapter(datetime, adapt_datetime)
@@ -798,5 +798,5 @@ if __name__ == "__main__":
     try:
         if os.path.exists(export_path):
             os.remove(export_path)
-    except:
+    except OSError:
         pass

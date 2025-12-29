@@ -13,7 +13,7 @@
     1700: ModelNotFoundError - 模型未找到錯誤
     1800: CacheError - 快取操作錯誤
     1900: ValidationError - 資料驗證錯誤
-    2000: TimeoutError - 操作超時錯誤
+    2000: OperationTimeoutError - 操作超時錯誤
 
 使用範例：
     >>> try:
@@ -150,11 +150,17 @@ class ValidationError(AppError):
         super().__init__(message, 1900, details)
 
 
-class TimeoutError(AppError):
+class OperationTimeoutError(AppError):
     """操作超時錯誤
 
     當操作執行時間超過預設時限時拋出此例外。
+    注意：此類別名稱避免與 Python 內建的 TimeoutError 衝突。
     """
 
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(message, 2000, details)
+
+
+# 向後相容別名（已棄用，將在未來版本移除）
+# 警告：此別名會遮蔽 Python 內建的 TimeoutError
+# TimeoutError = OperationTimeoutError  # 已移除以避免遮蔽內建類別

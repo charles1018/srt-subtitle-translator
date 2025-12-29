@@ -3,11 +3,10 @@ import hashlib
 import json
 import logging
 import os
-import pickle
 import re
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from typing import Any, Dict, List, Tuple
@@ -258,7 +257,7 @@ class TranslationManager:
         # 使用檔案路徑和目標語言建立唯一的檢查點檔名
         checkpoints_dir = get_config("app", "checkpoints_dir", "data/checkpoints")
         file_hash = hashlib.md5(f"{self.file_path}_{self.target_lang}_{self.model_name}".encode()).hexdigest()[:10]
-        return os.path.join(checkpoints_dir, f"checkpoint_{file_hash}.pkl")
+        return os.path.join(checkpoints_dir, f"checkpoint_{file_hash}.json")
 
     def _save_checkpoint(self) -> None:
         """儲存翻譯進度檢查點"""
@@ -267,18 +266,19 @@ class TranslationManager:
             os.makedirs(os.path.dirname(self.checkpoint_path), exist_ok=True)
 
             # 儲存已翻譯索引和統計資訊
+            # 使用 asdict 將 dataclass 轉換為可 JSON 序列化的字典
             checkpoint_data = {
                 "file_path": self.file_path,
                 "target_lang": self.target_lang,
                 "model_name": self.model_name,
                 "translated_indices": list(self.translated_indices),
-                "stats": self.stats,
+                "stats": asdict(self.stats),
                 "timestamp": datetime.now().isoformat(),
                 "key_terms_dict": self._key_terms_dict,  # 添加專有名詞詞典
             }
 
-            with open(self.checkpoint_path, "wb") as f:
-                pickle.dump(checkpoint_data, f)
+            with open(self.checkpoint_path, "w", encoding="utf-8") as f:
+                json.dump(checkpoint_data, f, ensure_ascii=False, indent=2)
 
             logger.debug(f"已儲存翻譯進度到檢查點: {self.checkpoint_path}")
         except Exception as e:
@@ -290,8 +290,8 @@ class TranslationManager:
             if not os.path.exists(self.checkpoint_path):
                 return False
 
-            with open(self.checkpoint_path, "rb") as f:
-                checkpoint_data = pickle.load(f)
+            with open(self.checkpoint_path, "r", encoding="utf-8") as f:
+                checkpoint_data = json.load(f)
 
             # 檢查檢查點是否與目前任務相符
             if (
@@ -306,18 +306,19 @@ class TranslationManager:
                 if "key_terms_dict" in checkpoint_data:
                     self._key_terms_dict = checkpoint_data["key_terms_dict"]
 
-                # 恢復統計資訊（除了時間）
+                # 恢復統計資訊（除了時間）- 從 JSON 字典讀取
                 saved_stats = checkpoint_data.get("stats")
-                if saved_stats:
-                    self.stats.total_subtitles = saved_stats.total_subtitles
-                    self.stats.translated_count = saved_stats.translated_count
-                    self.stats.failed_count = saved_stats.failed_count
-                    self.stats.skipped_count = saved_stats.skipped_count
-                    self.stats.cached_count = saved_stats.cached_count
-                    self.stats.total_chars = saved_stats.total_chars
-                    self.stats.batch_count = saved_stats.batch_count
-                    self.stats.retry_count = saved_stats.retry_count
-                    self.stats.errors = saved_stats.errors.copy() if saved_stats.errors else []
+                if saved_stats and isinstance(saved_stats, dict):
+                    self.stats.total_subtitles = saved_stats.get("total_subtitles", 0)
+                    self.stats.translated_count = saved_stats.get("translated_count", 0)
+                    self.stats.failed_count = saved_stats.get("failed_count", 0)
+                    self.stats.skipped_count = saved_stats.get("skipped_count", 0)
+                    self.stats.cached_count = saved_stats.get("cached_count", 0)
+                    self.stats.total_chars = saved_stats.get("total_chars", 0)
+                    self.stats.batch_count = saved_stats.get("batch_count", 0)
+                    self.stats.retry_count = saved_stats.get("retry_count", 0)
+                    errors = saved_stats.get("errors")
+                    self.stats.errors = list(errors) if errors else []
 
                 logger.info(
                     f"已從檢查點恢復翻譯進度: {len(self.translated_indices)} 個已翻譯字幕，"
@@ -327,7 +328,7 @@ class TranslationManager:
             else:
                 logger.warning("檢查點與目前任務不符，將重新開始翻譯")
                 return False
-        except Exception as e:
+        except (json.JSONDecodeError, OSError) as e:
             logger.error(f"載入翻譯進度檢查點失敗: {e!s}")
             return False
 

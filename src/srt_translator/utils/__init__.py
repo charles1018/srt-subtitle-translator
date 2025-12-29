@@ -13,7 +13,7 @@ from srt_translator.utils.errors import (
     ModelError,
     ModelNotFoundError,
     NetworkError,
-    TimeoutError,
+    OperationTimeoutError,
     TranslationError,
     ValidationError,
 )
@@ -72,7 +72,7 @@ __all__ = [
     "ModelNotFoundError",
     "CacheError",
     "ValidationError",
-    "TimeoutError",
+    "OperationTimeoutError",
     # 日誌配置
     "setup_logger",
     "setup_root_logger",
