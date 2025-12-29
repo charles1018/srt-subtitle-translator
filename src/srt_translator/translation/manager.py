@@ -1,14 +1,12 @@
 import asyncio
 import hashlib
 import json
-import logging
 import os
 import re
 import threading
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from logging.handlers import TimedRotatingFileHandler
 from typing import Any, Dict, List, Tuple
 
 import pysrt
@@ -20,23 +18,11 @@ from srt_translator.utils import (
     TranslationError,
     format_elapsed_time,
     format_exception,
+    setup_logger,
 )
 
-# 設定日誌
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-# 確保日誌目錄存在
-os.makedirs("logs", exist_ok=True)
-
-# 避免重複添加處理程序
-if not logger.handlers:
-    handler = TimedRotatingFileHandler(
-        filename="logs/translation_manager.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
-    )
-    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+# 使用集中化日誌配置
+logger = setup_logger(__name__, "translation_manager.log")
 
 
 @dataclass
@@ -290,7 +276,7 @@ class TranslationManager:
             if not os.path.exists(self.checkpoint_path):
                 return False
 
-            with open(self.checkpoint_path, "r", encoding="utf-8") as f:
+            with open(self.checkpoint_path, encoding="utf-8") as f:
                 checkpoint_data = json.load(f)
 
             # 檢查檢查點是否與目前任務相符
@@ -509,9 +495,9 @@ class TranslationManager:
                     self.stats.errors.append(f"任務異常: {result!s}")
                     continue
 
-                if result == True:  # 成功翻譯
+                if result:  # 成功翻譯
                     success_count += 1
-                elif result == False:  # 翻譯失敗
+                else:  # 翻譯失敗
                     failed_count += 1
 
             return success_count, failed_count, skipped_count
@@ -1012,9 +998,11 @@ class TranslationTaskManager:
 
 # 測試程式碼
 if __name__ == "__main__":
+    import logging as test_logging
+
     # 設定控制台日誌以便於測試
-    console_handler = logging.StreamHandler()
-    console_formatter = logging.Formatter("%(levelname)s - %(message)s")
+    console_handler = test_logging.StreamHandler()
+    console_formatter = test_logging.Formatter("%(levelname)s - %(message)s")
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 

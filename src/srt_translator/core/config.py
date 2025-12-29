@@ -1,28 +1,15 @@
 import copy
 import json
-import logging
 import os
 import re
 from datetime import datetime
-from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# 設定日誌
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+from srt_translator.utils.logging_config import setup_logger
 
-# 確保日誌目錄存在
-os.makedirs("logs", exist_ok=True)
-
-# 避免重複添加處理程序
-if not logger.handlers:
-    handler = TimedRotatingFileHandler(
-        filename="logs/config_manager.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
-    )
-    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+# 使用集中化日誌配置
+logger = setup_logger(__name__, "config_manager.log")
 
 
 class ConfigManager:

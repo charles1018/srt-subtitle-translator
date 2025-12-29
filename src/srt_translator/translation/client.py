@@ -1,10 +1,8 @@
 import asyncio
 import json
-import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from logging.handlers import TimedRotatingFileHandler
 from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
@@ -21,27 +19,11 @@ except ImportError:
 # 從本地模組導入
 from srt_translator.core.cache import CacheManager
 from srt_translator.core.prompt import PromptManager
+from srt_translator.utils.logging_config import setup_logger
 from srt_translator.utils.post_processor import NetflixStylePostProcessor
 
-# 設定日誌輪替
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-# 確保日誌目錄存在
-import os
-
-os.makedirs("logs", exist_ok=True)
-
-handler = TimedRotatingFileHandler(
-    filename="logs/srt_translator.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
-)
-formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
-# 避免重複添加處理程序
-if len(logger.handlers) > 1:
-    logger.handlers = [logger.handlers[-1]]
+# 使用集中化日誌配置
+logger = setup_logger(__name__, "srt_translator.log")
 
 
 # 定義 API 錯誤類型

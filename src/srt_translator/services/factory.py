@@ -1,11 +1,9 @@
 import asyncio
 import json
-import logging
 import os
 import re
 import threading
 import time
-from logging.handlers import TimedRotatingFileHandler
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import pysrt
@@ -22,22 +20,10 @@ from srt_translator.core.models import ModelManager
 from srt_translator.core.prompt import PromptManager
 from srt_translator.file_handling.handler import FileHandler
 from srt_translator.translation.client import TranslationClient
+from srt_translator.utils.logging_config import setup_logger
 
-# 設定日誌
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-# 確保日誌目錄存在
-os.makedirs("logs", exist_ok=True)
-
-# 避免重複添加處理程序
-if not logger.handlers:
-    handler = TimedRotatingFileHandler(
-        filename="logs/services.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
-    )
-    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+# 使用集中化日誌配置
+logger = setup_logger(__name__, "services.log")
 
 
 # 服務工廠類 - 統一管理所有服務的創建和訪問

@@ -1,6 +1,5 @@
 import hashlib
 import json
-import logging
 import os
 import shutil
 import sqlite3
@@ -12,22 +11,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # 從配置管理器導入
 from srt_translator.core.config import ConfigManager
+from srt_translator.utils.logging_config import setup_logger
 
-# 設定日誌
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-# 確保日誌目錄存在
-os.makedirs("logs", exist_ok=True)
-
-# 避免重複添加處理程序
-if not logger.handlers:
-    handler = logging.handlers.TimedRotatingFileHandler(
-        filename="logs/cache.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
-    )
-    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+# 使用集中化日誌配置
+logger = setup_logger(__name__, "cache.log")
 
 # 快取版本，用於不同版本間的快取相容性
 CACHE_VERSION = "1.1"
