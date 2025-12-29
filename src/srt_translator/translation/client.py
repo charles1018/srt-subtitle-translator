@@ -448,14 +448,16 @@ class TranslationClient:
         if requests_per_minute >= self.max_requests_per_minute * 0.90:
             need_delay = True
             delay_reason = f"請求速率 ({requests_per_minute}/{self.max_requests_per_minute})"
-            wait_time = max(wait_time, 60 - (current_time - self.request_timestamps[0]) + 0.5)
+            if self.request_timestamps:  # 防止 IndexError
+                wait_time = max(wait_time, 60 - (current_time - self.request_timestamps[0]) + 0.5)
 
         # Token 數接近限制
         if tokens_per_minute >= self.max_tokens_per_minute * 0.90:
             need_delay = True
             delay_reason = f"{delay_reason}，" if delay_reason else ""
             delay_reason += f"token 速率 ({tokens_per_minute}/{self.max_tokens_per_minute})"
-            wait_time = max(wait_time, 60 - (current_time - self.token_usage[0][0]) + 0.5)
+            if self.token_usage:  # 防止 IndexError
+                wait_time = max(wait_time, 60 - (current_time - self.token_usage[0][0]) + 0.5)
 
         # 如果需要延遲，增加指數退避
         if need_delay:

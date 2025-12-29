@@ -26,14 +26,19 @@ def setup_logger(
     回傳:
         配置好的日誌記錄器
     """
-    # 確保日誌目錄存在
-    os.makedirs(log_dir, exist_ok=True)
-
     # 獲取或創建日誌記錄器
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # 避免重複添加處理程序
+    # 使用自定義屬性標記已配置的 logger，避免重複配置
+    # 這比檢查 handlers 更可靠，因為 handlers 可能在並發情況下改變
+    if getattr(logger, "_srt_translator_configured", False):
+        return logger
+
+    # 確保日誌目錄存在
+    os.makedirs(log_dir, exist_ok=True)
+
+    # 避免重複添加處理程序（雙重檢查）
     if not logger.handlers:
         if log_file:
             # 檔案處理程序（每日輪替）
@@ -49,6 +54,9 @@ def setup_logger(
         formatter = logging.Formatter(LOG_FORMAT)
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+
+    # 標記為已配置
+    logger._srt_translator_configured = True
 
     return logger
 

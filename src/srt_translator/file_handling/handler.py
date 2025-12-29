@@ -42,17 +42,22 @@ from srt_translator.utils import FileError, format_exception
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Ensure logs directory exists
-os.makedirs("logs", exist_ok=True)
+# Use custom attribute to mark configured loggers (more reliable than checking handlers)
+if not getattr(logger, "_file_handler_configured", False):
+    # Ensure logs directory exists
+    os.makedirs("logs", exist_ok=True)
 
-# Avoid adding handlers multiple times
-if not logger.handlers:
-    handler = logging.handlers.TimedRotatingFileHandler(
-        filename="logs/file_handler.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
-    )
-    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    # Avoid adding handlers multiple times (double-check)
+    if not logger.handlers:
+        handler = logging.handlers.TimedRotatingFileHandler(
+            filename="logs/file_handler.log", when="midnight", interval=1, backupCount=7, encoding="utf-8"
+        )
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+    # Mark as configured
+    logger._file_handler_configured = True
 
 
 class SubtitleInfo:
@@ -108,20 +113,29 @@ class SubtitleInfo:
         """
         try:
             with open(file_path, "rb") as f:
-                raw_data = f.read(4096)  # Read the first 4KB for detection
+                # Read up to 16KB for better detection of files with late CJK characters
+                file_size = os.path.getsize(file_path)
+                read_size = min(file_size, 16384)  # 16KB max
+                raw_data = f.read(read_size)
+
+                # Priority: Check BOM first (most reliable)
+                if raw_data.startswith(b"\xef\xbb\xbf"):
+                    return "utf-8-sig"
+                elif raw_data.startswith(b"\xff\xfe"):
+                    return "utf-16-le"
+                elif raw_data.startswith(b"\xfe\xff"):
+                    return "utf-16-be"
+
+                # Use chardet for detection
                 result = chardet.detect(raw_data)
                 encoding = result["encoding"] or "utf-8"
                 confidence = result["confidence"]
 
-                # If confidence is low, try more methods
+                # Warn if confidence is low
                 if confidence < 0.7:
-                    # Check BOM markers
-                    if raw_data.startswith(b"\xef\xbb\xbf"):
-                        encoding = "utf-8-sig"
-                    elif raw_data.startswith(b"\xff\xfe"):
-                        encoding = "utf-16-le"
-                    elif raw_data.startswith(b"\xfe\xff"):
-                        encoding = "utf-16-be"
+                    logger.warning(
+                        f"Low encoding confidence ({confidence:.2f}) for {file_path}, using {encoding}"
+                    )
 
                 return encoding
         except Exception as e:
@@ -364,7 +378,16 @@ class FileHandler:
         Args:
             root: Tkinter root window
             config_section: Configuration section to use
+
+        Raises:
+            RuntimeError: If attempting direct instantiation when singleton exists
         """
+        # Prevent direct instantiation when singleton already exists
+        if self.__class__._instance is not None and self.__class__._instance is not self:
+            raise RuntimeError(
+                "Use FileHandler.get_instance() instead of direct instantiation"
+            )
+
         self.root = root
         self.config_section = config_section
 
@@ -940,7 +963,15 @@ class FileHandler:
 
             # Check if ffmpeg is available
             try:
-                subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+                subprocess.run(
+                    ["ffmpeg", "-version"],
+                    capture_output=True,
+                    check=True,
+                    timeout=10,  # 10 seconds timeout for version check
+                )
+            except subprocess.TimeoutExpired:
+                logger.error("ffmpeg version check timed out")
+                raise FileError("ffmpeg version check timed out")
             except (subprocess.SubprocessError, FileNotFoundError):
                 logger.error("ffmpeg not found, cannot extract subtitle")
                 raise FileError("ffmpeg not found, cannot extract subtitle")
@@ -970,7 +1001,15 @@ class FileHandler:
             if callback:
                 callback(-1, -1, {"type": "extracting", "path": video_path})
 
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            try:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    timeout=300,  # 5 minutes timeout for subtitle extraction
+                )
+            except subprocess.TimeoutExpired:
+                logger.error(f"Subtitle extraction timed out (300s): {video_path}")
+                raise FileError("Subtitle extraction timed out (300 seconds)")
 
             # Check result
             if result.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) == 0:

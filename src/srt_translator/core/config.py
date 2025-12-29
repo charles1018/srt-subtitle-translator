@@ -15,6 +15,10 @@ logger = setup_logger(__name__, "config_manager.log")
 class ConfigManager:
     """配置管理器，統一管理系統的各種配置"""
 
+    # 允許的配置類型（防止記憶體洩漏）
+    # 注意：default_prompt 用於 PromptManager 的預設提示詞配置
+    ALLOWED_CONFIG_TYPES = frozenset({"app", "user", "model", "prompt", "file", "cache", "theme", "default_prompt"})
+
     # 類變量，儲存已建立的配置管理器實例（單例模式）
     _instances: Dict[str, "ConfigManager"] = {}
 
@@ -27,7 +31,15 @@ class ConfigManager:
 
         回傳:
             配置管理器實例
+
+        例外:
+            ValueError: 當 config_type 不在允許列表中時
         """
+        if config_type not in cls.ALLOWED_CONFIG_TYPES:
+            raise ValueError(
+                f"Unknown config_type: {config_type}. "
+                f"Allowed types: {', '.join(sorted(cls.ALLOWED_CONFIG_TYPES))}"
+            )
         if config_type not in cls._instances:
             cls._instances[config_type] = ConfigManager(config_type)
         return cls._instances[config_type]

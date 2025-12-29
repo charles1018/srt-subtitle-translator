@@ -48,7 +48,7 @@ class CacheManager:
     _lock = threading.Lock()
 
     # 快取清理閾值常數
-    CLEANUP_TRIGGER_RATIO = 1.2  # 超過 max_memory_cache 的 120% 才觸發清理
+    CLEANUP_TRIGGER_RATIO = 1.2  # 嚴格超過 max_memory_cache 的 120% 才觸發清理 (使用 > 而非 >=)
     CLEANUP_KEEP_RATIO = 0.7  # 清理後保留 70% 的最近使用項目
 
     @classmethod
@@ -366,35 +366,39 @@ class CacheManager:
             return False
 
     def _clean_memory_cache(self):
-        """清理記憶體快取，移除最久未使用的項目"""
-        # 已有鎖保護，不需要再加鎖
-        current_size = len(self.memory_cache)
-        threshold = int(self.max_memory_cache * self.CLEANUP_KEEP_RATIO)
+        """清理記憶體快取，移除最久未使用的項目
 
-        # 詳細日誌
-        logger.debug(f"快取清理檢查: 當前大小={current_size}, 限制={self.max_memory_cache}, 閾值={threshold}")
+        注意: 此方法使用 RLock，支援重入調用。
+        即使調用者已持有鎖，再次獲取鎖也是安全的。
+        """
+        with self._cache_lock:  # RLock 允許重入，添加鎖更安全
+            current_size = len(self.memory_cache)
+            threshold = int(self.max_memory_cache * self.CLEANUP_KEEP_RATIO)
 
-        if current_size <= threshold:
-            logger.debug("快取大小未超過閾值，跳過清理")
-            return
+            # 詳細日誌
+            logger.debug(f"快取清理檢查: 當前大小={current_size}, 限制={self.max_memory_cache}, 閾值={threshold}")
 
-        # 按最後存取時間排序
-        sorted_items = sorted(self.memory_cache.items(), key=lambda x: x[1]["last_accessed"])
+            if current_size <= threshold:
+                logger.debug("快取大小未超過閾值，跳過清理")
+                return
 
-        # 保留 CLEANUP_KEEP_RATIO 比例的最近使用項目
-        keep_count = int(self.max_memory_cache * self.CLEANUP_KEEP_RATIO)
-        removed_count = 0
+            # 按最後存取時間排序
+            sorted_items = sorted(self.memory_cache.items(), key=lambda x: x[1]["last_accessed"])
 
-        for key, _ in sorted_items[:-keep_count]:
-            del self.memory_cache[key]
-            removed_count += 1
+            # 保留 CLEANUP_KEEP_RATIO 比例的最近使用項目
+            keep_count = int(self.max_memory_cache * self.CLEANUP_KEEP_RATIO)
+            removed_count = 0
 
-        # 更詳細的日誌
-        logger.info(
-            f"已清理記憶體快取: 移除 {removed_count} 項, "
-            f"保留 {len(self.memory_cache)} 項 "
-            f"(限制: {self.max_memory_cache})"
-        )
+            for key, _ in sorted_items[:-keep_count]:
+                del self.memory_cache[key]
+                removed_count += 1
+
+            # 更詳細的日誌
+            logger.info(
+                f"已清理記憶體快取: 移除 {removed_count} 項, "
+                f"保留 {len(self.memory_cache)} 項 "
+                f"(限制: {self.max_memory_cache})"
+            )
 
     def _auto_cleanup(self, conn, days_threshold: int = None):
         """自動清理過期快取

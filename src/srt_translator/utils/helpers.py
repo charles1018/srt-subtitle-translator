@@ -4,6 +4,7 @@
 """
 
 import hashlib
+import heapq
 import json
 import logging
 import os
@@ -94,7 +95,11 @@ def detect_language(text: str) -> str:
         text: 輸入文本
 
     回傳:
-        檢測到的語言 ('ja', 'en', 'zh-tw', 'zh-cn', 'ko', 'unknown')
+        檢測到的語言 ('ja', 'en', 'zh-tw', 'ko', 'unknown')
+
+    注意:
+        繁簡體中文區分非常困難，此函數默認返回 'zh-tw'。
+        如需精確區分，建議使用專門的庫（如 opencc）。
     """
     if not text:
         return "unknown"
@@ -102,16 +107,14 @@ def detect_language(text: str) -> str:
     # 樣本文本，避免分析過長
     sample = text[:1000]
 
-    # 日文字符特徵
+    # 日文字符特徵（平假名 + 片假名）
     jp_chars = re.findall(r"[\u3040-\u309F\u30A0-\u30FF]", sample)
-    # 簡體中文特殊字符
-    cn_chars = re.findall(r"[\u4E00-\u9FFF][\u3006\u3007\u3012\u3014\u3015\u3231\u3232\u4E00-\u9FA5]", sample)
-    # 繁體中文特殊用字
-    tw_chars = re.findall(r"[\u4E00-\u9FFF][\u3006\u3007\u3036\u3230\u32AF\uF900-\uFAFF]", sample)
-    # 韓文
+    # 韓文（諺文音節 + 諺文字母）
     ko_chars = re.findall(r"[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]", sample)
     # 英文
     en_chars = re.findall(r"[a-zA-Z]", sample)
+    # 中文（通用 CJK 漢字範圍）
+    zh_chars = re.findall(r"[\u4E00-\u9FFF]", sample)
 
     # 統計非空白字符總數
     total_chars = len(re.sub(r"\s", "", sample))
@@ -120,21 +123,23 @@ def detect_language(text: str) -> str:
 
     # 計算各語言占比
     jp_ratio = len(jp_chars) / total_chars
-    cn_ratio = len(cn_chars) / total_chars
-    tw_ratio = len(tw_chars) / total_chars
     ko_ratio = len(ko_chars) / total_chars
     en_ratio = len(en_chars) / total_chars
+    zh_ratio = len(zh_chars) / total_chars
 
-    # 根據占比確定語言
+    # 根據占比確定語言（按優先級排序）
     if jp_ratio > 0.1:
+        # 日文有明顯的假名特徵
         return "ja"
     elif ko_ratio > 0.1:
+        # 韓文有明顯的諺文特徵
         return "ko"
-    elif tw_ratio > cn_ratio and (tw_ratio > 0.05 or cn_ratio > 0.05):
+    elif zh_ratio > 0.3:
+        # 中文（繁簡體區分困難，默認返回繁體中文）
+        # 如需精確區分，需使用專門庫如 opencc
         return "zh-tw"
-    elif cn_ratio > 0.05:
-        return "zh-cn"
     elif en_ratio > 0.5:
+        # 英文為主
         return "en"
 
     return "unknown"
@@ -1059,13 +1064,17 @@ class MemoryCache:
 
             # 如果仍然超出大小限制，刪除最少使用的項目
             if len(self.cache) >= self.max_size:
-                # 按最近訪問時間排序
-                sorted_items = sorted(self.cache.items(), key=lambda x: x[1]["last_access"])
-                # 刪除前 30% 的項目
-                items_to_remove = int(len(sorted_items) * 0.3)
-                for i in range(items_to_remove):
-                    if i < len(sorted_items):
-                        del self.cache[sorted_items[i][0]]
+                items_to_remove = int(len(self.cache) * 0.3)
+                if items_to_remove > 0:
+                    # 使用 heapq.nsmallest 只找出需要刪除的項目，避免完整排序
+                    # 時間複雜度從 O(n log n) 降為 O(n log k)
+                    oldest_items = heapq.nsmallest(
+                        items_to_remove,
+                        self.cache.items(),
+                        key=lambda x: x[1]["last_access"],
+                    )
+                    for k, _ in oldest_items:
+                        del self.cache[k]
 
     def get_stats(self) -> Dict[str, Any]:
         """獲取快取統計信息
