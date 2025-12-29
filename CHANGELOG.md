@@ -7,7 +7,29 @@
 
 ## [Unreleased]
 
+### 🔄 變更
+
+#### 預設翻譯設定調整
+- 🔧 調整預設設定以更符合常見使用情境
+  - **來源語言**：日文 → 英文
+  - **LLM 類型**：ollama → openai
+  - **顯示模式**：雙語對照 → 僅顯示翻譯
+  - **Commit**: 0cb0ca9
+
 ### 🐛 修復
+
+#### 快取系統優化
+- 🔧 修復資料庫連線未正確關閉的問題 (ResourceWarning)
+  - 建立自訂 `sqlite_connection()` context manager
+  - 確保事務正確提交和連線關閉
+  - 解決 Python 3.11 及之前版本的 sqlite3 連線問題
+  - ResourceWarning 從 218 個減少至 8 個（僅剩 mock 測試產生）
+  - **Commit**: 081fb71
+- 🔧 將快取清理閾值抽取為類別常數
+  - 新增 `CLEANUP_TRIGGER_RATIO` (1.2) 和 `CLEANUP_KEEP_RATIO` (0.7)
+  - 提高程式碼可讀性和維護性
+  - 修正測試以使用類別常數進行斷言
+  - **Commit**: 8d55c22
 
 #### 連接詞保留問題修復
 - 🔧 修復不完整句子中連接詞被忽略的問題
