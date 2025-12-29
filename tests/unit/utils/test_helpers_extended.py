@@ -316,20 +316,19 @@ class TestTextProcessingExtended:
         text = "안녕하세요 세계"
         assert detect_language(text) == "ko"
 
-    def test_detect_language_simplified_chinese(self):
-        """測試簡體中文檢測"""
-        # 使用簡體中文特有字符
-        text = "这是简体中文测试"
-        # 由於簡體檢測基於特殊字符組合，可能檢測為 zh-cn 或 unknown
+    def test_detect_language_chinese(self):
+        """測試中文檢測（統一返回 zh-tw）"""
+        # 中文文本檢測（無論繁簡都返回 zh-tw）
+        text = "这是中文测试"
         result = detect_language(text)
-        assert result in ["zh-cn", "unknown", "zh-tw"]
+        assert result == "zh-tw"
 
     def test_detect_language_mixed(self):
         """測試混合語言文本"""
         text = "Hello 世界 こんにちは"
         # 應該檢測出比例最高的語言
         result = detect_language(text)
-        assert result in ["ja", "en", "zh-tw", "zh-cn", "unknown"]
+        assert result in ["ja", "en", "zh-tw", "unknown"]
 
     def test_standardize_language_code_variants(self):
         """測試各種語言代碼變體"""
@@ -337,10 +336,6 @@ class TestTextProcessingExtended:
         assert standardize_language_code("zh_tw") == "zh-tw"
         assert standardize_language_code("zh-hant") == "zh-tw"
         assert standardize_language_code("Traditional Chinese") == "zh-tw"
-
-        # 簡體中文變體
-        assert standardize_language_code("zh_cn") == "zh-cn"
-        assert standardize_language_code("zh-hans") == "zh-cn"
 
         # 日文變體
         assert standardize_language_code("jp") == "ja"

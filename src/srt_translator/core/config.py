@@ -599,7 +599,7 @@ class ConfigManager:
         errors = {}
 
         # 語言設定
-        valid_langs = ["日文", "英文", "韓文", "簡體中文", "繁體中文", "法文", "德文", "西班牙文", "俄文"]
+        valid_langs = ["日文", "英文", "韓文", "繁體中文", "法文", "德文", "西班牙文", "俄文"]
         source_lang = config.get("source_lang", "")
         target_lang = config.get("target_lang", "")
 
@@ -680,7 +680,6 @@ class ConfigManager:
             "日文→繁體中文",
             "英文→繁體中文",
             "繁體中文→英文",
-            "簡體中文→繁體中文",
             "韓文→繁體中文",
             "法文→繁體中文",
             "德文→繁體中文",

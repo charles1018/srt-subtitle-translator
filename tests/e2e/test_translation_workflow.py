@@ -351,34 +351,3 @@ async def test_japanese_to_chinese_translation(sample_japanese_srt_path: Path, m
     assert translations[2] == "歡迎使用翻譯系統。", "日文 '歡迎' 翻譯應該正確"
 
 
-@pytest.mark.asyncio
-async def test_simplified_to_traditional_chinese_translation(
-    sample_simplified_chinese_srt_path: Path, mock_all_services_for_workflow
-):
-    """測試 8：簡體中文 -> 繁體中文翻譯
-
-    驗證：
-    1. 簡體到繁體的轉換正常
-    2. 翻譯結果正確
-    """
-    # 準備
-    translation_service = ServiceFactory.get_translation_service()
-
-    # 讀取簡體中文 SRT 檔案
-    input_subs = pysrt.open(str(sample_simplified_chinese_srt_path), encoding="utf-8")
-    assert len(input_subs) == 3, "簡體中文檔案應有 3 個字幕"
-
-    # 翻譯所有字幕
-    translations = []
-    for sub in input_subs:
-        translation = await translation_service.translate_text(sub.text, [sub.text], "openai", "test-model")
-        translations.append(translation)
-
-    # 驗證翻譯結果（簡體到繁體轉換）
-    assert translations[0] == "你好，世界！", "簡體到繁體轉換應該正確"
-    assert translations[1] == "這是一個測試字幕。", "簡體到繁體轉換應該正確"
-    assert translations[2] == "歡迎使用翻譯系統。", "簡體到繁體轉換應該正確"
-
-    # 驗證確實是繁體中文（檢查關鍵字）
-    assert "這" in translations[1], "應該使用繁體字 '這'"
-    assert "個" in translations[1], "應該使用繁體字 '個'"

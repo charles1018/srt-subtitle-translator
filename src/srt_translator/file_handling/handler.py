@@ -399,7 +399,6 @@ class FileHandler:
             "lang_suffix",
             {
                 "繁體中文": ".zh_tw",
-                "簡體中文": ".zh_cn",
                 "英文": ".en",
                 "日文": ".jp",
                 "韓文": ".kr",

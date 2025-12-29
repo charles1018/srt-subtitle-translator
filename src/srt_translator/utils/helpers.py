@@ -164,14 +164,6 @@ def standardize_language_code(lang_name: str) -> str:
         "zh_tw": "zh-tw",
         "zh-hant": "zh-tw",
         "traditional chinese": "zh-tw",
-        # 簡體中文
-        "簡體中文": "zh-cn",
-        "中文(簡體)": "zh-cn",
-        "簡中": "zh-cn",
-        "zh-cn": "zh-cn",
-        "zh_cn": "zh-cn",
-        "zh-hans": "zh-cn",
-        "simplified chinese": "zh-cn",
         # 日文
         "日文": "ja",
         "日語": "ja",
@@ -226,7 +218,6 @@ def get_language_name(lang_code: str) -> str:
     """
     lang_names = {
         "zh-tw": "繁體中文",
-        "zh-cn": "簡體中文",
         "ja": "日文",
         "en": "英文",
         "ko": "韓文",

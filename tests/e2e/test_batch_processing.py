@@ -165,14 +165,13 @@ async def test_small_batch_translation(
 async def test_mixed_language_batch_translation(
     sample_srt_path: Path,
     sample_japanese_srt_path: Path,
-    sample_simplified_chinese_srt_path: Path,
     e2e_temp_dir: Path,
     mock_all_services_for_batch,
 ):
     """測試 2：混合語言批量翻譯
 
     驗證：
-    1. 同時翻譯多種語言的檔案（英文、日文、簡體中文）
+    1. 同時翻譯多種語言的檔案（英文、日文）
     2. 多語言處理正確
     3. 所有翻譯結果正確
     """
@@ -181,7 +180,6 @@ async def test_mixed_language_batch_translation(
     test_files = [
         (sample_srt_path, "英文"),
         (sample_japanese_srt_path, "日文"),
-        (sample_simplified_chinese_srt_path, "簡體中文"),
     ]
 
     results = []
@@ -205,19 +203,16 @@ async def test_mixed_language_batch_translation(
         )
 
     # 驗證結果
-    assert len(results) == 3, "應該有 3 個翻譯結果"
+    assert len(results) == 2, "應該有 2 個翻譯結果"
 
     # 驗證每個翻譯都成功
     for result in results:
         assert result["translation"], f"{result['language']} 翻譯不應該為空"
-        assert result["translation"] != result["original"] or "你好" in result["original"], (
-            f"{result['language']} 應該被翻譯（除非已經是中文）"
-        )
+        assert result["translation"] != result["original"], f"{result['language']} 應該被翻譯"
 
     # 驗證所有翻譯都是 "你好，世界！"（根據 mock 回應）
     assert results[0]["translation"] == "你好，世界！", "英文翻譯應該正確"
     assert results[1]["translation"] == "你好，世界！", "日文翻譯應該正確"
-    assert results[2]["translation"] == "你好，世界！", "簡體中文翻譯應該正確"
 
 
 @pytest.mark.asyncio

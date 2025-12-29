@@ -220,13 +220,13 @@ class GUIComponents:
 
         # 語言設定
         ttk.Label(settings_grid, text="來源語言:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        source_langs = ["日文", "英文", "韓文", "簡體中文", "繁體中文"]
+        source_langs = ["日文", "英文", "韓文", "繁體中文"]
         ttk.Combobox(
             settings_grid, textvariable=self.source_lang, values=source_langs, width=10, state="readonly"
         ).grid(row=0, column=1, sticky=tk.W, pady=5)
 
         ttk.Label(settings_grid, text="目標語言:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        target_langs = ["繁體中文", "英文", "日文", "韓文", "簡體中文"]
+        target_langs = ["繁體中文", "英文", "日文", "韓文"]
         ttk.Combobox(
             settings_grid, textvariable=self.target_lang, values=target_langs, width=10, state="readonly"
         ).grid(row=1, column=1, sticky=tk.W, pady=5)

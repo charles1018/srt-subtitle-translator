@@ -83,7 +83,6 @@ class PromptManager:
             "日文→繁體中文": {"source": "日文", "target": "繁體中文"},
             "英文→繁體中文": {"source": "英文", "target": "繁體中文"},
             "繁體中文→英文": {"source": "繁體中文", "target": "英文"},
-            "簡體中文→繁體中文": {"source": "簡體中文", "target": "繁體中文"},
             "韓文→繁體中文": {"source": "韓文", "target": "繁體中文"},
             "法文→繁體中文": {"source": "法文", "target": "繁體中文"},
             "德文→繁體中文": {"source": "德文", "target": "繁體中文"},

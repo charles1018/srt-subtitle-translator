@@ -65,12 +65,6 @@ def sample_japanese_srt_path(fixtures_dir: Path) -> Path:
 
 
 @pytest.fixture
-def sample_simplified_chinese_srt_path(fixtures_dir: Path) -> Path:
-    """提供簡體中文 SRT 檔案路徑"""
-    return fixtures_dir / "sample_simplified_chinese.srt"
-
-
-@pytest.fixture
 def large_sample_srt_path(fixtures_dir: Path) -> Path:
     """提供大型測試 SRT 檔案路徑（10 個字幕）"""
     return fixtures_dir / "large_sample.srt"
@@ -165,10 +159,6 @@ def mock_translation_responses() -> Dict[str, str]:
         "こんにちは、世界！": "你好，世界！",
         "これはテスト字幕です。": "這是測試字幕。",
         "翻訳システムへようこそ。": "歡迎使用翻譯系統。",
-        # 簡體中文 -> 繁體中文
-        "你好，世界！": "你好，世界！",
-        "这是一个测试字幕。": "這是一個測試字幕。",
-        "欢迎使用翻译系统。": "歡迎使用翻譯系統。",
         # 批量測試檔案 (file1.srt)
         "Welcome to batch translation test.": "歡迎使用批量翻譯測試。",
         "This is the first file.": "這是第一個檔案。",
