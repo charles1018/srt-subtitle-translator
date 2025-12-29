@@ -39,7 +39,8 @@ class ConfigManager:
             config_type: 配置類型，影響配置檔案的路徑和預設值
         """
         self.config_type = config_type
-        self.config_dir = "config"
+        env_config_dir = os.environ.get("CONFIG_DIR", "").strip()
+        self.config_dir = env_config_dir or "config"
 
         # 確保配置目錄存在
         os.makedirs(self.config_dir, exist_ok=True)
