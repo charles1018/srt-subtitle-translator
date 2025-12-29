@@ -353,7 +353,7 @@ class App:
             import winsound
 
             winsound.MessageBeep(winsound.MB_ICONASTERISK)
-        except:
+        except (ImportError, RuntimeError, OSError):
             # 在非Windows系統上，嘗試其他方法播放聲音
             try:
                 import subprocess
@@ -364,7 +364,7 @@ class App:
                         subprocess.call(["afplay", "/System/Library/Sounds/Tink.aiff"])
                     else:  # Linux
                         subprocess.call(["paplay", "/usr/share/sounds/freedesktop/stereo/complete.oga"])
-            except:
+            except (FileNotFoundError, subprocess.SubprocessError, OSError):
                 # 如果上述方法都不可用，靜默失敗
                 pass
 

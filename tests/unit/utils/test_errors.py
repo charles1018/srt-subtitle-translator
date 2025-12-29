@@ -12,7 +12,7 @@ from srt_translator.utils.errors import (
     ModelError,
     ModelNotFoundError,
     NetworkError,
-    TimeoutError,
+    OperationTimeoutError,
     TranslationError,
     ValidationError,
 )
@@ -140,8 +140,8 @@ class TestNewErrorTypes:
         assert isinstance(error, AppError)
 
     def test_timeout_error(self):
-        """測試 TimeoutError"""
-        error = TimeoutError("Request timeout after 30s")
+        """測試 OperationTimeoutError"""
+        error = OperationTimeoutError("Request timeout after 30s")
         assert error.error_code == 2000
         assert "Request timeout after 30s" in str(error)
         assert isinstance(error, AppError)
@@ -154,7 +154,7 @@ class TestNewErrorTypes:
             ModelNotFoundError("test", details),
             CacheError("test", details),
             ValidationError("test", details),
-            TimeoutError("test", details),
+            OperationTimeoutError("test", details),
         ]
 
         for error in errors:
@@ -210,7 +210,7 @@ class TestJSONSerialization:
             ModelNotFoundError("Model not found"),
             CacheError("Cache error"),
             ValidationError("Validation error"),
-            TimeoutError("Timeout error"),
+            OperationTimeoutError("Timeout error"),
         ]
 
         for error in errors:

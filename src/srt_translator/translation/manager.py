@@ -273,6 +273,13 @@ class TranslationManager:
     def _load_checkpoint(self) -> bool:
         """載入翻譯進度檢查點"""
         try:
+            # 檢查是否存在舊版檢查點檔案（已棄用的格式）
+            legacy_path = self.checkpoint_path.replace(".json", ".pkl")
+            if os.path.exists(legacy_path) and not os.path.exists(self.checkpoint_path):
+                logger.warning(
+                    f"發現舊版檢查點: {legacy_path}。由於安全原因，舊格式已棄用，請手動刪除。"
+                )
+
             if not os.path.exists(self.checkpoint_path):
                 return False
 
