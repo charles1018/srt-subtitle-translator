@@ -178,16 +178,25 @@ class TestCacheOperationsExtended:
         assert result == ""
 
     def test_memory_cache_cleanup_trigger(self, cache_manager):
-        """測試記憶體快取清理觸發"""
+        """測試記憶體快取清理觸發
+
+        清理策略：
+        - 觸發閾值: max_memory_cache * CLEANUP_TRIGGER_RATIO (預設 120%)
+        - 保留數量: max_memory_cache * CLEANUP_KEEP_RATIO (預設 70%)
+        """
         # 設置較小的最大快取
         cache_manager.max_memory_cache = 5
+        trigger_threshold = int(5 * CacheManager.CLEANUP_TRIGGER_RATIO)  # 6
+        keep_count = int(5 * CacheManager.CLEANUP_KEEP_RATIO)  # 3
 
-        # 填滿快取
+        # 填滿快取 (10 項會觸發多次清理)
         for i in range(10):
             cache_manager.store_translation(f"text{i}", f"譯文{i}", [], "model1")
 
-        # 記憶體快取應該被清理
-        assert len(cache_manager.memory_cache) <= 5
+        # 記憶體快取應該在清理後保持在合理範圍內
+        # 清理後保留 keep_count 項，然後可能再加入幾項直到再次觸發
+        # 最終大小應 <= trigger_threshold (因為超過才會觸發清理)
+        assert len(cache_manager.memory_cache) <= trigger_threshold
 
     def test_memory_cache_cleanup_skip_when_small(self, cache_manager):
         """測試記憶體快取太小時跳過清理"""

@@ -27,6 +27,10 @@ class CacheManager:
     _instance = None
     _lock = threading.Lock()
 
+    # 快取清理閾值常數
+    CLEANUP_TRIGGER_RATIO = 1.2  # 超過 max_memory_cache 的 120% 才觸發清理
+    CLEANUP_KEEP_RATIO = 0.7  # 清理後保留 70% 的最近使用項目
+
     @classmethod
     def get_instance(cls, db_path: str = None) -> "CacheManager":
         """獲取快取管理器的單例實例
@@ -282,8 +286,8 @@ class CacheManager:
                     with self._cache_lock:
                         self.memory_cache[cache_key] = {"target_text": target_text, "last_accessed": time.time()}
 
-                        # 快取過大時清理 (超過 120% 才觸發)
-                        if len(self.memory_cache) > self.max_memory_cache * 1.2:
+                        # 快取過大時清理
+                        if len(self.memory_cache) > self.max_memory_cache * self.CLEANUP_TRIGGER_RATIO:
                             self._clean_memory_cache()
 
                     self.stats["cache_hits"] += 1
@@ -320,8 +324,8 @@ class CacheManager:
         with self._cache_lock:
             self.memory_cache[cache_key] = {"target_text": target_text, "last_accessed": time.time()}
 
-            # 快取過大時清理 (超過 120% 才觸發)
-            if len(self.memory_cache) > self.max_memory_cache * 1.2:
+            # 快取過大時清理
+            if len(self.memory_cache) > self.max_memory_cache * self.CLEANUP_TRIGGER_RATIO:
                 self._clean_memory_cache()
 
         # 儲存到資料庫
@@ -345,7 +349,7 @@ class CacheManager:
         """清理記憶體快取，移除最久未使用的項目"""
         # 已有鎖保護，不需要再加鎖
         current_size = len(self.memory_cache)
-        threshold = int(self.max_memory_cache * 0.7)
+        threshold = int(self.max_memory_cache * self.CLEANUP_KEEP_RATIO)
 
         # 詳細日誌
         logger.debug(f"快取清理檢查: 當前大小={current_size}, 限制={self.max_memory_cache}, 閾值={threshold}")
@@ -357,8 +361,8 @@ class CacheManager:
         # 按最後存取時間排序
         sorted_items = sorted(self.memory_cache.items(), key=lambda x: x[1]["last_accessed"])
 
-        # 保留 70% 最近使用的項目
-        keep_count = int(self.max_memory_cache * 0.7)
+        # 保留 CLEANUP_KEEP_RATIO 比例的最近使用項目
+        keep_count = int(self.max_memory_cache * self.CLEANUP_KEEP_RATIO)
         removed_count = 0
 
         for key, _ in sorted_items[:-keep_count]:
