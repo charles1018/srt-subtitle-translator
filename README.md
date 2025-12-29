@@ -83,18 +83,44 @@ python -m srt_translator
 ### API 金鑰設定
 
 #### OpenAI API
-將您的 API 金鑰放入 `openapi_api_key.txt` 檔案中：
 
+**方法 1：環境變數（推薦）**
+```bash
+# Linux/macOS
+export OPENAI_API_KEY="your-openai-api-key"
+
+# Windows PowerShell
+$env:OPENAI_API_KEY="your-openai-api-key"
+
+# Windows CMD
+set OPENAI_API_KEY=your-openai-api-key
+```
+
+**方法 2：金鑰檔案**
 ```bash
 echo "your-openai-api-key" > openapi_api_key.txt
 ```
 
 #### Anthropic API
-將您的 API 金鑰放入 `anthropic_api_key.txt` 檔案中：
 
+**方法 1：環境變數（推薦）**
+```bash
+# Linux/macOS
+export ANTHROPIC_API_KEY="your-anthropic-api-key"
+
+# Windows PowerShell
+$env:ANTHROPIC_API_KEY="your-anthropic-api-key"
+
+# Windows CMD
+set ANTHROPIC_API_KEY=your-anthropic-api-key
+```
+
+**方法 2：金鑰檔案**
 ```bash
 echo "your-anthropic-api-key" > anthropic_api_key.txt
 ```
+
+> **注意**：環境變數優先於金鑰檔案。使用環境變數更安全，避免將金鑰意外提交到版本控制。
 
 #### Ollama（本地模型）
 確保 Ollama 服務正在運行：

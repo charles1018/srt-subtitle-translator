@@ -81,6 +81,24 @@ pytest -v
 
 ### 設定 API 金鑰（測試用）
 
+**方法 1：環境變數（推薦）**
+
+```bash
+# Linux/macOS
+export OPENAI_API_KEY="sk-test-key"
+export ANTHROPIC_API_KEY="sk-ant-test-key"
+
+# Windows PowerShell
+$env:OPENAI_API_KEY="sk-test-key"
+$env:ANTHROPIC_API_KEY="sk-ant-test-key"
+
+# Windows CMD
+set OPENAI_API_KEY=sk-test-key
+set ANTHROPIC_API_KEY=sk-ant-test-key
+```
+
+**方法 2：金鑰檔案**
+
 ```bash
 # OpenAI（如需測試 OpenAI 整合）
 echo "sk-test-key" > openapi_api_key.txt
@@ -88,6 +106,8 @@ echo "sk-test-key" > openapi_api_key.txt
 # Anthropic（如需測試 Anthropic 整合）
 echo "sk-ant-test-key" > anthropic_api_key.txt
 ```
+
+> **注意**：環境變數優先於金鑰檔案。使用環境變數更安全，避免將金鑰意外提交到版本控制。
 
 ### VS Code 設定
 

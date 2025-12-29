@@ -35,7 +35,10 @@ git clone https://github.com/charles1018/srt-subtitle-translator.git
 cd srt-subtitle-translator
 uv sync --all-extras --dev
 
-# 2. 設定 API 金鑰（OpenAI 為例）
+# 2. 設定 API 金鑰（OpenAI 為例，擇一方式）
+# 方式 A：環境變數（推薦）
+export OPENAI_API_KEY="your-api-key"
+# 方式 B：金鑰檔案
 echo "your-api-key" > openapi_api_key.txt
 
 # 3. 啟動
@@ -128,8 +131,21 @@ python -m srt_translator
 
 1. 前往 [OpenAI Platform](https://platform.openai.com/api-keys)
 2. 建立新的 API 金鑰
-3. 將金鑰儲存到 `openapi_api_key.txt`：
+3. 設定金鑰（擇一方式）：
 
+**方法 1：環境變數（推薦）**
+```bash
+# Linux/macOS
+export OPENAI_API_KEY="sk-your-openai-api-key"
+
+# Windows PowerShell
+$env:OPENAI_API_KEY="sk-your-openai-api-key"
+
+# Windows CMD
+set OPENAI_API_KEY=sk-your-openai-api-key
+```
+
+**方法 2：金鑰檔案**
 ```bash
 echo "sk-your-openai-api-key" > openapi_api_key.txt
 ```
@@ -138,11 +154,26 @@ echo "sk-your-openai-api-key" > openapi_api_key.txt
 
 1. 前往 [Anthropic Console](https://console.anthropic.com/settings/keys)
 2. 建立新的 API 金鑰
-3. 將金鑰儲存到 `anthropic_api_key.txt`：
+3. 設定金鑰（擇一方式）：
 
+**方法 1：環境變數（推薦）**
+```bash
+# Linux/macOS
+export ANTHROPIC_API_KEY="sk-ant-your-anthropic-api-key"
+
+# Windows PowerShell
+$env:ANTHROPIC_API_KEY="sk-ant-your-anthropic-api-key"
+
+# Windows CMD
+set ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key
+```
+
+**方法 2：金鑰檔案**
 ```bash
 echo "sk-ant-your-anthropic-api-key" > anthropic_api_key.txt
 ```
+
+> **安全提示**：環境變數優先於金鑰檔案。建議使用環境變數，避免將金鑰意外提交到版本控制。
 
 #### Ollama
 
@@ -255,8 +286,12 @@ ollama pull llama2
 
 ### 範例 3：使用 Anthropic Claude
 
-1. **設定 API 金鑰**：
+1. **設定 API 金鑰**（擇一方式）：
    ```bash
+   # 方式 A：環境變數（推薦）
+   export ANTHROPIC_API_KEY="sk-ant-your-key"
+
+   # 方式 B：金鑰檔案
    echo "sk-ant-your-key" > anthropic_api_key.txt
    ```
 
@@ -718,5 +753,5 @@ find data/ -name "*.db" -mtime +90 -delete
 
 ---
 
-**最後更新**：2025-01-28
+**最後更新**：2025-12-29
 **版本**：1.0.0
