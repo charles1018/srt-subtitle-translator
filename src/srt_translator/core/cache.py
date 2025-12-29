@@ -5,6 +5,7 @@ import shutil
 import sqlite3
 import threading
 import time
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
@@ -18,6 +19,25 @@ logger = setup_logger(__name__, "cache.log")
 
 # 快取版本，用於不同版本間的快取相容性
 CACHE_VERSION = "1.1"
+
+
+@contextmanager
+def sqlite_connection(db_path: str, **kwargs):
+    """SQLite 連線的 context manager，確保事務提交和連線關閉
+
+    此 context manager 在成功時 commit，異常時 rollback，並確保連線被關閉。
+    解決 Python 3.11 及之前版本中 sqlite3.Connection 作為 context manager
+    不會自動關閉連線的問題。
+    """
+    conn = sqlite3.connect(db_path, **kwargs)
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 class CacheManager:
@@ -100,7 +120,7 @@ class CacheManager:
         sqlite3.register_converter("timestamp", convert_datetime)
 
         try:
-            with sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
+            with sqlite_connection(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
                 # 啟用WAL模式提高寫入效能
                 conn.execute("PRAGMA journal_mode=WAL")
                 conn.execute("PRAGMA synchronous=NORMAL")
@@ -250,7 +270,7 @@ class CacheManager:
 
         # 檢查資料庫快取
         try:
-            with sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
+            with sqlite_connection(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
                 cursor = conn.execute(
                     """
                     SELECT target_text, usage_count 
@@ -330,7 +350,7 @@ class CacheManager:
 
         # 儲存到資料庫
         try:
-            with sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
+            with sqlite_connection(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO translations 
@@ -434,7 +454,7 @@ class CacheManager:
         deleted_count = 0
 
         try:
-            with sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
+            with sqlite_connection(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
                 cursor = conn.execute("DELETE FROM translations WHERE last_used < ?", (threshold_date,))
                 deleted_count = cursor.rowcount
 
@@ -469,7 +489,7 @@ class CacheManager:
             刪除的記錄數量
         """
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with sqlite_connection(self.db_path) as conn:
                 cursor = conn.execute("DELETE FROM translations WHERE model_name = ?", (model_name,))
                 deleted_count = cursor.rowcount
 
@@ -495,7 +515,7 @@ class CacheManager:
         stats = self.stats.copy()
 
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with sqlite_connection(self.db_path) as conn:
                 # 獲取總記錄數
                 cursor = conn.execute("SELECT COUNT(*) FROM translations")
                 stats["total_records"] = cursor.fetchone()[0]
@@ -542,11 +562,11 @@ class CacheManager:
             是否成功匯出
         """
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with sqlite_connection(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.execute("""
-                    SELECT 
-                        source_text, target_text, context_hash, 
+                    SELECT
+                        source_text, target_text, context_hash,
                         model_name, created_at, usage_count
                     FROM translations
                 """)
@@ -592,7 +612,7 @@ class CacheManager:
                 return False, 0
 
             imported_count = 0
-            with sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
+            with sqlite_connection(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
                 # 先建立備份
                 self._create_backup()
 
@@ -645,7 +665,7 @@ class CacheManager:
             是否成功最佳化
         """
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with sqlite_connection(self.db_path) as conn:
                 conn.execute("VACUUM")
                 conn.execute("ANALYZE")
             logger.info("資料庫最佳化完成")
@@ -665,7 +685,7 @@ class CacheManager:
             self._create_backup()
 
             # 清空資料庫快取
-            with sqlite3.connect(self.db_path) as conn:
+            with sqlite_connection(self.db_path) as conn:
                 conn.execute("DELETE FROM translations")
 
             # 清空記憶體快取
@@ -690,7 +710,7 @@ class CacheManager:
         """
         results = []
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with sqlite_connection(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
 
                 # 構建查詢
