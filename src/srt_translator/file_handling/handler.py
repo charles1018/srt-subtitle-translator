@@ -675,7 +675,19 @@ class FileHandler:
                         common_base = os.path.commonpath([self.last_directory, file_path])
                         rel_dir = os.path.dirname(os.path.relpath(file_path, common_base))
                         new_dir = os.path.join(output_dir, rel_dir)
-                        os.makedirs(new_dir, exist_ok=True)
+
+                        # 安全檢查：確保 new_dir 在 output_dir 內部，防止路徑遍歷攻擊
+                        new_dir_abs = os.path.abspath(os.path.normpath(new_dir))
+                        output_dir_abs = os.path.abspath(os.path.normpath(output_dir))
+
+                        if not new_dir_abs.startswith(output_dir_abs + os.sep) and new_dir_abs != output_dir_abs:
+                            logger.warning(
+                                f"路徑遍歷嘗試被阻止: {new_dir_abs} 不在 {output_dir_abs} 內，"
+                                "改用平面結構"
+                            )
+                            new_dir = output_dir
+                        else:
+                            os.makedirs(new_dir, exist_ok=True)
                     except Exception as e:
                         logger.warning(f"Error calculating relative path: {e!s}, using flat structure")
                         new_dir = output_dir

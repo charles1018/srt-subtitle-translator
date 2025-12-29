@@ -329,9 +329,21 @@ class TranslationClient:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """非同步上下文管理器清理"""
-        if self.session and self.llm_type == "ollama":
+        # 關閉 Ollama session
+        if self.session:
             await self.session.close()
+            self.session = None
             logger.debug("關閉 aiohttp.ClientSession")
+
+        # 關閉 OpenAI 客戶端（如果存在）
+        if self.openai_client:
+            try:
+                await self.openai_client.close()
+                logger.debug("關閉 AsyncOpenAI 客戶端")
+            except Exception as e:
+                logger.warning(f"關閉 OpenAI 客戶端時發生錯誤: {e!s}")
+            finally:
+                self.openai_client = None
 
     async def _count_tokens(self, messages: List[Dict[str, str]], model: str) -> int:
         """使用正確的 tokenizer 計算 token 數量"""
@@ -739,9 +751,11 @@ class TranslationClient:
             self.metrics.total_tokens += total_tokens
 
             # 計算費用
+            # 注意：self.pricing 中儲存的是「每 token」的價格（已經從「每千 token」轉換）
+            # 因此計算時不需要再除以 1000
             if model_name in self.pricing:
                 price = self.pricing[model_name]
-                cost = (input_tokens * price["input"] / 1000) + (output_tokens * price["output"] / 1000)
+                cost = (input_tokens * price["input"]) + (output_tokens * price["output"])
                 self.metrics.total_cost += cost
                 logger.debug(f"OpenAI API 翻譯費用: ${cost:.6f} ({input_tokens} 輸入 + {output_tokens} 輸出 tokens)")
 

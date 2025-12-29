@@ -674,15 +674,25 @@ class CacheManager:
             logger.error(f"最佳化資料庫時發生錯誤: {e!s}")
             return False
 
-    def clear_all_cache(self) -> bool:
+    def clear_all_cache(self, force: bool = False) -> bool:
         """清空所有快取
+
+        參數:
+            force: 是否強制清空（即使備份失敗）。預設為 False，
+                   備份失敗時會中止操作以保護資料。
 
         回傳:
             是否成功清空
         """
         try:
-            # 建立備份
-            self._create_backup()
+            # 建立備份 - 預設情況下，備份失敗會中止操作
+            backup_success = self._create_backup()
+            if not backup_success:
+                if force:
+                    logger.warning("備份失敗但 force=True，繼續清空快取操作")
+                else:
+                    logger.error("備份失敗，中止清空快取操作以保護資料。如需強制清空，請使用 force=True")
+                    return False
 
             # 清空資料庫快取
             with sqlite_connection(self.db_path) as conn:

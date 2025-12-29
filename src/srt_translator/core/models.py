@@ -186,25 +186,43 @@ class ModelInfo:
             return False
 
     def cleanup(self) -> None:
-        """釋放資源，通常在應用程式關閉時呼叫"""
-        # 確保在正確的事件循環中執行
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_closed():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+        """釋放資源，通常在應用程式關閉時呼叫
 
+        此方法會安全地關閉非同步 HTTP session 並清除快取。
+        支援在同步和非同步上下文中呼叫。
+        """
+        # 嘗試關閉非同步 session
         try:
-            loop.run_until_complete(self._close_async_session())
-        finally:
-            # 只在我們創建的新循環中關閉
-            if loop.is_running():
-                pass  # 不關閉正在運行的循環
-            elif not loop.is_closed():
-                loop.close()
+            # 檢查是否有正在運行的事件循環
+            try:
+                running_loop = asyncio.get_running_loop()
+                # 在非同步上下文中，建立任務而非阻塞
+                running_loop.create_task(self._close_async_session())
+                logger.debug("已排程關閉非同步 session（在運行中的事件循環）")
+            except RuntimeError:
+                # 沒有運行中的事件循環，需要建立一個來執行清理
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_closed():
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        created_new_loop = True
+                    else:
+                        created_new_loop = False
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    created_new_loop = True
+
+                try:
+                    loop.run_until_complete(self._close_async_session())
+                finally:
+                    # 只關閉我們新建立的事件循環
+                    if created_new_loop and not loop.is_closed():
+                        loop.close()
+
+        except Exception as e:
+            logger.warning(f"關閉非同步 session 時發生錯誤: {e!s}")
 
         # 清除快取
         self.cached_models.clear()
@@ -315,26 +333,54 @@ class ModelManager:
         return self.config_manager.save_config()
 
     def _load_api_keys(self) -> None:
-        """載入各種服務的 API 金鑰"""
+        """載入各種服務的 API 金鑰
+
+        優先順序：
+        1. 環境變數 (OPENAI_API_KEY, ANTHROPIC_API_KEY) - 推薦用於生產環境
+        2. 檔案儲存 (作為備選方案)
+
+        安全注意事項：
+        - 環境變數是更安全的儲存方式，建議優先使用
+        - 如果使用檔案儲存，請確保檔案權限正確設置且不提交到版本控制
+        """
         # 載入 OpenAI API 金鑰
         try:
-            openai_key_path = get_config("app", "openai_key_path", "openapi_api_key.txt")
-            if os.path.exists(openai_key_path):
-                with open(openai_key_path, encoding="utf-8") as f:
-                    self.api_keys["openai"] = f.read().strip()
-                logger.info("已載入 OpenAI API 金鑰")
+            # 優先從環境變數讀取
+            openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+
+            if openai_key:
+                self.api_keys["openai"] = openai_key
+                logger.info("已從環境變數載入 OpenAI API 金鑰")
             else:
-                logger.warning(f"OpenAI API 金鑰檔案不存在: {openai_key_path}")
+                # 備選：從檔案讀取
+                openai_key_path = get_config("app", "openai_key_path", "openapi_api_key.txt")
+                if os.path.exists(openai_key_path):
+                    with open(openai_key_path, encoding="utf-8") as f:
+                        self.api_keys["openai"] = f.read().strip()
+                    logger.info("已從檔案載入 OpenAI API 金鑰（建議改用環境變數 OPENAI_API_KEY）")
+                else:
+                    logger.warning(
+                        f"未設定 OpenAI API 金鑰。請設定環境變數 OPENAI_API_KEY，"
+                        f"或建立檔案: {openai_key_path}"
+                    )
         except Exception as e:
             logger.error(f"載入 OpenAI API 金鑰時發生錯誤: {e!s}")
 
-        # 載入 Anthropic API 金鑰 (如果配置了)
+        # 載入 Anthropic API 金鑰
         try:
-            anthropic_key_path = get_config("app", "anthropic_key_path", "anthropic_api_key.txt")
-            if os.path.exists(anthropic_key_path):
-                with open(anthropic_key_path, encoding="utf-8") as f:
-                    self.api_keys["anthropic"] = f.read().strip()
-                logger.info("已載入 Anthropic API 金鑰")
+            # 優先從環境變數讀取
+            anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+
+            if anthropic_key:
+                self.api_keys["anthropic"] = anthropic_key
+                logger.info("已從環境變數載入 Anthropic API 金鑰")
+            else:
+                # 備選：從檔案讀取
+                anthropic_key_path = get_config("app", "anthropic_key_path", "anthropic_api_key.txt")
+                if os.path.exists(anthropic_key_path):
+                    with open(anthropic_key_path, encoding="utf-8") as f:
+                        self.api_keys["anthropic"] = f.read().strip()
+                    logger.info("已從檔案載入 Anthropic API 金鑰（建議改用環境變數 ANTHROPIC_API_KEY）")
         except Exception as e:
             logger.error(f"載入 Anthropic API 金鑰時發生錯誤: {e!s}")
 
