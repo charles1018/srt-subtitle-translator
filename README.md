@@ -2,8 +2,8 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-515%20passing-brightgreen.svg)](tests/)
-[![Code Coverage](https://img.shields.io/badge/coverage-22%25-yellow.svg)](htmlcov/)
+[![Tests](https://img.shields.io/badge/tests-522%20passing-brightgreen.svg)](tests/)
+[![Code Coverage](https://img.shields.io/badge/coverage-53%25-green.svg)](htmlcov/)
 
 基於 Python 的 SRT 字幕檔自動翻譯工具，支援使用 Ollama 本地模型、OpenAI API 或 Anthropic API 進行多語言翻譯。本工具提供批量處理、翻譯記憶快取、多種顯示模式等功能，並配備友善的圖形使用者介面。
 
@@ -204,12 +204,12 @@ uv run mypy src/srt_translator
 
 本專案擁有完整的測試體系：
 
-- **總測試數**：515 個
-- **單元測試**：477 個
+- **總測試數**：522 個
+- **單元測試**：480 個
 - **整合測試**：20 個
 - **E2E 測試**：38 個
 - **測試通過率**：100%
-- **覆蓋率**：22%（E2E 測試覆蓋）
+- **覆蓋率**：53%
 
 ## ⚙️ 配置
 
@@ -247,9 +247,10 @@ uv run mypy src/srt_translator
 
 **智慧快取清理機制**：
 
-- ✅ **觸發閾值**：記憶體使用達 120% 才清理（減少不必要的清理）
-- ✅ **保留比例**：清理時保留 70% 快取（原 50%）
+- ✅ **觸發閾值**：記憶體使用達 120% 才清理（`CLEANUP_TRIGGER_RATIO = 1.2`）
+- ✅ **保留比例**：清理時保留 70% 快取（`CLEANUP_KEEP_RATIO = 0.7`）
 - ✅ **預期效果**：快取清理次數減少 88%（82 次 → 5-10 次）
+- ✅ **連線管理**：自訂 SQLite context manager 確保連線正確關閉
 - 快取自動儲存翻譯結果
 - 相同文本和上下文會直接從快取讀取
 - 不同模型的翻譯結果分別快取
