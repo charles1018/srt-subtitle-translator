@@ -1018,6 +1018,45 @@ class FileHandler:
                 f.write(f"{start} --> {end}\n")
                 f.write(f"{caption.text}\n\n")
 
+    def _validate_path_for_subprocess(self, path: str, must_exist: bool = False) -> bool:
+        """Validate a path before using it in subprocess commands
+
+        Args:
+            path: The path to validate
+            must_exist: Whether the path must exist
+
+        Returns:
+            True if the path is valid for subprocess use
+
+        Raises:
+            FileError: If the path is invalid or contains suspicious characters
+        """
+        if not path or not isinstance(path, str):
+            raise FileError("Invalid path: path is empty or not a string")
+
+        # Check for suspicious characters that could indicate injection attempts
+        # Note: spaces and Unicode are allowed, but shell metacharacters are not
+        suspicious_chars = ['|', '&', ';', '$', '`', '>', '<', '\n', '\r', '\0']
+        for char in suspicious_chars:
+            if char in path:
+                raise FileError(f"Path contains suspicious character: '{char}'")
+
+        # Check if path exists when required
+        if must_exist and not os.path.exists(path):
+            raise FileError(f"Path does not exist: {path}")
+
+        # Resolve and normalize the path
+        try:
+            resolved_path = Path(path).resolve()
+            # Ensure the resolved path doesn't escape to unexpected locations
+            # by checking it's under a reasonable root
+            if not resolved_path.parts:
+                raise FileError("Path resolves to empty location")
+        except (OSError, ValueError) as e:
+            raise FileError(f"Invalid path format: {e}") from e
+
+        return True
+
     def extract_subtitle(self, video_path: str, callback=None) -> Optional[str]:
         """Extract subtitle from video file
 
@@ -1027,9 +1066,18 @@ class FileHandler:
 
         Returns:
             Subtitle file path, or None if failed
+
+        Raises:
+            FileError: If video path is invalid or extraction fails
         """
         try:
             import subprocess
+
+            # Validate video path before any operations
+            self._validate_path_for_subprocess(video_path, must_exist=True)
+
+            if not os.path.isfile(video_path):
+                raise FileError(f"Video path is not a file: {video_path}")
 
             # Check if ffmpeg is available
             try:
@@ -1047,13 +1095,20 @@ class FileHandler:
                 raise FileError("ffmpeg not found, cannot extract subtitle")
 
             # Prepare paths
-            output_dir = os.path.dirname(video_path)
+            output_dir = os.path.dirname(video_path) or "."
             base_name = os.path.splitext(os.path.basename(video_path))[0]
             output_path = os.path.join(output_dir, f"{base_name}.srt")
 
             # Ensure output path does not exist
             if os.path.exists(output_path):
                 output_path = self._get_unique_path(output_dir, base_name, "_extracted", ".srt")
+
+            # Validate output path is within expected directory
+            if not self._is_path_within_directory(output_path, output_dir):
+                raise FileError(f"Output path escapes expected directory: {output_path}")
+
+            # Validate output path for subprocess use
+            self._validate_path_for_subprocess(output_path, must_exist=False)
 
             # Extract subtitle command
             cmd = [
