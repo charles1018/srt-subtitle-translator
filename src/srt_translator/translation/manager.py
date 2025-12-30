@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import threading
 import time
 from dataclasses import asdict, dataclass
@@ -261,7 +262,14 @@ class TranslationManager:
         return "utf-8"
 
     def _save_checkpoint(self) -> None:
-        """儲存翻譯進度檢查點"""
+        """儲存翻譯進度檢查點（原子性寫入）
+
+        使用臨時檔案和原子性重命名來確保檢查點檔案的完整性。
+        如果寫入過程中發生錯誤或程式崩潰，不會損壞現有的檢查點檔案。
+        """
+        temp_path = f"{self.checkpoint_path}.tmp"
+        backup_path = f"{self.checkpoint_path}.bak"
+
         try:
             # 確保目錄存在
             os.makedirs(os.path.dirname(self.checkpoint_path), exist_ok=True)
@@ -278,12 +286,36 @@ class TranslationManager:
                 "key_terms_dict": self._key_terms_dict,  # 添加專有名詞詞典
             }
 
-            with open(self.checkpoint_path, "w", encoding="utf-8") as f:
+            # 步驟 1: 寫入臨時檔案
+            with open(temp_path, "w", encoding="utf-8") as f:
                 json.dump(checkpoint_data, f, ensure_ascii=False, indent=2)
 
+            # 步驟 2: 備份舊檢查點（如果存在）
+            if os.path.exists(self.checkpoint_path):
+                try:
+                    shutil.copy2(self.checkpoint_path, backup_path)
+                except OSError as backup_error:
+                    logger.warning(f"無法建立檢查點備份: {backup_error}")
+                    # 繼續執行，備份失敗不應阻止儲存
+
+            # 步驟 3: 原子性重命名（在大多數作業系統上是原子操作）
+            os.replace(temp_path, self.checkpoint_path)
+
+            # 步驟 4: 清理備份檔案（可選，保留作為額外保護）
+            # 如果需要節省空間，可以取消註解以下行
+            # if os.path.exists(backup_path):
+            #     os.remove(backup_path)
+
             logger.debug(f"已儲存翻譯進度到檢查點: {self.checkpoint_path}")
+
         except Exception as e:
             logger.error(f"儲存翻譯進度檢查點失敗: {e!s}")
+            # 清理臨時檔案
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    pass  # 忽略清理錯誤
 
     def _load_checkpoint(self) -> bool:
         """載入翻譯進度檢查點"""
