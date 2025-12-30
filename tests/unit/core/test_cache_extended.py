@@ -117,7 +117,7 @@ class TestCacheDatabase:
             )
 
         # 創建管理器（應該清理舊數據）
-        manager = CacheManager(str(cache_path))
+        CacheManager(str(cache_path))
 
         # 檢查資料已清理
         with sqlite3.connect(str(cache_path)) as conn:
@@ -187,7 +187,7 @@ class TestCacheOperationsExtended:
         # 設置較小的最大快取
         cache_manager.max_memory_cache = 5
         trigger_threshold = int(5 * CacheManager.CLEANUP_TRIGGER_RATIO)  # 6
-        keep_count = int(5 * CacheManager.CLEANUP_KEEP_RATIO)  # 3
+        int(5 * CacheManager.CLEANUP_KEEP_RATIO)  # 3
 
         # 填滿快取 (10 項會觸發多次清理)
         for i in range(10):

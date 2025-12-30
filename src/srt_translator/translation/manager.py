@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import hashlib
 import json
 import os
@@ -8,7 +9,7 @@ import threading
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import pysrt
 
@@ -103,7 +104,7 @@ class TranslationManager:
         complete_callback,
         display_mode: str,
         llm_type: str,
-        api_key: str = None,
+        api_key: Optional[str] = None,
     ):
         """初始化翻譯管理器
 
@@ -312,10 +313,8 @@ class TranslationManager:
             logger.error(f"儲存翻譯進度檢查點失敗: {e!s}")
             # 清理臨時檔案
             if os.path.exists(temp_path):
-                try:
+                with contextlib.suppress(OSError):
                     os.remove(temp_path)
-                except OSError:
-                    pass  # 忽略清理錯誤
 
     def _load_checkpoint(self) -> bool:
         """載入翻譯進度檢查點"""
@@ -323,9 +322,7 @@ class TranslationManager:
             # 檢查是否存在舊版檢查點檔案（已棄用的格式）
             legacy_path = self.checkpoint_path.replace(".json", ".pkl")
             if os.path.exists(legacy_path) and not os.path.exists(self.checkpoint_path):
-                logger.warning(
-                    f"發現舊版檢查點: {legacy_path}。由於安全原因，舊格式已棄用，請手動刪除。"
-                )
+                logger.warning(f"發現舊版檢查點: {legacy_path}。由於安全原因，舊格式已棄用，請手動刪除。")
 
             if not os.path.exists(self.checkpoint_path):
                 return False
@@ -392,7 +389,7 @@ class TranslationManager:
             logger.info(f"翻譯管理器初始化完成: {self.llm_type}, 模型: {self.model_name}")
         except Exception as e:
             logger.error(f"初始化翻譯管理器失敗: {e!s}")
-            raise TranslationError(f"初始化翻譯管理器失敗: {e!s}")
+            raise TranslationError(f"初始化翻譯管理器失敗: {e!s}") from e
 
     async def cleanup(self) -> None:
         """清理資源"""
@@ -474,7 +471,7 @@ class TranslationManager:
         request_map = {}  # 映射 request_idx -> subtitle_idx
 
         # 建構請求列表，並跳過已翻譯的
-        for i, idx in enumerate(batch_indices):
+        for _i, idx in enumerate(batch_indices):
             if idx in self.translated_indices:
                 skipped_count += 1
                 continue
@@ -533,7 +530,7 @@ class TranslationManager:
 
             # 降級到單個字幕處理
             tasks = []
-            for i, (text, context) in enumerate(translation_requests):
+            for i, (_text, _context) in enumerate(translation_requests):
                 sub_idx = request_map[i]
                 sub = subs[sub_idx]
                 tasks.append(self._translate_single_subtitle(sub, sub_idx, subs))
@@ -735,7 +732,7 @@ class TranslationManager:
             if self.complete_callback:
                 self.complete_callback(f"翻譯過程中發生錯誤: {e!s}", elapsed_str)
 
-            raise TranslationError(f"翻譯過程中發生錯誤: {e!s}")
+            raise TranslationError(f"翻譯過程中發生錯誤: {e!s}") from e
 
 
 class TranslationThread(threading.Thread):
@@ -1082,15 +1079,12 @@ if __name__ == "__main__":
 
     import sys
 
-    if len(sys.argv) > 1:
-        test_file = sys.argv[1]
-    else:
-        test_file = "test.srt"  # 預設測試檔案
+    test_file = sys.argv[1] if len(sys.argv) > 1 else "test.srt"
 
     # 使用任務管理器測試
     async def test_async():
         # 初始化服務
-        translation_service = ServiceFactory.get_translation_service()
+        ServiceFactory.get_translation_service()
 
         # 建立任務管理器
         manager = TranslationTaskManager()

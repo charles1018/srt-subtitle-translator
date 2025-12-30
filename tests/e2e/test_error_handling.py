@@ -262,7 +262,7 @@ def test_file_not_found():
             )
 
         # 如果檔案存在，嘗試讀取
-        subs = pysrt.open(str(non_existent_path), encoding="utf-8")
+        pysrt.open(str(non_existent_path), encoding="utf-8")
 
     except FileError as e:
         # 驗證錯誤處理

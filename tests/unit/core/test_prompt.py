@@ -1,5 +1,6 @@
 """測試 prompt 模組"""
 
+import contextlib
 import json
 from datetime import datetime
 from pathlib import Path
@@ -21,10 +22,8 @@ def reset_prompt_config():
     config_dir = Path("config")
     if config_dir.exists():
         for config_file in config_dir.glob("prompt*.json"):
-            try:
+            with contextlib.suppress(Exception):
                 config_backup[config_file.name] = config_file.read_text(encoding="utf-8")
-            except Exception:
-                pass
 
     yield
 
@@ -35,10 +34,8 @@ def reset_prompt_config():
     # 恢復配置檔案
     if config_dir.exists():
         for filename, content in config_backup.items():
-            try:
+            with contextlib.suppress(Exception):
                 (config_dir / filename).write_text(content, encoding="utf-8")
-            except Exception:
-                pass
 
 
 class TestPromptManagerInit:
@@ -770,7 +767,7 @@ class TestPromptManagerEdgeCases:
             try:
                 datetime.fromisoformat(timestamp)
                 assert True
-            except:
+            except ValueError:
                 # 如果解析失敗，至少確保時間戳存在
                 assert timestamp is not None
 

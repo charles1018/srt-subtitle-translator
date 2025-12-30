@@ -15,7 +15,7 @@ class TestConfigBasicIntegration:
 
     def test_config_file_creation_and_loading(self, integration_env):
         """測試配置檔案創建與載入"""
-        config_dir = integration_env["config_dir"]
+        integration_env["config_dir"]
 
         # 重置單例
         ConfigManager._instances = {}
@@ -62,7 +62,7 @@ class TestConfigCacheIntegration:
     def test_cache_uses_config_settings(self, integration_env):
         """測試快取使用配置設定"""
         cache_manager = integration_env["cache_manager"]
-        test_config = integration_env["test_config"]
+        integration_env["test_config"]
 
         # 驗證快取管理器的設定來自配置
         # 注意：實際實現可能需要調整

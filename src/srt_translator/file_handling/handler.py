@@ -14,7 +14,7 @@ import chardet
 
 # Try importing tkinterdnd2
 try:
-    from tkinterdnd2 import *
+    from tkinterdnd2 import *  # noqa: F403 - Dynamic import for optional drag-drop support
 
     TKDND_AVAILABLE = True
 except ImportError:
@@ -134,9 +134,7 @@ class SubtitleInfo:
 
                 # Warn if confidence is low
                 if confidence < 0.7:
-                    logger.warning(
-                        f"Low encoding confidence ({confidence:.2f}) for {file_path}, using {encoding}"
-                    )
+                    logger.warning(f"Low encoding confidence ({confidence:.2f}) for {file_path}, using {encoding}")
 
                 return encoding
         except Exception as e:
@@ -354,7 +352,7 @@ class FileHandler:
     _lock = threading.Lock()
 
     @classmethod
-    def get_instance(cls, root: tk.Tk = None, config_section: str = "file") -> "FileHandler":
+    def get_instance(cls, root: Optional[tk.Tk] = None, config_section: str = "file") -> "FileHandler":
         """Get file handler singleton instance
 
         Args:
@@ -373,7 +371,7 @@ class FileHandler:
 
             return cls._instance
 
-    def __init__(self, root: tk.Tk = None, config_section: str = "file"):
+    def __init__(self, root: Optional[tk.Tk] = None, config_section: str = "file"):
         """Initialize file handler
 
         Args:
@@ -385,9 +383,7 @@ class FileHandler:
         """
         # Prevent direct instantiation when singleton already exists
         if self.__class__._instance is not None and self.__class__._instance is not self:
-            raise RuntimeError(
-                "Use FileHandler.get_instance() instead of direct instantiation"
-            )
+            raise RuntimeError("Use FileHandler.get_instance() instead of direct instantiation")
 
         self.root = root
         self.config_section = config_section
@@ -624,7 +620,7 @@ class FileHandler:
                                 valid_files.append(entry.path)
         except Exception as e:
             logger.error(f"Error scanning directory: {format_exception(e)}")
-            raise FileError(f"Error scanning directory: {e!s}")
+            raise FileError(f"Error scanning directory: {e!s}") from e
 
         return valid_files
 
@@ -768,7 +764,7 @@ class FileHandler:
             return os.path.normpath(base_path)
         except Exception as e:
             logger.error(f"Error getting output path: {format_exception(e)}")
-            raise FileError(f"Error determining output path: {e!s}")
+            raise FileError(f"Error determining output path: {e!s}") from e
 
     def _is_path_within_directory(self, path: str, directory: str) -> bool:
         """Check if a path is safely within a directory (path traversal prevention)
@@ -882,14 +878,12 @@ class FileHandler:
 
         # Issue deprecation warning
         warnings.warn(
-            "save_api_key() is deprecated and insecure. "
-            "Use environment variable OPENAI_API_KEY instead.",
+            "save_api_key() is deprecated and insecure. Use environment variable OPENAI_API_KEY instead.",
             DeprecationWarning,
             stacklevel=2,
         )
         logger.warning(
-            "Saving API key to file is deprecated and insecure. "
-            "Please use environment variable OPENAI_API_KEY instead."
+            "Saving API key to file is deprecated and insecure. Please use environment variable OPENAI_API_KEY instead."
         )
 
         try:
@@ -964,7 +958,7 @@ class FileHandler:
 
         except Exception as e:
             logger.error(f"Error converting subtitle format: {format_exception(e)}")
-            raise FileError(f"Error converting subtitle format: {e!s}")
+            raise FileError(f"Error converting subtitle format: {e!s}") from e
 
     def _convert_srt_to_vtt(self, srt_path: str, vtt_path: str) -> None:
         """Convert SRT format to VTT format
@@ -1036,7 +1030,7 @@ class FileHandler:
 
         # Check for suspicious characters that could indicate injection attempts
         # Note: spaces and Unicode are allowed, but shell metacharacters are not
-        suspicious_chars = ['|', '&', ';', '$', '`', '>', '<', '\n', '\r', '\0']
+        suspicious_chars = ["|", "&", ";", "$", "`", ">", "<", "\n", "\r", "\0"]
         for char in suspicious_chars:
             if char in path:
                 raise FileError(f"Path contains suspicious character: '{char}'")
@@ -1087,12 +1081,12 @@ class FileHandler:
                     check=True,
                     timeout=10,  # 10 seconds timeout for version check
                 )
-            except subprocess.TimeoutExpired:
+            except subprocess.TimeoutExpired as e:
                 logger.error("ffmpeg version check timed out")
-                raise FileError("ffmpeg version check timed out")
-            except (subprocess.SubprocessError, FileNotFoundError):
+                raise FileError("ffmpeg version check timed out") from e
+            except (subprocess.SubprocessError, FileNotFoundError) as e:
                 logger.error("ffmpeg not found, cannot extract subtitle")
-                raise FileError("ffmpeg not found, cannot extract subtitle")
+                raise FileError("ffmpeg not found, cannot extract subtitle") from e
 
             # Prepare paths
             output_dir = os.path.dirname(video_path) or "."
@@ -1132,9 +1126,9 @@ class FileHandler:
                     capture_output=True,
                     timeout=300,  # 5 minutes timeout for subtitle extraction
                 )
-            except subprocess.TimeoutExpired:
+            except subprocess.TimeoutExpired as e:
                 logger.error(f"Subtitle extraction timed out (300s): {video_path}")
-                raise FileError("Subtitle extraction timed out (300 seconds)")
+                raise FileError("Subtitle extraction timed out (300 seconds)") from e
 
             # Check result
             if result.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
@@ -1146,10 +1140,10 @@ class FileHandler:
 
         except ImportError as e:
             logger.error(f"Import error: {format_exception(e)}")
-            raise FileError(f"Missing required package: {e!s}")
+            raise FileError(f"Missing required package: {e!s}") from e
         except Exception as e:
             logger.error(f"Error extracting subtitle: {format_exception(e)}")
-            raise FileError(f"Error extracting subtitle: {e!s}")
+            raise FileError(f"Error extracting subtitle: {e!s}") from e
 
     def cleanup(self) -> None:
         """Clean up resources"""
@@ -1158,7 +1152,7 @@ class FileHandler:
 
 
 # Global functions for easy access
-def get_file_handler(root: tk.Tk = None) -> FileHandler:
+def get_file_handler(root: Optional[tk.Tk] = None) -> FileHandler:
     """Get file handler instance
 
     Args:
@@ -1170,7 +1164,7 @@ def get_file_handler(root: tk.Tk = None) -> FileHandler:
     return FileHandler.get_instance(root)
 
 
-def select_files(root: tk.Tk = None) -> List[str]:
+def select_files(root: Optional[tk.Tk] = None) -> List[str]:
     """Select subtitle files
 
     Args:

@@ -123,7 +123,7 @@ async def test_single_file_translation_basic(
     3. 生成正確的輸出檔案
     """
     # 準備
-    output_file = e2e_temp_dir / "output.srt"
+    e2e_temp_dir / "output.srt"
     translation_service = ServiceFactory.get_translation_service()
 
     # 讀取輸入檔案
@@ -349,5 +349,3 @@ async def test_japanese_to_chinese_translation(sample_japanese_srt_path: Path, m
     assert translations[0] == "你好，世界！", "日文 '你好世界' 翻譯應該正確"
     assert translations[1] == "這是測試字幕。", "日文 '這是測試字幕' 翻譯應該正確"
     assert translations[2] == "歡迎使用翻譯系統。", "日文 '歡迎' 翻譯應該正確"
-
-

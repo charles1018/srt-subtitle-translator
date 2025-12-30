@@ -136,7 +136,7 @@ async def test_translation_speed(sample_srt_path: Path, mock_all_services_for_pe
     single_times = []
     for sub in input_subs:
         start_time = time.time()
-        translation = await translation_service.translate_text(sub.text, [sub.text], "openai", "test-model")
+        await translation_service.translate_text(sub.text, [sub.text], "openai", "test-model")
         duration = time.time() - start_time
         single_times.append(duration)
 
@@ -148,7 +148,7 @@ async def test_translation_speed(sample_srt_path: Path, mock_all_services_for_pe
     texts_with_context = [(sub.text, [sub.text]) for sub in input_subs]
 
     start_time = time.time()
-    batch_translations = await translation_service.translate_batch(
+    await translation_service.translate_batch(
         texts_with_context, "openai", "test-model", concurrent_limit=3
     )
     batch_time = time.time() - start_time

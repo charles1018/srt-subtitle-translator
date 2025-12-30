@@ -60,7 +60,7 @@ class TestModelManagerAPIKeyOperations:
     def test_save_api_key_error_handling(self, manager):
         """測試儲存 API 金鑰錯誤處理"""
         # 使用無效路徑
-        with patch("srt_translator.core.models.get_config", return_value="/invalid/path/key.txt"):
+        with patch("srt_translator.core.models.get_config", return_value="/invalid/path/key.txt"):  # noqa: SIM117
             with patch("os.makedirs", side_effect=PermissionError("Access denied")):
                 result = manager.save_api_key("openai", "test-key")
                 # 應該返回 False
@@ -101,7 +101,7 @@ class TestModelManagerConfigOperations:
         """測試成功更新配置"""
         new_config = {"cache_expiry": 1200, "connect_timeout": 10}
 
-        result = manager.update_config(new_config)
+        manager.update_config(new_config)
 
         # 驗證配置已更新
         assert manager.config.get("cache_expiry") == 1200
@@ -463,7 +463,7 @@ class TestModelManagerOpenAIModelsAsync:
         # Mock OpenAI client
         mock_models = [MagicMock(id="gpt-3.5-turbo"), MagicMock(id="gpt-4"), MagicMock(id="gpt-4o")]
 
-        with patch("srt_translator.core.models.OPENAI_AVAILABLE", True):
+        with patch("srt_translator.core.models.OPENAI_AVAILABLE", True):  # noqa: SIM117
             with patch("srt_translator.core.models.OpenAI") as mock_client:
                 mock_instance = MagicMock()
                 mock_instance.models.list.return_value = mock_models
@@ -487,7 +487,7 @@ class TestModelManagerOpenAIModelsAsync:
             MagicMock(id="gpt-4"),
         ]
 
-        with patch("srt_translator.core.models.OPENAI_AVAILABLE", True):
+        with patch("srt_translator.core.models.OPENAI_AVAILABLE", True):  # noqa: SIM117
             with patch("srt_translator.core.models.OpenAI") as mock_client:
                 mock_instance = MagicMock()
                 mock_instance.models.list.return_value = mock_models
@@ -502,7 +502,7 @@ class TestModelManagerOpenAIModelsAsync:
     @pytest.mark.asyncio
     async def test_get_openai_models_error_handling(self, manager):
         """測試 API 錯誤時的處理"""
-        with patch("srt_translator.core.models.OPENAI_AVAILABLE", True):
+        with patch("srt_translator.core.models.OPENAI_AVAILABLE", True):  # noqa: SIM117
             with patch("srt_translator.core.models.OpenAI") as mock_client:
                 mock_client.side_effect = Exception("API Error")
 

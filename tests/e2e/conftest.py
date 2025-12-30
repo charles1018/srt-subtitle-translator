@@ -206,7 +206,7 @@ def mock_translation_client(mock_translation_responses: Dict[str, str]):
     async def mock_translate_batch(texts_with_context: List, model_name: str, concurrent_limit: int = 5) -> List[str]:
         """Mock 批量翻譯函數"""
         results = []
-        for text, context in texts_with_context:
+        for text, _context in texts_with_context:
             translation = mock_translation_responses.get(text, f"[Mock翻譯] {text}")
             results.append(translation)
         return results
@@ -285,9 +285,8 @@ class SRTComparator:
                     return False
 
                 # 如果需要，比對時間軸
-                if compare_timing:
-                    if sub1.start != sub2.start or sub1.end != sub2.end:
-                        return False
+                if compare_timing and (sub1.start != sub2.start or sub1.end != sub2.end):
+                    return False
 
             return True
         except Exception as e:

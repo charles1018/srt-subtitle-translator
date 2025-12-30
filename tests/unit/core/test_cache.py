@@ -518,7 +518,6 @@ class TestCacheConfigAndMaintenance:
         cache_manager.store_translation("test", "測試", [], "gpt-4")
 
         # 關閉並刪除資料庫以模擬錯誤
-        db_path = cache_manager.db_path
         # 先清空記憶體快取
         cache_manager.memory_cache.clear()
 

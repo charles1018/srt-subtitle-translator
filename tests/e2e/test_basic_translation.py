@@ -111,7 +111,7 @@ async def test_basic_single_file_translation_service(
     4. 輸出格式正確
     """
     # 準備
-    input_file = str(copy_sample_srt)
+    str(copy_sample_srt)
     output_file = str(e2e_temp_dir / "output.srt")
 
     # 設定 FileService 的輸出路徑

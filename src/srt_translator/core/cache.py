@@ -52,7 +52,7 @@ class CacheManager:
     CLEANUP_KEEP_RATIO = 0.7  # 清理後保留 70% 的最近使用項目
 
     @classmethod
-    def get_instance(cls, db_path: str = None) -> "CacheManager":
+    def get_instance(cls, db_path: Optional[str] = None) -> "CacheManager":
         """獲取快取管理器的單例實例
 
         參數:
@@ -215,8 +215,8 @@ class CacheManager:
             logger.error(f"建立資料庫備份時發生錯誤: {e!s}")
             return False
 
-    @lru_cache(maxsize=1000)
-    def _compute_context_hash(self, context_tuple: Tuple[str, ...]) -> str:     
+    @lru_cache(maxsize=1000)  # noqa: B019 - Intentional: cache bound to instance lifetime
+    def _compute_context_hash(self, context_tuple: Tuple[str, ...]) -> str:
         """計算上下文的雜湊值，使用LRU快取加速"""
         parts = []
         for text in context_tuple:
@@ -273,8 +273,8 @@ class CacheManager:
             with sqlite_connection(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
                 cursor = conn.execute(
                     """
-                    SELECT target_text, usage_count 
-                    FROM translations 
+                    SELECT target_text, usage_count
+                    FROM translations
                     WHERE source_text = ? AND context_hash = ? AND model_name = ?
                 """,
                     (source_text, context_hash, model_name),
@@ -353,7 +353,7 @@ class CacheManager:
             with sqlite_connection(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES) as conn:
                 conn.execute(
                     """
-                    INSERT OR REPLACE INTO translations 
+                    INSERT OR REPLACE INTO translations
                     (source_text, target_text, context_hash, model_name, created_at, usage_count, last_used)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
@@ -400,7 +400,7 @@ class CacheManager:
                 f"(限制: {self.max_memory_cache})"
             )
 
-    def _auto_cleanup(self, conn, days_threshold: int = None):
+    def _auto_cleanup(self, conn, days_threshold: Optional[int] = None):
         """自動清理過期快取
 
         參數:
@@ -441,7 +441,7 @@ class CacheManager:
         except sqlite3.Error as e:
             logger.error(f"自動清理時發生錯誤: {e!s}")
 
-    def clear_old_cache(self, days_threshold: int = None) -> int:
+    def clear_old_cache(self, days_threshold: Optional[int] = None) -> int:
         """手動清理過期快取 (超過一定天數的舊資料)
 
         參數:
@@ -632,7 +632,7 @@ class CacheManager:
 
                         conn.execute(
                             """
-                            INSERT OR IGNORE INTO translations 
+                            INSERT OR IGNORE INTO translations
                             (source_text, target_text, context_hash, model_name, created_at, usage_count, last_used)
                             VALUES (?, ?, ?, ?, ?, ?, ?)
                         """,
@@ -712,7 +712,7 @@ class CacheManager:
             logger.error(f"清空快取時發生錯誤: {e!s}")
             return False
 
-    def search_cache(self, keyword: str, model_name: str = None) -> List[Dict[str, Any]]:
+    def search_cache(self, keyword: str, model_name: Optional[str] = None) -> List[Dict[str, Any]]:
         """搜尋快取
 
         參數:
@@ -768,9 +768,11 @@ class CacheManager:
 
 # 測試程式碼
 if __name__ == "__main__":
+    import logging as test_logging
+
     # 設定控制台日誌以便於測試
-    console_handler = logging.StreamHandler()
-    console_formatter = logging.Formatter("%(levelname)s - %(message)s")
+    console_handler = test_logging.StreamHandler()
+    console_formatter = test_logging.Formatter("%(levelname)s - %(message)s")
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 

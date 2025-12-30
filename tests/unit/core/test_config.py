@@ -1,5 +1,6 @@
 """測試 config 模組"""
 
+import contextlib
 import json
 from pathlib import Path
 
@@ -19,10 +20,8 @@ def reset_config_manager():
     config_dir = Path("config")
     if config_dir.exists():
         for config_file in config_dir.glob("*.json"):
-            try:
+            with contextlib.suppress(Exception):
                 config_backup[config_file.name] = config_file.read_text(encoding="utf-8")
-            except Exception:
-                pass
 
     yield
 
@@ -32,10 +31,8 @@ def reset_config_manager():
     # 恢復配置檔案
     if config_dir.exists():
         for filename, content in config_backup.items():
-            try:
+            with contextlib.suppress(Exception):
                 (config_dir / filename).write_text(content, encoding="utf-8")
-            except Exception:
-                pass
 
 
 class TestConfigManager:
@@ -112,7 +109,7 @@ class TestConfigManager:
         manager.config_dir = str(temp_config_dir)
 
         # 保存配置應該創建文件
-        config_path = temp_config_dir / "app_config.json"
+        temp_config_dir / "app_config.json"
         assert temp_config_dir.exists()
 
 
@@ -441,7 +438,7 @@ class TestConfigValidation:
 
         errors = manager.validate_config("all")
         # 應該包含 app.version 錯誤
-        assert any("version" in key for key in errors.keys())
+        assert any("version" in key for key in errors)
 
 
 class TestConfigErrorHandling:

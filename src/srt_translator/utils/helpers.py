@@ -14,7 +14,7 @@ import time
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 # 導入錯誤類別
 from srt_translator.utils.errors import AppError, TranslationError
@@ -343,7 +343,7 @@ def parse_srt_time(time_str: str) -> int:
     return hours * 3600000 + minutes * 60000 + seconds * 1000 + millis
 
 
-def generate_unique_filename(base_path: str, extension: str = None) -> str:
+def generate_unique_filename(base_path: str, extension: Optional[str] = None) -> str:
     """生成不會衝突的唯一文件名
 
     參數:
@@ -442,7 +442,7 @@ def format_elapsed_time(seconds: float) -> str:
     return f"{hours} 小時 {minutes} 分 {seconds} 秒"
 
 
-def format_datetime(dt: datetime = None, format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
+def format_datetime(dt: Optional[datetime] = None, format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
     """格式化日期時間
 
     參數:
@@ -483,7 +483,7 @@ def format_file_size(size_bytes: int) -> str:
 class ProgressTracker:
     """進度追踪器，支持回調和估計剩餘時間"""
 
-    def __init__(self, total: int = 0, description: str = "", callback: Callable = None):
+    def __init__(self, total: int = 0, description: str = "", callback: Optional[Callable] = None):
         """初始化進度追踪器
 
         參數:
@@ -514,7 +514,7 @@ class ProgressTracker:
 
         logger.debug(f"進度追踪開始: {self.description}, 總項目: {self.total}")
 
-    def update(self, current: int = None, increment: int = None, description: str = None):
+    def update(self, current: Optional[int] = None, increment: Optional[int] = None, description: Optional[str] = None):
         """更新進度
 
         參數:
@@ -544,7 +544,7 @@ class ProgressTracker:
         self.last_update_time = now
         self._update()
 
-    def increment(self, amount: int = 1, description: str = None):
+    def increment(self, amount: int = 1, description: Optional[str] = None):
         """增加進度
 
         參數:
@@ -553,7 +553,7 @@ class ProgressTracker:
         """
         self.update(increment=amount, description=description)
 
-    def complete(self, description: str = None):
+    def complete(self, description: Optional[str] = None):
         """完成進度追踪
 
         參數:
@@ -704,7 +704,7 @@ def check_api_connection(api_url: str, timeout: int = 5) -> bool:
     try:
         urllib.request.urlopen(api_url, timeout=timeout)
         return True
-    except:
+    except Exception:
         return False
 
 
@@ -890,7 +890,7 @@ class LocaleManager:
 
         return text
 
-    def save_translations(self, locale_code: str = None) -> bool:
+    def save_translations(self, locale_code: Optional[str] = None) -> bool:
         """保存翻譯到文件
 
         參數:
@@ -916,7 +916,7 @@ class LocaleManager:
             logger.error(f"保存語言文件 {locale_file} 失敗: {e!s}")
             return False
 
-    def add_translation(self, key: str, text: str, locale_code: str = None) -> bool:
+    def add_translation(self, key: str, text: str, locale_code: Optional[str] = None) -> bool:
         """添加或更新翻譯
 
         參數:
@@ -1001,7 +1001,7 @@ class MemoryCache:
             item["last_access"] = time.time()
             return item["value"]
 
-    def set(self, key: str, value, ttl: int = None) -> bool:
+    def set(self, key: str, value, ttl: Optional[int] = None) -> bool:
         """設置快取項目
 
         參數:
@@ -1179,7 +1179,7 @@ if __name__ == "__main__":
     tracker = ProgressTracker(total=10, description="處理文件", callback=progress_callback)
     tracker.start()
 
-    for i in range(10):
+    for _i in range(10):
         time.sleep(0.2)  # 模擬處理時間
         tracker.increment()
 

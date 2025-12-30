@@ -13,7 +13,7 @@ import aiohttp
 # 嘗試匯入所有可能的 LLM 客戶端
 try:
     import openai
-    from openai import AsyncOpenAI, OpenAI
+    from openai import OpenAI
 
     OPENAI_AVAILABLE = True
 except ImportError:
@@ -78,7 +78,7 @@ class ModelInfo:
             "available": self.available,
         }
 
-    async def test_model_connection(self, model_name: str, provider: str, api_key: str = None) -> Dict[str, Any]:
+    async def test_model_connection(self, model_name: str, provider: str, api_key: Optional[str] = None) -> Dict[str, Any]:
         """測試與模型的連線
 
         參數:
@@ -197,7 +197,8 @@ class ModelInfo:
             try:
                 running_loop = asyncio.get_running_loop()
                 # 在非同步上下文中，建立任務而非阻塞
-                running_loop.create_task(self._close_async_session())
+                # 存儲任務引用以避免被垃圾回收
+                self._cleanup_task = running_loop.create_task(self._close_async_session())
                 logger.debug("已排程關閉非同步 session（在運行中的事件循環）")
             except RuntimeError:
                 # 沒有運行中的事件循環，需要建立一個來執行清理
@@ -239,7 +240,7 @@ class ModelManager:
     _lock = threading.Lock()
 
     @classmethod
-    def get_instance(cls, config_file: str = None) -> "ModelManager":
+    def get_instance(cls, config_file: Optional[str] = None) -> "ModelManager":
         """獲取模型管理器的單例實例
 
         參數:
@@ -360,8 +361,7 @@ class ModelManager:
                     logger.info("已從檔案載入 OpenAI API 金鑰（建議改用環境變數 OPENAI_API_KEY）")
                 else:
                     logger.warning(
-                        f"未設定 OpenAI API 金鑰。請設定環境變數 OPENAI_API_KEY，"
-                        f"或建立檔案: {openai_key_path}"
+                        f"未設定 OpenAI API 金鑰。請設定環境變數 OPENAI_API_KEY，或建立檔案: {openai_key_path}"
                     )
         except Exception as e:
             logger.error(f"載入 OpenAI API 金鑰時發生錯誤: {e!s}")
@@ -587,7 +587,7 @@ class ModelManager:
                 self.session = None
                 logger.debug("已關閉非同步 HTTP 客戶端")
 
-    async def get_model_list_async(self, llm_type: str, api_key: str = None) -> List[ModelInfo]:
+    async def get_model_list_async(self, llm_type: str, api_key: Optional[str] = None) -> List[ModelInfo]:
         """非同步獲取模型列表
 
         參數:
@@ -647,7 +647,7 @@ class ModelManager:
 
             return []
 
-    def get_model_list(self, llm_type: str, api_key: str = None) -> List[str]:
+    def get_model_list(self, llm_type: str, api_key: Optional[str] = None) -> List[str]:
         """同步獲取模型列表(字串列表版本，向後相容)
 
         參數:
@@ -783,7 +783,7 @@ class ModelManager:
             client = anthropic.Anthropic(api_key=api_key)
             try:
                 # 簡單呼叫以驗證 API 金鑰
-                response = client.messages.create(
+                client.messages.create(
                     model="claude-3-haiku-20240307", max_tokens=10, messages=[{"role": "user", "content": "Hi"}]
                 )
                 # 呼叫成功，API 金鑰有效
@@ -815,7 +815,7 @@ class ModelManager:
             return "claude-3-haiku-20240307"  # 最快速的選擇
         return self.default_ollama_model
 
-    def get_model_info(self, model_name: str, provider: str = None) -> Dict[str, Any]:
+    def get_model_info(self, model_name: str, provider: Optional[str] = None) -> Dict[str, Any]:
         """獲取模型的詳細資訊
 
         參數:
@@ -832,7 +832,7 @@ class ModelManager:
                 return self.model_database[key].to_dict()
 
         # 直接查詢模型資料庫
-        for key, model in self.model_database.items():
+        for _key, model in self.model_database.items():
             if model.id == model_name:
                 return model.to_dict()
 
@@ -873,7 +873,7 @@ class ModelManager:
             return {"id": model_name, "name": model_name, "provider": "openai", **openai_models[model_name]}
         return {}
 
-    def get_recommended_model(self, task_type: str = "translation", provider: str = None) -> Optional[ModelInfo]:
+    def get_recommended_model(self, task_type: str = "translation", provider: Optional[str] = None) -> Optional[ModelInfo]:
         """根據任務類型獲取推薦模型
 
         參數:
@@ -912,7 +912,7 @@ class ModelManager:
         # 獲取所有可用模型
         all_models = []
         for provider_name in available_providers:
-            for key, model in self.model_database.items():
+            for _key, model in self.model_database.items():
                 if model.provider == provider_name and model.available:
                     all_models.append(model)
 
@@ -928,10 +928,9 @@ class ModelManager:
                     score += model.capabilities[capability] * weight
 
             # 根據提供者調整得分
-            if model.provider == "ollama":
-                # Ollama 是本機執行，在沒有指定提供者時降低評分以優先使用雲端服務
-                if provider is None:
-                    score *= 0.85
+            # Ollama 是本機執行，在沒有指定提供者時降低評分以優先使用雲端服務
+            if model.provider == "ollama" and provider is None:
+                score *= 0.85
 
             scored_models.append((model, score))
 
@@ -1086,7 +1085,7 @@ class ModelManager:
                                 if isinstance(model, dict) and "name" in model:
                                     models.add(model["name"])
                         elif "models" in result and isinstance(result["models"], dict):
-                            for model_name in result["models"].keys():
+                            for model_name in result["models"]:
                                 models.add(model_name)
                         elif isinstance(result, list):
                             for item in result:
@@ -1347,7 +1346,7 @@ class ModelManager:
 
 
 # 提供便捷的全域函數
-def get_model_info(model_name: str, provider: str = None) -> Dict[str, Any]:
+def get_model_info(model_name: str, provider: Optional[str] = None) -> Dict[str, Any]:
     """全域函數：獲取模型資訊
 
     參數:
@@ -1361,7 +1360,7 @@ def get_model_info(model_name: str, provider: str = None) -> Dict[str, Any]:
     return manager.get_model_info(model_name, provider)
 
 
-def get_recommended_model(task_type: str = "translation", provider: str = None) -> str:
+def get_recommended_model(task_type: str = "translation", provider: Optional[str] = None) -> str:
     """全域函數：根據任務類型獲取推薦模型
 
     參數:
@@ -1378,7 +1377,7 @@ def get_recommended_model(task_type: str = "translation", provider: str = None) 
     return manager.get_default_model(provider or "ollama")
 
 
-async def test_model_connection(model_name: str, provider: str, api_key: str = None) -> Dict[str, Any]:
+async def test_model_connection(model_name: str, provider: str, api_key: Optional[str] = None) -> Dict[str, Any]:
     """全域函數：測試與模型的連線
 
     參數:

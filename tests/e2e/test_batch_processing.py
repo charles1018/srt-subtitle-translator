@@ -230,7 +230,7 @@ async def test_batch_translation_error_handling(
     translation_service = ServiceFactory.get_translation_service()
 
     # 混合有效和無效檔案
-    test_files = batch_srt_files + [invalid_srt_path]
+    test_files = [*batch_srt_files, invalid_srt_path]
     results = []
 
     # 處理每個檔案（捕捉錯誤）

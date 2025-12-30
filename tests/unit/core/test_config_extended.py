@@ -94,10 +94,10 @@ class TestConfigBackupRestore:
     def test_list_backups_with_backups(self, config_manager, temp_dir):
         """測試列出已有的備份"""
         # 建立幾個備份
-        backup1 = config_manager.create_backup()
+        config_manager.create_backup()
         time.sleep(1.1)  # 確保時間戳不同（至少 1 秒以確保文件名不同）
         config_manager.set_value("version", "v2", auto_save=True)
-        backup2 = config_manager.create_backup()
+        config_manager.create_backup()
 
         # 列出備份
         backups = config_manager.list_backups("app")

@@ -36,7 +36,7 @@ class PromptManager:
     _lock = threading.Lock()
 
     @classmethod
-    def get_instance(cls, config_file: str = None) -> "PromptManager":
+    def get_instance(cls, config_file: Optional[str] = None) -> "PromptManager":
         """獲取提示詞管理器的單例實例
 
         參數:
@@ -584,7 +584,7 @@ Output the translated text directly. No preamble, no explanations.
         # 更新配置
         self.config_manager.set_value("custom_prompts", self.custom_prompts)
 
-    def get_prompt(self, llm_type: str = "ollama", content_type: str = None, style: str = None) -> str:
+    def get_prompt(self, llm_type: str = "ollama", content_type: Optional[str] = None, style: Optional[str] = None) -> str:
         """根據 LLM 類型、內容類型和風格取得適合的 Prompt
 
         參數:
@@ -780,7 +780,7 @@ Output the translated text directly. No preamble, no explanations.
 
         return prompt
 
-    def set_prompt(self, new_prompt: str, llm_type: str = "ollama", content_type: str = None) -> bool:
+    def set_prompt(self, new_prompt: str, llm_type: str = "ollama", content_type: Optional[str] = None) -> bool:
         """設置特定 LLM 和內容類型的提示詞
 
         參數:
@@ -867,7 +867,7 @@ Output the translated text directly. No preamble, no explanations.
             logger.error(f"儲存模板檔案時發生錯誤: {format_exception(e)}")
             return False
 
-    def get_version_history(self, content_type: str = None, llm_type: str = None) -> List[Dict[str, Any]]:
+    def get_version_history(self, content_type: Optional[str] = None, llm_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """取得提示詞的版本歷史
 
         參數:
@@ -925,7 +925,7 @@ Output the translated text directly. No preamble, no explanations.
         logger.warning("無法恢復版本，找不到對應的版本記錄")
         return False
 
-    def reset_to_default(self, llm_type: str = None, content_type: str = None) -> bool:
+    def reset_to_default(self, llm_type: Optional[str] = None, content_type: Optional[str] = None) -> bool:
         """重置為預設提示詞
 
         參數:
@@ -1027,7 +1027,7 @@ Output the translated text directly. No preamble, no explanations.
         """
         return list(self.language_pairs.keys())
 
-    def export_prompt(self, content_type: str = None, llm_type: str = None, file_path: str = None) -> Optional[str]:
+    def export_prompt(self, content_type: Optional[str] = None, llm_type: Optional[str] = None, file_path: Optional[str] = None) -> Optional[str]:
         """匯出提示詞至檔案
 
                 參數:

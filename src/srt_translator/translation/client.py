@@ -207,7 +207,7 @@ class TranslationClient:
         self,
         llm_type: str,
         base_url: str = "http://localhost:11434",
-        api_key: str = None,
+        api_key: Optional[str] = None,
         cache_db_path: str = "data/translation_cache.db",
         netflix_style_config: Optional[Dict[str, Any]] = None,
     ):
@@ -880,7 +880,7 @@ class TranslationClient:
                 continue
 
             if result and len(result) == 3:
-                idx, translation, error = result
+                idx, translation, _error = result
                 results[idx] = translation
 
         return results
@@ -907,7 +907,7 @@ class TranslationClient:
         api_key = api_key.strip()
 
         # 檢查是否包含非法字符（只允許字母、數字、連字符、底線）
-        if not re.match(r'^[a-zA-Z0-9\-_]+$', api_key):
+        if not re.match(r"^[a-zA-Z0-9\-_]+$", api_key):
             logger.warning("API 金鑰包含非法字符")
             return False
 

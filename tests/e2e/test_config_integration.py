@@ -189,7 +189,7 @@ async def test_model_config_affects_translation(sample_srt_path: Path, mock_tran
         translation_service = ServiceFactory.get_translation_service()
 
         # 執行翻譯
-        result = await translation_service.translate_text("Hello, world!", [], "openai", "gpt-4")
+        await translation_service.translate_text("Hello, world!", [], "openai", "gpt-4")
 
         # 驗證使用正確的模型
         mock_translation_service.translate_text.assert_called_once()
@@ -205,7 +205,7 @@ async def test_model_config_affects_translation(sample_srt_path: Path, mock_tran
         mock_translation_service.translate_text.return_value = AsyncMock(return_value="使用 GPT-3.5 翻譯")()
 
         # 執行翻譯
-        result2 = await translation_service.translate_text("Hello, world!", [], "openai", "gpt-3.5-turbo")
+        await translation_service.translate_text("Hello, world!", [], "openai", "gpt-3.5-turbo")
 
         # 驗證使用新的模型
         mock_translation_service.translate_text.assert_called_once()

@@ -638,7 +638,7 @@ class TestCommandExecution:
         mock_result.stderr = ""
         mock_run.return_value = mock_result
 
-        returncode, stdout, stderr = execute_command(["echo", "hello"])
+        returncode, stdout, _stderr = execute_command(["echo", "hello"])
         assert returncode == 0
         assert stdout == "Success"
 
@@ -651,7 +651,7 @@ class TestCommandExecution:
         mock_result.stderr = "Error"
         mock_run.return_value = mock_result
 
-        returncode, stdout, stderr = execute_command(["invalid_command"])
+        returncode, _stdout, stderr = execute_command(["invalid_command"])
         assert returncode == 1
         assert stderr == "Error"
 
@@ -662,7 +662,7 @@ class TestCommandExecution:
 
         mock_run.side_effect = subprocess.TimeoutExpired("cmd", 1)
 
-        returncode, stdout, stderr = execute_command(["sleep", "10"], timeout=1)
+        returncode, _stdout, stderr = execute_command(["sleep", "10"], timeout=1)
         assert returncode == -1
         assert "timed out" in stderr
 

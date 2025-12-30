@@ -8,7 +8,7 @@ Netflix 字幕風格後處理器
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import ClassVar, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ class NetflixStylePostProcessor:
     """
 
     # 標點符號映射表
-    PUNCTUATION_MAP = {
+    PUNCTUATION_MAP: ClassVar[Dict[str, str]] = {
         ",": "，",
         ";": "；",
         ":": "：",
@@ -65,11 +65,9 @@ class NetflixStylePostProcessor:
     }
 
     # 引號映射表
-    QUOTE_MAP = {
+    QUOTE_MAP: ClassVar[Dict[str, Tuple[str, str]]] = {
         '"': ("「", "」"),
         "'": ("「", "」"),
-        '"': ("「", "」"),
-        '"': ("「", "」"),
         """: ('「', '」'),
         """: ("「", "」"),
     }
@@ -413,7 +411,7 @@ class NetflixStylePostProcessor:
 
                     logger.debug(
                         f"自動分割第 {i} 行: {char_count} 字符 -> {len(split_lines)} 行 "
-                        f"({', '.join(str(len(l)) for l in split_lines)} 字符)"
+                        f"({', '.join(str(len(line)) for line in split_lines)} 字符)"
                     )
                 else:
                     # 不自動修正，只發出警告

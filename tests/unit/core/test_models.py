@@ -281,7 +281,7 @@ class TestModelManagerDatabase:
         """測試從資料庫獲取模型資訊"""
         # 直接訪問資料庫
         if manager.model_database:
-            first_model_id = list(manager.model_database.keys())[0]
+            first_model_id = next(iter(manager.model_database.keys()))
             info = manager.model_database.get(first_model_id)
 
             assert info is not None
@@ -931,11 +931,9 @@ class TestModelManagerAsync:
         # Mock _get_anthropic_models_async 返回模型
         mock_models = [ModelInfo(id="claude-3", provider="anthropic")]
 
-        with patch.object(manager, "_get_anthropic_models_async", return_value=mock_models):
-            # 需要 mock ANTHROPIC_AVAILABLE
+        with patch.object(manager, "_get_anthropic_models_async", return_value=mock_models):  # noqa: SIM117
             with patch("srt_translator.core.models.ANTHROPIC_AVAILABLE", True):
                 result = await manager.get_model_list_async("anthropic", api_key="test-key")
-
                 assert isinstance(result, list)
 
         # 清理
@@ -946,10 +944,11 @@ class TestModelManagerAsync:
     async def test_get_model_list_async_anthropic_error(self, manager):
         """測試 Anthropic 獲取失敗返回預設模型"""
         # Mock 方法拋出錯誤
-        with patch.object(manager, "_get_anthropic_models_async", side_effect=Exception("API error")):
+        with patch.object(  # noqa: SIM117
+            manager, "_get_anthropic_models_async", side_effect=Exception("API error")
+        ):
             with patch("srt_translator.core.models.ANTHROPIC_AVAILABLE", True):
                 result = await manager.get_model_list_async("anthropic")
-
                 # 應該返回預設 Anthropic 模型
                 assert isinstance(result, list)
                 if result:
@@ -998,7 +997,7 @@ class TestModelManagerEdgeCases:
     def test_model_database_key_format(self, manager):
         """測試模型資料庫鍵格式"""
         # 驗證鍵格式為 provider:model_id
-        for key in manager.model_database.keys():
+        for key in manager.model_database:
             assert ":" in key
             parts = key.split(":", 1)
             assert len(parts) == 2

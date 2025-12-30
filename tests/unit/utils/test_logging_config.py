@@ -25,7 +25,7 @@ class TestLoggingConfig:
     def test_setup_logger_creates_log_dir(self, temp_dir):
         """測試自動創建日誌目錄"""
         log_dir = temp_dir / "new_logs"
-        logger = setup_logger(name="test", log_file="test.log", log_dir=str(log_dir))
+        setup_logger(name="test", log_file="test.log", log_dir=str(log_dir))
 
         assert log_dir.exists()
 

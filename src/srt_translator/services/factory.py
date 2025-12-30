@@ -4,15 +4,15 @@ import os
 import re
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple
 
 import pysrt
 
 # 嘗試匯入相依模組
 try:
-    from srt_translator.core.config import ConfigManager, get_config, set_config
-except ImportError:
-    raise ImportError("請先實現 config_manager.py")
+    from srt_translator.core.config import ConfigManager, get_config
+except ImportError as e:
+    raise ImportError("請先實現 config_manager.py") from e
 
 # 從現有模組匯入必要的類和函數
 from srt_translator.core.cache import CacheManager
@@ -31,7 +31,7 @@ class ServiceFactory:
     """服務工廠類，管理所有服務實例並提供統一的訪問方式"""
 
     # 儲存所有建立的服務實例
-    _instances = {}
+    _instances: ClassVar[Dict[str, Any]] = {}
 
     @classmethod
     def get_translation_service(cls) -> "TranslationService":
@@ -152,7 +152,7 @@ class TranslationService:
             client = await self.model_service.get_translation_client(llm_type)
 
             # 獲取翻譯提示詞
-            messages = self.prompt_manager.get_optimized_message(text, context_texts, llm_type, model_name)
+            self.prompt_manager.get_optimized_message(text, context_texts, llm_type, model_name)
 
             # 使用客戶端執行翻譯
             if hasattr(client, "translate_with_retry"):
@@ -255,8 +255,8 @@ class TranslationService:
         parallel_requests: int,
         display_mode: str,
         llm_type: str,
-        progress_callback: Callable = None,
-        complete_callback: Callable = None,
+        progress_callback: Optional[Callable] = None,
+        complete_callback: Optional[Callable] = None,
     ) -> Tuple[bool, str]:
         """翻譯字幕檔案
 
@@ -642,7 +642,7 @@ class ModelService:
         models = await self.model_manager.get_model_list_async(llm_type, api_key)
         return [model.id for model in models]
 
-    def get_model_info(self, model_name: str, provider: str = None) -> Dict[str, Any]:
+    def get_model_info(self, model_name: str, provider: Optional[str] = None) -> Dict[str, Any]:
         """獲取模型的詳細資訊
 
         參數:
@@ -654,7 +654,7 @@ class ModelService:
         """
         return self.model_manager.get_model_info(model_name, provider)
 
-    def get_recommended_model(self, task_type: str = "translation", provider: str = None) -> str:
+    def get_recommended_model(self, task_type: str = "translation", provider: Optional[str] = None) -> str:
         """根據任務類型獲取推薦模型
 
         參數:
@@ -1229,7 +1229,7 @@ class TranslationTask(threading.Thread):
             self.translation_service = ServiceFactory.get_translation_service()
 
             # 執行翻譯
-            success, result = await self.translation_service.translate_subtitle_file(
+            _success, _result = await self.translation_service.translate_subtitle_file(
                 self.file_path,
                 self.source_lang,
                 self.target_lang,
@@ -1451,7 +1451,7 @@ if __name__ == "__main__":
             translation_service = ServiceFactory.get_translation_service()
             model_service = ServiceFactory.get_model_service()
             cache_service = ServiceFactory.get_cache_service()
-            file_service = ServiceFactory.get_file_service()
+            ServiceFactory.get_file_service()
 
             # 測試模型服務
             print("\n=== 測試模型服務 ===")
