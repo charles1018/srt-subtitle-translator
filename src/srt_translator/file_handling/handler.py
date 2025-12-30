@@ -5,6 +5,7 @@ import re
 import threading
 import tkinter as tk
 from datetime import datetime
+from pathlib import Path
 from queue import Queue
 from tkinter import filedialog, messagebox
 from typing import Any, Dict, List, Optional
@@ -698,14 +699,11 @@ class FileHandler:
                         rel_dir = os.path.dirname(os.path.relpath(file_path, common_base))
                         new_dir = os.path.join(output_dir, rel_dir)
 
-                        # 安全檢查：確保 new_dir 在 output_dir 內部，防止路徑遍歷攻擊
-                        new_dir_abs = os.path.abspath(os.path.normpath(new_dir))
-                        output_dir_abs = os.path.abspath(os.path.normpath(output_dir))
-
-                        if not new_dir_abs.startswith(output_dir_abs + os.sep) and new_dir_abs != output_dir_abs:
+                        # Security check: use pathlib for robust path traversal prevention
+                        if not self._is_path_within_directory(new_dir, output_dir):
                             logger.warning(
-                                f"路徑遍歷嘗試被阻止: {new_dir_abs} 不在 {output_dir_abs} 內，"
-                                "改用平面結構"
+                                f"Path traversal attempt blocked: {new_dir} is not within {output_dir}, "
+                                "using flat structure"
                             )
                             new_dir = output_dir
                         else:
@@ -772,6 +770,35 @@ class FileHandler:
             logger.error(f"Error getting output path: {format_exception(e)}")
             raise FileError(f"Error determining output path: {e!s}")
 
+    def _is_path_within_directory(self, path: str, directory: str) -> bool:
+        """Check if a path is safely within a directory (path traversal prevention)
+
+        Uses pathlib.Path.relative_to() for robust path comparison that handles
+        edge cases like symbolic links, case sensitivity, and path separators.
+
+        Args:
+            path: The path to check
+            directory: The base directory that path should be within
+
+        Returns:
+            True if path is within directory, False otherwise
+        """
+        try:
+            # Resolve both paths to absolute, normalized form
+            path_resolved = Path(path).resolve()
+            directory_resolved = Path(directory).resolve()
+
+            # relative_to() raises ValueError if path is not relative to directory
+            path_resolved.relative_to(directory_resolved)
+            return True
+        except ValueError:
+            # Path is not within directory
+            return False
+        except OSError as e:
+            # Handle filesystem errors (e.g., invalid paths)
+            logger.warning(f"Error checking path relationship: {e}")
+            return False
+
     def _get_unique_path(self, dir_name: str, name: str, lang_suffix: str, ext: str) -> str:
         """Get unique file path (to avoid conflicts)
 
@@ -801,16 +828,24 @@ class FileHandler:
 
         Returns:
             API key string
+
+        Note:
+            Environment variables are the recommended way to store API keys.
+            File-based storage is deprecated and will show a security warning.
         """
         try:
-            # Try to read from environment variable
+            # Try to read from environment variable (recommended)
             api_key = os.environ.get("OPENAI_API_KEY")
             if api_key:
                 logger.info("Loaded API key from environment variable")
                 return api_key
 
-            # Try to read from file
+            # Try to read from file (deprecated, with security warning)
             if os.path.exists(file_path):
+                logger.warning(
+                    f"Loading API key from file '{file_path}' is insecure. "
+                    "Please use environment variable OPENAI_API_KEY instead."
+                )
                 with open(file_path, encoding="utf-8") as f:
                     api_key = f.read().strip()
 
@@ -825,7 +860,11 @@ class FileHandler:
             return ""
 
     def save_api_key(self, api_key: str, file_path: str = "openapi_api_key.txt") -> bool:
-        """Save API key
+        """Save API key to file (DEPRECATED - use environment variables instead)
+
+        .. deprecated::
+            Storing API keys in plaintext files is insecure.
+            Use environment variables (OPENAI_API_KEY) instead.
 
         Args:
             api_key: API key string
@@ -833,10 +872,42 @@ class FileHandler:
 
         Returns:
             Whether the operation was successful
+
+        Warning:
+            This method stores API keys in plaintext which is a security risk.
+            The file will be created with restricted permissions where supported.
         """
+        import stat
+        import warnings
+
+        # Issue deprecation warning
+        warnings.warn(
+            "save_api_key() is deprecated and insecure. "
+            "Use environment variable OPENAI_API_KEY instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        logger.warning(
+            "Saving API key to file is deprecated and insecure. "
+            "Please use environment variable OPENAI_API_KEY instead."
+        )
+
         try:
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(api_key)
+
+            # Set restrictive file permissions (owner read/write only)
+            # This only works on Unix-like systems; on Windows it's a no-op
+            try:
+                os.chmod(file_path, stat.S_IRUSR | stat.S_IWUSR)  # 0o600
+                logger.debug(f"Set restrictive permissions on {file_path}")
+            except OSError as perm_error:
+                # On Windows, chmod may not work as expected
+                logger.warning(
+                    f"Could not set restrictive file permissions: {perm_error}. "
+                    "On Windows, please manually restrict access to this file."
+                )
+
             logger.info(f"Saved API key to file: {file_path}")
             return True
         except Exception as e:
