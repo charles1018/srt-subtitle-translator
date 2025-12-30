@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import time
 from dataclasses import dataclass
 from enum import Enum
@@ -884,6 +885,54 @@ class TranslationClient:
 
         return results
 
+    def _validate_openai_api_key(self, api_key: str) -> bool:
+        """驗證 OpenAI API 金鑰格式
+
+        支援的格式:
+        - 舊版金鑰: sk-... (約 51 個字符)
+        - 專案金鑰: sk-proj-... (約 80-200 個字符)
+        - 服務帳戶金鑰: sk-svcacct-... (可變長度)
+
+        Args:
+            api_key: 要驗證的 API 金鑰
+
+        Returns:
+            bool: 金鑰格式是否有效
+        """
+        if not api_key or not isinstance(api_key, str):
+            logger.warning("API 金鑰為空或非字串類型")
+            return False
+
+        # 移除首尾空白
+        api_key = api_key.strip()
+
+        # 檢查是否包含非法字符（只允許字母、數字、連字符、底線）
+        if not re.match(r'^[a-zA-Z0-9\-_]+$', api_key):
+            logger.warning("API 金鑰包含非法字符")
+            return False
+
+        # 檢查金鑰前綴和長度
+        if api_key.startswith("sk-proj-"):
+            # 新版專案金鑰：通常較長（80-200 字符）
+            if len(api_key) < 50:
+                logger.warning(f"專案金鑰長度異常短: {len(api_key)} 字符")
+                return False
+        elif api_key.startswith("sk-svcacct-"):
+            # 服務帳戶金鑰
+            if len(api_key) < 40:
+                logger.warning(f"服務帳戶金鑰長度異常短: {len(api_key)} 字符")
+                return False
+        elif api_key.startswith("sk-"):
+            # 舊版金鑰：約 51 字符
+            if len(api_key) < 40 or len(api_key) > 60:
+                logger.warning(f"API 金鑰長度異常: {len(api_key)} 字符（預期 40-60）")
+                return False
+        else:
+            logger.warning("API 金鑰不以 'sk-' 開頭")
+            return False
+
+        return True
+
     async def is_api_available(self) -> bool:
         """檢查 API 是否可用"""
         try:
@@ -893,9 +942,9 @@ class TranslationClient:
                     logger.warning("OpenAI API 金鑰未提供")
                     return False
 
-                # 簡單驗證 API 金鑰格式
-                if not self.api_key.startswith("sk-") or len(self.api_key) < 20:
-                    logger.warning("OpenAI API 金鑰格式不正確")
+                # 驗證 API 金鑰格式
+                if not self._validate_openai_api_key(self.api_key):
+                    logger.warning("OpenAI API 金鑰格式驗證失敗")
                     return False
 
                 # 嘗試簡單的模型列表請求
