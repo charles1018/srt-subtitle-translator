@@ -120,6 +120,9 @@ class AdaptiveConcurrencyController:
         - API 回應快時（< 0.5秒），增加並發數
         - API 回應慢時（> 1.5秒），降低並發數
         - 使用指數移動平均(EMA)平滑回應時間波動
+
+    執行緒安全:
+        此類別使用 asyncio.Lock 保護共享狀態，確保在並發環境中安全使用。
     """
 
     def __init__(self, initial: int = 3, min_concurrent: int = 2, max_concurrent: int = 10):
@@ -135,9 +138,10 @@ class AdaptiveConcurrencyController:
         self.max = max_concurrent
         self.avg_response_time = 0.8  # 初始估計值
         self.sample_count = 0
+        self._lock = asyncio.Lock()  # 非同步鎖保護共享狀態
 
-    def update(self, response_time: float) -> int:
-        """更新平均回應時間並調整並發數
+    async def update(self, response_time: float) -> int:
+        """更新平均回應時間並調整並發數（執行緒安全）
 
         使用指數移動平均(EMA)平滑回應時間:
         - 權重: 90% 歷史 + 10% 新樣本
@@ -148,48 +152,53 @@ class AdaptiveConcurrencyController:
         回傳:
             調整後的並發數
         """
-        # 使用 EMA 更新平均回應時間
-        alpha = 0.1  # 新樣本權重
-        self.avg_response_time = (1 - alpha) * self.avg_response_time + alpha * response_time
-        self.sample_count += 1
+        async with self._lock:
+            # 使用 EMA 更新平均回應時間
+            alpha = 0.1  # 新樣本權重
+            self.avg_response_time = (1 - alpha) * self.avg_response_time + alpha * response_time
+            self.sample_count += 1
 
-        # 根據平均回應時間調整並發數
-        if self.avg_response_time < 0.5 and self.current < self.max:
-            # 回應快，增加並發
-            self.current = min(self.current + 1, self.max)
-            logger.debug(
-                f"並發數增加: {self.current - 1} -> {self.current} (平均回應時間: {self.avg_response_time:.2f}s)"
-            )
-        elif self.avg_response_time > 1.5 and self.current > self.min:
-            # 回應慢，降低並發
-            self.current = max(self.current - 1, self.min)
-            logger.debug(
-                f"並發數降低: {self.current + 1} -> {self.current} (平均回應時間: {self.avg_response_time:.2f}s)"
-            )
+            # 根據平均回應時間調整並發數
+            if self.avg_response_time < 0.5 and self.current < self.max:
+                # 回應快，增加並發
+                self.current = min(self.current + 1, self.max)
+                logger.debug(
+                    f"並發數增加: {self.current - 1} -> {self.current} (平均回應時間: {self.avg_response_time:.2f}s)"
+                )
+            elif self.avg_response_time > 1.5 and self.current > self.min:
+                # 回應慢，降低並發
+                self.current = max(self.current - 1, self.min)
+                logger.debug(
+                    f"並發數降低: {self.current + 1} -> {self.current} (平均回應時間: {self.avg_response_time:.2f}s)"
+                )
 
-        return self.current
+            return self.current
 
     def get_current(self) -> int:
-        """獲取當前並發數
+        """獲取當前並發數（快速讀取，無鎖）
+
+        注意: 此方法不使用鎖，適用於不需要精確值的場景（如日誌記錄）。
+        在並發環境中，返回值可能略微過時。
 
         回傳:
             當前並發數
         """
         return self.current
 
-    def get_stats(self) -> Dict[str, Any]:
-        """獲取統計資訊
+    async def get_stats(self) -> Dict[str, Any]:
+        """獲取統計資訊（執行緒安全）
 
         回傳:
             統計資訊字典
         """
-        return {
-            "current_concurrency": self.current,
-            "min_concurrency": self.min,
-            "max_concurrency": self.max,
-            "avg_response_time": f"{self.avg_response_time:.2f}s",
-            "sample_count": self.sample_count,
-        }
+        async with self._lock:
+            return {
+                "current_concurrency": self.current,
+                "min_concurrency": self.min,
+                "max_concurrency": self.max,
+                "avg_response_time": f"{self.avg_response_time:.2f}s",
+                "sample_count": self.sample_count,
+            }
 
 
 class TranslationClient:
@@ -668,8 +677,8 @@ class TranslationClient:
             elapsed_time = time.time() - start_time
             self.metrics.total_response_time += elapsed_time
 
-            # 更新並發控制器
-            self.concurrency_controller.update(elapsed_time)
+            # 更新並發控制器（非同步，執行緒安全）
+            await self.concurrency_controller.update(elapsed_time)
 
             logger.debug(f"翻譯成功，耗時: {elapsed_time:.2f} 秒")
 
