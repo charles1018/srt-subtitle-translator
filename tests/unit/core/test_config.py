@@ -157,7 +157,7 @@ class TestConfigGetSet:
         ConfigManager._instances = {}
         manager = ConfigManager("theme")
         color = manager.get_value("colors.primary")
-        assert color == "#3498db"
+        assert color == "#3B82F6"
 
     def test_set_value_basic(self, config_manager):
         """測試設置基本配置值"""

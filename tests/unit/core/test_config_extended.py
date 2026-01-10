@@ -562,7 +562,7 @@ class TestConfigComplexScenarios:
         # 修改一個不應該影響另一個
         config1["colors"]["primary"] = "#000000"
 
-        assert config2["colors"]["primary"] == "#3498db"  # 應該保持原值
+        assert config2["colors"]["primary"] == "#3B82F6"  # 應該保持原值
 
     def test_validate_config_unknown_type_returns_error(self):
         """測試驗證未知類型返回錯誤"""
@@ -589,7 +589,7 @@ class TestGlobalFunctionsExtended:
 
         # 獲取嵌套值
         color = get_config("theme", "colors.primary")
-        assert color == "#3498db"
+        assert color == "#3B82F6"
 
     def test_get_config_with_default(self):
         """測試 get_config 使用預設值"""

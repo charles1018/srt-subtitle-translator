@@ -105,26 +105,38 @@ class GUIComponents:
             self.colors = theme_config.get_value(
                 "colors",
                 {
-                    "primary": "#3498db",
-                    "secondary": "#2ecc71",
-                    "background": "#f0f0f0",
-                    "text": "#333333",
-                    "accent": "#e74c3c",
-                    "button": "#3498db",
-                    "button_hover": "#2980b9",
+                    "primary": "#3B82F6",
+                    "secondary": "#60A5FA",
+                    "background": "#F8FAFC",
+                    "text": "#1E293B",
+                    "accent": "#F97316",
+                    "border": "#E2E8F0",
+                    "success": "#22C55E",
+                    "success_hover": "#16A34A",
+                    "danger": "#EF4444",
+                    "danger_hover": "#DC2626",
+                    "button": "#3B82F6",
+                    "button_hover": "#2563EB",
+                    "muted": "#64748B",
                 },
             )
         except Exception as e:
             logger.error(f"載入主題設定失敗: {format_exception(e)}")
             # 預設主題色彩
             self.colors = {
-                "primary": "#3498db",
-                "secondary": "#2ecc71",
-                "background": "#f0f0f0",
-                "text": "#333333",
-                "accent": "#e74c3c",
-                "button": "#3498db",
-                "button_hover": "#2980b9",
+                "primary": "#3B82F6",
+                "secondary": "#60A5FA",
+                "background": "#F8FAFC",
+                "text": "#1E293B",
+                "accent": "#F97316",
+                "border": "#E2E8F0",
+                "success": "#22C55E",
+                "success_hover": "#16A34A",
+                "danger": "#EF4444",
+                "danger_hover": "#DC2626",
+                "button": "#3B82F6",
+                "button_hover": "#2563EB",
+                "muted": "#64748B",
             }
 
     def create_menu(self):
@@ -336,14 +348,20 @@ class GUIComponents:
         style.map("Primary.TButton", background=[("active", self.colors["button_hover"])])
 
         style.configure(
-            "Success.TButton", foreground="white", background=self.colors["secondary"], font=("Arial", 10, "bold")
+            "Success.TButton",
+            foreground="white",
+            background=self.colors.get("success", "#22C55E"),
+            font=("Arial", 10, "bold"),
         )
-        style.map("Success.TButton", background=[("active", "#27ae60")])  # 深綠色
+        style.map("Success.TButton", background=[("active", self.colors.get("success_hover", "#16A34A"))])
 
         style.configure(
-            "Danger.TButton", foreground="white", background=self.colors["accent"], font=("Arial", 10, "bold")
+            "Danger.TButton",
+            foreground="white",
+            background=self.colors.get("danger", "#EF4444"),
+            font=("Arial", 10, "bold"),
         )
-        style.map("Danger.TButton", background=[("active", "#c0392b")])  # 深紅色
+        style.map("Danger.TButton", background=[("active", self.colors.get("danger_hover", "#DC2626"))])
 
         # 建立並放置按鈕
         self.start_button = ttk.Button(
