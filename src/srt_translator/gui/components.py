@@ -104,7 +104,7 @@ class GUIComponents:
             theme_config = ConfigManager.get_instance("theme")
             self.colors = theme_config.get_value(
                 "colors",
-                {
+                default={
                     "primary": "#3B82F6",
                     "secondary": "#60A5FA",
                     "background": "#F8FAFC",
@@ -215,8 +215,8 @@ class GUIComponents:
 
         # 如果支援拖放，設置拖放目標
         if TKDND_AVAILABLE:
-            self.file_listbox.drop_target_register(DND_FILES)
-            self.file_listbox.dnd_bind("<<Drop>>", self.handle_drop)
+            self.file_listbox.drop_target_register(DND_FILES)  # type: ignore[attr-defined]
+            self.file_listbox.dnd_bind("<<Drop>>", self.handle_drop)  # type: ignore[attr-defined]
 
             # 新增拖放提示
             drop_label = ttk.Label(file_frame, text="支援拖放檔案", foreground="gray")
@@ -544,7 +544,7 @@ class GUIComponents:
         # 保存設置到配置
         set_config("user", "netflix_style_enabled", enabled)
 
-    def set_model_list(self, models: List[str], default_model: str = ""):
+    def set_model_list(self, models: List[str], default_model: str = "") -> None:
         """設置模型列表"""
         if isinstance(models, list) and models:
             self.model_combo["values"] = models

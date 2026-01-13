@@ -8,7 +8,7 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 # 從配置管理器導入
 from srt_translator.core.config import ConfigManager
@@ -22,7 +22,7 @@ CACHE_VERSION = "1.1"
 
 
 @contextmanager
-def sqlite_connection(db_path: str, **kwargs):
+def sqlite_connection(db_path: str, **kwargs: Any) -> Generator[sqlite3.Connection, None, None]:
     """SQLite 連線的 context manager，確保事務提交和連線關閉
 
     此 context manager 在成功時 commit，異常時 rollback，並確保連線被關閉。
@@ -84,13 +84,13 @@ class CacheManager:
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
         self.db_path = db_path
-        self.memory_cache = {}  # 記憶體快取層
-        self.stats = {"total_queries": 0, "cache_hits": 0, "db_errors": 0, "last_cleanup": None}
+        self.memory_cache: Dict[str, Dict[str, Any]] = {}  # 記憶體快取層
+        self.stats: Dict[str, Any] = {"total_queries": 0, "cache_hits": 0, "db_errors": 0, "last_cleanup": None}
 
         # 讀取配置
         cache_config = ConfigManager.get_instance("cache")
-        self.max_memory_cache = cache_config.get_value("max_memory_cache", 1000)
-        self.auto_cleanup_days = cache_config.get_value("auto_cleanup_days", 30)
+        self.max_memory_cache: int = int(cache_config.get_value("max_memory_cache", default=1000) or 1000)
+        self.auto_cleanup_days: int = int(cache_config.get_value("auto_cleanup_days", default=30) or 30)
 
         # 初始化資料庫
         self._init_db()
@@ -260,7 +260,7 @@ class CacheManager:
         with self._cache_lock:
             cache_key = self._generate_cache_key(source_text, context_hash, model_name)
             if cache_key in self.memory_cache:
-                cached_text = self.memory_cache[cache_key]["target_text"]
+                cached_text: str = str(self.memory_cache[cache_key]["target_text"])
                 if self._is_error_translation(cached_text):
                     del self.memory_cache[cache_key]
                 else:
@@ -311,7 +311,7 @@ class CacheManager:
                             self._clean_memory_cache()
 
                     self.stats["cache_hits"] += 1
-                    return target_text
+                    return str(target_text)
         except sqlite3.Error as e:
             self.stats["db_errors"] += 1
             logger.error(f"資料庫查詢錯誤: {e!s}")
@@ -400,7 +400,7 @@ class CacheManager:
                 f"(限制: {self.max_memory_cache})"
             )
 
-    def _auto_cleanup(self, conn, days_threshold: Optional[int] = None):
+    def _auto_cleanup(self, conn: sqlite3.Connection, days_threshold: Optional[int] = None) -> None:
         """自動清理過期快取
 
         參數:
@@ -753,8 +753,8 @@ class CacheManager:
     def update_config(self) -> None:
         """從配置管理器更新快取設定"""
         cache_config = ConfigManager.get_instance("cache")
-        self.max_memory_cache = cache_config.get_value("max_memory_cache", 1000)
-        self.auto_cleanup_days = cache_config.get_value("auto_cleanup_days", 30)
+        self.max_memory_cache = int(cache_config.get_value("max_memory_cache", default=1000) or 1000)
+        self.auto_cleanup_days = int(cache_config.get_value("auto_cleanup_days", default=30) or 30)
 
         # 如果記憶體快取超過新的限制，立即清理
         with self._cache_lock:

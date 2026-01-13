@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from queue import Queue
 from tkinter import filedialog, messagebox
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import chardet
 
@@ -57,8 +57,8 @@ if not getattr(logger, "_file_handler_configured", False):
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
-    # Mark as configured
-    logger._file_handler_configured = True
+    # Mark as configured (using setattr to avoid mypy errors with dynamic attributes)
+    setattr(logger, "_file_handler_configured", True)  # noqa: B010
 
 
 class SubtitleInfo:
@@ -74,8 +74,8 @@ class SubtitleInfo:
         self.format = self._detect_format(file_path)
         self.encoding = self._detect_encoding(file_path)
         self.subtitle_count = 0
-        self.duration = 0  # Seconds
-        self.languages = []
+        self.duration: Union[int, float] = 0  # Seconds
+        self.languages: List[str] = []
         self.file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
         self.last_modified = os.path.getmtime(file_path) if os.path.exists(file_path) else 0
 
@@ -222,7 +222,7 @@ class SubtitleInfo:
         except Exception as e:
             logger.error(f"Error parsing ASS file: {e!s}")
 
-    def _detect_language_from_content(self, subs) -> None:
+    def _detect_language_from_content(self, subs: Any) -> None:
         """Detect language from subtitle content
 
         Args:
@@ -392,9 +392,9 @@ class FileHandler:
         self.config_manager = ConfigManager.get_instance(config_section)
 
         # Language suffix mapping
-        self.lang_suffix = self.config_manager.get_value(
+        self.lang_suffix: Dict[str, str] = self.config_manager.get_value(
             "lang_suffix",
-            {
+            default={
                 "繁體中文": ".zh_tw",
                 "英文": ".en",
                 "日文": ".jp",
@@ -404,39 +404,39 @@ class FileHandler:
                 "西班牙文": ".es",
                 "俄文": ".ru",
             },
-        )
+        ) or {}
 
         # Supported subtitle formats
-        self.supported_formats = self.config_manager.get_value(
+        self.supported_formats: List[tuple[str, str]] = self.config_manager.get_value(
             "supported_formats",
-            [
+            default=[
                 (".srt", "SRT subtitle file"),
                 (".vtt", "WebVTT subtitle file"),
                 (".ass", "ASS subtitle file"),
                 (".ssa", "SSA subtitle file"),
                 (".sub", "SUB subtitle file"),
             ],
-        )
+        ) or []
 
         # Cache for subtitle file information
-        self.subtitle_info_cache = {}
+        self.subtitle_info_cache: Dict[str, SubtitleInfo] = {}
 
         # Remember last used directory
-        self.last_directory = self.config_manager.get_value("last_directory", "")
+        self.last_directory: str = str(self.config_manager.get_value("last_directory", default="") or "")
 
         # Batch settings
-        self.batch_settings = self.config_manager.get_value(
+        self.batch_settings: Dict[str, Any] = self.config_manager.get_value(
             "batch_settings",
-            {
+            default={
                 "name_pattern": "{filename}_{language}{ext}",
                 "overwrite_mode": "ask",  # ask, overwrite, rename, skip
                 "output_directory": "",
                 "preserve_folder_structure": True,
             },
-        )
+        ) or {}
 
-        # Thread lock for thread safety
-        self._lock = threading.RLock()
+        # Thread lock for thread safety (instance lock, separate from class lock)
+        self._lock = threading.RLock()  # type: ignore[assignment]
 
         logger.debug("FileHandler initialized")
 
@@ -535,7 +535,7 @@ class FileHandler:
 
         return ""
 
-    def handle_drop(self, event) -> List[str]:
+    def handle_drop(self, event: Any) -> List[str]:
         """Handle file drop event
 
         Args:
@@ -664,7 +664,7 @@ class FileHandler:
                 self.config_manager.set_value("batch_settings", self.batch_settings)
                 logger.debug(f"Updated batch settings: {self.batch_settings}")
 
-    def get_output_path(self, file_path: str, target_lang: str, progress_callback=None) -> Optional[str]:
+    def get_output_path(self, file_path: str, target_lang: str, progress_callback: Optional[Callable[..., Any]] = None) -> Optional[str]:
         """Get output file path and handle conflicts
 
         Args:
@@ -739,7 +739,7 @@ class FileHandler:
 
                 if overwrite_mode == "ask" and progress_callback:
                     # Ask user via callback function
-                    queue = Queue()
+                    queue: Queue[str] = Queue()
                     progress_callback(-1, -1, {"type": "file_conflict", "path": base_path, "queue": queue})
                     response = queue.get()
 
@@ -1051,7 +1051,7 @@ class FileHandler:
 
         return True
 
-    def extract_subtitle(self, video_path: str, callback=None) -> Optional[str]:
+    def extract_subtitle(self, video_path: str, callback: Optional[Callable[..., Any]] = None) -> Optional[str]:
         """Extract subtitle from video file
 
         Args:

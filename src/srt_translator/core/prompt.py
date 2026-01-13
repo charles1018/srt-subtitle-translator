@@ -102,10 +102,10 @@ class PromptManager:
         self.current_language_pair = self.config_manager.get_value("current_language_pair", "日文→繁體中文")
 
         # 載入版本歷史
-        self.version_history = self.config_manager.get_value("version_history", {})
+        self.version_history: Dict[str, Any] = self.config_manager.get_value("version_history", default={}) or {}
 
         # 載入自訂提示詞
-        self.custom_prompts = self.config_manager.get_value("custom_prompts", {})
+        self.custom_prompts: Dict[str, Any] = self.config_manager.get_value("custom_prompts", default={}) or {}
         self._load_custom_prompts()
 
         # 設置配置變更監聽器
@@ -120,7 +120,7 @@ class PromptManager:
         default_prompts = default_config.get_value("default_prompts", None)
 
         if default_prompts:
-            return default_prompts
+            return dict(default_prompts)
 
         # 如果配置中沒有，使用內置預設值
 
@@ -558,7 +558,7 @@ Output the translated text directly. No preamble, no explanations.
     def _load_custom_prompts(self) -> None:
         """載入所有自訂提示詞"""
         # 首先從配置中載入已儲存的自訂提示詞
-        self.custom_prompts = self.config_manager.get_value("custom_prompts", {})
+        self.custom_prompts = self.config_manager.get_value("custom_prompts", default={}) or {}
 
         # 確保所有內容類型都存在
         for content_type in ["general", "adult", "anime", "movie", "english_drama"]:
@@ -883,7 +883,7 @@ Output the translated text directly. No preamble, no explanations.
             return []
 
         if llm_type:
-            return self.version_history[content_type].get(llm_type, [])
+            return list(self.version_history[content_type].get(llm_type, []))
 
         # 合併所有 LLM 類型的歷史記錄
         all_history = []

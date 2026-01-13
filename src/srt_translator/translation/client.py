@@ -255,17 +255,19 @@ class TranslationClient:
                 logger.error("未安裝 OpenAI 客戶端函式庫，OpenAI 模式不可用")
                 raise ImportError("請安裝 OpenAI Python 套件: pip install openai")
 
-            self.openai_client = AsyncOpenAI(api_key=api_key, timeout=self.conn_timeout)
+            self.openai_client: Optional[AsyncOpenAI] = AsyncOpenAI(
+                api_key=api_key, timeout=self.conn_timeout.total
+            )
 
             # 為各模型載入適當的 tokenizer
-            self.tokenizers = {}
+            self.tokenizers: Dict[str, Any] = {}
             self._load_tokenizers()
 
             # 速率限制追蹤
-            self.request_timestamps = []  # 用於追蹤 API 請求時間
+            self.request_timestamps: List[float] = []  # 用於追蹤 API 請求時間
             self.max_requests_per_minute = 3500  # OpenAI API 預設限制
             self.max_tokens_per_minute = 180000  # OpenAI API 預設限制
-            self.token_usage = []  # 用於追蹤 token 使用量
+            self.token_usage: List[Tuple[float, int]] = []  # 用於追蹤 token 使用量
 
             # 價格計算
             self.pricing = {
@@ -333,7 +335,7 @@ class TranslationClient:
                 limit_per_host=self.conn_limit,
                 ssl=False,  # Ollama 通常是本機執行，不需要 SSL
             )
-            self.session = aiohttp.ClientSession(connector=connector, timeout=self.conn_timeout)
+            self.session = aiohttp.ClientSession(connector=connector, timeout=self.conn_timeout)  # type: ignore[assignment]
             logger.debug(f"初始化 aiohttp.ClientSession for Ollama，連線限制: {self.conn_limit}")
         return self
 
@@ -414,10 +416,10 @@ class TranslationClient:
 
                 if is_mostly_cjk:
                     # 中日韓（CJK）語言約每 1.5 個字元為 1 個 token
-                    content_tokens += len(content) // 1.5
+                    content_tokens += int(len(content) / 1.5)
                 else:
                     # 英文和其他語言約每 4 個字元為 1 個 token
-                    content_tokens += len(content) // 4
+                    content_tokens += int(len(content) / 4)
 
             return int(base_tokens + content_tokens)
         except Exception as e:
@@ -459,7 +461,7 @@ class TranslationClient:
             need_delay = True
             delay_reason = f"請求速率 ({requests_per_minute}/{self.max_requests_per_minute})"
             if self.request_timestamps:  # 防止 IndexError
-                wait_time = max(wait_time, 60 - (current_time - self.request_timestamps[0]) + 0.5)
+                wait_time = int(max(wait_time, 60 - (current_time - self.request_timestamps[0]) + 0.5))
 
         # Token 數接近限制
         if tokens_per_minute >= self.max_tokens_per_minute * 0.90:
@@ -467,7 +469,7 @@ class TranslationClient:
             delay_reason = f"{delay_reason}，" if delay_reason else ""
             delay_reason += f"token 速率 ({tokens_per_minute}/{self.max_tokens_per_minute})"
             if self.token_usage:  # 防止 IndexError
-                wait_time = max(wait_time, 60 - (current_time - self.token_usage[0][0]) + 0.5)
+                wait_time = int(max(wait_time, 60 - (current_time - self.token_usage[0][0]) + 0.5))
 
         # 如果需要延遲，增加指數退避
         if need_delay:
@@ -485,7 +487,7 @@ class TranslationClient:
             else:
                 backoff_factor = 1.0
 
-            wait_time = wait_time * backoff_factor
+            wait_time = int(wait_time * backoff_factor)
 
             logger.warning(f"接近 OpenAI 限制 ({delay_reason})，等待 {wait_time:.2f} 秒")
             await asyncio.sleep(wait_time)
@@ -749,9 +751,12 @@ class TranslationClient:
             openai_params["response_format"] = {"type": "text"}
 
         try:
+            if not self.openai_client:
+                raise RuntimeError("OpenAI 客戶端未初始化")
             logger.debug(f"發送 OpenAI API 請求: {model_name}")
-            response = await self.openai_client.chat.completions.create(**openai_params)
-            translation = response.choices[0].message.content.strip()
+            response = await self.openai_client.chat.completions.create(**openai_params)  # type: ignore[call-overload]
+            content = response.choices[0].message.content
+            translation: str = content.strip() if content else ""
 
             # 記錄實際 token 使用量
             input_tokens = response.usage.prompt_tokens
@@ -875,11 +880,11 @@ class TranslationClient:
 
         # 處理結果
         for result in completed:
-            if isinstance(result, Exception):
+            if isinstance(result, BaseException):
                 logger.error(f"批量翻譯任務異常: {result!s}")
                 continue
 
-            if result and len(result) == 3:
+            if result and isinstance(result, tuple) and len(result) == 3:
                 idx, translation, _error = result
                 results[idx] = translation
 
@@ -949,7 +954,8 @@ class TranslationClient:
 
                 # 嘗試簡單的模型列表請求
                 try:
-                    await self.openai_client.models.list()
+                    if self.openai_client:
+                        await self.openai_client.models.list()
                     return True
                 except Exception as e:
                     logger.error(f"OpenAI API 連線測試失敗: {e!s}")

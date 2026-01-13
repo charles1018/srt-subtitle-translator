@@ -148,7 +148,7 @@ known-first-party = ["srt-translator"]
 # ============================================================
 [tool.mypy]
 # Python 版本
-python_version = "3.8"
+python_version = "3.9"
 
 # 基本設定
 warn_return_any = true

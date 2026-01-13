@@ -6,7 +6,7 @@
 import logging
 import os
 from logging.handlers import TimedRotatingFileHandler
-from typing import Optional
+from typing import Any, Optional, Union
 
 # 全局日誌格式設定
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s"
@@ -40,6 +40,7 @@ def setup_logger(
 
     # 避免重複添加處理程序（雙重檢查）
     if not logger.handlers:
+        handler: Union[TimedRotatingFileHandler, logging.StreamHandler[Any]]
         if log_file:
             # 檔案處理程序（每日輪替）
             file_path = os.path.join(log_dir, log_file)
@@ -55,13 +56,13 @@ def setup_logger(
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
-    # 標記為已配置
-    logger._srt_translator_configured = True
+    # 標記為已配置（使用 setattr 避免 mypy 錯誤）
+    setattr(logger, "_srt_translator_configured", True)  # noqa: B010
 
     return logger
 
 
-def setup_root_logger(log_file: str = "app.log", level: int = logging.INFO):
+def setup_root_logger(log_file: str = "app.log", level: int = logging.INFO) -> None:
     """設定根日誌記錄器
 
     參數:

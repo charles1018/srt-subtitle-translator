@@ -7,9 +7,9 @@ import re
 import shutil
 import threading
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import pysrt
 
@@ -43,11 +43,7 @@ class TranslationStats:
     total_processing_time: float = 0  # 總處理時間
     batch_count: int = 0  # 批次數量
     retry_count: int = 0  # 重試次數
-    errors: List[str] = None  # 錯誤訊息列表
-
-    def __post_init__(self):
-        if self.errors is None:
-            self.errors = []
+    errors: List[str] = field(default_factory=list)  # 錯誤訊息列表
 
     def get_elapsed_time(self) -> float:
         """取得總耗時（秒）"""
@@ -100,8 +96,8 @@ class TranslationManager:
         target_lang: str,
         model_name: str,
         parallel_requests: int,
-        progress_callback,
-        complete_callback,
+        progress_callback: Optional[Callable[..., Any]],
+        complete_callback: Optional[Callable[..., Any]],
         display_mode: str,
         llm_type: str,
         api_key: Optional[str] = None,
@@ -138,7 +134,7 @@ class TranslationManager:
         self.progress_service = ServiceFactory.get_progress_service()
 
         # 初始化專有名詞詞典
-        self._key_terms_dict = {}
+        self._key_terms_dict: Dict[str, str] = {}
 
         # 控制狀態
         self.running = True
@@ -153,7 +149,7 @@ class TranslationManager:
 
         # 恢復狀態
         self.checkpoint_path = self._get_checkpoint_path()
-        self.translated_indices = set()  # 已翻譯的索引集合
+        self.translated_indices: Set[int] = set()  # 已翻譯的索引集合
 
         # 批次處理設定
         self.min_batch_size = 1
@@ -553,7 +549,7 @@ class TranslationManager:
 
             return success_count, failed_count, skipped_count
 
-    async def _translate_single_subtitle(self, sub, index: int, all_subs: List) -> bool:
+    async def _translate_single_subtitle(self, sub: Any, index: int, all_subs: List[Any]) -> bool:
         """翻譯單個字幕
 
         回傳:
@@ -626,7 +622,7 @@ class TranslationManager:
 
         return False  # 不應到達這裡
 
-    def _apply_translation(self, subtitle, translation: str) -> None:
+    def _apply_translation(self, subtitle: Any, translation: str) -> None:
         """根據顯示模式套用翻譯結果"""
         if self.display_mode == "僅顯示翻譯":
             subtitle.text = translation
@@ -895,7 +891,7 @@ class TranslationThread(threading.Thread):
     def get_statistics(self) -> Dict[str, Any]:
         """取得翻譯統計資訊"""
         if self.manager and hasattr(self.manager, "stats"):
-            return self.manager.stats.get_summary()
+            return dict(self.manager.stats.get_summary())
         return {}
 
 
@@ -926,8 +922,8 @@ class TranslationTaskManager:
         parallel_requests: int,
         display_mode: str,
         llm_type: str,
-        progress_callback=None,
-        complete_callback=None,
+        progress_callback: Optional[Callable[..., Any]] = None,
+        complete_callback: Optional[Callable[..., Any]] = None,
     ) -> bool:
         """開始翻譯多個檔案
 
@@ -980,10 +976,12 @@ class TranslationTaskManager:
         logger.info(f"已啟動 {len(files)} 個翻譯任務")
         return True
 
-    def _complete_wrapper(self, file_path: str, original_callback):
+    def _complete_wrapper(
+        self, file_path: str, original_callback: Optional[Callable[..., Any]]
+    ) -> Callable[[str, str], None]:
         """包裝完成回調函數，以便追蹤已完成的檔案數"""
 
-        def wrapper(message, elapsed_time):
+        def wrapper(message: str, elapsed_time: str) -> None:
             """內部包裝函數，在執行原始回調前更新完成計數"""
             self.completed_files += 1
 

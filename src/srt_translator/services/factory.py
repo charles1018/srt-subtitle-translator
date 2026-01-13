@@ -4,7 +4,7 @@ import os
 import re
 import threading
 import time
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, Type, TypeVar, Union
 
 import pysrt
 
@@ -24,6 +24,10 @@ from srt_translator.utils.logging_config import setup_logger
 
 # 使用集中化日誌配置
 logger = setup_logger(__name__, "services.log")
+
+
+# 定義服務類型變數
+T = TypeVar("T")
 
 
 # 服務工廠類 - 統一管理所有服務的創建和訪問
@@ -59,12 +63,13 @@ class ServiceFactory:
         return cls._get_service_instance(ProgressService)
 
     @classmethod
-    def _get_service_instance(cls, service_class):
+    def _get_service_instance(cls, service_class: Type[T]) -> T:
         """獲取指定服務類的實例（單例模式）"""
         service_name = service_class.__name__
         if service_name not in cls._instances:
             cls._instances[service_name] = service_class()
-        return cls._instances[service_name]
+        instance = cls._instances[service_name]
+        return instance  # type: ignore[no-any-return]
 
     @classmethod
     def reset_services(cls) -> None:
@@ -82,7 +87,16 @@ class ServiceFactory:
 class TranslationService:
     """翻譯服務，提供統一的翻譯介面"""
 
-    def __init__(self):
+    # 成員變數型別宣告
+    prompt_manager: Optional[PromptManager]
+    model_service: Optional["ModelService"]
+    cache_service: Optional["CacheService"]
+    file_service: Optional["FileService"]
+    config_manager: ConfigManager
+    stats: Dict[str, Union[int, float, None]]
+    key_terms_dict: Dict[str, str]
+
+    def __init__(self) -> None:
         """初始化翻譯服務"""
         self.prompt_manager = None
         self.model_service = None
@@ -98,7 +112,7 @@ class TranslationService:
             "total_translations": 0,
             "cached_translations": 0,
             "failed_translations": 0,
-            "processing_time": 0,
+            "processing_time": 0.0,
             "start_time": None,
             "end_time": None,
         }
@@ -107,6 +121,27 @@ class TranslationService:
         self.key_terms_dict = {}
 
         logger.info("翻譯服務初始化完成")
+
+    def _get_stat_int(self, key: str, default: int = 0) -> int:
+        """安全地獲取整數型統計值"""
+        val = self.stats.get(key, default)
+        if val is None:
+            return default
+        return int(val)
+
+    def _get_stat_float(self, key: str, default: float = 0.0) -> float:
+        """安全地獲取浮點數型統計值"""
+        val = self.stats.get(key, default)
+        if val is None:
+            return default
+        return float(val)
+
+    def _incr_stat(self, key: str, amount: Union[int, float] = 1) -> None:
+        """安全地增加統計值"""
+        current = self.stats.get(key, 0)
+        if current is None:
+            current = 0
+        self.stats[key] = current + amount
 
     def _initialize_members(self) -> None:
         """初始化服務成員"""
@@ -137,12 +172,16 @@ class TranslationService:
         if not text.strip():
             return ""
 
-        self.stats["total_translations"] += 1
+        # 確保服務已初始化
+        if self.cache_service is None or self.model_service is None or self.prompt_manager is None:
+            raise RuntimeError("翻譯服務尚未完全初始化")
+
+        self._incr_stat("total_translations")
 
         # 檢查快取
         cached_result = self.cache_service.get_translation(text, context_texts, model_name)
         if cached_result:
-            self.stats["cached_translations"] += 1
+            self._incr_stat("cached_translations")
             return cached_result
 
         start_time = time.time()
@@ -171,12 +210,12 @@ class TranslationService:
 
             # 更新統計資料
             end_time = time.time()
-            self.stats["processing_time"] += end_time - start_time
+            self._incr_stat("processing_time", end_time - start_time)
 
             return translation
 
         except Exception as e:
-            self.stats["failed_translations"] += 1
+            self._incr_stat("failed_translations")
             logger.error(f"翻譯文本時發生錯誤: {e!s}")
             return f"[翻譯錯誤: {e!s}]"
 
@@ -196,6 +235,10 @@ class TranslationService:
         """
         if not texts_with_context:
             return []
+
+        # 確保服務已初始化
+        if self.model_service is None:
+            raise RuntimeError("模型服務尚未初始化")
 
         results = [""] * len(texts_with_context)
 
@@ -274,13 +317,17 @@ class TranslationService:
         回傳:
             (成功與否, 輸出路徑或錯誤消息)
         """
+        # 確保服務已初始化
+        if self.file_service is None:
+            raise RuntimeError("檔案服務尚未初始化")
+
         try:
             # 重置統計資訊
             self.stats["start_time"] = time.time()
             self.stats["total_translations"] = 0
             self.stats["cached_translations"] = 0
             self.stats["failed_translations"] = 0
-            self.stats["processing_time"] = 0
+            self.stats["processing_time"] = 0.0
 
             # 重置專有名詞詞典
             self.key_terms_dict = {}
@@ -292,8 +339,10 @@ class TranslationService:
 
             # 設定進度回調
             progress_service = ServiceFactory.get_progress_service()
-            progress_service.register_progress_callback(progress_callback)
-            progress_service.register_complete_callback(complete_callback)
+            if progress_callback is not None:
+                progress_service.register_progress_callback(progress_callback)
+            if complete_callback is not None:
+                progress_service.register_complete_callback(complete_callback)
             progress_service.set_total(total_subtitles)
 
             # 設定上下文窗口大小
@@ -417,11 +466,11 @@ class TranslationService:
 
         return translated_text.strip()
 
-    def _apply_translation(self, subtitle, translation: str, display_mode: str) -> None:
+    def _apply_translation(self, subtitle: Any, translation: str, display_mode: str) -> None:
         """根據顯示模式套用翻譯結果
 
         參數:
-            subtitle: 字幕對象
+            subtitle: 字幕對象 (pysrt.SubRipItem)
             translation: 翻譯文本
             display_mode: 顯示模式
         """
@@ -437,6 +486,9 @@ class TranslationService:
 
     def _get_subtitle_encoding(self, file_path: str) -> str:
         """取得字幕檔案的編碼設定"""
+        if self.file_service is None:
+            return "utf-8"
+
         try:
             info = self.file_service.get_subtitle_info(file_path)
         except Exception as e:
@@ -482,29 +534,31 @@ class TranslationService:
         回傳:
             包含統計資訊的字典
         """
-        stats = self.stats.copy()
+        stats: Dict[str, Any] = self.stats.copy()
+
+        total = self._get_stat_int("total_translations")
+        cached = self._get_stat_int("cached_translations")
+        failed = self._get_stat_int("failed_translations")
+        processing_time = self._get_stat_float("processing_time")
 
         # 計算命中率
-        if stats["total_translations"] > 0:
-            stats["cache_hit_rate"] = (stats["cached_translations"] / stats["total_translations"]) * 100
+        if total > 0:
+            stats["cache_hit_rate"] = (cached / total) * 100
         else:
-            stats["cache_hit_rate"] = 0
+            stats["cache_hit_rate"] = 0.0
 
         # 計算成功率
-        if stats["total_translations"] > 0:
-            stats["success_rate"] = (
-                (stats["total_translations"] - stats["failed_translations"]) / stats["total_translations"]
-            ) * 100
+        if total > 0:
+            stats["success_rate"] = ((total - failed) / total) * 100
         else:
-            stats["success_rate"] = 0
+            stats["success_rate"] = 0.0
 
         # 計算平均處理時間
-        if stats["total_translations"] - stats["cached_translations"] > 0:
-            stats["average_processing_time"] = stats["processing_time"] / (
-                stats["total_translations"] - stats["cached_translations"]
-            )
+        actual_translations = total - cached
+        if actual_translations > 0:
+            stats["average_processing_time"] = processing_time / actual_translations
         else:
-            stats["average_processing_time"] = 0
+            stats["average_processing_time"] = 0.0
 
         return stats
 
@@ -514,11 +568,16 @@ class TranslationService:
         回傳:
             翻譯耗時（秒）
         """
-        if self.stats["end_time"] is None:
-            if self.stats["start_time"] is None:
-                return 0
-            return time.time() - self.stats["start_time"]
-        return self.stats["end_time"] - self.stats["start_time"]
+        end_time = self.stats.get("end_time")
+        start_time = self.stats.get("start_time")
+
+        if end_time is None:
+            if start_time is None:
+                return 0.0
+            return time.time() - float(start_time)
+        if start_time is None:
+            return 0.0
+        return float(end_time) - float(start_time)
 
     def get_elapsed_time_str(self) -> str:
         """獲取格式化的翻譯耗時
@@ -551,7 +610,12 @@ class TranslationService:
 class ModelService:
     """模型服務，管理和加載LLM模型"""
 
-    def __init__(self):
+    # 成員變數型別宣告
+    model_manager: ModelManager
+    translation_clients: Dict[str, TranslationClient]
+    api_keys: Dict[str, str]
+
+    def __init__(self) -> None:
         """初始化模型服務"""
         self.model_manager = ModelManager()
         self.translation_clients = {}  # 類型 -> 客戶端實例
@@ -679,8 +743,11 @@ class ModelService:
         回傳:
             測試結果字典
         """
+        # 導入頂層測試函式
+        from srt_translator.core.models import test_model_connection as _test_connection
+
         api_key = self.api_keys.get(provider)
-        return await self.model_manager.test_model_connection(model_name, provider, api_key)
+        return await _test_connection(model_name, provider, api_key)
 
     async def get_provider_status(self) -> Dict[str, bool]:
         """獲取各提供者的連線狀態
@@ -891,7 +958,9 @@ class FileService:
         """
         return self.file_handler.get_subtitle_info(file_path, force_refresh)
 
-    def get_output_path(self, file_path: str, target_lang: str, progress_callback=None) -> Optional[str]:
+    def get_output_path(
+        self, file_path: str, target_lang: str, progress_callback: Optional[Callable[..., Any]] = None
+    ) -> Optional[str]:
         """獲取輸出檔案路徑並處理衝突
 
         參數:
@@ -918,7 +987,8 @@ class FileService:
         回傳:
             批次處理設定字典
         """
-        return self.file_handler.batch_settings
+        settings: Dict[str, Any] = self.file_handler.batch_settings
+        return settings
 
     def convert_subtitle_format(self, input_path: str, target_format: str) -> Optional[str]:
         """轉換字幕檔案格式
@@ -932,7 +1002,7 @@ class FileService:
         """
         return self.file_handler.convert_subtitle_format(input_path, target_format)
 
-    def extract_subtitle(self, video_path: str, callback=None) -> Optional[str]:
+    def extract_subtitle(self, video_path: str, callback: Optional[Callable[..., Any]] = None) -> Optional[str]:
         """從影片檔案中提取字幕
 
         參數:
@@ -967,17 +1037,18 @@ class FileService:
         """
         return self.file_handler.save_api_key(api_key, file_path)
 
-    def handle_drop(self, event) -> List[str]:
+    def handle_drop(self, event: Any) -> List[str]:
         """處理檔案拖放事件
 
         參數:
-            event: 拖放事件
+            event: 拖放事件 (tkinter 事件物件)
 
         回傳:
             檔案路徑列表
         """
         if hasattr(self.file_handler, "handle_drop"):
-            return self.file_handler.handle_drop(event)
+            result = self.file_handler.handle_drop(event)
+            return result if isinstance(result, list) else []
         return []
 
     def cleanup(self) -> None:
@@ -990,7 +1061,15 @@ class FileService:
 class ProgressService:
     """進度追蹤服務，管理進度回調和統計"""
 
-    def __init__(self):
+    # 成員變數型別宣告
+    progress_callback: Optional[Callable[..., Any]]
+    complete_callback: Optional[Callable[..., Any]]
+    total: int
+    current: int
+    start_time: Optional[float]
+    end_time: Optional[float]
+
+    def __init__(self) -> None:
         """初始化進度追蹤服務"""
         self.progress_callback = None
         self.complete_callback = None
@@ -1176,9 +1255,9 @@ class TranslationTask(threading.Thread):
         parallel_requests: int,
         display_mode: str,
         llm_type: str,
-        progress_callback=None,
-        complete_callback=None,
-    ):
+        progress_callback: Optional[Callable[..., Any]] = None,
+        complete_callback: Optional[Callable[..., Any]] = None,
+    ) -> None:
         """初始化翻譯任務
 
         參數:
@@ -1210,9 +1289,9 @@ class TranslationTask(threading.Thread):
         self._pause_condition = threading.Condition()
 
         # 服務實例將在執行緒中初始化
-        self.translation_service = None
+        self.translation_service: Optional[TranslationService] = None
 
-    def run(self):
+    def run(self) -> None:
         """執行翻譯任務"""
         try:
             self._run_async()
@@ -1221,10 +1300,10 @@ class TranslationTask(threading.Thread):
             if self.complete_callback:
                 self.complete_callback(f"翻譯失敗: {e!s}", "0 秒")
 
-    def _run_async(self):
+    def _run_async(self) -> None:
         """在新的事件循環中執行非同步翻譯"""
 
-        async def async_run():
+        async def async_run() -> None:
             # 初始化服務
             self.translation_service = ServiceFactory.get_translation_service()
 
@@ -1300,7 +1379,13 @@ class TranslationTask(threading.Thread):
 class TranslationTaskManager:
     """翻譯任務管理器，管理多個翻譯任務"""
 
-    def __init__(self):
+    # 成員變數型別宣告
+    tasks: Dict[str, TranslationTask]
+    total_files: int
+    completed_files: int
+    config_manager: ConfigManager
+
+    def __init__(self) -> None:
         """初始化翻譯任務管理器"""
         self.tasks = {}  # 檔案路徑 -> 任務
         self.total_files = 0
@@ -1320,8 +1405,8 @@ class TranslationTaskManager:
         parallel_requests: int,
         display_mode: str,
         llm_type: str,
-        progress_callback=None,
-        complete_callback=None,
+        progress_callback: Optional[Callable[..., Any]] = None,
+        complete_callback: Optional[Callable[..., Any]] = None,
     ) -> bool:
         """開始翻譯多個檔案
 
@@ -1367,10 +1452,12 @@ class TranslationTaskManager:
         logger.info(f"已啟動 {len(files)} 個翻譯任務")
         return True
 
-    def _complete_wrapper(self, file_path: str, original_callback):
+    def _complete_wrapper(
+        self, file_path: str, original_callback: Optional[Callable[..., Any]]
+    ) -> Callable[[str, str], None]:
         """包裝完成回調函數，以便追蹤已完成的檔案數"""
 
-        def wrapper(message, elapsed_time):
+        def wrapper(message: str, elapsed_time: str) -> None:
             """內部包裝函數，在執行原始回調前更新完成計數"""
             self.completed_files += 1
 
@@ -1442,7 +1529,7 @@ class TranslationTaskManager:
 # 測試程式碼
 if __name__ == "__main__":
 
-    async def test():
+    async def test() -> None:
         try:
             # 設定測試模式
             os.environ["TEST_MODE"] = "1"

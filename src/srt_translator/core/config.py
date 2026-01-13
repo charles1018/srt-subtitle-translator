@@ -4,7 +4,7 @@ import os
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, Callable, ClassVar, Dict, List, Optional
 
 from srt_translator.utils.logging_config import setup_logger
 
@@ -71,10 +71,10 @@ class ConfigManager:
         self.default_configs = self._get_default_configs()
 
         # 先初始化監聽器列表，避免在 load_config 呼叫儲存時未定義 listeners
-        self.listeners = []
+        self.listeners: List[Callable[..., Any]] = []
 
         # 載入配置
-        self.configs = {}
+        self.configs: Dict[str, Dict[str, Any]] = {}
         self.load_config()
 
         logger.info(f"配置管理器初始化完成: {config_type}")
@@ -409,7 +409,7 @@ class ConfigManager:
 
         return True
 
-    def add_listener(self, listener_func: callable) -> None:
+    def add_listener(self, listener_func: Callable[..., Any]) -> None:
         """添加配置變更監聽器
 
         參數:
@@ -418,7 +418,7 @@ class ConfigManager:
         if listener_func not in self.listeners:
             self.listeners.append(listener_func)
 
-    def remove_listener(self, listener_func: callable) -> None:
+    def remove_listener(self, listener_func: Callable[..., Any]) -> None:
         """移除配置變更監聽器
 
         參數:

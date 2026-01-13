@@ -146,7 +146,7 @@ class App:
             # 恢復預設主題
             self.root.tk_setPalette(background=self.root.cget("background"))
 
-    def update_model_list(self, event=None) -> None:
+    def update_model_list(self, event: Any = None) -> None:
         """根據選擇的 LLM 類型更新模型列表"""
         llm_type = self.gui.llm_type.get()
         try:
@@ -196,7 +196,7 @@ class App:
     def open_settings(self) -> None:
         """開啟設定視窗"""
         try:
-            from settings_window import SettingsWindow
+            from settings_window import SettingsWindow  # type: ignore[import-not-found]
 
             # 獲取當前設定
             settings = self.user_config.get_config()
@@ -352,15 +352,16 @@ class App:
         try:
             import winsound
 
-            winsound.MessageBeep(winsound.MB_ICONASTERISK)
+            winsound.MessageBeep(winsound.MB_ICONASTERISK)  # type: ignore[attr-defined]
         except (ImportError, RuntimeError, OSError):
             # 在非Windows系統上，嘗試其他方法播放聲音
             try:
                 import subprocess
+                import sys as sys_module
 
                 os_name = os.name
                 if os_name == "posix":  # macOS or Linux
-                    if "darwin" in os.sys.platform:  # macOS
+                    if "darwin" in sys_module.platform:  # macOS
                         subprocess.call(["afplay", "/System/Library/Sounds/Tink.aiff"])
                     else:  # Linux
                         subprocess.call(["paplay", "/usr/share/sounds/freedesktop/stereo/complete.oga"])

@@ -45,7 +45,7 @@ def format_exception(e: Exception) -> str:
     return f"{type(e).__name__}: {e!s}\n最後調用: {tb_str[-2].strip()}"
 
 
-def safe_execute(func: Callable, *args, default_return=None, **kwargs) -> Any:
+def safe_execute(func: Callable[..., Any], *args: Any, default_return: Any = None, **kwargs: Any) -> Any:
     """安全執行函數，捕獲並記錄異常
 
     參數:
@@ -496,15 +496,15 @@ class ProgressTracker:
         self.description = description
         self.callback = callback
 
-        self.start_time = None
-        self.last_update_time = None
-        self.estimated_end_time = None
+        self.start_time: Optional[float] = None
+        self.last_update_time: Optional[float] = None
+        self.estimated_end_time: Optional[float] = None
 
         # 用於計算平均速率
-        self.progress_history = []
+        self.progress_history: List[Tuple[float, int]] = []
         self.max_history = 20
 
-    def start(self):
+    def start(self) -> None:
         """開始進度追踪"""
         self.start_time = time.time()
         self.last_update_time = self.start_time
@@ -514,7 +514,7 @@ class ProgressTracker:
 
         logger.debug(f"進度追踪開始: {self.description}, 總項目: {self.total}")
 
-    def update(self, current: Optional[int] = None, increment: Optional[int] = None, description: Optional[str] = None):
+    def update(self, current: Optional[int] = None, increment: Optional[int] = None, description: Optional[str] = None) -> None:
         """更新進度
 
         參數:
@@ -535,7 +535,7 @@ class ProgressTracker:
             self.current += increment
 
         # 記錄歷史
-        elapsed = now - self.last_update_time
+        elapsed = now - (self.last_update_time or now)
         if elapsed > 0 and self.last_update_time != self.start_time:
             self.progress_history.append((elapsed, self.current))
             if len(self.progress_history) > self.max_history:
@@ -544,7 +544,7 @@ class ProgressTracker:
         self.last_update_time = now
         self._update()
 
-    def increment(self, amount: int = 1, description: Optional[str] = None):
+    def increment(self, amount: int = 1, description: Optional[str] = None) -> None:
         """增加進度
 
         參數:
@@ -553,7 +553,7 @@ class ProgressTracker:
         """
         self.update(increment=amount, description=description)
 
-    def complete(self, description: Optional[str] = None):
+    def complete(self, description: Optional[str] = None) -> None:
         """完成進度追踪
 
         參數:
@@ -719,7 +719,7 @@ def get_system_info() -> Dict[str, Any]:
     """
     import platform
 
-    import psutil
+    import psutil  # type: ignore[import-untyped]
 
     info = {
         "system": platform.system(),
@@ -756,7 +756,7 @@ def check_python_packages() -> Dict[str, str]:
     """
     import importlib
 
-    import pkg_resources
+    import pkg_resources  # type: ignore[import-not-found]
 
     required_packages = ["pysrt", "tiktoken", "aiohttp", "backoff", "openai", "numpy", "matplotlib", "chardet"]
 
@@ -797,7 +797,7 @@ class LocaleManager:
         self.locale_dir = locale_dir
         self.default_locale = default_locale
         self.current_locale = default_locale
-        self.translations = {}
+        self.translations: Dict[str, Dict[str, str]] = {}
 
         # 確保目錄存在
         os.makedirs(self.locale_dir, exist_ok=True)
@@ -860,7 +860,7 @@ class LocaleManager:
         logger.info(f"已設置語言為: {locale_code}")
         return True
 
-    def get_text(self, key: str, **kwargs) -> str:
+    def get_text(self, key: str, **kwargs: Any) -> str:
         """獲取本地化文本
 
         參數:
@@ -870,6 +870,7 @@ class LocaleManager:
         回傳:
             本地化的文本
         """
+        text: str
         # 先嘗試當前語言
         if self.current_locale in self.translations and key in self.translations[self.current_locale]:
             text = self.translations[self.current_locale][key]
@@ -972,12 +973,12 @@ class MemoryCache:
             max_size: 最大項目數
             ttl: 存活時間（秒）
         """
-        self.cache = {}
+        self.cache: Dict[str, Dict[str, Any]] = {}
         self.max_size = max_size
         self.ttl = ttl
         self.lock = threading.RLock()
 
-    def get(self, key: str, default=None):
+    def get(self, key: str, default: Any = None) -> Any:
         """獲取快取項目
 
         參數:
@@ -1001,7 +1002,7 @@ class MemoryCache:
             item["last_access"] = time.time()
             return item["value"]
 
-    def set(self, key: str, value, ttl: Optional[int] = None) -> bool:
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
         """設置快取項目
 
         參數:

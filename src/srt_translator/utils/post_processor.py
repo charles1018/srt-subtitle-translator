@@ -8,7 +8,7 @@ Netflix 字幕風格後處理器
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class ProcessingResult:
     warnings: List[ProcessingWarning] = field(default_factory=list)
     auto_fixed: int = 0
 
-    def add_warning(self, code: str, message: str, **kwargs):
+    def add_warning(self, code: str, message: str, **kwargs: Any) -> None:
         """添加警告"""
         self.warnings.append(ProcessingWarning(code=code, message=message, **kwargs))
 
