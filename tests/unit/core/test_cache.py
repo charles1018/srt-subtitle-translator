@@ -572,13 +572,22 @@ class TestCacheConfigAndMaintenance:
         assert hash1 != hash3
 
     def test_generate_cache_key(self, cache_manager):
-        """測試快取鍵生成"""
+        """測試快取鍵生成（v1.1.0 更新：包含 style 和 prompt_version）"""
         source = "test"
         context_hash = "abc123"
         model = "gpt-4"
+        style = "standard"
+        prompt_version = "v1"
 
+        # 測試預設參數
         key = cache_manager._generate_cache_key(source, context_hash, model)
         assert source in key
         assert context_hash in key
         assert model in key
-        assert key == f"{source}|{context_hash}|{model}"
+        assert key == f"{source}|{context_hash}|{model}|standard|"
+
+        # 測試自訂 style 和 prompt_version
+        key_with_params = cache_manager._generate_cache_key(
+            source, context_hash, model, style=style, prompt_version=prompt_version
+        )
+        assert key_with_params == f"{source}|{context_hash}|{model}|{style}|{prompt_version}"
