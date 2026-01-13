@@ -1,5 +1,13 @@
+"""SRT 字幕翻譯器 - 主程式入口
+
+支援兩種執行模式:
+- GUI 模式 (預設): srt-translator 或 srt-translator --gui
+- CLI 模式: srt-translator translate [選項] 檔案...
+"""
+
 import logging
 import os
+import sys
 import threading
 import tkinter as tk
 from typing import Any, Dict, List, Optional
@@ -392,22 +400,42 @@ class App:
 
 
 def main() -> None:
-    """主程式入口點"""
-    try:
-        app = App()
-        app.run()
-    except AppError as e:
-        # 處理應用程式自定義錯誤
-        logger.error(f"應用程式錯誤: {format_exception(e)}")
-        from tkinter import messagebox
+    """主程式入口點
 
-        messagebox.showerror("應用程式錯誤", str(e))
-    except Exception as e:
-        # 處理未捕獲的錯誤
-        logger.error(f"未預期的錯誤: {format_exception(e)}")
-        from tkinter import messagebox
+    根據命令列參數決定執行 GUI 或 CLI 模式:
+    - 無參數或 --gui: 啟動 GUI 模式
+    - translate/models/cache/config/version: 執行 CLI 命令
+    """
+    # 快速檢查是否為 CLI 模式
+    cli_commands = {"translate", "models", "cache", "config", "version", "-h", "--help"}
+    is_cli_mode = len(sys.argv) > 1 and sys.argv[1] in cli_commands
 
-        messagebox.showerror("未預期的錯誤", f"發生未預期的錯誤:\n{e!s}")
+    if is_cli_mode:
+        # CLI 模式
+        from srt_translator.cli import main as cli_main
+
+        sys.exit(cli_main())
+    else:
+        # GUI 模式 (預設)
+        # 支援 --gui 參數但非必要
+        if len(sys.argv) > 1 and sys.argv[1] == "--gui":
+            sys.argv.pop(1)
+
+        try:
+            app = App()
+            app.run()
+        except AppError as e:
+            # 處理應用程式自定義錯誤
+            logger.error(f"應用程式錯誤: {format_exception(e)}")
+            from tkinter import messagebox
+
+            messagebox.showerror("應用程式錯誤", str(e))
+        except Exception as e:
+            # 處理未捕獲的錯誤
+            logger.error(f"未預期的錯誤: {format_exception(e)}")
+            from tkinter import messagebox
+
+            messagebox.showerror("未預期的錯誤", f"發生未預期的錯誤:\n{e!s}")
 
 
 # 主程式進入點
