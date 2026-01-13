@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 import pysrt
 
 # 從新模組導入
-from srt_translator.core.config import ConfigManager, get_config
+from srt_translator.core.config import get_config
 from srt_translator.services.factory import ServiceFactory
 from srt_translator.utils import (
     TranslationError,
@@ -895,156 +895,6 @@ class TranslationThread(threading.Thread):
         return {}
 
 
-# 用於管理多個翻譯任務的任務管理器
-class TranslationTaskManager:
-    """翻譯任務管理器，管理多個翻譯任務"""
-
-    def __init__(self):
-        """初始化翻譯任務管理器"""
-        self.tasks = {}  # 檔案路徑 -> 任務
-        self.total_files = 0
-        self.completed_files = 0
-
-        # 配置管理器
-        self.config_manager = ConfigManager.get_instance("user")
-
-        # 服務
-        self.translation_service = ServiceFactory.get_translation_service()
-
-        logger.info("初始化翻譯任務管理器")
-
-    def start_translation(
-        self,
-        files: List[str],
-        source_lang: str,
-        target_lang: str,
-        model_name: str,
-        parallel_requests: int,
-        display_mode: str,
-        llm_type: str,
-        progress_callback: Optional[Callable[..., Any]] = None,
-        complete_callback: Optional[Callable[..., Any]] = None,
-    ) -> bool:
-        """開始翻譯多個檔案
-
-        參數:
-            files: 字幕檔案路徑列表
-            source_lang: 來源語言
-            target_lang: 目標語言
-            model_name: 模型名稱
-            parallel_requests: 並行請求數
-            display_mode: 顯示模式
-            llm_type: LLM類型
-            progress_callback: 進度回調函數
-            complete_callback: 完成回調函數
-
-        回傳:
-            是否成功啟動翻譯
-        """
-        if not files:
-            logger.warning("沒有選擇要翻譯的檔案")
-            return False
-
-        # 重置任務統計
-        self.total_files = len(files)
-        self.completed_files = 0
-
-        # 獲取 API 金鑰
-        api_key = None
-        if llm_type == "openai":
-            model_service = ServiceFactory.get_model_service()
-            api_key = model_service.api_keys.get("openai")
-
-        # 建立並啟動任務
-        for file_path in files:
-            task = TranslationThread(
-                file_path,
-                source_lang,
-                target_lang,
-                model_name,
-                parallel_requests,
-                display_mode,
-                llm_type,
-                progress_callback,
-                self._complete_wrapper(file_path, complete_callback),
-                api_key,
-            )
-
-            self.tasks[file_path] = task
-            task.start()
-
-        logger.info(f"已啟動 {len(files)} 個翻譯任務")
-        return True
-
-    def _complete_wrapper(
-        self, file_path: str, original_callback: Optional[Callable[..., Any]]
-    ) -> Callable[[str, str], None]:
-        """包裝完成回調函數，以便追蹤已完成的檔案數"""
-
-        def wrapper(message: str, elapsed_time: str) -> None:
-            """內部包裝函數，在執行原始回調前更新完成計數"""
-            self.completed_files += 1
-
-            # 修改消息以包含總進度
-            extended_message = f"{message} | 總進度: {self.completed_files}/{self.total_files}"
-
-            # 呼叫原始回調
-            if original_callback:
-                original_callback(extended_message, elapsed_time)
-
-            # 移除已完成的任務
-            if file_path in self.tasks:
-                del self.tasks[file_path]
-
-        return wrapper
-
-    def stop_all(self) -> None:
-        """停止所有翻譯任務"""
-        for task in list(self.tasks.values()):
-            task.stop()
-
-        # 清空任務列表
-        self.tasks.clear()
-        logger.info("已停止所有翻譯任務")
-
-    def pause_all(self) -> None:
-        """暫停所有翻譯任務"""
-        for task in self.tasks.values():
-            task.pause()
-        logger.info("已暫停所有翻譯任務")
-
-    def resume_all(self) -> None:
-        """恢復所有翻譯任務"""
-        for task in self.tasks.values():
-            task.resume()
-        logger.info("已恢復所有翻譯任務")
-
-    def is_any_running(self) -> bool:
-        """檢查是否有任務正在執行
-
-        回傳:
-            是否有任務正在執行
-        """
-        return any(task.is_alive() for task in self.tasks.values())
-
-    def is_all_paused(self) -> bool:
-        """檢查是否所有任務都已暫停
-
-        回傳:
-            是否所有任務都已暫停
-        """
-        if not self.tasks:
-            return False
-        return all(task.is_paused() for task in self.tasks.values() if task.is_alive())
-
-    def get_active_task_count(self) -> int:
-        """獲取活躍任務數量
-
-        回傳:
-            活躍任務數量
-        """
-        return sum(1 for task in self.tasks.values() if task.is_alive())
-
 
 # 測試程式碼
 if __name__ == "__main__":
@@ -1081,6 +931,8 @@ if __name__ == "__main__":
 
     # 使用任務管理器測試
     async def test_async():
+        from srt_translator.services.factory import TranslationTaskManager
+
         # 初始化服務
         ServiceFactory.get_translation_service()
 

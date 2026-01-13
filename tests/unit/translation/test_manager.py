@@ -10,9 +10,9 @@ import pytest
 from srt_translator.translation.manager import (
     TranslationManager,
     TranslationStats,
-    TranslationTaskManager,
     TranslationThread,
 )
+from srt_translator.services.factory import TranslationTaskManager
 
 
 # ============================================================

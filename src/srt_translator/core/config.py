@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, ClassVar, Dict, List, Optional
 
+from srt_translator.utils.errors import ConfigError
 from srt_translator.utils.logging_config import setup_logger
 
 # 使用集中化日誌配置
@@ -36,7 +37,7 @@ class ConfigManager:
             ValueError: 當 config_type 不在允許列表中時
         """
         if config_type not in cls.ALLOWED_CONFIG_TYPES:
-            raise ValueError(
+            raise ConfigError(
                 f"Unknown config_type: {config_type}. Allowed types: {', '.join(sorted(cls.ALLOWED_CONFIG_TYPES))}"
             )
         if config_type not in cls._instances:

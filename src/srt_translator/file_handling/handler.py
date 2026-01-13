@@ -12,6 +12,8 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 import chardet
 
+from srt_translator.utils.errors import FileError
+
 # Try importing tkinterdnd2
 try:
     from tkinterdnd2 import *  # noqa: F403 - Dynamic import for optional drag-drop support
@@ -37,7 +39,7 @@ except ImportError:
 
 # Import from configuration manager
 from srt_translator.core.config import ConfigManager
-from srt_translator.utils import FileError, format_exception
+from srt_translator.utils import format_exception
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -383,7 +385,7 @@ class FileHandler:
         """
         # Prevent direct instantiation when singleton already exists
         if self.__class__._instance is not None and self.__class__._instance is not self:
-            raise RuntimeError("Use FileHandler.get_instance() instead of direct instantiation")
+            raise FileError("Use FileHandler.get_instance() instead of direct instantiation")
 
         self.root = root
         self.config_section = config_section

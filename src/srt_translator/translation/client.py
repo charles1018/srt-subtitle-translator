@@ -20,6 +20,7 @@ except ImportError:
 # 從本地模組導入
 from srt_translator.core.cache import CacheManager
 from srt_translator.core.prompt import PromptManager
+from srt_translator.utils.errors import TranslationError, ValidationError
 from srt_translator.utils.logging_config import setup_logger
 from srt_translator.utils.post_processor import NetflixStylePostProcessor
 
@@ -651,7 +652,7 @@ class TranslationClient:
             elif self.llm_type == "ollama":
                 result = await self._translate_with_ollama(messages, model_name)
             else:
-                raise ValueError(f"不支援的 LLM 類型: {self.llm_type}")
+                raise ValidationError(f"不支援的 LLM 類型: {self.llm_type}")
 
             # Netflix 風格後處理（如果啟用）
             if self.enable_netflix_style and self.post_processor:
@@ -752,7 +753,7 @@ class TranslationClient:
 
         try:
             if not self.openai_client:
-                raise RuntimeError("OpenAI 客戶端未初始化")
+                raise TranslationError("OpenAI 客戶端未初始化")
             logger.debug(f"發送 OpenAI API 請求: {model_name}")
             response = await self.openai_client.chat.completions.create(**openai_params)  # type: ignore[call-overload]
             content = response.choices[0].message.content
@@ -786,7 +787,7 @@ class TranslationClient:
     async def _translate_with_ollama(self, messages: List[Dict[str, str]], model_name: str) -> str:
         """使用 Ollama API 翻譯"""
         if not self.session:
-            raise RuntimeError("Ollama 客戶端未初始化，請使用非同步上下文管理器")
+            raise TranslationError("Ollama 客戶端未初始化，請使用非同步上下文管理器")
 
         payload = {"model": model_name, "messages": messages, "temperature": 0.1, "stream": False}
 

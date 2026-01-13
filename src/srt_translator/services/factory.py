@@ -20,6 +20,7 @@ from srt_translator.core.models import ModelManager
 from srt_translator.core.prompt import PromptManager
 from srt_translator.file_handling.handler import FileHandler
 from srt_translator.translation.client import TranslationClient
+from srt_translator.utils.errors import FileError, ModelError, TranslationError
 from srt_translator.utils.logging_config import setup_logger
 
 # 使用集中化日誌配置
@@ -174,7 +175,7 @@ class TranslationService:
 
         # 確保服務已初始化
         if self.cache_service is None or self.model_service is None or self.prompt_manager is None:
-            raise RuntimeError("翻譯服務尚未完全初始化")
+            raise TranslationError("翻譯服務尚未完全初始化")
 
         self._incr_stat("total_translations")
 
@@ -238,7 +239,7 @@ class TranslationService:
 
         # 確保服務已初始化
         if self.model_service is None:
-            raise RuntimeError("模型服務尚未初始化")
+            raise ModelError("模型服務尚未初始化")
 
         results = [""] * len(texts_with_context)
 
@@ -319,7 +320,7 @@ class TranslationService:
         """
         # 確保服務已初始化
         if self.file_service is None:
-            raise RuntimeError("檔案服務尚未初始化")
+            raise FileError("檔案服務尚未初始化")
 
         try:
             # 重置統計資訊
