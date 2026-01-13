@@ -61,3 +61,6 @@ data/
 config/
 *.db
 *.sqlite
+
+# Serena MCP
+.serena/
