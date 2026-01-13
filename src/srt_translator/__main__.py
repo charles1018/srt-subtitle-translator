@@ -387,9 +387,16 @@ class App:
                 self._save_user_settings()
                 # 清理服務資源
                 ServiceFactory.reset_services()
-                self.root.quit()
+                self.root.destroy()
         else:
             self._save_user_settings()
+            # 清理服務資源
+            ServiceFactory.reset_services()
+            self.root.destroy()
+
+    def run(self):
+        """啟動應用程式主迴圈"""
+        self.root.mainloop()
 def main() -> None:
     """主程式入口點
 

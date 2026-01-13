@@ -179,24 +179,27 @@ class GUIComponents:
 
     def setup(self):
         """設置介面"""
-        # 主框架
-        main_frame = ttk.Frame(self.root, padding=10)
+        # 主框架 - 增加 padding
+        main_frame = ttk.Frame(self.root, padding=15)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 上半部分 - 檔案選擇和設定
-        top_frame = ttk.Frame(main_frame)
-        top_frame.pack(fill=tk.BOTH, pady=(0, 10))
-
-        # 檔案選擇部分
-        file_frame = ttk.LabelFrame(top_frame, text="檔案選擇", padding=10)
-        file_frame.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
+        # ===== 上半部分 - 檔案選擇 =====
+        file_frame = ttk.LabelFrame(main_frame, text="📁 檔案選擇", padding=15)
+        file_frame.pack(fill=tk.BOTH, pady=(0, 10))
 
         # 檔案列表框架和捲動條
         list_frame = ttk.Frame(file_frame)
         list_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 檔案列表
-        self.file_listbox = tk.Listbox(list_frame, selectmode=tk.EXTENDED, height=8)
+        # 檔案列表 - 增加高度到 10 行
+        self.file_listbox = tk.Listbox(
+            list_frame,
+            selectmode=tk.EXTENDED,
+            height=10,
+            font=("Microsoft JhengHei UI", 10),
+            selectbackground=self.colors["primary"],
+            selectforeground="white",
+        )
         self.file_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # 捲動條
@@ -204,131 +207,174 @@ class GUIComponents:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.file_listbox.config(yscrollcommand=scrollbar.set)
 
-        # 檔案按鈕框架
+        # 檔案按鈕和資訊框架
         file_buttons_frame = ttk.Frame(file_frame)
         file_buttons_frame.pack(fill=tk.X, pady=(10, 0))
 
         # 檔案按鈕
-        ttk.Button(file_buttons_frame, text="選擇檔案", command=self.browse_files).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(file_buttons_frame, text="選擇資料夾", command=self.browse_folder).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(file_buttons_frame, text="清除選中", command=self.clear_selection).pack(side=tk.LEFT)
+        ttk.Button(file_buttons_frame, text="選擇檔案", command=self.browse_files, width=12).pack(
+            side=tk.LEFT, padx=(0, 5)
+        )
+        ttk.Button(file_buttons_frame, text="選擇資料夾", command=self.browse_folder, width=12).pack(
+            side=tk.LEFT, padx=(0, 5)
+        )
+        ttk.Button(file_buttons_frame, text="清除選中", command=self.clear_selection, width=10).pack(
+            side=tk.LEFT
+        )
+
+        # 檔案計數標籤
+        self.file_count_label = ttk.Label(
+            file_buttons_frame, text="已選擇 0 個檔案", foreground=self.colors["muted"]
+        )
+        self.file_count_label.pack(side=tk.RIGHT, padx=(10, 0))
 
         # 如果支援拖放，設置拖放目標
         if TKDND_AVAILABLE:
             self.file_listbox.drop_target_register(DND_FILES)  # type: ignore[attr-defined]
             self.file_listbox.dnd_bind("<<Drop>>", self.handle_drop)  # type: ignore[attr-defined]
 
-            # 新增拖放提示
-            drop_label = ttk.Label(file_frame, text="支援拖放檔案", foreground="gray")
-            drop_label.pack(pady=(5, 0))
+            # 拖放提示 - 放在右側
+            drop_label = ttk.Label(file_buttons_frame, text="💡 支援拖放檔案", foreground=self.colors["muted"])
+            drop_label.pack(side=tk.RIGHT, padx=(10, 0))
 
-        # 語言設定和模型選擇
-        settings_frame = ttk.LabelFrame(top_frame, text="翻譯設定", padding=10)
-        settings_frame.pack(fill=tk.BOTH, side=tk.RIGHT, expand=True, padx=(10, 0))
+        # ===== 中間部分 - 設定區域 (三欄式佈局) =====
+        settings_container = ttk.Frame(main_frame)
+        settings_container.pack(fill=tk.X, pady=(0, 10))
 
-        # 建立表格佈局
-        settings_grid = ttk.Frame(settings_frame)
-        settings_grid.pack(fill=tk.BOTH, expand=True)
+        # 配置三欄等寬
+        settings_container.columnconfigure(0, weight=1)
+        settings_container.columnconfigure(1, weight=1)
+        settings_container.columnconfigure(2, weight=1)
 
-        # 語言設定
-        ttk.Label(settings_grid, text="來源語言:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        # ----- 左欄：語言設定 -----
+        lang_frame = ttk.LabelFrame(settings_container, text="🌐 語言設定", padding=10)
+        lang_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+
+        lang_grid = ttk.Frame(lang_frame)
+        lang_grid.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(lang_grid, text="來源語言:").grid(row=0, column=0, sticky=tk.W, pady=8)
         source_langs = ["日文", "英文", "韓文", "繁體中文"]
         ttk.Combobox(
-            settings_grid, textvariable=self.source_lang, values=source_langs, width=10, state="readonly"
-        ).grid(row=0, column=1, sticky=tk.W, pady=5)
+            lang_grid, textvariable=self.source_lang, values=source_langs, width=12, state="readonly"
+        ).grid(row=0, column=1, sticky=tk.W, pady=8, padx=(5, 0))
 
-        ttk.Label(settings_grid, text="目標語言:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        ttk.Label(lang_grid, text="目標語言:").grid(row=1, column=0, sticky=tk.W, pady=8)
         target_langs = ["繁體中文", "英文", "日文", "韓文"]
         ttk.Combobox(
-            settings_grid, textvariable=self.target_lang, values=target_langs, width=10, state="readonly"
-        ).grid(row=1, column=1, sticky=tk.W, pady=5)
+            lang_grid, textvariable=self.target_lang, values=target_langs, width=12, state="readonly"
+        ).grid(row=1, column=1, sticky=tk.W, pady=8, padx=(5, 0))
 
-        # LLM 類型和模型選擇
-        ttk.Label(settings_grid, text="LLM類型:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        # ----- 中欄：LLM 設定 -----
+        llm_frame = ttk.LabelFrame(settings_container, text="🤖 LLM 設定", padding=10)
+        llm_frame.grid(row=0, column=1, sticky="nsew", padx=5)
+
+        llm_grid = ttk.Frame(llm_frame)
+        llm_grid.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(llm_grid, text="LLM 類型:").grid(row=0, column=0, sticky=tk.W, pady=8)
         llm_types = ["ollama", "openai"]
         self.llm_combobox = ttk.Combobox(
-            settings_grid, textvariable=self.llm_type, values=llm_types, width=10, state="readonly"
+            llm_grid, textvariable=self.llm_type, values=llm_types, width=12, state="readonly"
         )
-        self.llm_combobox.grid(row=2, column=1, sticky=tk.W, pady=5)
+        self.llm_combobox.grid(row=0, column=1, sticky=tk.W, pady=8, padx=(5, 0))
 
-        ttk.Label(settings_grid, text="模型:").grid(row=3, column=0, sticky=tk.W, pady=5)
-        self.model_combo = ttk.Combobox(settings_grid, textvariable=self.model_combo_var, width=15, state="readonly")
-        self.model_combo.grid(row=3, column=1, sticky=tk.W, pady=5)
+        ttk.Label(llm_grid, text="模型:").grid(row=1, column=0, sticky=tk.W, pady=8)
+        self.model_combo = ttk.Combobox(llm_grid, textvariable=self.model_combo_var, width=15, state="readonly")
+        self.model_combo.grid(row=1, column=1, sticky=tk.W, pady=8, padx=(5, 0))
 
-        # 顯示模式和並行請求
-        ttk.Label(settings_grid, text="顯示模式:").grid(row=0, column=2, sticky=tk.W, pady=5, padx=(10, 0))
-        # 修改：確保顯示模式的值與 translation_manager.py 中使用的值一致
-        display_modes = ["雙語對照", "僅顯示翻譯", "翻譯在上", "原文在上"]
-        self.display_mode_combo = ttk.Combobox(
-            settings_grid, textvariable=self.display_mode, values=display_modes, width=10, state="readonly"
-        )
-        self.display_mode_combo.grid(row=0, column=3, sticky=tk.W, pady=5)
-        self.display_mode_combo.bind("<<ComboboxSelected>>", self.on_display_mode_changed)
-
-        ttk.Label(settings_grid, text="並行請求:").grid(row=1, column=2, sticky=tk.W, pady=5, padx=(10, 0))
+        ttk.Label(llm_grid, text="並行請求:").grid(row=2, column=0, sticky=tk.W, pady=8)
         parallel_options = ["1", "2", "3", "4", "5", "10", "15", "20"]
         ttk.Combobox(
-            settings_grid, textvariable=self.parallel_requests, values=parallel_options, width=5, state="readonly"
-        ).grid(row=1, column=3, sticky=tk.W, pady=5)
+            llm_grid, textvariable=self.parallel_requests, values=parallel_options, width=8, state="readonly"
+        ).grid(row=2, column=1, sticky=tk.W, pady=8, padx=(5, 0))
+
+        # ----- 右欄：翻譯選項 -----
+        options_frame = ttk.LabelFrame(settings_container, text="⚙️ 翻譯選項", padding=10)
+        options_frame.grid(row=0, column=2, sticky="nsew", padx=(5, 0))
+
+        options_grid = ttk.Frame(options_frame)
+        options_grid.pack(fill=tk.BOTH, expand=True)
 
         # 內容類型
-        ttk.Label(settings_grid, text="內容類型:").grid(row=2, column=2, sticky=tk.W, pady=5, padx=(10, 0))
+        ttk.Label(options_grid, text="內容類型:").grid(row=0, column=0, sticky=tk.W, pady=8)
         if self.prompt_manager:
             content_types = self.prompt_manager.get_available_content_types()
             self.content_type_var = tk.StringVar(value=self.prompt_manager.current_content_type)
             self.content_type_combo = ttk.Combobox(
-                settings_grid, textvariable=self.content_type_var, values=content_types, width=10, state="readonly"
+                options_grid, textvariable=self.content_type_var, values=content_types, width=12, state="readonly"
             )
-            self.content_type_combo.grid(row=2, column=3, sticky=tk.W, pady=5)
+            self.content_type_combo.grid(row=0, column=1, sticky=tk.W, pady=8, padx=(5, 0))
             self.content_type_combo.bind("<<ComboboxSelected>>", self.on_content_type_changed)
         else:
             content_types = ["general", "adult", "anime", "movie", "english_drama"]
             self.content_type_var = tk.StringVar(value="general")
             self.content_type_combo = ttk.Combobox(
-                settings_grid, textvariable=self.content_type_var, values=content_types, width=10, state="readonly"
+                options_grid, textvariable=self.content_type_var, values=content_types, width=12, state="readonly"
             )
-            self.content_type_combo.grid(row=2, column=3, sticky=tk.W, pady=5)
+            self.content_type_combo.grid(row=0, column=1, sticky=tk.W, pady=8, padx=(5, 0))
 
         # 翻譯風格
-        ttk.Label(settings_grid, text="翻譯風格:").grid(row=3, column=2, sticky=tk.W, pady=5, padx=(10, 0))
+        ttk.Label(options_grid, text="翻譯風格:").grid(row=1, column=0, sticky=tk.W, pady=8)
         if self.prompt_manager:
             styles = list(self.prompt_manager.get_available_styles().keys())
             self.style_var = tk.StringVar(value=self.prompt_manager.current_style)
             self.style_combo = ttk.Combobox(
-                settings_grid, textvariable=self.style_var, values=styles, width=10, state="readonly"
+                options_grid, textvariable=self.style_var, values=styles, width=12, state="readonly"
             )
-            self.style_combo.grid(row=3, column=3, sticky=tk.W, pady=5)
+            self.style_combo.grid(row=1, column=1, sticky=tk.W, pady=8, padx=(5, 0))
             self.style_combo.bind("<<ComboboxSelected>>", self.on_style_changed)
         else:
             styles = ["standard", "literal", "localized", "specialized"]
             self.style_var = tk.StringVar(value="standard")
             self.style_combo = ttk.Combobox(
-                settings_grid, textvariable=self.style_var, values=styles, width=10, state="readonly"
+                options_grid, textvariable=self.style_var, values=styles, width=12, state="readonly"
             )
-            self.style_combo.grid(row=3, column=3, sticky=tk.W, pady=5)
+            self.style_combo.grid(row=1, column=1, sticky=tk.W, pady=8, padx=(5, 0))
+
+        # 顯示模式
+        ttk.Label(options_grid, text="顯示模式:").grid(row=2, column=0, sticky=tk.W, pady=8)
+        display_modes = ["雙語對照", "僅顯示翻譯", "翻譯在上", "原文在上"]
+        self.display_mode_combo = ttk.Combobox(
+            options_grid, textvariable=self.display_mode, values=display_modes, width=12, state="readonly"
+        )
+        self.display_mode_combo.grid(row=2, column=1, sticky=tk.W, pady=8, padx=(5, 0))
+        self.display_mode_combo.bind("<<ComboboxSelected>>", self.on_display_mode_changed)
 
         # Netflix 風格選項
-        ttk.Label(settings_grid, text="Netflix 風格:").grid(row=4, column=2, sticky=tk.W, pady=5, padx=(10, 0))
+        ttk.Label(options_grid, text="Netflix 風格:").grid(row=3, column=0, sticky=tk.W, pady=8)
         self.netflix_checkbox = ttk.Checkbutton(
-            settings_grid, text="啟用", variable=self.netflix_style_enabled, command=self.on_netflix_style_changed
+            options_grid, text="啟用", variable=self.netflix_style_enabled, command=self.on_netflix_style_changed
         )
-        self.netflix_checkbox.grid(row=4, column=3, sticky=tk.W, pady=5)
+        self.netflix_checkbox.grid(row=3, column=1, sticky=tk.W, pady=8, padx=(5, 0))
 
-        # 下半部分 - 狀態和控制
-        bottom_frame = ttk.Frame(main_frame)
-        bottom_frame.pack(fill=tk.BOTH, expand=True)
-
-        # 進度框架
-        progress_frame = ttk.LabelFrame(bottom_frame, text="翻譯進度", padding=10)
+        # ===== 下半部分 - 進度和控制 =====
+        progress_frame = ttk.LabelFrame(main_frame, text="📊 翻譯進度", padding=15)
         progress_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 進度條
-        self.progress_bar = ttk.Progressbar(progress_frame, orient=tk.HORIZONTAL, mode="determinate", length=100)
-        self.progress_bar.pack(fill=tk.X, pady=(0, 10))
+        # 進度條容器（包含進度條和百分比）
+        progress_bar_frame = ttk.Frame(progress_frame)
+        progress_bar_frame.pack(fill=tk.X, pady=(0, 10))
 
-        # 狀態訊息
+        # 進度條
+        self.progress_bar = ttk.Progressbar(
+            progress_bar_frame, orient=tk.HORIZONTAL, mode="determinate", length=100
+        )
+        self.progress_bar.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+
+        # 百分比標籤
+        self.progress_percent_label = ttk.Label(
+            progress_bar_frame, text="0%", width=5, anchor=tk.E, font=("Arial", 10, "bold")
+        )
+        self.progress_percent_label.pack(side=tk.RIGHT)
+
+        # 狀態訊息框架
         status_frame = ttk.Frame(progress_frame)
         status_frame.pack(fill=tk.X)
+
+        # 狀態圖示和文字
+        self.status_icon_label = ttk.Label(status_frame, text="●", foreground=self.colors["muted"])
+        self.status_icon_label.pack(side=tk.LEFT, padx=(0, 5))
 
         self.status_label = ttk.Label(status_frame, text="準備就緒", anchor=tk.W)
         self.status_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -336,58 +382,84 @@ class GUIComponents:
         self.total_files_label = ttk.Label(status_frame, text="總進度: 0/0 檔案完成")
         self.total_files_label.pack(side=tk.RIGHT)
 
-        # 控制按鈕
+        # ===== 控制按鈕區域 =====
         button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=(10, 0))
+        button_frame.pack(fill=tk.X, pady=(15, 0))
 
-        # 建立按鈕樣式
-        style = ttk.Style()
-        style.configure(
-            "Primary.TButton", foreground="white", background=self.colors["primary"], font=("Arial", 10, "bold")
-        )
-        style.map("Primary.TButton", background=[("active", self.colors["button_hover"])])
+        # 左側控制按鈕
+        left_buttons = ttk.Frame(button_frame)
+        left_buttons.pack(side=tk.LEFT)
 
-        style.configure(
-            "Success.TButton",
-            foreground="white",
-            background=self.colors.get("success", "#22C55E"),
-            font=("Arial", 10, "bold"),
-        )
-        style.map("Success.TButton", background=[("active", self.colors.get("success_hover", "#16A34A"))])
+        # 使用 tk.Button 確保顏色正確顯示
+        button_font = ("Microsoft JhengHei UI", 10, "bold")
 
-        style.configure(
-            "Danger.TButton",
-            foreground="white",
-            background=self.colors.get("danger", "#EF4444"),
-            font=("Arial", 10, "bold"),
+        self.start_button = tk.Button(
+            left_buttons,
+            text="▶ 開始翻譯",
+            command=self.start_callback,
+            bg="#16A34A",
+            fg="white",
+            activebackground="#15803D",
+            activeforeground="white",
+            font=button_font,
+            width=12,
+            relief=tk.FLAT,
+            cursor="hand2",
         )
-        style.map("Danger.TButton", background=[("active", self.colors.get("danger_hover", "#DC2626"))])
+        self.start_button.pack(side=tk.LEFT, padx=(0, 8))
 
-        # 建立並放置按鈕
-        self.start_button = ttk.Button(
-            button_frame, text="開始翻譯", command=self.start_callback, style="Success.TButton", width=15
+        self.pause_button = tk.Button(
+            left_buttons,
+            text="⏸ 暫停",
+            command=self.toggle_pause,
+            bg="#2563EB",
+            fg="white",
+            activebackground="#1D4ED8",
+            activeforeground="white",
+            font=button_font,
+            width=10,
+            relief=tk.FLAT,
+            cursor="hand2",
         )
-        self.start_button.pack(side=tk.LEFT, padx=(0, 10))
-
-        self.pause_button = ttk.Button(
-            button_frame, text="暫停", command=self.toggle_pause, style="Primary.TButton", width=15
-        )
-        self.pause_button.pack(side=tk.LEFT, padx=(0, 10))
+        self.pause_button.pack(side=tk.LEFT, padx=(0, 8))
         self.pause_button.config(state=tk.DISABLED)
 
-        self.stop_button = ttk.Button(
-            button_frame, text="停止", command=self.stop_callback, style="Danger.TButton", width=15
+        self.stop_button = tk.Button(
+            left_buttons,
+            text="⏹ 停止",
+            command=self.stop_callback,
+            bg="#DC2626",
+            fg="white",
+            activebackground="#B91C1C",
+            activeforeground="white",
+            font=button_font,
+            width=10,
+            relief=tk.FLAT,
+            cursor="hand2",
         )
         self.stop_button.pack(side=tk.LEFT)
         self.stop_button.config(state=tk.DISABLED)
 
-        # 設定按鈕
-        self.settings_button = ttk.Button(button_frame, text="進階設定", command=self.open_advanced_settings, width=15)
+        # 右側設定按鈕
+        self.settings_button = tk.Button(
+            button_frame,
+            text="⚙ 進階設定",
+            command=self.open_advanced_settings,
+            bg="#64748B",
+            fg="white",
+            activebackground="#475569",
+            activeforeground="white",
+            font=button_font,
+            width=10,
+            relief=tk.FLAT,
+            cursor="hand2",
+        )
         self.settings_button.pack(side=tk.RIGHT)
 
-        # 初始狀態為禁用暫停和停止按鈕
-        self.pause_button.config(state=tk.DISABLED)
-        self.stop_button.config(state=tk.DISABLED)
+        # ===== 快捷鍵綁定 =====
+        self.root.bind("<Control-o>", lambda e: self.browse_files())
+        self.root.bind("<Control-Return>", lambda e: self._trigger_start())
+        self.root.bind("<Escape>", lambda e: self._trigger_stop())
 
         logger.info("GUI 介面設置完成")
 
@@ -442,6 +514,9 @@ class GUIComponents:
 
         logger.info(f"已新增 {len(files)} 個檔案，目前共有 {len(self.selected_files)} 個檔案")
 
+        # 更新檔案計數標籤
+        self._update_file_count()
+
         # 更新最後使用的目錄
         if files:
             first_file = files[0]
@@ -452,7 +527,52 @@ class GUIComponents:
         """清除選中的檔案"""
         self.file_listbox.delete(0, tk.END)
         self.selected_files = []
+        self._update_file_count()
         logger.info("已清除所有選中的檔案")
+
+    def _update_file_count(self):
+        """更新檔案計數標籤"""
+        count = len(self.selected_files)
+        if hasattr(self, "file_count_label"):
+            self.file_count_label.config(text=f"已選擇 {count} 個檔案")
+
+    def _trigger_start(self):
+        """快捷鍵觸發開始翻譯"""
+        if self.start_button["state"] != tk.DISABLED and self.selected_files:
+            self.start_callback()
+
+    def _trigger_stop(self):
+        """快捷鍵觸發停止"""
+        if self.stop_button["state"] != tk.DISABLED:
+            self.stop_callback()
+
+    def update_progress_display(self, percent):
+        """更新進度顯示（包含百分比）"""
+        self.progress_bar["value"] = percent
+        if hasattr(self, "progress_percent_label"):
+            self.progress_percent_label.config(text=f"{int(percent)}%")
+
+    def update_status_with_state(self, text, state="normal"):
+        """更新狀態顯示（帶狀態圖示）
+
+        參數:
+            text: 狀態文字
+            state: 狀態類型 - "normal", "running", "success", "error", "paused"
+        """
+        # 更新狀態文字
+        self.status_label.config(text=text)
+
+        # 更新狀態圖示顏色
+        if hasattr(self, "status_icon_label"):
+            state_colors = {
+                "normal": self.colors["muted"],
+                "running": self.colors["primary"],
+                "success": self.colors.get("success", "#22C55E"),
+                "error": self.colors.get("danger", "#EF4444"),
+                "paused": self.colors.get("accent", "#F97316"),
+            }
+            color = state_colors.get(state, self.colors["muted"])
+            self.status_icon_label.config(foreground=color)
 
     def handle_drop(self, event):
         """處理檔案拖放事件"""
@@ -475,38 +595,65 @@ class GUIComponents:
     def toggle_pause(self):
         """切換暫停/繼續狀態"""
         current_text = self.pause_button.cget("text")
-        if current_text == "暫停":
-            self.pause_button.config(text="繼續")
+        if "暫停" in current_text:
+            self.pause_button.config(text="▶ 繼續", bg="#F59E0B", activebackground="#D97706")
+            self.update_status_with_state("已暫停", "paused")
         else:
-            self.pause_button.config(text="暫停")
+            self.pause_button.config(text="⏸ 暫停", bg="#2563EB", activebackground="#1D4ED8")
+            self.update_status_with_state("翻譯中...", "running")
 
         # 呼叫外部暫停回呼
         self.pause_callback()
 
     def disable_controls(self):
         """禁用控制項（翻譯開始時）"""
-        self.start_button.config(state=tk.DISABLED)
-        self.pause_button.config(state=tk.NORMAL)
-        self.stop_button.config(state=tk.NORMAL)
-        self.settings_button.config(state=tk.DISABLED)
+        # 禁用開始按鈕
+        self.start_button.config(state=tk.DISABLED, bg="#94A3B8")
+
+        # 啟用暫停和停止按鈕
+        self.pause_button.config(state=tk.NORMAL, bg="#2563EB")
+        self.stop_button.config(state=tk.NORMAL, bg="#DC2626")
+
+        # 禁用設定按鈕
+        self.settings_button.config(state=tk.DISABLED, bg="#94A3B8")
+
+        # 禁用下拉選單
         self.llm_combobox.config(state=tk.DISABLED)
         self.model_combo.config(state=tk.DISABLED)
-        self.display_mode_combo.config(state=tk.DISABLED)  # 禁用顯示模式選擇
+        self.display_mode_combo.config(state=tk.DISABLED)
+
+        # 更新狀態
+        self.update_status_with_state("翻譯中...", "running")  # 禁用顯示模式選擇
 
         # 禁用選單項
         # 在實際實作中，這裡可能需要保存選單項的引用並禁用它們
 
     def reset_ui(self):
         """重置 UI（翻譯完成或停止時）"""
-        self.start_button.config(state=tk.NORMAL)
-        self.pause_button.config(state=tk.DISABLED)
-        self.pause_button.config(text="暫停")  # 重置按鈕文字
-        self.stop_button.config(state=tk.DISABLED)
-        self.settings_button.config(state=tk.NORMAL)
+        # 啟用開始按鈕
+        self.start_button.config(state=tk.NORMAL, bg="#16A34A")
+
+        # 禁用暫停和停止按鈕
+        self.pause_button.config(state=tk.DISABLED, text="⏸ 暫停", bg="#94A3B8")
+        self.stop_button.config(state=tk.DISABLED, bg="#94A3B8")
+
+        # 啟用設定按鈕
+        self.settings_button.config(state=tk.NORMAL, bg="#64748B")
+
+        # 啟用下拉選單
         self.llm_combobox.config(state="readonly")
         self.model_combo.config(state="readonly")
-        self.display_mode_combo.config(state="readonly")  # 啟用顯示模式選擇
+        self.display_mode_combo.config(state="readonly")
+
+        # 重置進度條
         self.progress_bar["value"] = 0
+
+        # 重置進度百分比
+        if hasattr(self, "progress_percent_label"):
+            self.progress_percent_label.config(text="0%")
+
+        # 重置狀態圖示
+        self.update_status_with_state("準備就緒", "normal")
 
         # 啟用選單項
         # 在實際實作中，這裡可能需要保存選單項的引用並啟用它們
