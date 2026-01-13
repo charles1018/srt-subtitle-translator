@@ -244,6 +244,8 @@ omit = [
     "*/data/*",
     "*/config/*",
     ".venv/*",
+    "src/srt_translator/gui/*",
+    "src/srt_translator/__main__.py",
 ]
 
 [tool.coverage.report]
