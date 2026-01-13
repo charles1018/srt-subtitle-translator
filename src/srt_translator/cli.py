@@ -45,6 +45,15 @@ def create_parser() -> argparse.ArgumentParser:
 
   # 清除快取
   srt-translator cache --clear
+
+  # 建立術語表
+  srt-translator glossary create anime -s 日文 -t 繁體中文
+
+  # 新增術語
+  srt-translator glossary add anime "進撃の巨人" "進擊的巨人"
+
+  # 使用術語表翻譯
+  srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
 """,
     )
 
@@ -69,6 +78,7 @@ def create_parser() -> argparse.ArgumentParser:
     translate_parser.add_argument("-c", "--concurrency", type=int, default=3, help="並行請求數 (預設: 3)")
     translate_parser.add_argument("-o", "--output-dir", help="輸出目錄 (預設: 與輸入檔案同目錄)")
     translate_parser.add_argument("--no-cache", action="store_true", help="不使用翻譯快取")
+    translate_parser.add_argument("-g", "--glossary", action="append", help="使用指定術語表 (可多次指定)")
     translate_parser.add_argument("-q", "--quiet", action="store_true", help="安靜模式，僅顯示錯誤")
     translate_parser.add_argument("-v", "--verbose", action="store_true", help="詳細輸出模式")
 
@@ -91,6 +101,59 @@ def create_parser() -> argparse.ArgumentParser:
     config_parser = subparsers.add_parser("config", help="顯示或設定配置")
     config_parser.add_argument("--show", action="store_true", help="顯示目前配置")
     config_parser.add_argument("--set", nargs=2, metavar=("KEY", "VALUE"), help="設定配置值")
+
+    # glossary 子命令
+    glossary_parser = subparsers.add_parser("glossary", help="管理術語表")
+    glossary_subparsers = glossary_parser.add_subparsers(dest="glossary_command", help="術語表操作")
+
+    # glossary list
+    glossary_subparsers.add_parser("list", help="列出所有術語表")
+
+    # glossary create
+    glossary_create = glossary_subparsers.add_parser("create", help="建立新術語表")
+    glossary_create.add_argument("name", help="術語表名稱")
+    glossary_create.add_argument("-s", "--source", default="", help="來源語言")
+    glossary_create.add_argument("-t", "--target", default="", help="目標語言")
+    glossary_create.add_argument("-d", "--description", default="", help="說明")
+
+    # glossary show
+    glossary_show = glossary_subparsers.add_parser("show", help="顯示術語表內容")
+    glossary_show.add_argument("name", help="術語表名稱")
+
+    # glossary add
+    glossary_add = glossary_subparsers.add_parser("add", help="新增術語")
+    glossary_add.add_argument("glossary", help="術語表名稱")
+    glossary_add.add_argument("source", help="來源術語")
+    glossary_add.add_argument("target", help="目標翻譯")
+    glossary_add.add_argument("-c", "--category", default="", help="分類")
+    glossary_add.add_argument("-n", "--notes", default="", help="備註")
+
+    # glossary remove
+    glossary_remove = glossary_subparsers.add_parser("remove", help="移除術語")
+    glossary_remove.add_argument("glossary", help="術語表名稱")
+    glossary_remove.add_argument("source", help="來源術語")
+
+    # glossary delete
+    glossary_delete = glossary_subparsers.add_parser("delete", help="刪除術語表")
+    glossary_delete.add_argument("name", help="術語表名稱")
+
+    # glossary import
+    glossary_import = glossary_subparsers.add_parser("import", help="匯入術語表")
+    glossary_import.add_argument("file", help="檔案路徑 (支援 .json, .csv, .txt)")
+    glossary_import.add_argument("-n", "--name", help="術語表名稱 (預設使用檔案名稱)")
+
+    # glossary export
+    glossary_export = glossary_subparsers.add_parser("export", help="匯出術語表")
+    glossary_export.add_argument("name", help="術語表名稱")
+    glossary_export.add_argument("file", help="輸出檔案路徑")
+    glossary_export.add_argument("-f", "--format", choices=["json", "csv", "txt"], default="json", help="輸出格式")
+
+    # glossary activate/deactivate
+    glossary_activate = glossary_subparsers.add_parser("activate", help="啟用術語表")
+    glossary_activate.add_argument("name", help="術語表名稱")
+
+    glossary_deactivate = glossary_subparsers.add_parser("deactivate", help="停用術語表")
+    glossary_deactivate.add_argument("name", help="術語表名稱")
 
     # version 子命令
     subparsers.add_parser("version", help="顯示版本資訊")
@@ -171,6 +234,17 @@ async def cmd_translate(args: argparse.Namespace) -> int:
     if args.output_dir:
         file_service = ServiceFactory.get_file_service()
         file_service.set_batch_settings({"output_dir": args.output_dir})
+
+    # 啟用指定的術語表
+    if args.glossary:
+        from srt_translator.core.glossary import get_glossary_manager
+
+        glossary_manager = get_glossary_manager()
+        for glossary_name in args.glossary:
+            if glossary_manager.activate_glossary(glossary_name):
+                logger.info(f"已啟用術語表: {glossary_name}")
+            else:
+                logger.warning(f"找不到術語表: {glossary_name}")
 
     # 翻譯每個檔案
     success_count = 0
@@ -307,6 +381,133 @@ def cmd_config(args: argparse.Namespace) -> int:
     return 0
 
 
+
+def cmd_glossary(args: argparse.Namespace) -> int:
+    """管理術語表"""
+    from srt_translator.core.glossary import get_glossary_manager
+
+    manager = get_glossary_manager()
+
+    if args.glossary_command is None:
+        print("請指定術語表操作，使用 --help 查看可用選項")
+        return 1
+
+    if args.glossary_command == "list":
+        glossaries = manager.list_glossaries()
+        if glossaries:
+            print("\n術語表列表:")
+            print("-" * 50)
+            for name in glossaries:
+                glossary = manager.get_glossary(name)
+                if glossary:
+                    active = "✓" if name in manager.get_active_glossaries() else " "
+                    print(f"  [{active}] {name} ({len(glossary.entries)} 條目)")
+                    if glossary.source_lang or glossary.target_lang:
+                        print(f"      {glossary.source_lang} → {glossary.target_lang}")
+            print()
+        else:
+            print("\n目前沒有任何術語表\n")
+
+    elif args.glossary_command == "create":
+        try:
+            glossary = manager.create_glossary(
+                name=args.name,
+                source_lang=args.source,
+                target_lang=args.target,
+                description=args.description,
+            )
+            print(f"已建立術語表: {glossary.name}")
+        except ValueError as e:
+            logger.error(str(e))
+            return 1
+
+    elif args.glossary_command == "show":
+        glossary = manager.get_glossary(args.name)
+        if not glossary:
+            logger.error(f"找不到術語表: {args.name}")
+            return 1
+
+        print(f"\n術語表: {glossary.name}")
+        print("-" * 50)
+        if glossary.description:
+            print(f"說明: {glossary.description}")
+        if glossary.source_lang:
+            print(f"來源語言: {glossary.source_lang}")
+        if glossary.target_lang:
+            print(f"目標語言: {glossary.target_lang}")
+        print(f"條目數: {len(glossary.entries)}")
+        print()
+
+        if glossary.entries:
+            print("條目:")
+            for entry in glossary.entries.values():
+                line = f"  {entry.source} → {entry.target}"
+                if entry.category:
+                    line += f" [{entry.category}]"
+                print(line)
+        print()
+
+    elif args.glossary_command == "add":
+        if manager.add_entry_to_glossary(
+            glossary_name=args.glossary,
+            source=args.source,
+            target=args.target,
+            category=args.category,
+            notes=args.notes,
+        ):
+            print(f"已新增術語: {args.source} → {args.target}")
+        else:
+            logger.error(f"找不到術語表: {args.glossary}")
+            return 1
+
+    elif args.glossary_command == "remove":
+        if manager.remove_entry_from_glossary(args.glossary, args.source):
+            print(f"已移除術語: {args.source}")
+        else:
+            logger.error(f"找不到術語或術語表: {args.glossary}/{args.source}")
+            return 1
+
+    elif args.glossary_command == "delete":
+        confirm = input(f"確定要刪除術語表 '{args.name}' 嗎？(y/N): ")
+        if confirm.lower() == "y":
+            if manager.delete_glossary(args.name):
+                print(f"已刪除術語表: {args.name}")
+            else:
+                logger.error(f"找不到術語表: {args.name}")
+                return 1
+        else:
+            print("取消操作")
+
+    elif args.glossary_command == "import":
+        name = getattr(args, "name", None)
+        glossary = manager.import_glossary(args.file, name=name)
+        if glossary:
+            print(f"已匯入術語表: {glossary.name} ({len(glossary.entries)} 條目)")
+        else:
+            return 1
+
+    elif args.glossary_command == "export":
+        if manager.export_glossary(args.name, args.file, args.format):
+            print(f"已匯出術語表到: {args.file}")
+        else:
+            return 1
+
+    elif args.glossary_command == "activate":
+        if manager.activate_glossary(args.name):
+            print(f"已啟用術語表: {args.name}")
+        else:
+            logger.error(f"找不到術語表: {args.name}")
+            return 1
+
+    elif args.glossary_command == "deactivate":
+        if manager.deactivate_glossary(args.name):
+            print(f"已停用術語表: {args.name}")
+        else:
+            logger.error(f"術語表未啟用或不存在: {args.name}")
+            return 1
+
+    return 0
+
 def cmd_version() -> int:
     """顯示版本資訊"""
     try:
@@ -342,6 +543,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return cmd_cache(args)
     elif args.command == "config":
         return cmd_config(args)
+    elif args.command == "glossary":
+        return cmd_glossary(args)
     elif args.command == "version":
         return cmd_version()
     else:

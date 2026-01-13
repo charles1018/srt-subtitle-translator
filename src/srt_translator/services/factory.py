@@ -420,7 +420,7 @@ class TranslationService:
             return False, str(e)
 
     def _post_process_translation(self, original_text: str, translated_text: str) -> str:
-        """對翻譯結果進行後處理，包括專有名詞統一和移除標點符號
+        """對翻譯結果進行後處理，包括術語表應用、專有名詞統一和移除標點符號
 
         參數:
             original_text: 原始文字
@@ -431,6 +431,16 @@ class TranslationService:
         """
         if not translated_text:
             return translated_text
+
+        # 0. 應用術語表（如果有啟用的術語表）
+        try:
+            from srt_translator.core.glossary import get_glossary_manager
+
+            glossary_manager = get_glossary_manager()
+            if glossary_manager.get_active_glossaries():
+                translated_text = glossary_manager.apply_glossaries(translated_text)
+        except Exception as e:
+            logger.debug(f"應用術語表時發生錯誤: {e}")
 
         # 1. 處理專有名詞統一
         # 使用正則表達式識別可能的專有名詞（假設專有名詞通常是2-6個漢字的連續序列）
@@ -458,7 +468,7 @@ class TranslationService:
             translated_text = translated_text.replace(punct, " ")
 
         # 替換英文標點符號
-        en_punctuation = r',.!?;:"\'()[]<>-_'
+        en_punctuation = r",.!?;:\"'()[]<>-_"
         for punct in en_punctuation:
             translated_text = translated_text.replace(punct, " ")
 

@@ -390,15 +390,6 @@ class App:
                 self.root.quit()
         else:
             self._save_user_settings()
-            # 清理服務資源
-            ServiceFactory.reset_services()
-            self.root.quit()
-
-    def run(self) -> None:
-        """運行應用程式"""
-        self.root.mainloop()
-
-
 def main() -> None:
     """主程式入口點
 
@@ -407,7 +398,7 @@ def main() -> None:
     - translate/models/cache/config/version: 執行 CLI 命令
     """
     # 快速檢查是否為 CLI 模式
-    cli_commands = {"translate", "models", "cache", "config", "version", "-h", "--help"}
+    cli_commands = {"translate", "models", "cache", "config", "glossary", "version", "-h", "--help"}
     is_cli_mode = len(sys.argv) > 1 and sys.argv[1] in cli_commands
 
     if is_cli_mode:
