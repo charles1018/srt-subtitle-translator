@@ -619,6 +619,24 @@ Output the translated text directly. No preamble, no explanations.
 
         return prompt.strip()
 
+    def get_prompt_version(
+        self, llm_type: str = "ollama", content_type: Optional[str] = None, style: Optional[str] = None
+    ) -> str:
+        """取得提示詞版本雜湊（用於快取 key）
+
+        參數:
+            llm_type: LLM類型
+            content_type: 內容類型
+            style: 翻譯風格
+
+        回傳:
+            提示詞內容的 MD5 雜湊前 8 位
+        """
+        import hashlib
+
+        prompt = self.get_prompt(llm_type, content_type, style)
+        return hashlib.md5(prompt.encode()).hexdigest()[:8]
+
     def get_optimized_message(
         self, text: str, context_texts: List[str], llm_type: str, model_name: str
     ) -> List[Dict[str, str]]:

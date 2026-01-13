@@ -18,7 +18,8 @@ from srt_translator.utils.logging_config import setup_logger
 logger = setup_logger(__name__, "cache.log")
 
 # 快取版本，用於不同版本間的快取相容性
-CACHE_VERSION = "1.1"
+# v1.2: 加入翻譯風格 (style) 和提示詞版本 (prompt_version) 到快取 key
+CACHE_VERSION = "1.2"
 
 
 @contextmanager
@@ -125,17 +126,19 @@ class CacheManager:
                 conn.execute("PRAGMA journal_mode=WAL")
                 conn.execute("PRAGMA synchronous=NORMAL")
 
-                # 建立快取表格
+                # 建立快取表格 (v1.2: 加入 style 和 prompt_version)
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS translations (
                         source_text TEXT,
                         target_text TEXT,
                         context_hash TEXT,
                         model_name TEXT,
+                        style TEXT DEFAULT 'standard',
+                        prompt_version TEXT DEFAULT '',
                         created_at timestamp,
                         usage_count INTEGER,
                         last_used timestamp,
-                        PRIMARY KEY (source_text, context_hash, model_name)
+                        PRIMARY KEY (source_text, context_hash, model_name, style, prompt_version)
                     )
                 """)
 
@@ -152,6 +155,7 @@ class CacheManager:
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_model ON translations(model_name)")
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_usage ON translations(usage_count)")
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_last_used ON translations(last_used)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_style ON translations(style)")
 
                 # 檢查快取版本
                 self._check_cache_version(conn)
@@ -226,9 +230,24 @@ class CacheManager:
         context_str = "|".join(parts)
         return hashlib.md5(context_str.encode()).hexdigest()
 
-    def _generate_cache_key(self, source_text: str, context_hash: str, model_name: str) -> str:
-        """產生記憶體快取的鍵值"""
-        return f"{source_text}|{context_hash}|{model_name}"
+    def _generate_cache_key(
+        self,
+        source_text: str,
+        context_hash: str,
+        model_name: str,
+        style: str = "standard",
+        prompt_version: str = "",
+    ) -> str:
+        """產生記憶體快取的鍵值
+
+        參數:
+            source_text: 原始文字
+            context_hash: 上下文雜湊
+            model_name: 模型名稱
+            style: 翻譯風格 (standard, literal, localized, specialized)
+            prompt_version: 提示詞版本雜湊
+        """
+        return f"{source_text}|{context_hash}|{model_name}|{style}|{prompt_version}"
 
     def _is_error_translation(self, text: Optional[str]) -> bool:
         """判斷是否為錯誤翻譯結果"""
@@ -236,13 +255,22 @@ class CacheManager:
             return False
         return text.strip().startswith("[翻譯錯誤")
 
-    def get_cached_translation(self, source_text: str, context_texts: List[str], model_name: str) -> Optional[str]:
+    def get_cached_translation(
+        self,
+        source_text: str,
+        context_texts: List[str],
+        model_name: str,
+        style: str = "standard",
+        prompt_version: str = "",
+    ) -> Optional[str]:
         """獲取快取的翻譯結果，先檢查記憶體，再檢查資料庫
 
         參數:
             source_text: 原始文字
             context_texts: 上下文文本列表
             model_name: 模型名稱
+            style: 翻譯風格 (standard, literal, localized, specialized)
+            prompt_version: 提示詞版本雜湊
 
         回傳:
             翻譯結果，如果快取中不存在則返回None
@@ -258,7 +286,7 @@ class CacheManager:
 
         # 檢查記憶體快取
         with self._cache_lock:
-            cache_key = self._generate_cache_key(source_text, context_hash, model_name)
+            cache_key = self._generate_cache_key(source_text, context_hash, model_name, style, prompt_version)
             if cache_key in self.memory_cache:
                 cached_text: str = str(self.memory_cache[cache_key]["target_text"])
                 if self._is_error_translation(cached_text):
@@ -276,8 +304,9 @@ class CacheManager:
                     SELECT target_text, usage_count
                     FROM translations
                     WHERE source_text = ? AND context_hash = ? AND model_name = ?
+                          AND style = ? AND prompt_version = ?
                 """,
-                    (source_text, context_hash, model_name),
+                    (source_text, context_hash, model_name, style, prompt_version),
                 )
 
                 result = cursor.fetchone()
@@ -288,8 +317,9 @@ class CacheManager:
                             """
                             DELETE FROM translations
                             WHERE source_text = ? AND context_hash = ? AND model_name = ?
+                                  AND style = ? AND prompt_version = ?
                         """,
-                            (source_text, context_hash, model_name),
+                            (source_text, context_hash, model_name, style, prompt_version),
                         )
                         return None
                     # 更新使用統計
@@ -298,8 +328,9 @@ class CacheManager:
                         UPDATE translations
                         SET usage_count = ?, last_used = ?
                         WHERE source_text = ? AND context_hash = ? AND model_name = ?
+                              AND style = ? AND prompt_version = ?
                     """,
-                        (usage_count + 1, datetime.now(), source_text, context_hash, model_name),
+                        (usage_count + 1, datetime.now(), source_text, context_hash, model_name, style, prompt_version),
                     )
 
                     # 添加到記憶體快取
@@ -318,7 +349,15 @@ class CacheManager:
 
         return None
 
-    def store_translation(self, source_text: str, target_text: str, context_texts: List[str], model_name: str) -> bool:
+    def store_translation(
+        self,
+        source_text: str,
+        target_text: str,
+        context_texts: List[str],
+        model_name: str,
+        style: str = "standard",
+        prompt_version: str = "",
+    ) -> bool:
         """儲存翻譯結果到快取
 
         參數:
@@ -326,6 +365,8 @@ class CacheManager:
             target_text: 翻譯結果
             context_texts: 上下文文本列表
             model_name: 模型名稱
+            style: 翻譯風格 (standard, literal, localized, specialized)
+            prompt_version: 提示詞版本雜湊
 
         回傳:
             是否成功儲存
@@ -340,7 +381,7 @@ class CacheManager:
         context_hash = self._compute_context_hash(tuple(context_texts))
 
         # 添加到記憶體快取
-        cache_key = self._generate_cache_key(source_text, context_hash, model_name)
+        cache_key = self._generate_cache_key(source_text, context_hash, model_name, style, prompt_version)
         with self._cache_lock:
             self.memory_cache[cache_key] = {"target_text": target_text, "last_accessed": time.time()}
 
@@ -354,10 +395,21 @@ class CacheManager:
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO translations
-                    (source_text, target_text, context_hash, model_name, created_at, usage_count, last_used)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (source_text, target_text, context_hash, model_name, style, prompt_version,
+                     created_at, usage_count, last_used)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                    (source_text, target_text, context_hash, model_name, datetime.now(), 1, datetime.now()),
+                    (
+                        source_text,
+                        target_text,
+                        context_hash,
+                        model_name,
+                        style,
+                        prompt_version,
+                        datetime.now(),
+                        1,
+                        datetime.now(),
+                    ),
                 )
             return True
         except sqlite3.Error as e:

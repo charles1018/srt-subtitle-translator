@@ -179,8 +179,14 @@ class TranslationService:
 
         self._incr_stat("total_translations")
 
+        # 取得當前翻譯風格和提示詞版本（用於快取 key）
+        current_style = self.prompt_manager.current_style
+        prompt_version = self.prompt_manager.get_prompt_version(llm_type)
+
         # 檢查快取
-        cached_result = self.cache_service.get_translation(text, context_texts, model_name)
+        cached_result = self.cache_service.get_translation(
+            text, context_texts, model_name, current_style, prompt_version
+        )
         if cached_result:
             self._incr_stat("cached_translations")
             return cached_result
@@ -206,8 +212,10 @@ class TranslationService:
             # 翻譯後處理 - 專有名詞統一與移除標點符號
             translation = self._post_process_translation(text, translation)
 
-            # 儲存到快取
-            self.cache_service.store_translation(text, translation, context_texts, model_name)
+            # 儲存到快取（包含風格和提示詞版本）
+            self.cache_service.store_translation(
+                text, translation, context_texts, model_name, current_style, prompt_version
+            )
 
             # 更新統計資料
             end_time = time.time()
@@ -818,20 +826,39 @@ class CacheService:
 
         logger.info("快取服務初始化完成")
 
-    def get_translation(self, source_text: str, context_texts: List[str], model_name: str) -> Optional[str]:
+    def get_translation(
+        self,
+        source_text: str,
+        context_texts: List[str],
+        model_name: str,
+        style: str = "standard",
+        prompt_version: str = "",
+    ) -> Optional[str]:
         """從快取獲取翻譯結果
 
         參數:
             source_text: 原始文本
             context_texts: 上下文文本列表
             model_name: 模型名稱
+            style: 翻譯風格
+            prompt_version: 提示詞版本雜湊
 
         回傳:
             翻譯結果，若不存在則回傳 None
         """
-        return self.cache_manager.get_cached_translation(source_text, context_texts, model_name)
+        return self.cache_manager.get_cached_translation(
+            source_text, context_texts, model_name, style, prompt_version
+        )
 
-    def store_translation(self, source_text: str, target_text: str, context_texts: List[str], model_name: str) -> bool:
+    def store_translation(
+        self,
+        source_text: str,
+        target_text: str,
+        context_texts: List[str],
+        model_name: str,
+        style: str = "standard",
+        prompt_version: str = "",
+    ) -> bool:
         """將翻譯結果儲存到快取
 
         參數:
@@ -839,11 +866,15 @@ class CacheService:
             target_text: 翻譯結果
             context_texts: 上下文文本列表
             model_name: 模型名稱
+            style: 翻譯風格
+            prompt_version: 提示詞版本雜湊
 
         回傳:
             是否儲存成功
         """
-        return self.cache_manager.store_translation(source_text, target_text, context_texts, model_name)
+        return self.cache_manager.store_translation(
+            source_text, target_text, context_texts, model_name, style, prompt_version
+        )
 
     def clear_old_cache(self, days_threshold: int = 30) -> int:
         """清理舊的快取
