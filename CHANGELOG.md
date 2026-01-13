@@ -7,6 +7,37 @@
 
 ## [Unreleased]
 
+*目前無待發布的變更*
+
+---
+
+## [1.1.0] - 2026-01-13
+
+### ✨ 新增
+
+#### CLI 命令列模式
+- 🖥️ **新增完整 CLI 介面** - `src/srt_translator/cli.py`
+  - 子命令：`translate`、`models`、`cache`、`config`、`glossary`、`version`
+  - 支援批次翻譯和進度條顯示
+  - 範例：`srt-translator translate video.srt -s 日文 -t 繁體中文`
+  - **Commit**: 660e9b4
+
+#### 術語表管理 Glossary
+- 📚 **新增術語表管理系統** - `src/srt_translator/core/glossary.py`
+  - GlossaryManager 單例模式管理術語
+  - 支援 JSON/CSV/TXT 格式匯入匯出
+  - 翻譯時自動應用術語表確保一致性
+  - CLI 命令：`srt-translator glossary create/add/list/import/export`
+  - **Commit**: ad087fb
+
+#### 快取 key 優化
+- 🔧 **改進快取識別機制**
+  - 快取 key 新增 style 和 prompt_version 參數
+  - CACHE_VERSION 升級至 1.2
+  - PromptManager 新增 `get_prompt_version()` 方法
+  - 確保不同翻譯風格/提示詞版本的結果分別快取
+  - **Commit**: a57263a
+
 ### 🔄 變更
 
 #### 預設翻譯設定調整
@@ -442,9 +473,10 @@
 
 ---
 
-**最後更新**：2025-12-29
+**最後更新**：2026-01-13
 
-[Unreleased]: https://github.com/charles1018/srt-subtitle-translator/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/charles1018/srt-subtitle-translator/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/charles1018/srt-subtitle-translator/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/charles1018/srt-subtitle-translator/releases/tag/v1.0.0
 [0.9.0]: https://github.com/charles1018/srt-subtitle-translator/releases/tag/v0.9.0
 [0.8.0]: https://github.com/charles1018/srt-subtitle-translator/releases/tag/v0.8.0

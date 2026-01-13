@@ -6,6 +6,8 @@
 
 - [快速開始](#快速開始)
 - [詳細安裝指南](#詳細安裝指南)
+- [CLI 命令列模式](#cli-命令列模式) *(1.1.0 新增)*
+- [術語表管理](#術語表管理) *(1.1.0 新增)*
 - [介面說明](#介面說明)
 - [使用範例](#使用範例)
 - [進階功能](#進階功能)
@@ -45,6 +47,9 @@ echo "your-api-key" > openapi_api_key.txt
 uv run srt-translator
 
 # 4. 在介面中選擇檔案、設定參數、開始翻譯！
+
+# 或使用 CLI 模式（1.1.0 新增）
+srt-translator translate video.srt -s 日文 -t 繁體中文
 ```
 
 ---
@@ -174,6 +179,185 @@ echo "sk-ant-your-anthropic-api-key" > anthropic_api_key.txt
 ```
 
 > **安全提示**：環境變數優先於金鑰檔案。建議使用環境變數，避免將金鑰意外提交到版本控制。
+
+---
+
+## CLI 命令列模式
+
+> *1.1.0 版本新增功能*
+
+除了 GUI 圖形介面外，本工具也提供完整的命令列介面（CLI），適合自動化工作流程和批次處理。
+
+### 基本指令
+
+```bash
+# 顯示說明
+srt-translator --help
+
+# 顯示版本
+srt-translator version
+
+# 翻譯單一檔案
+srt-translator translate video.srt -s 日文 -t 繁體中文
+
+# 批次翻譯整個資料夾
+srt-translator translate ./subtitles/ -s 英文 -t 繁體中文
+
+# 使用特定模型
+srt-translator translate video.srt -s 日文 -t 繁體中文 -p openai -m gpt-4
+
+# 套用術語表
+srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
+```
+
+### 翻譯指令參數
+
+| 參數 | 簡寫 | 說明 | 預設值 |
+|------|------|------|--------|
+| `--source` | `-s` | 來源語言 | 英文 |
+| `--target` | `-t` | 目標語言 | 繁體中文 |
+| `--provider` | `-p` | AI 引擎（ollama/openai/anthropic）| openai |
+| `--model` | `-m` | 模型名稱 | gpt-3.5-turbo |
+| `--glossary` | `-g` | 套用的術語表名稱 | - |
+| `--output` | `-o` | 輸出目錄 | 原檔案目錄 |
+| `--concurrent` | `-c` | 並發數 | 5 |
+
+### 模型管理
+
+```bash
+# 列出所有可用模型
+srt-translator models
+
+# 列出特定提供者的模型
+srt-translator models -p ollama
+srt-translator models -p openai
+srt-translator models -p anthropic
+```
+
+### 快取管理
+
+```bash
+# 查看快取統計
+srt-translator cache --stats
+
+# 清除所有快取
+srt-translator cache --clear
+```
+
+### 配置管理
+
+```bash
+# 顯示當前配置
+srt-translator config --show
+
+# 設定預設值
+srt-translator config --set source_lang 日文
+srt-translator config --set target_lang 繁體中文
+```
+
+---
+
+## 術語表管理
+
+> *1.1.0 版本新增功能*
+
+術語表功能可確保專有名詞的翻譯一致性，特別適用於動畫、電影或專業領域的字幕翻譯。
+
+### 為什麼需要術語表？
+
+- **一致性**：確保同一名詞在整部影片中翻譯一致
+- **準確性**：專有名詞使用正確的官方翻譯
+- **效率**：避免每次翻譯都需要人工校對相同名詞
+
+### 建立術語表
+
+```bash
+# 建立新術語表（指定來源和目標語言）
+srt-translator glossary create anime -s 日文 -t 繁體中文
+srt-translator glossary create marvel -s 英文 -t 繁體中文
+```
+
+### 新增術語
+
+```bash
+# 新增單一術語
+srt-translator glossary add anime "進撃の巨人" "進擊的巨人"
+srt-translator glossary add anime "エレン" "艾連"
+srt-translator glossary add anime "ミカサ" "米卡莎"
+
+# 新增英文術語
+srt-translator glossary add marvel "Avengers" "復仇者聯盟"
+srt-translator glossary add marvel "Thanos" "薩諾斯"
+```
+
+### 查看術語表
+
+```bash
+# 列出所有術語表
+srt-translator glossary list
+
+# 查看特定術語表內容
+srt-translator glossary show anime
+```
+
+### 匯入匯出
+
+支援三種格式：JSON、CSV、TXT
+
+```bash
+# 匯出為 JSON（推薦，保留所有資訊）
+srt-translator glossary export anime -f json -o anime_terms.json
+
+# 匯出為 CSV（方便用 Excel 編輯）
+srt-translator glossary export anime -f csv -o anime_terms.csv
+
+# 匯出為 TXT（簡單格式）
+srt-translator glossary export anime -f txt -o anime_terms.txt
+
+# 匯入術語
+srt-translator glossary import anime terms.json
+srt-translator glossary import anime terms.csv
+```
+
+### JSON 格式範例
+
+```json
+{
+  "name": "anime",
+  "source_lang": "日文",
+  "target_lang": "繁體中文",
+  "terms": [
+    {"source": "進撃の巨人", "target": "進擊的巨人"},
+    {"source": "エレン", "target": "艾連"},
+    {"source": "ミカサ", "target": "米卡莎"}
+  ]
+}
+```
+
+### CSV 格式範例
+
+```csv
+source,target
+進撃の巨人,進擊的巨人
+エレン,艾連
+ミカサ,米卡莎
+```
+
+### 在翻譯時使用術語表
+
+```bash
+# CLI 模式
+srt-translator translate episode_01.srt -s 日文 -t 繁體中文 -g anime
+
+# 批次翻譯
+srt-translator translate ./subtitles/ -s 日文 -t 繁體中文 -g anime
+```
+
+### GUI 中使用術語表
+
+在 GUI 介面中，翻譯設定區域會顯示可用的術語表下拉選單，選擇後即可套用。
+
+---
 
 #### Ollama
 
@@ -755,5 +939,5 @@ find data/ -name "*.db" -mtime +90 -delete
 
 ---
 
-**最後更新**：2025-12-29
-**版本**：1.0.0
+**最後更新**：2026-01-13
+**版本**：1.1.0

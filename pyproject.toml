@@ -1,6 +1,6 @@
 [project]
 name = "srt-subtitle-translator"
-version = "1.0.0"
+version = "1.1.0"
 description = "基於 Python 的 SRT 字幕檔自動翻譯工具，支援 Ollama、OpenAI、Anthropic 多種 AI 引擎"
 readme = "README.md"
 requires-python = ">=3.8"
