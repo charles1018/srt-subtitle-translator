@@ -22,12 +22,13 @@
 
 ### 前置需求
 
-1. **Python 環境**：Python 3.8 或更高版本
+1. **Python 環境**：Python 3.9 或更高版本
 2. **網路連接**：使用 API 模式時必須
 3. **AI 服務**（擇一）：
    - Ollama（本地）
    - OpenAI API 金鑰
    - Anthropic API 金鑰
+   - Google Gemini API 金鑰
 
 ### 5 分鐘快速上手
 
@@ -37,11 +38,15 @@ git clone https://github.com/charles1018/srt-subtitle-translator.git
 cd srt-subtitle-translator
 uv sync --all-extras --dev
 
-# 2. 設定 API 金鑰（OpenAI 為例，擇一方式）
-# 方式 A：環境變數（推薦）
+# 2. 設定 API 金鑰（擇一方式）
+# 方式 A：.env 檔案（推薦）
+cp .env.example .env
+# 編輯 .env 填入 API 金鑰
+
+# 方式 B：環境變數
 export OPENAI_API_KEY="your-api-key"
-# 方式 B：金鑰檔案
-echo "your-api-key" > openapi_api_key.txt
+export ANTHROPIC_API_KEY="your-api-key"
+export GOOGLE_API_KEY="your-api-key"
 
 # 3. 啟動
 uv run srt-translator
@@ -132,53 +137,60 @@ python -m srt_translator
 
 ### API 金鑰設定
 
-#### OpenAI
+#### 方法 1：.env 檔案（推薦）
 
-1. 前往 [OpenAI Platform](https://platform.openai.com/api-keys)
-2. 建立新的 API 金鑰
-3. 設定金鑰（擇一方式）：
+複製範本並填入您的 API 金鑰：
 
-**方法 1：環境變數（推薦）**
+```bash
+cp .env.example .env
+```
+
+編輯 `.env` 檔案：
+```env
+# OpenAI API
+OPENAI_API_KEY=sk-your-openai-api-key
+
+# Anthropic API
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key
+
+# Google Gemini API（二擇一）
+GOOGLE_API_KEY=your-google-api-key
+# 或
+GEMINI_API_KEY=your-google-api-key
+```
+
+> **安全提示**：`.env` 檔案已加入 `.gitignore`，不會被提交到版本控制。
+
+#### 方法 2：環境變數
+
 ```bash
 # Linux/macOS
 export OPENAI_API_KEY="sk-your-openai-api-key"
+export ANTHROPIC_API_KEY="sk-ant-your-anthropic-api-key"
+export GOOGLE_API_KEY="your-google-api-key"
 
 # Windows PowerShell
 $env:OPENAI_API_KEY="sk-your-openai-api-key"
-
-# Windows CMD
-set OPENAI_API_KEY=sk-your-openai-api-key
+$env:ANTHROPIC_API_KEY="sk-ant-your-anthropic-api-key"
+$env:GOOGLE_API_KEY="your-google-api-key"
 ```
 
-**方法 2：金鑰檔案**
+#### 方法 3：金鑰檔案（向下相容）
+
 ```bash
 echo "sk-your-openai-api-key" > openapi_api_key.txt
-```
-
-#### Anthropic
-
-1. 前往 [Anthropic Console](https://console.anthropic.com/settings/keys)
-2. 建立新的 API 金鑰
-3. 設定金鑰（擇一方式）：
-
-**方法 1：環境變數（推薦）**
-```bash
-# Linux/macOS
-export ANTHROPIC_API_KEY="sk-ant-your-anthropic-api-key"
-
-# Windows PowerShell
-$env:ANTHROPIC_API_KEY="sk-ant-your-anthropic-api-key"
-
-# Windows CMD
-set ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key
-```
-
-**方法 2：金鑰檔案**
-```bash
 echo "sk-ant-your-anthropic-api-key" > anthropic_api_key.txt
 ```
 
-> **安全提示**：環境變數優先於金鑰檔案。建議使用環境變數，避免將金鑰意外提交到版本控制。
+> **優先順序**：環境變數 > .env 檔案 > 金鑰檔案
+
+#### 取得 API 金鑰
+
+| 服務 | 取得位置 |
+|------|----------|
+| **OpenAI** | [OpenAI Platform](https://platform.openai.com/api-keys) |
+| **Anthropic** | [Anthropic Console](https://console.anthropic.com/settings/keys) |
+| **Google Gemini** | [Google AI Studio](https://aistudio.google.com/apikey) |
 
 ---
 
@@ -216,7 +228,7 @@ srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
 |------|------|------|--------|
 | `--source` | `-s` | 來源語言 | 英文 |
 | `--target` | `-t` | 目標語言 | 繁體中文 |
-| `--provider` | `-p` | AI 引擎（ollama/openai/anthropic）| openai |
+| `--provider` | `-p` | AI 引擎（ollama/openai/anthropic/google）| openai |
 | `--model` | `-m` | 模型名稱 | gpt-3.5-turbo |
 | `--glossary` | `-g` | 套用的術語表名稱 | - |
 | `--output` | `-o` | 輸出目錄 | 原檔案目錄 |
@@ -232,6 +244,7 @@ srt-translator models
 srt-translator models -p ollama
 srt-translator models -p openai
 srt-translator models -p anthropic
+srt-translator models -p google
 ```
 
 ### 快取管理
@@ -413,7 +426,7 @@ ollama pull llama2
 | **清除全部** | 清空檔案清單 |
 | **源語言** | 選擇字幕原始語言 |
 | **目標語言** | 選擇翻譯目標語言 |
-| **LLM 類型** | 選擇 AI 引擎（ollama/openai/anthropic）|
+| **LLM 類型** | 選擇 AI 引擎（ollama/openai/anthropic/google）|
 | **模型** | 選擇要使用的 AI 模型 |
 | **並發數** | 設定同時翻譯的字幕數量 |
 | **顯示模式** | 選擇輸出字幕的顯示方式 |
@@ -589,6 +602,7 @@ rm data/translation_cache.db
 | **Ollama** | 1-3 | 受限於本地 GPU/CPU 資源 |
 | **OpenAI** | 3-6 | 速率限制較嚴格，建議保守 |
 | **Anthropic** | 5-15 | 速率限制較寬鬆 |
+| **Google Gemini** | 3-8 | 速率限制適中 |
 
 #### 自動調整
 
@@ -720,7 +734,7 @@ code config/user_settings.json
 **解決方案**：
 ```bash
 # 檢查 Python 版本
-python --version  # 應為 3.8+
+python --version  # 應為 3.9+
 
 # 重新安裝依賴
 uv sync --all-extras --dev
@@ -851,6 +865,7 @@ cat logs/translation.log
 |------|---------|---------|
 | **GPT-4** | ⭐⭐⭐⭐⭐ | 最佳品質，成本較高 |
 | **Claude-3-Opus** | ⭐⭐⭐⭐⭐ | 優秀品質，自然流暢 |
+| **Gemini-2.0-Flash** | ⭐⭐⭐⭐ | 快速回應，品質良好 |
 | **GPT-3.5-Turbo** | ⭐⭐⭐⭐ | 良好品質，成本適中 |
 | **Llama2（本地）** | ⭐⭐⭐ | 可接受，完全免費 |
 
@@ -860,11 +875,13 @@ cat logs/translation.log
 - **Ollama（本地）**：完全免費，但需要本地運算資源
 - **OpenAI**：按 token 計費，約 $0.002-0.02 / 1K tokens
 - **Anthropic**：按 token 計費，約 $0.003-0.015 / 1K tokens
+- **Google Gemini**：按 token 計費，約 $0.001-0.007 / 1K tokens（有免費額度）
 
 **估算**：1 小時動畫（約 400 條字幕）：
 - GPT-3.5：約 $0.10-0.30
 - GPT-4：約 $1.00-3.00
 - Claude-3-Opus：約 $0.50-1.50
+- Gemini-2.0-Flash：約 $0.05-0.15（或免費額度內）
 
 ### Q6：可以翻譯多種語言嗎？
 
@@ -962,5 +979,5 @@ find data/ -name "*.db" -mtime +90 -delete
 
 ---
 
-**最後更新**：2026-01-13
+**最後更新**：2026-01-15
 **版本**：1.1.0

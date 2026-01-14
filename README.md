@@ -1,11 +1,11 @@
 # SRT Subtitle Translator
 
-[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-717%20passing-brightgreen.svg)](tests/)
 [![Code Coverage](https://img.shields.io/badge/coverage-62%25-green.svg)](htmlcov/)
 
-基於 Python 的 SRT 字幕檔自動翻譯工具，支援使用 Ollama 本地模型、OpenAI API 或 Anthropic API 進行多語言翻譯。本工具提供批量處理、翻譯記憶快取、多種顯示模式等功能，並配備友善的圖形使用者介面。
+基於 Python 的 SRT 字幕檔自動翻譯工具，支援使用 Ollama 本地模型、OpenAI API、Anthropic API 或 Google Gemini API 進行多語言翻譯。本工具提供批量處理、翻譯記憶快取、多種顯示模式等功能，並配備友善的圖形使用者介面。
 
 ## ✨ 功能特點
 
@@ -15,6 +15,7 @@
   - Ollama 本地 AI 模型
   - OpenAI API (GPT-3.5、GPT-4 等)
   - Anthropic API (Claude 系列模型)
+  - Google Gemini API (Gemini 2.0、1.5 系列)
 - 📝 **多格式支援**：SRT、VTT、ASS/SSA 字幕格式
 
 ### 進階功能
@@ -43,11 +44,12 @@
 
 ## 📋 系統需求
 
-- **Python**：3.8 或更高版本
+- **Python**：3.9 或更高版本
 - **網路連接**：使用 API 模式時需要
 - **API 金鑰**（依使用模式）：
   - OpenAI 模式：需要 OpenAI API 金鑰
   - Anthropic 模式：需要 Anthropic API 金鑰
+  - Google Gemini 模式：需要 Google API 金鑰
   - Ollama 模式：需要在本機安裝 [Ollama](https://ollama.ai) 服務
 
 ## 🚀 快速開始
@@ -84,45 +86,52 @@ python -m srt_translator
 
 ### API 金鑰設定
 
-#### OpenAI API
+#### 方法 1：.env 檔案（推薦）
 
-**方法 1：環境變數（推薦）**
+複製範本並填入您的 API 金鑰：
+
+```bash
+cp .env.example .env
+```
+
+編輯 `.env` 檔案：
+```env
+# OpenAI API
+OPENAI_API_KEY=your-openai-api-key
+
+# Anthropic API
+ANTHROPIC_API_KEY=your-anthropic-api-key
+
+# Google Gemini API（二擇一）
+GOOGLE_API_KEY=your-google-api-key
+# 或
+GEMINI_API_KEY=your-google-api-key
+```
+
+#### 方法 2：環境變數
+
 ```bash
 # Linux/macOS
 export OPENAI_API_KEY="your-openai-api-key"
+export ANTHROPIC_API_KEY="your-anthropic-api-key"
+export GOOGLE_API_KEY="your-google-api-key"
 
 # Windows PowerShell
 $env:OPENAI_API_KEY="your-openai-api-key"
-
-# Windows CMD
-set OPENAI_API_KEY=your-openai-api-key
+$env:ANTHROPIC_API_KEY="your-anthropic-api-key"
+$env:GOOGLE_API_KEY="your-google-api-key"
 ```
 
-**方法 2：金鑰檔案**
+#### 方法 3：金鑰檔案（向下相容）
+
 ```bash
 echo "your-openai-api-key" > openapi_api_key.txt
-```
-
-#### Anthropic API
-
-**方法 1：環境變數（推薦）**
-```bash
-# Linux/macOS
-export ANTHROPIC_API_KEY="your-anthropic-api-key"
-
-# Windows PowerShell
-$env:ANTHROPIC_API_KEY="your-anthropic-api-key"
-
-# Windows CMD
-set ANTHROPIC_API_KEY=your-anthropic-api-key
-```
-
-**方法 2：金鑰檔案**
-```bash
 echo "your-anthropic-api-key" > anthropic_api_key.txt
 ```
 
-> **注意**：環境變數優先於金鑰檔案。使用環境變數更安全，避免將金鑰意外提交到版本控制。
+> **優先順序**：環境變數 > .env 檔案 > 金鑰檔案
+>
+> **安全提示**：`.env` 檔案已加入 `.gitignore`，不會被提交到版本控制。
 
 #### Ollama（本地模型）
 確保 Ollama 服務正在運行：
@@ -295,6 +304,7 @@ uv run mypy src/srt_translator
 - **Ollama**：1-3（視 GPU 資源而定）
 - **OpenAI**：3-6（避免觸發速率限制）
 - **Anthropic**：5-15（相對寬鬆的速率限制）
+- **Google Gemini**：3-8（速率限制適中）
 
 ### 🆕 快取系統優化
 
@@ -339,6 +349,7 @@ uv run mypy src/srt_translator
 - [pysrt](https://github.com/byroot/pysrt) - SRT 字幕解析
 - [OpenAI](https://openai.com/) - GPT 系列模型
 - [Anthropic](https://www.anthropic.com/) - Claude 系列模型
+- [Google](https://ai.google.dev/) - Gemini 系列模型
 - [Ollama](https://ollama.ai/) - 本地 LLM 運行平台
 
 ## 📮 問題反饋
