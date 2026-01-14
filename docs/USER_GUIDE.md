@@ -667,6 +667,29 @@ config/
 }
 ```
 
+#### theme_settings.json
+
+GUI 主題配色設定（Arctic Night 深色主題）：
+
+```json
+{
+  "colors": {
+    "primary": "#7DCFFF",
+    "secondary": "#89DDFF",
+    "background": "#1A1B26",
+    "surface": "#24283B",
+    "text": "#C0CAF5",
+    "accent": "#BB9AF7",
+    "success": "#9ECE6A",
+    "danger": "#F7768E",
+    "warning": "#E0AF68"
+  },
+  "theme": "arctic_night"
+}
+```
+
+> 可自訂顏色值來調整介面配色，修改後重新啟動程式生效。
+
 ### 修改配置
 
 配置會在使用者操作時自動儲存，也可以手動編輯 JSON 檔案：
