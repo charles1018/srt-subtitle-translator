@@ -487,7 +487,7 @@ class GUIComponents:
         llm_grid.pack(fill=tk.BOTH, expand=True)
 
         ttk.Label(llm_grid, text="LLM 類型:").grid(row=0, column=0, sticky=tk.W, pady=8)
-        llm_types = ["ollama", "openai"]
+        llm_types = ["ollama", "openai", "anthropic", "google"]
         self.llm_combobox = ttk.Combobox(
             llm_grid, textvariable=self.llm_type, values=llm_types, width=12, state="readonly"
         )
@@ -1675,7 +1675,7 @@ class PromptEditorWindow:
         ttk.Label(options_frame, text="LLM類型:").pack(side=tk.LEFT, padx=(10, 5))
         self.llm_type_var = tk.StringVar(value="ollama")
         llm_type_combo = ttk.Combobox(
-            options_frame, textvariable=self.llm_type_var, values=["ollama", "openai"], state="readonly", width=8
+            options_frame, textvariable=self.llm_type_var, values=["ollama", "openai", "anthropic", "google"], state="readonly", width=10
         )
         llm_type_combo.pack(side=tk.LEFT)
         llm_type_combo.bind("<<ComboboxSelected>>", self.load_prompt)
