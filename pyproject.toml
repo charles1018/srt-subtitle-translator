@@ -3,7 +3,7 @@ name = "srt-subtitle-translator"
 version = "1.1.0"
 description = "基於 Python 的 SRT 字幕檔自動翻譯工具，支援 Ollama、OpenAI、Anthropic、Google Gemini 多種 AI 引擎"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [
     { name = "charles1018", email = "chmadux8@gmail.com" }
@@ -25,7 +25,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -48,7 +47,7 @@ dependencies = [
 
     # Optional LLM APIs
     "anthropic>=0.8.0",
-    "google-genai>=1.0.0",
+    "google-genai>=1.57.0",
 
     # GUI dependencies
     "tkinterdnd2>=0.3.0",
@@ -99,7 +98,7 @@ build-backend = "hatchling.build"
 line-length = 120
 
 # 目標 Python 版本
-target-version = "py38"
+target-version = "py310"
 
 # 排除的目錄
 exclude = [
@@ -154,7 +153,7 @@ known-first-party = ["srt-translator"]
 # ============================================================
 [tool.mypy]
 # Python 版本
-python_version = "3.9"
+python_version = "3.10"
 
 # 基本設定
 warn_return_any = true

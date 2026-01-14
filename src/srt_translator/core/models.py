@@ -870,14 +870,14 @@ class ModelManager:
 
             # 驗證 API 金鑰是否有效
             try:
-                client = genai.Client(api_key=api_key)
-                # 使用簡單的請求驗證 API 金鑰
-                response = client.models.generate_content(model="gemini-2.5-flash", contents="Hi")
-                if response.text:
-                    # 呼叫成功，API 金鑰有效
-                    for model in google_models:
-                        model.available = True
-                    logger.info("Google API 金鑰驗證成功")
+                with genai.Client(api_key=api_key) as client:
+                    # 使用簡單的請求驗證 API 金鑰
+                    response = client.models.generate_content(model="gemini-2.5-flash", contents="Hi")
+                    if response.text:
+                        # 呼叫成功，API 金鑰有效
+                        for model in google_models:
+                            model.available = True
+                        logger.info("Google API 金鑰驗證成功")
             except Exception as e:
                 logger.warning(f"Google API 金鑰驗證失敗: {e!s}")
                 # 標記所有模型為不可用
@@ -1128,13 +1128,13 @@ class ModelManager:
             return False, "未提供 API 金鑰"
 
         try:
-            client = genai.Client(api_key=api_key)
-            response = client.models.generate_content(model=model_name, contents="Hello")
+            with genai.Client(api_key=api_key) as client:
+                response = client.models.generate_content(model=model_name, contents="Hello")
 
-            if response and response.text:
-                return True, "模型回應正常"
-            else:
-                return False, "模型回應格式異常"
+                if response and response.text:
+                    return True, "模型回應正常"
+                else:
+                    return False, "模型回應格式異常"
 
         except Exception as e:
             error_msg = str(e).lower()

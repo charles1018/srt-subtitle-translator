@@ -395,6 +395,16 @@ class TranslationClient:
             finally:
                 self.openai_client = None
 
+        # 關閉 Google 客戶端（如果存在）
+        if self.google_client:
+            try:
+                self.google_client.close()
+                logger.debug("關閉 Google GenAI 客戶端")
+            except Exception as e:
+                logger.warning(f"關閉 Google 客戶端時發生錯誤: {e!s}")
+            finally:
+                self.google_client = None
+
     async def _count_tokens(self, messages: List[Dict[str, str]], model: str) -> int:
         """使用正確的 tokenizer 計算 token 數量"""
         if not self.tokenizers:
