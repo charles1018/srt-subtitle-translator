@@ -6,9 +6,24 @@ import threading
 import time
 from dataclasses import dataclass, field
 from logging.handlers import TimedRotatingFileHandler
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
+
+# 載入環境變數（優先從 .env 檔案）
+try:
+    from dotenv import load_dotenv
+
+    # 嘗試從專案根目錄載入 .env
+    env_path = Path(__file__).resolve().parents[3] / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+    else:
+        load_dotenv()  # 嘗試從當前目錄載入
+    DOTENV_AVAILABLE = True
+except ImportError:
+    DOTENV_AVAILABLE = False
 
 # 嘗試匯入所有可能的 LLM 客戶端
 try:
@@ -25,6 +40,13 @@ try:
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     ANTHROPIC_AVAILABLE = False
+
+try:
+    from google import genai
+
+    GOOGLE_AVAILABLE = True
+except ImportError:
+    GOOGLE_AVAILABLE = False
 
 # 從配置管理器導入
 from srt_translator.core.config import ConfigManager, get_config
@@ -184,16 +206,21 @@ class ModelManager:
         """載入各種服務的 API 金鑰
 
         優先順序：
-        1. 環境變數 (OPENAI_API_KEY, ANTHROPIC_API_KEY) - 推薦用於生產環境
-        2. 檔案儲存 (作為備選方案)
+        1. 環境變數（可透過 .env 檔案設定）- 推薦用於生產環境
+        2. 檔案儲存（作為備選方案，向後相容）
+
+        支援的環境變數：
+        - OPENAI_API_KEY: OpenAI API 金鑰
+        - ANTHROPIC_API_KEY: Anthropic API 金鑰
+        - GOOGLE_API_KEY 或 GEMINI_API_KEY: Google Gemini API 金鑰
 
         安全注意事項：
-        - 環境變數是更安全的儲存方式，建議優先使用
-        - 如果使用檔案儲存，請確保檔案權限正確設置且不提交到版本控制
+        - 建議使用 .env 檔案管理 API 金鑰
+        - 確保 .env 檔案已加入 .gitignore
         """
         # 載入 OpenAI API 金鑰
         try:
-            # 優先從環境變數讀取
+            # 優先從環境變數讀取（包含 .env 檔案）
             openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
 
             if openai_key:
@@ -205,11 +232,9 @@ class ModelManager:
                 if os.path.exists(openai_key_path):
                     with open(openai_key_path, encoding="utf-8") as f:
                         self.api_keys["openai"] = f.read().strip()
-                    logger.info("已從檔案載入 OpenAI API 金鑰（建議改用環境變數 OPENAI_API_KEY）")
+                    logger.info("已從檔案載入 OpenAI API 金鑰（建議改用 .env 檔案）")
                 else:
-                    logger.warning(
-                        f"未設定 OpenAI API 金鑰。請設定環境變數 OPENAI_API_KEY，或建立檔案: {openai_key_path}"
-                    )
+                    logger.debug("未設定 OpenAI API 金鑰")
         except Exception as e:
             logger.error(f"載入 OpenAI API 金鑰時發生錯誤: {e!s}")
 
@@ -227,9 +252,29 @@ class ModelManager:
                 if os.path.exists(anthropic_key_path):
                     with open(anthropic_key_path, encoding="utf-8") as f:
                         self.api_keys["anthropic"] = f.read().strip()
-                    logger.info("已從檔案載入 Anthropic API 金鑰（建議改用環境變數 ANTHROPIC_API_KEY）")
+                    logger.info("已從檔案載入 Anthropic API 金鑰（建議改用 .env 檔案）")
         except Exception as e:
             logger.error(f"載入 Anthropic API 金鑰時發生錯誤: {e!s}")
+
+        # 載入 Google Gemini API 金鑰
+        try:
+            # 支援兩種環境變數名稱
+            google_key = os.environ.get("GOOGLE_API_KEY", "").strip()
+            if not google_key:
+                google_key = os.environ.get("GEMINI_API_KEY", "").strip()
+
+            if google_key:
+                self.api_keys["google"] = google_key
+                logger.info("已從環境變數載入 Google API 金鑰")
+            else:
+                # 備選：從檔案讀取
+                google_key_path = get_config("app", "google_key_path", "google_api_key.txt")
+                if os.path.exists(google_key_path):
+                    with open(google_key_path, encoding="utf-8") as f:
+                        self.api_keys["google"] = f.read().strip()
+                    logger.info("已從檔案載入 Google API 金鑰（建議改用 .env 檔案）")
+        except Exception as e:
+            logger.error(f"載入 Google API 金鑰時發生錯誤: {e!s}")
 
     def _init_model_info_database(self) -> None:
         """初始化模型資訊資料庫"""
@@ -403,6 +448,70 @@ class ModelManager:
             ),
         }
 
+        # Google Gemini 模型資訊
+        google_models = {
+            "gemini-2.0-flash": ModelInfo(
+                id="gemini-2.0-flash",
+                provider="google",
+                name="Gemini 2.0 Flash",
+                description="Google 最新的快速模型，適合大批量翻譯任務",
+                context_length=1048576,
+                pricing="低",
+                recommended_for="大批量翻譯任務，速度快且成本低",
+                parallel=30,
+                tags=["fast", "economic", "multilingual"],
+                capabilities={"translation": 0.90, "multilingual": 0.92, "context_handling": 0.88},
+            ),
+            "gemini-2.5-flash": ModelInfo(
+                id="gemini-2.5-flash",
+                provider="google",
+                name="Gemini 2.5 Flash",
+                description="Google 進階快速模型，平衡速度與品質",
+                context_length=1048576,
+                pricing="中",
+                recommended_for="一般翻譯任務，需要良好的速度和品質",
+                parallel=25,
+                tags=["balanced", "fast", "multilingual"],
+                capabilities={"translation": 0.93, "multilingual": 0.94, "context_handling": 0.92},
+            ),
+            "gemini-2.5-pro": ModelInfo(
+                id="gemini-2.5-pro",
+                provider="google",
+                name="Gemini 2.5 Pro",
+                description="Google 最強大的模型，適合高品質專業翻譯",
+                context_length=1048576,
+                pricing="高",
+                recommended_for="專業翻譯、文學翻譯、需要最高品質",
+                parallel=15,
+                tags=["advanced", "accurate", "multilingual"],
+                capabilities={"translation": 0.97, "multilingual": 0.98, "context_handling": 0.96},
+            ),
+            "gemini-1.5-flash": ModelInfo(
+                id="gemini-1.5-flash",
+                provider="google",
+                name="Gemini 1.5 Flash",
+                description="上一代快速模型，穩定可靠",
+                context_length=1048576,
+                pricing="低",
+                recommended_for="一般翻譯任務",
+                parallel=30,
+                tags=["fast", "stable", "economic"],
+                capabilities={"translation": 0.88, "multilingual": 0.90, "context_handling": 0.85},
+            ),
+            "gemini-1.5-pro": ModelInfo(
+                id="gemini-1.5-pro",
+                provider="google",
+                name="Gemini 1.5 Pro",
+                description="上一代專業模型，穩定且高品質",
+                context_length=2097152,
+                pricing="中",
+                recommended_for="需要處理長上下文的翻譯任務",
+                parallel=15,
+                tags=["advanced", "stable", "extended_context"],
+                capabilities={"translation": 0.94, "multilingual": 0.95, "context_handling": 0.97},
+            ),
+        }
+
         # 合併所有模型資訊到資料庫
         for model in openai_models.values():
             self.model_database[f"openai:{model.id}"] = model
@@ -412,6 +521,9 @@ class ModelManager:
 
         for model in anthropic_models.values():
             self.model_database[f"anthropic:{model.id}"] = model
+
+        for model in google_models.values():
+            self.model_database[f"google:{model.id}"] = model
 
     async def _init_async_session(self) -> None:
         """初始化非同步 HTTP 客戶端"""
@@ -464,6 +576,8 @@ class ModelManager:
                 models = await self._get_openai_models_async(api_key or "")
             elif llm_type == "anthropic" and ANTHROPIC_AVAILABLE:
                 models = await self._get_anthropic_models_async(api_key or "")
+            elif llm_type == "google" and GOOGLE_AVAILABLE:
+                models = await self._get_google_models_async(api_key or "")
             else:
                 logger.warning(f"不支援的 LLM 類型: {llm_type}，返回空列表")
                 models = []
@@ -647,11 +761,109 @@ class ModelManager:
             logger.error(f"獲取 Anthropic 模型列表失敗: {e!s}")
             return []
 
+    async def _get_google_models_async(self, api_key: str) -> List[ModelInfo]:
+        """非同步獲取 Google Gemini 模型列表
+
+        參數:
+            api_key: Google API金鑰
+
+        回傳:
+            Google Gemini ModelInfo物件列表
+        """
+        if not GOOGLE_AVAILABLE or not api_key:
+            return []
+
+        try:
+            # 建立 Google Gemini 模型列表
+            google_models = [
+                ModelInfo(
+                    id="gemini-2.0-flash",
+                    provider="google",
+                    name="Gemini 2.0 Flash",
+                    description="Google 最新的快速模型，適合大批量翻譯任務",
+                    context_length=1048576,
+                    pricing="低",
+                    recommended_for="大批量翻譯任務，速度快且成本低",
+                    parallel=30,
+                    tags=["fast", "economic", "multilingual"],
+                    capabilities={"translation": 0.90, "multilingual": 0.92, "context_handling": 0.88},
+                ),
+                ModelInfo(
+                    id="gemini-2.5-flash",
+                    provider="google",
+                    name="Gemini 2.5 Flash",
+                    description="Google 進階快速模型，平衡速度與品質",
+                    context_length=1048576,
+                    pricing="中",
+                    recommended_for="一般翻譯任務，需要良好的速度和品質",
+                    parallel=25,
+                    tags=["balanced", "fast", "multilingual"],
+                    capabilities={"translation": 0.93, "multilingual": 0.94, "context_handling": 0.92},
+                ),
+                ModelInfo(
+                    id="gemini-2.5-pro",
+                    provider="google",
+                    name="Gemini 2.5 Pro",
+                    description="Google 最強大的模型，適合高品質專業翻譯",
+                    context_length=1048576,
+                    pricing="高",
+                    recommended_for="專業翻譯、文學翻譯、需要最高品質",
+                    parallel=15,
+                    tags=["advanced", "accurate", "multilingual"],
+                    capabilities={"translation": 0.97, "multilingual": 0.98, "context_handling": 0.96},
+                ),
+                ModelInfo(
+                    id="gemini-1.5-flash",
+                    provider="google",
+                    name="Gemini 1.5 Flash",
+                    description="上一代快速模型，穩定可靠",
+                    context_length=1048576,
+                    pricing="低",
+                    recommended_for="一般翻譯任務",
+                    parallel=30,
+                    tags=["fast", "stable", "economic"],
+                    capabilities={"translation": 0.88, "multilingual": 0.90, "context_handling": 0.85},
+                ),
+                ModelInfo(
+                    id="gemini-1.5-pro",
+                    provider="google",
+                    name="Gemini 1.5 Pro",
+                    description="上一代專業模型，穩定且高品質",
+                    context_length=2097152,
+                    pricing="中",
+                    recommended_for="需要處理長上下文的翻譯任務",
+                    parallel=15,
+                    tags=["advanced", "stable", "extended_context"],
+                    capabilities={"translation": 0.94, "multilingual": 0.95, "context_handling": 0.97},
+                ),
+            ]
+
+            # 驗證 API 金鑰是否有效
+            try:
+                client = genai.Client(api_key=api_key)
+                # 使用簡單的請求驗證 API 金鑰
+                response = client.models.generate_content(model="gemini-2.0-flash", contents="Hi")
+                if response.text:
+                    # 呼叫成功，API 金鑰有效
+                    for model in google_models:
+                        model.available = True
+                    logger.info("Google API 金鑰驗證成功")
+            except Exception as e:
+                logger.warning(f"Google API 金鑰驗證失敗: {e!s}")
+                # 標記所有模型為不可用
+                for model in google_models:
+                    model.available = False
+
+            return google_models
+        except Exception as e:
+            logger.error(f"獲取 Google 模型列表失敗: {e!s}")
+            return []
+
     def get_default_model(self, llm_type: str) -> str:
         """返回預設模型，針對翻譯進行最佳化
 
         參數:
-            llm_type: LLM類型 (如 "ollama", "openai" 或 "anthropic")
+            llm_type: LLM類型 (如 "ollama", "openai", "anthropic" 或 "google")
 
         回傳:
             預設模型名稱
@@ -660,6 +872,8 @@ class ModelManager:
             return "gpt-3.5-turbo"  # 最經濟的選擇
         elif llm_type == "anthropic":
             return "claude-3-haiku-20240307"  # 最快速的選擇
+        elif llm_type == "google":
+            return "gemini-2.0-flash"  # 最快速且經濟的選擇
         return self.default_ollama_model
 
     def get_model_info(self, model_name: str, provider: Optional[str] = None) -> Dict[str, Any]:
@@ -720,7 +934,9 @@ class ModelManager:
             return {"id": model_name, "name": model_name, "provider": "openai", **openai_models[model_name]}
         return {}
 
-    def get_recommended_model(self, task_type: str = "translation", provider: Optional[str] = None) -> Optional[ModelInfo]:
+    def get_recommended_model(
+        self, task_type: str = "translation", provider: Optional[str] = None
+    ) -> Optional[ModelInfo]:
         """根據任務類型獲取推薦模型
 
         參數:
@@ -865,6 +1081,42 @@ class ModelManager:
             else:
                 return False, f"測試連線時發生錯誤: {e!s}"
 
+    async def _test_google_connection(self, model_name: str, api_key: str) -> Tuple[bool, str]:
+        """測試 Google Gemini 模型連線
+
+        參數:
+            model_name: 模型名稱
+            api_key: API 金鑰
+
+        回傳:
+            (是否成功, 訊息)
+        """
+        if not GOOGLE_AVAILABLE:
+            return False, "未安裝 Google GenAI 客戶端程式庫"
+
+        if not api_key:
+            return False, "未提供 API 金鑰"
+
+        try:
+            client = genai.Client(api_key=api_key)
+            response = client.models.generate_content(model=model_name, contents="Hello")
+
+            if response and response.text:
+                return True, "模型回應正常"
+            else:
+                return False, "模型回應格式異常"
+
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "authentication" in error_msg or "invalid api key" in error_msg or "api_key" in error_msg:
+                return False, "API 金鑰無效或認證失敗"
+            elif "rate limit" in error_msg or "quota" in error_msg:
+                return False, "達到 API 速率限制，請稍後再試"
+            elif "not found" in error_msg or "no such model" in error_msg:
+                return False, f"模型 {model_name} 不存在或不可用"
+            else:
+                return False, f"測試連線時發生錯誤: {e!s}"
+
     async def test_model_connection(
         self, model_name: str, provider: str, api_key: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -901,6 +1153,10 @@ class ModelManager:
             key = api_key or self.api_keys.get("anthropic", "")
             success, message = await self._test_anthropic_connection(model_name, key)
             return {"success": success, "message": message}
+        elif provider == "google":
+            key = api_key or self.api_keys.get("google", "")
+            success, message = await self._test_google_connection(model_name, key)
+            return {"success": success, "message": message}
         else:
             return {"success": False, "message": f"不支援的提供者: {provider}"}
 
@@ -910,7 +1166,7 @@ class ModelManager:
         回傳:
             包含各提供者狀態的字典
         """
-        status = {"ollama": False, "openai": False, "anthropic": False}
+        status = {"ollama": False, "openai": False, "anthropic": False, "google": False}
 
         # 檢查 Ollama 連線
         try:
@@ -927,6 +1183,7 @@ class ModelManager:
         # 其他提供者需要 API 金鑰，檢查是否有有效金鑰和客戶端庫
         status["openai"] = OPENAI_AVAILABLE and bool(self.api_keys.get("openai"))
         status["anthropic"] = ANTHROPIC_AVAILABLE and bool(self.api_keys.get("anthropic"))
+        status["google"] = GOOGLE_AVAILABLE and bool(self.api_keys.get("google"))
 
         return status
 

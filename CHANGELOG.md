@@ -7,6 +7,21 @@
 
 ## [Unreleased]
 
+### ✨ 新增
+
+#### Google Gemini API 支援
+- 🤖 **新增 Google Gemini 作為翻譯引擎**
+  - 支援 Gemini 2.0/2.5 Flash、Gemini 2.5 Pro、Gemini 1.5 系列模型
+  - 超大上下文視窗（最高 2M tokens）
+  - 整合到 ModelManager 和 TranslationClient
+  - 環境變數：`GOOGLE_API_KEY` 或 `GEMINI_API_KEY`
+
+#### 環境變數配置
+- 🔐 **新增 .env 檔案支援**（python-dotenv）
+  - 優先順序：環境變數 > .env 檔案 > .txt 檔案
+  - 提供 `.env.example` 範例檔案
+  - 更安全的 API 金鑰管理方式
+
 ### 🎨 改進
 
 #### GUI 主題重設計
@@ -16,6 +31,10 @@
   - 扁平化按鈕設計，功能色彩分明
   - 統一深色風格應用於所有對話框
   - 主題配置檔：`config/theme_settings.json`
+
+### ⚠️ 重大變更
+
+- **Python 版本要求提升至 3.9+**（因 google-genai 依賴）
 
 ---
 

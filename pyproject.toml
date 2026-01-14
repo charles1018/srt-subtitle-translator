@@ -1,9 +1,9 @@
 [project]
 name = "srt-subtitle-translator"
 version = "1.1.0"
-description = "基於 Python 的 SRT 字幕檔自動翻譯工具，支援 Ollama、OpenAI、Anthropic 多種 AI 引擎"
+description = "基於 Python 的 SRT 字幕檔自動翻譯工具，支援 Ollama、OpenAI、Anthropic、Google Gemini 多種 AI 引擎"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [
     { name = "charles1018", email = "chmadux8@gmail.com" }
@@ -16,6 +16,8 @@ keywords = [
     "openai",
     "anthropic",
     "ollama",
+    "gemini",
+    "google",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -23,11 +25,11 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Multimedia :: Video",
     "Topic :: Text Processing :: Linguistic",
 ]
@@ -41,8 +43,12 @@ dependencies = [
     "tiktoken>=0.5.0",
     "chardet>=5.0.0",
 
+    # Environment configuration
+    "python-dotenv>=1.0.0",
+
     # Optional LLM APIs
     "anthropic>=0.8.0",
+    "google-genai>=1.0.0",
 
     # GUI dependencies
     "tkinterdnd2>=0.3.0",

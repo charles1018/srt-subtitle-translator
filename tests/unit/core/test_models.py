@@ -1001,4 +1001,4 @@ class TestModelManagerEdgeCases:
             assert ":" in key
             parts = key.split(":", 1)
             assert len(parts) == 2
-            assert parts[0] in ["ollama", "openai", "anthropic"]
+            assert parts[0] in ["ollama", "openai", "anthropic", "google"]

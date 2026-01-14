@@ -17,6 +17,14 @@ try:
 except ImportError:
     OPENAI_AVAILABLE = False
 
+# 嘗試導入 Google GenAI 客戶端
+try:
+    from google import genai
+
+    GOOGLE_AVAILABLE = True
+except ImportError:
+    GOOGLE_AVAILABLE = False
+
 # 從本地模組導入
 from srt_translator.core.cache import CacheManager
 from srt_translator.core.prompt import PromptManager
@@ -216,9 +224,9 @@ class TranslationClient:
         初始化翻譯客戶端
 
         參數:
-            llm_type: LLM 類型 ('ollama' 或 'openai')
+            llm_type: LLM 類型 ('ollama', 'openai' 或 'google')
             base_url: API 基礎 URL
-            api_key: API 金鑰 (用於 OpenAI)
+            api_key: API 金鑰 (用於 OpenAI, Anthropic, Google)
             cache_db_path: 快取資料庫路徑
             netflix_style_config: Netflix 風格配置（可選）
                 - enabled: 是否啟用 Netflix 風格後處理（預設: False）
@@ -228,7 +236,12 @@ class TranslationClient:
                 - max_lines: 最多行數（預設: 2）
         """
         self.llm_type = llm_type
-        self.base_url = base_url if llm_type == "ollama" else "https://api.openai.com/v1"
+        if llm_type == "ollama":
+            self.base_url = base_url
+        elif llm_type == "google":
+            self.base_url = "https://generativelanguage.googleapis.com"
+        else:
+            self.base_url = "https://api.openai.com/v1"
         self.cache_manager = CacheManager(cache_db_path)
         self.prompt_manager = PromptManager()
         self.session = None
@@ -248,17 +261,41 @@ class TranslationClient:
         self.fallback_models = {
             "openai": {"gpt-4": ["gpt-3.5-turbo"], "gpt-4-turbo": ["gpt-4", "gpt-3.5-turbo"], "gpt-3.5-turbo": []},
             "ollama": {"llama3": ["mistral"], "mixtral": ["mistral", "tinyllama"], "mistral": ["tinyllama"]},
+            "google": {
+                "gemini-2.5-pro": ["gemini-2.5-flash", "gemini-2.0-flash"],
+                "gemini-2.5-flash": ["gemini-2.0-flash", "gemini-1.5-flash"],
+                "gemini-2.0-flash": ["gemini-1.5-flash"],
+                "gemini-1.5-pro": ["gemini-1.5-flash"],
+                "gemini-1.5-flash": [],
+            },
         }
 
+        # Google Gemini 客戶端
+        self.google_client = None
+        if llm_type == "google":
+            if not GOOGLE_AVAILABLE:
+                logger.error("未安裝 Google GenAI 客戶端函式庫，Google 模式不可用")
+                raise ImportError("請安裝 Google GenAI Python 套件: pip install google-genai")
+
+            self.google_client = genai.Client(api_key=api_key)
+            logger.info("Google Gemini 客戶端已初始化")
+
+            # Google 模型價格計算（每百萬 token）
+            self.pricing = {
+                "gemini-2.0-flash": {"input": 0.0, "output": 0.0},  # 免費
+                "gemini-2.5-flash": {"input": 0.00000015, "output": 0.0000006},
+                "gemini-2.5-pro": {"input": 0.00000125, "output": 0.000005},
+                "gemini-1.5-flash": {"input": 0.000000075, "output": 0.0000003},
+                "gemini-1.5-pro": {"input": 0.00000125, "output": 0.000005},
+            }
+
         # OpenAI 客戶端最佳化
-        if llm_type == "openai":
+        elif llm_type == "openai":
             if not OPENAI_AVAILABLE:
                 logger.error("未安裝 OpenAI 客戶端函式庫，OpenAI 模式不可用")
                 raise ImportError("請安裝 OpenAI Python 套件: pip install openai")
 
-            self.openai_client: Optional[AsyncOpenAI] = AsyncOpenAI(
-                api_key=api_key, timeout=self.conn_timeout.total
-            )
+            self.openai_client: Optional[AsyncOpenAI] = AsyncOpenAI(api_key=api_key, timeout=self.conn_timeout.total)
 
             # 為各模型載入適當的 tokenizer
             self.tokenizers: Dict[str, Any] = {}
@@ -651,6 +688,8 @@ class TranslationClient:
                 result = await self._translate_with_openai(messages, model_name)
             elif self.llm_type == "ollama":
                 result = await self._translate_with_ollama(messages, model_name)
+            elif self.llm_type == "google":
+                result = await self._translate_with_google(messages, model_name)
             else:
                 raise ValidationError(f"不支援的 LLM 類型: {self.llm_type}")
 
@@ -822,6 +861,55 @@ class TranslationClient:
             raise
         except Exception as e:
             logger.error(f"Ollama API 請求失敗: {e!s}")
+            raise
+
+    async def _translate_with_google(self, messages: List[Dict[str, str]], model_name: str) -> str:
+        """使用 Google Gemini API 翻譯"""
+        if not self.google_client:
+            raise TranslationError("Google Gemini 客戶端未初始化")
+
+        # 將 OpenAI 格式的 messages 轉換為 Google Gemini 格式
+        # Google Gemini 使用簡單的文字輸入
+        prompt_parts = []
+        for msg in messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role == "system":
+                prompt_parts.append(f"Instructions: {content}")
+            elif role == "user":
+                prompt_parts.append(content)
+
+        prompt = "\n\n".join(prompt_parts)
+
+        try:
+            logger.debug(f"發送 Google Gemini API 請求: {model_name}")
+
+            # 使用同步方式呼叫（Google SDK 目前主要是同步的）
+            response = self.google_client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config={
+                    "temperature": 0.1,
+                    "max_output_tokens": 150,
+                },
+            )
+
+            if response and response.text:
+                translation = response.text.strip()
+                logger.debug(f"Google Gemini API 回應翻譯: {translation}")
+                return translation
+            else:
+                logger.warning("Google Gemini API 回應為空或格式異常")
+                return ""
+
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "quota" in error_msg or "rate" in error_msg:
+                logger.error(f"Google Gemini API 速率限制: {e!s}")
+            elif "api_key" in error_msg or "authentication" in error_msg:
+                logger.error(f"Google Gemini API 認證錯誤: {e!s}")
+            else:
+                logger.error(f"Google Gemini API 請求失敗: {e!s}")
             raise
 
     async def translate_batch(
