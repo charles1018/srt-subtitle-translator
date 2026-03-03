@@ -89,6 +89,10 @@ def create_parser() -> argparse.ArgumentParser:
     translate_parser.add_argument("-g", "--glossary", action="append", help="使用指定術語表 (可多次指定)")
     translate_parser.add_argument("-q", "--quiet", action="store_true", help="安靜模式，僅顯示錯誤")
     translate_parser.add_argument("-v", "--verbose", action="store_true", help="詳細輸出模式")
+    translate_parser.add_argument(
+        "--structure-text", action="store_true",
+        help="使用結構-文本分離翻譯模式（實驗性：將多個字幕合併為單一批次，減少 API 呼叫）",
+    )
 
     # models 子命令
     models_parser = subparsers.add_parser("models", help="列出可用模型")
@@ -317,6 +321,7 @@ async def cmd_translate(args: argparse.Namespace) -> int:
                 display_mode=args.display_mode,
                 llm_type=args.provider,
                 progress_callback=progress_callback,
+                use_structure_text=args.structure_text,
             )
 
             if success:

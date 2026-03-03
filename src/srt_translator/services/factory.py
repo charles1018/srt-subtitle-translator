@@ -309,6 +309,7 @@ class TranslationService:
         llm_type: str,
         progress_callback: Optional[Callable] = None,
         complete_callback: Optional[Callable] = None,
+        use_structure_text: bool = False,
     ) -> Tuple[bool, str]:
         """翻譯字幕檔案
 
@@ -367,18 +368,23 @@ class TranslationService:
             for i in range(0, total_subtitles, batch_size):
                 batch_indices = list(range(i, min(i + batch_size, total_subtitles)))
 
-                # 準備批量翻譯請求
-                texts_with_context = []
-                for idx in batch_indices:
-                    # 取得上下文
-                    context_start = max(0, idx - context_window)
-                    context_end = min(total_subtitles, idx + context_window + 1)
-                    context_texts = [s.text for s in subs[context_start:context_end]]
+                if use_structure_text:
+                    # 結構-文本分離模式：合併為單一批次字串翻譯
+                    translations = await self._translate_batch_structure_text(
+                        subs, batch_indices, llm_type, model_name, parallel_requests
+                    )
+                else:
+                    # 標準模式：逐條翻譯（帶上下文）
+                    texts_with_context = []
+                    for idx in batch_indices:
+                        context_start = max(0, idx - context_window)
+                        context_end = min(total_subtitles, idx + context_window + 1)
+                        context_texts = [s.text for s in subs[context_start:context_end]]
+                        texts_with_context.append((subs[idx].text, context_texts))
 
-                    texts_with_context.append((subs[idx].text, context_texts))
-
-                # 批量翻譯
-                translations = await self.translate_batch(texts_with_context, llm_type, model_name, parallel_requests)
+                    translations = await self.translate_batch(
+                        texts_with_context, llm_type, model_name, parallel_requests
+                    )
 
                 # 應用翻譯結果
                 for batch_idx, idx in enumerate(batch_indices):
@@ -426,6 +432,75 @@ class TranslationService:
                 complete_callback(f"翻譯過程中發生錯誤: {e!s}", elapsed_time)
 
             return False, str(e)
+
+    async def _translate_batch_structure_text(
+        self,
+        subs,
+        batch_indices: list[int],
+        llm_type: str,
+        model_name: str,
+        parallel_requests: int,
+    ) -> list[str]:
+        """結構-文本分離模式的批次翻譯
+
+        將多個字幕合併為單一批次字串以單一 API 呼叫翻譯，
+        若行數不匹配則退回到標準逐條翻譯。
+        """
+        from srt_translator.tools.srt_tools import batch_string_to_texts, texts_to_batch_string
+
+        source_texts = [subs[idx].text for idx in batch_indices]
+        batch_string = texts_to_batch_string(source_texts)
+        expected_count = len(source_texts)
+
+        # 取得批次行映射指令
+        batch_instruction = self.prompt_manager.get_batch_line_mapping_instruction()
+
+        # 嘗試以單一 API 呼叫翻譯
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                prefixed_text = (
+                    f"[BATCH: {expected_count} lines — translate each line, "
+                    f"output exactly {expected_count} lines]\n{batch_string}"
+                )
+                translation = await self.translate_text(
+                    prefixed_text, [batch_instruction], llm_type, model_name
+                )
+
+                if not translation or "[翻譯錯誤" in translation:
+                    logger.warning(
+                        "結構-文本分離: 批次翻譯回傳錯誤 (attempt %d/%d)",
+                        attempt + 1, max_retries,
+                    )
+                    continue
+
+                translated_texts = batch_string_to_texts(translation, expected_count)
+
+                # 後處理每個翻譯結果
+                results = []
+                for i, trans in enumerate(translated_texts):
+                    processed = self._post_process_translation(source_texts[i], trans)
+                    results.append(processed)
+                return results
+
+            except Exception as e:
+                logger.warning(
+                    "結構-文本分離: attempt %d/%d 失敗: %s",
+                    attempt + 1, max_retries, e,
+                )
+
+        # 退回到標準逐條翻譯
+        logger.warning("結構-文本分離: 退回到標準逐條翻譯模式")
+        context_window = 3
+        total = len(subs)
+        texts_with_context = []
+        for idx in batch_indices:
+            ctx_start = max(0, idx - context_window)
+            ctx_end = min(total, idx + context_window + 1)
+            context_texts = [s.text for s in subs[ctx_start:ctx_end]]
+            texts_with_context.append((subs[idx].text, context_texts))
+
+        return await self.translate_batch(texts_with_context, llm_type, model_name, parallel_requests)
 
     def _post_process_translation(self, original_text: str, translated_text: str) -> str:
         """對翻譯結果進行後處理，包括術語表應用、專有名詞統一和移除標點符號
