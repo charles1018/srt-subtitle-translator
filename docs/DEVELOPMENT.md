@@ -156,6 +156,8 @@ srt-subtitle-translator/
 │   │   └── manager.py         # TranslationManager
 │   ├── file_handling/         # 檔案處理
 │   │   └── handler.py         # FileHandler
+│   ├── tools/                 # SRT 工具箱
+│   │   └── srt_tools.py       # extract/assemble/qa/cps-audit
 │   ├── gui/                   # GUI 組件
 │   │   └── components.py      # GUIComponents
 │   ├── services/              # 服務工廠
@@ -194,6 +196,7 @@ srt-subtitle-translator/
 | **translation/client.py** | API 客戶端 | TranslationClient |
 | **translation/manager.py** | 翻譯流程 | TranslationManager |
 | **file_handling/handler.py** | 檔案處理 | FileHandler |
+| **tools/srt_tools.py** | SRT 工具箱 | extract/assemble/qa/cps_audit |
 | **services/factory.py** | 服務工廠 | ServiceFactory |
 
 ---
@@ -734,5 +737,5 @@ jobs:
 
 ---
 
-**最後更新**：2025-01-28
-**版本**：1.0.0
+**最後更新**：2026-03-04
+**版本**：1.1.0

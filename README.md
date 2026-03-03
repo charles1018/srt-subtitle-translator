@@ -2,8 +2,8 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-717%20passing-brightgreen.svg)](tests/)
-[![Code Coverage](https://img.shields.io/badge/coverage-62%25-green.svg)](htmlcov/)
+[![Tests](https://img.shields.io/badge/tests-775%20passing-brightgreen.svg)](tests/)
+[![Code Coverage](https://img.shields.io/badge/coverage-63%25-green.svg)](htmlcov/)
 
 基於 Python 的 SRT 字幕檔自動翻譯工具，支援使用 Ollama 本地模型、OpenAI API、Anthropic API 或 Google Gemini API 進行多語言翻譯。本工具提供批量處理、翻譯記憶快取、多種顯示模式等功能，並配備友善的圖形使用者介面。
 
@@ -23,6 +23,7 @@
 - 📚 **術語表管理**：確保專有名詞翻譯一致性（支援 JSON/CSV/TXT 匯入匯出）
 - ⚡ **批量處理**：同時處理多個字幕檔案
 - 🔄 **並發翻譯**：可調整並發數，優化翻譯效率
+- 🆕 **結構-文本分離翻譯模式**：實驗性批次翻譯，將字幕結構（timestamp/index）與文本分離，僅翻譯純文字後重組，消除 LLM 損壞結構的風險
 - 💾 **翻譯快取**：自動快取翻譯結果，減少重複 API 呼叫
   - 🆕 **GUI 快取管理**：完整的快取管理界面，支援查看統計資訊和一鍵清除快取
 - 🎨 **多種顯示模式**：
@@ -41,6 +42,11 @@
 - 🖱️ **拖放操作**：支援拖放檔案到介面
 - 🔧 **智慧衝突處理**：自動處理檔案名稱衝突（覆蓋/重新命名/跳過）
 - 🔍 **自動編碼偵測**：自動偵測字幕檔案編碼
+- 🆕 **SRT 工具箱**：
+  - `extract`：將 SRT 拆分為結構檔 + 純文字檔
+  - `assemble`：將翻譯後的文字與結構重組為 SRT
+  - `qa`：比對源檔與翻譯檔的結構完整性
+  - `cps-audit`：CPS（每秒字元數）可讀性審計
 
 ## 📋 系統需求
 
@@ -169,8 +175,17 @@ ollama pull llama2
 # 翻譯單一檔案
 srt-translator translate video.srt -s 日文 -t 繁體中文
 
+# 使用結構-文本分離模式翻譯（實驗性）
+srt-translator translate video.srt -s 英文 -t 繁體中文 --structure-text
+
 # 批次翻譯資料夾
 srt-translator translate ./subtitles/ -s 英文 -t 繁體中文 -g anime
+
+# SRT 工具箱
+srt-translator extract video.srt              # 拆分為結構+文字
+srt-translator assemble video                 # 重組翻譯後的 SRT
+srt-translator qa source.srt translated.srt   # 比對結構完整性
+srt-translator cps-audit translated.srt       # CPS 可讀性審計
 
 # 術語表管理
 srt-translator glossary create anime -s 日文 -t 繁體中文
@@ -206,6 +221,8 @@ src/srt_translator/
 │   └── manager.py     # 翻譯流程管理
 ├── file_handling/     # 檔案處理
 │   └── handler.py     # 字幕檔案處理
+├── tools/             # SRT 工具箱 (NEW)
+│   └── srt_tools.py   # extract/assemble/qa/cps-audit
 ├── gui/               # GUI 組件
 │   └── components.py  # 圖形介面組件
 ├── services/          # 服務層
@@ -229,6 +246,7 @@ src/srt_translator/
 | **PromptManager** | 管理翻譯提示詞，支援多種內容類型和風格 |
 | **TranslationClient** | 封裝 API 呼叫，支援多種 AI 引擎 |
 | **FileHandler** | 處理字幕檔案的讀取、解析和儲存 |
+| **SRT Tools** | 結構-文本分離工具箱：extract/assemble/qa/cps-audit |
 | **ServiceFactory** | 服務工廠，統一管理所有服務實例 |
 
 ## 🛠️ 開發
@@ -266,12 +284,12 @@ uv run mypy src/srt_translator
 
 本專案擁有完整的測試體系：
 
-- **總測試數**：717 個
-- **單元測試**：約 650 個
+- **總測試數**：775+ 個
+- **單元測試**：約 700 個
 - **整合測試**：約 30 個
 - **E2E 測試**：約 40 個
 - **測試通過率**：100%
-- **覆蓋率**：62%
+- **覆蓋率**：63%
 
 ## ⚙️ 配置
 
@@ -368,15 +386,15 @@ uv run mypy src/srt_translator
 - [ ] 使用者字典和術語庫
 - [ ] Web 介面版本
 - [ ] 更多主題和自訂選項
-- [ ] 翻譯品質評估
+- [x] 翻譯品質評估（QA 結構比對 + CPS 可讀性審計）
 - [ ] 多人協作翻譯
 
 ## 📊 專案統計
 
 - **開發開始**：2023
 - **當前版本**：1.1.0
-- **程式碼行數**：4000+ 行
-- **測試行數**：12000+ 行
+- **程式碼行數**：5000+ 行
+- **測試行數**：13000+ 行
 - **支援語言**：10+ 種
 
 ---

@@ -17,13 +17,9 @@
 
 ### 測試統計
 
-- **總測試數量**: 84 個
-- **測試通過率**: 100% (84/84 passed)
-- **代碼覆蓋率**:
-  - errors.py: 100%
-  - helpers.py: 63%
-  - logging_config.py: 70%
-  - 總體覆蓋率: 13% (初始基礎)
+- **總測試數量**: 775+ 個
+- **測試通過率**: 100%
+- **代碼覆蓋率**: 63%
 
 ---
 
@@ -36,18 +32,29 @@ tests/
 │
 ├── unit/                    # 單元測試
 │   ├── core/                # core 模組測試
-│   │   ├── __init__.py
 │   │   ├── test_cache.py    # 快取管理器測試
 │   │   ├── test_config.py   # 配置管理器測試
-│   │   └── test_models.py   # 模型資訊測試
+│   │   ├── test_models.py   # 模型資訊測試
+│   │   └── test_prompt.py   # 提示詞管理測試
+│   │
+│   ├── tools/               # SRT 工具箱測試
+│   │   ├── test_srt_tools.py          # extract/assemble/qa/cps-audit 測試
+│   │   └── test_batch_integration.py  # 結構-文本分離模式整合測試
+│   │
+│   ├── translation/         # 翻譯模組測試
+│   │   ├── test_client.py   # 翻譯客戶端測試
+│   │   └── test_manager.py  # 翻譯管理器測試
+│   │
+│   ├── services/            # 服務層測試
+│   │   └── test_factory.py  # 服務工廠測試
 │   │
 │   └── utils/               # utils 模組測試
-│       ├── __init__.py
 │       ├── test_errors.py         # 錯誤類別測試
 │       ├── test_helpers.py        # 輔助函數測試
 │       └── test_logging_config.py # 日誌配置測試
 │
-├── integration/             # 整合測試（待開發）
+├── integration/             # 整合測試
+├── e2e/                     # E2E 測試
 └── fixtures/                # 測試夾具與資料
 ```
 
@@ -348,6 +355,6 @@ def db_connection():
 
 ---
 
-**最後更新**: 2025-10-26
-**版本**: 1.0.0
+**最後更新**: 2026-03-04
+**版本**: 1.1.0
 **維護者**: charles1018
