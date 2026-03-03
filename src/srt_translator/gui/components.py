@@ -12,13 +12,11 @@ from srt_translator.core.config import ConfigManager, get_config, set_config
 from srt_translator.services.factory import ServiceFactory
 from srt_translator.utils import format_exception
 
-# 嘗試匯入拖放功能模組
-try:
-    from tkinterdnd2 import DND_FILES, TkinterDnD
+# 嘗試匯入拖放功能模組（含 X11/XCB 相容性檢測）
+from srt_translator.utils.tkdnd_check import TKDND_AVAILABLE
 
-    TKDND_AVAILABLE = True
-except ImportError:
-    TKDND_AVAILABLE = False
+if TKDND_AVAILABLE:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
 
 # 設定日誌紀錄
 logger = logging.getLogger(__name__)
