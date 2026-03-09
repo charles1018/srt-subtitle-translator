@@ -98,6 +98,55 @@ def _open_srt(srt_path: Path) -> pysrt.SubRipFile:
         raise FileError(f"無法解析 SRT 檔案: {srt_path}", details={"error": str(e)}) from e
 
 
+def _normalize_newlines(text: str) -> str:
+    """統一換行格式為 LF。"""
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _encode_text_record(text: str) -> str:
+    """將字幕文字編碼成可安全存放於單行文本檔的格式。"""
+    normalized = _normalize_newlines(text)
+    return normalized.replace("\\", "\\\\").replace("\n", "\\n")
+
+
+def _decode_text_record(record: str) -> str:
+    """還原單行文本檔中的字幕文字。"""
+    chars: list[str] = []
+    index = 0
+    while index < len(record):
+        char = record[index]
+        if char != "\\":
+            chars.append(char)
+            index += 1
+            continue
+
+        if index + 1 >= len(record):
+            chars.append("\\")
+            break
+
+        next_char = record[index + 1]
+        if next_char == "n":
+            chars.append("\n")
+        elif next_char == "\\":
+            chars.append("\\")
+        else:
+            chars.append("\\")
+            chars.append(next_char)
+        index += 2
+
+    return "".join(chars)
+
+
+def _read_text_records(text: str) -> list[str]:
+    """讀取一行一字幕的文本檔，保留首尾空白字幕。"""
+    normalized = _normalize_newlines(text)
+    if normalized == "":
+        return []
+    if normalized.endswith("\n"):
+        normalized = normalized[:-1]
+    return normalized.split("\n")
+
+
 # ─── 核心功能: extract ──────────────────────────────────────
 
 
@@ -144,9 +193,7 @@ def extract(srt_path: str, output_prefix: str | None = None) -> tuple[str, str]:
             "line_count": line_count,
         })
 
-        # 多行文本用 literal \n 合併為單行
-        escaped = text.replace("\n", "\\n")
-        text_lines.append(escaped)
+        text_lines.append(_encode_text_record(text))
 
     # 寫入結構 JSON
     structure_path = Path(f"{prefix}_structure.json")
@@ -198,7 +245,7 @@ def assemble(
     structure: list[dict] = json.loads(structure_path.read_text(encoding="utf-8"))
 
     # 讀取翻譯文本
-    translated_lines = text_path.read_text(encoding="utf-8").strip().splitlines()
+    translated_lines = _read_text_records(text_path.read_text(encoding="utf-8"))
 
     # 嚴格 1:1 行數驗證
     if len(structure) != len(translated_lines):
@@ -233,8 +280,7 @@ def assemble(
     # 組合 SRT
     srt_file = pysrt.SubRipFile()
     for entry, trans_line in zip(structure, translated_lines, strict=True):
-        # literal \n → 真實換行
-        text = trans_line.replace("\\n", "\n")
+        text = _decode_text_record(trans_line)
 
         item = pysrt.SubRipItem(
             index=entry["index"],
@@ -410,7 +456,7 @@ def cps_audit(
 
         duration_ms = sub.end.ordinal - sub.start.ordinal
         duration_sec = max(duration_ms / 1000.0, 0.001)
-        char_count = len(plain)
+        char_count = len(plain.replace("\n", ""))
         cps = char_count / duration_sec
         all_cps.append(cps)
 
@@ -476,7 +522,7 @@ def texts_to_batch_string(texts: list[str]) -> str:
     Returns:
         批次字串（以真實換行分隔各字幕）
     """
-    escaped = [text.replace("\n", "\\n") for text in texts]
+    escaped = [_encode_text_record(text) for text in texts]
     return "\n".join(escaped)
 
 
@@ -493,10 +539,12 @@ def batch_string_to_texts(batch_string: str, expected_count: int) -> list[str]:
     Raises:
         ValidationError: 行數不匹配
     """
-    lines = batch_string.strip().splitlines()
+    lines = _normalize_newlines(batch_string).split("\n")
+    if len(lines) == expected_count + 1 and lines[-1] == "":
+        lines = lines[:-1]
     if len(lines) != expected_count:
         raise ValidationError(
             f"行數不匹配: 預期 {expected_count} 行，實際 {len(lines)} 行",
             details={"expected": expected_count, "actual": len(lines)},
         )
-    return [line.replace("\\n", "\n") for line in lines]
+    return [_decode_text_record(line) for line in lines]

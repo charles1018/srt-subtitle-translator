@@ -8,7 +8,6 @@ import pytest
 
 from srt_translator.tools.srt_tools import (
     CpsAuditReport,
-    QAResult,
     assemble,
     batch_string_to_texts,
     cps_audit,
@@ -17,7 +16,6 @@ from srt_translator.tools.srt_tools import (
     texts_to_batch_string,
 )
 from srt_translator.utils.errors import FileError, ValidationError
-
 
 # ─── Fixtures ────────────────────────────────────────────────
 
@@ -198,10 +196,10 @@ class TestAssemble:
         assert output == custom_path
         assert Path(custom_path).exists()
 
-    def test_roundtrip_extract_assemble(self, sample_srt_file: Path, temp_dir: Path):
+    def test_roundtrip_extract_assemble(self, sample_srt_file: Path):
         """extract → assemble roundtrip 產生等效 SRT"""
         prefix = str(sample_srt_file.with_suffix(""))
-        struct_path, text_path = extract(str(sample_srt_file))
+        _, _ = extract(str(sample_srt_file))
 
         # 用原始文本（非翻譯）做 assemble
         output = assemble(prefix, text_suffix="_text.txt")
@@ -228,6 +226,40 @@ class TestAssemble:
         assert len(src_subs) == len(out_subs)
         for src, out in zip(src_subs, out_subs, strict=True):
             assert src.text == out.text
+
+    def test_roundtrip_preserves_literal_backslash_n(self, temp_dir: Path):
+        """字面 \\n 不應在 roundtrip 後被轉成真實換行。"""
+        source = temp_dir / "literal.srt"
+        source.write_text("""1
+00:00:01,000 --> 00:00:03,000
+Type \\n literally
+""", encoding="utf-8")
+
+        prefix = str(source.with_suffix(""))
+        extract(str(source))
+        output = assemble(prefix, text_suffix="_text.txt")
+
+        src_subs = pysrt.open(str(source), encoding="utf-8")
+        out_subs = pysrt.open(output, encoding="utf-8")
+        assert src_subs[0].text == out_subs[0].text
+
+    def test_assemble_preserves_empty_edge_lines(self, temp_dir: Path):
+        """首尾空白字幕不應因讀檔 strip 而遺失。"""
+        structure = [
+            {"index": 1, "start": "00:00:01,000", "end": "00:00:02,000", "line_count": 1},
+            {"index": 2, "start": "00:00:03,000", "end": "00:00:04,000", "line_count": 1},
+            {"index": 3, "start": "00:00:05,000", "end": "00:00:06,000", "line_count": 1},
+        ]
+        (temp_dir / "edge_structure.json").write_text(json.dumps(structure), encoding="utf-8")
+        (temp_dir / "edge_translated_text.txt").write_text("\n第二行\n\n", encoding="utf-8")
+
+        output = assemble(str(temp_dir / "edge"))
+        subs = pysrt.open(output, encoding="utf-8")
+
+        assert len(subs) == 3
+        assert subs[0].text == ""
+        assert subs[1].text == "第二行"
+        assert subs[2].text == ""
 
 
 # ─── TestQA ──────────────────────────────────────────────────
@@ -388,6 +420,19 @@ Hi
         total_issues = sum(report.summary.values())
         assert total_issues >= 1
 
+    def test_multiline_newlines_not_counted_in_cps(self, temp_dir: Path):
+        """CPS 計算不應把換行符算成可見字元。"""
+        srt = temp_dir / "multiline.srt"
+        srt.write_text("""1
+00:00:00,000 --> 00:00:02,000
+第一行
+第二行
+""", encoding="utf-8")
+
+        report = cps_audit(str(srt), max_cps=999.0)
+        assert report.avg_cps == 3.0
+        assert report.max_cps == 3.0
+
 
 # ─── TestBatchHelpers ────────────────────────────────────────
 
@@ -438,9 +483,20 @@ class TestBatchStringToTexts:
         result = batch_string_to_texts(batch, expected_count=2)
         assert result == ["你好", "世界"]
 
+    def test_preserves_leading_and_trailing_empty_lines(self):
+        batch = "\n你好\n\n"
+        result = batch_string_to_texts(batch, expected_count=3)
+        assert result == ["", "你好", ""]
+
     def test_roundtrip(self):
         """texts_to_batch_string → batch_string_to_texts roundtrip"""
         original = ["Hello\nWorld", "單行", "第三行\n第四行"]
         batch = texts_to_batch_string(original)
         restored = batch_string_to_texts(batch, expected_count=3)
+        assert restored == original
+
+    def test_roundtrip_preserves_literal_backslash_n(self):
+        original = ["Type \\n literally", "第一行\n第二行"]
+        batch = texts_to_batch_string(original)
+        restored = batch_string_to_texts(batch, expected_count=2)
         assert restored == original

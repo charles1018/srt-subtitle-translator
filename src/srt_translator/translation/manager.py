@@ -492,8 +492,12 @@ class TranslationManager:
         expected_count = len(source_texts)
 
         # 取得批次行映射指令
-        from srt_translator.core.prompt import PromptManager
-        batch_instruction = PromptManager().get_batch_line_mapping_instruction()
+        prompt_manager = self.translation_service.prompt_manager
+        if prompt_manager is None:
+            from srt_translator.core.prompt import PromptManager
+
+            prompt_manager = PromptManager.get_instance()
+        batch_instruction = prompt_manager.get_batch_line_mapping_instruction()
 
         # 嘗試以單一 API 呼叫翻譯整批
         for attempt in range(self.max_retries):

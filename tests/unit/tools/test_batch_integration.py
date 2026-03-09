@@ -1,12 +1,10 @@
 """Tests for batch structure-text separation integration in factory and manager."""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from srt_translator.tools.srt_tools import batch_string_to_texts, texts_to_batch_string
-
+from srt_translator.tools.srt_tools import texts_to_batch_string
 
 # ============================================================
 # TranslationService._translate_batch_structure_text Tests
@@ -117,7 +115,7 @@ class TestTranslationServiceStructureText:
 
         service.translate_batch.return_value = ["你好", "世界"]
 
-        result = await service._translate_batch_structure_text(
+        await service._translate_batch_structure_text(
             subs, batch_indices, "ollama", "test-model", 5
         )
 
@@ -196,6 +194,20 @@ class TestTranslationServiceStructureText:
         assert service.translate_text.call_count == 2
         service.translate_batch.assert_not_called()
 
+    @pytest.mark.asyncio
+    async def test_preserves_empty_edge_lines(self):
+        """Test leading/trailing empty lines survive strict line mapping parsing."""
+        service = self._make_service()
+        subs = self._make_mock_subs(["", "Hello", ""])
+
+        service.translate_text.return_value = "\n你好\n\n"
+
+        result = await service._translate_batch_structure_text(
+            subs, [0, 1, 2], "ollama", "test-model", 5
+        )
+
+        assert result == ["", "你好", ""]
+
 
 # ============================================================
 # TranslationManager._process_batch_structure_text Tests
@@ -223,6 +235,10 @@ class TestTranslationManagerStructureText:
         # Mock services
         manager.translation_service = MagicMock()
         manager.translation_service.translate_text = AsyncMock()
+        manager.translation_service.prompt_manager = MagicMock()
+        manager.translation_service.prompt_manager.get_batch_line_mapping_instruction.return_value = (
+            "Translate each line 1:1."
+        )
 
         # Use real methods
         from srt_translator.translation.manager import TranslationManager
@@ -327,7 +343,7 @@ class TestTranslationManagerStructureText:
         # Always return wrong line count
         manager.translation_service.translate_text.return_value = "只有一行"
 
-        success, failed, skipped = await manager._process_batch_structure_text(
+        success, failed, _skipped = await manager._process_batch_structure_text(
             subs, [0, 1]
         )
 
@@ -371,7 +387,7 @@ class TestTranslationManagerStructureText:
 
         manager.translation_service.translate_text.return_value = "你好"
 
-        success, failed, skipped = await manager._process_subtitle_batch(
+        success, _failed, _skipped = await manager._process_subtitle_batch(
             subs, [0]
         )
 
