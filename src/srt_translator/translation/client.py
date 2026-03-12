@@ -838,7 +838,16 @@ class TranslationClient:
         if not self.session:
             raise TranslationError("Ollama 客戶端未初始化，請使用非同步上下文管理器")
 
-        payload = {"model": model_name, "messages": messages, "temperature": 0.1, "stream": False}
+        payload = {
+            "model": model_name,
+            "messages": messages,
+            "stream": False,
+            "think": False,  # 停用推理模式，避免 Qwen3/DeepSeek-R1 等模型預設啟用推理
+            "options": {
+                "temperature": 0.1,
+                "num_predict": 256,  # 限制回應長度，字幕翻譯不需要長回應
+            },
+        }
 
         api_url = f"{self.base_url}/api/chat"
 
