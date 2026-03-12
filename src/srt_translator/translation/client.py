@@ -4,7 +4,7 @@ import re
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 import aiohttp
 import tiktoken
@@ -212,6 +212,28 @@ class AdaptiveConcurrencyController:
 
 
 class TranslationClient:
+    OLLAMA_MODEL_PROFILES: ClassVar[Dict[str, Dict[str, Any]]] = {
+        "default": {
+            "keep_alive": "10m",
+            "batch_concurrency_limit": None,
+            "options": {
+                "temperature": 0.1,
+                "num_predict": 256,
+            },
+        },
+        "qwen3.5": {
+            "keep_alive": "15m",
+            "batch_concurrency_limit": 1,
+            "options": {
+                "temperature": 0.7,
+                "top_p": 0.8,
+                "top_k": 20,
+                "min_p": 0.0,
+                "num_predict": 256,
+            },
+        },
+    }
+
     def __init__(
         self,
         llm_type: str,
@@ -262,6 +284,7 @@ class TranslationClient:
             "openai": {"gpt-4": ["gpt-3.5-turbo"], "gpt-4-turbo": ["gpt-4", "gpt-3.5-turbo"], "gpt-3.5-turbo": []},
             "ollama": {
                 "llama3.2": ["qwen3", "gemma3"],
+                "qwen3.5": ["qwen3", "llama3.2", "gemma3"],
                 "qwen3": ["llama3.2", "gemma3"],
                 "gemma3": ["llama3.2", "qwen3"],
                 "mistral": ["llama3.2", "qwen3"],
@@ -343,6 +366,91 @@ class TranslationClient:
         # 自適應並發控制器
         self.concurrency_controller = AdaptiveConcurrencyController(initial=3, min_concurrent=2, max_concurrent=10)
         logger.info(f"自適應並發控制器已啟用: 初始並發數={self.concurrency_controller.get_current()}")
+
+    def _detect_ollama_model_family(self, model_name: str) -> str:
+        """根據模型名稱偵測 Ollama 模型家族"""
+        normalized = model_name.strip().lower()
+        normalized = normalized.split("@", maxsplit=1)[0]
+
+        if re.search(r"qwen(?:[-_/\s]?3\.5|35)", normalized):
+            return "qwen3.5"
+        if re.search(r"qwen[-_/\s]?3\b", normalized):
+            return "qwen3"
+        if "qwen" in normalized:
+            return "qwen"
+        if "llama" in normalized:
+            return "llama"
+        if "gemma" in normalized:
+            return "gemma"
+        if "mistral" in normalized:
+            return "mistral"
+        return "default"
+
+    def _get_ollama_model_profile(self, model_name: str) -> Dict[str, Any]:
+        """取得 Ollama 模型的請求設定"""
+        family = self._detect_ollama_model_family(model_name)
+        default_profile = self.OLLAMA_MODEL_PROFILES["default"]
+        family_profile = self.OLLAMA_MODEL_PROFILES.get(family, {})
+
+        return {
+            "family": family,
+            "keep_alive": family_profile.get("keep_alive", default_profile["keep_alive"]),
+            "batch_concurrency_limit": family_profile.get("batch_concurrency_limit"),
+            "options": {
+                **default_profile["options"],
+                **family_profile.get("options", {}),
+            },
+        }
+
+    def _build_ollama_payload(self, messages: List[Dict[str, str]], model_name: str) -> Dict[str, Any]:
+        """建立 Ollama chat API 請求內容"""
+        profile = self._get_ollama_model_profile(model_name)
+
+        return {
+            "model": model_name,
+            "messages": messages,
+            "stream": False,
+            "think": False,
+            "keep_alive": profile["keep_alive"],
+            "options": profile["options"],
+        }
+
+    def _sanitize_ollama_translation(self, translation: str) -> str:
+        """清理 Ollama 回傳中常見的推理與模板殘留"""
+        cleaned = translation.strip()
+        cleaned = re.sub(r"(?is)<think>[\s\S]*?</think>\s*", "", cleaned).strip()
+        cleaned = re.sub(r"(?is)^<\|im_start\|>assistant\s*", "", cleaned).strip()
+        cleaned = re.sub(r"(?is)\s*<\|im_end\|>$", "", cleaned).strip()
+        cleaned = cleaned.replace("<think>", "").replace("</think>", "").strip()
+        return cleaned
+
+    def _get_ollama_batch_size(self, model_name: str, concurrent_limit: int, adaptive_concurrency: int, pending: int) -> int:
+        """根據模型家族調整 Ollama 批次並發數"""
+        batch_size = min(concurrent_limit, adaptive_concurrency, pending)
+        profile = self._get_ollama_model_profile(model_name)
+        model_limit = profile.get("batch_concurrency_limit")
+
+        if model_limit is not None:
+            limited_batch_size = min(batch_size, model_limit)
+            if limited_batch_size != batch_size:
+                logger.info(
+                    f"Ollama 模型 {model_name} ({profile['family']}) "
+                    f"限制並發數為 {limited_batch_size}，原始計算值: {batch_size}"
+                )
+            batch_size = limited_batch_size
+
+        return max(1, batch_size)
+
+    def _get_fallback_models(self, model_name: str) -> List[str]:
+        """取得當前模型可用的回退模型清單"""
+        provider_fallbacks = self.fallback_models.get(self.llm_type, {})
+        fallback_options = provider_fallbacks.get(model_name, [])
+
+        if fallback_options or self.llm_type != "ollama":
+            return fallback_options
+
+        family = self._detect_ollama_model_family(model_name)
+        return provider_fallbacks.get(family, [])
 
     def _load_tokenizers(self):
         """載入各 OpenAI 模型的 tokenizer"""
@@ -648,7 +756,7 @@ class TranslationClient:
 
                 # 檢查是否需要嘗試回退模型
                 if use_fallback and tries == 1 and self.llm_type in self.fallback_models:
-                    fallback_options = self.fallback_models[self.llm_type].get(model_name, [])
+                    fallback_options = self._get_fallback_models(model_name)
 
                     if fallback_options:
                         fallback_model = fallback_options[0]
@@ -843,21 +951,7 @@ class TranslationClient:
         if not self.session:
             raise TranslationError("Ollama 客戶端未初始化，請使用非同步上下文管理器")
 
-        # 判斷是否為 Qwen3.5 系列模型，使用推薦的非思考模式參數
-        is_qwen35 = "qwen3.5" in model_name.lower()
-
-        payload = {
-            "model": model_name,
-            "messages": messages,
-            "stream": False,
-            "think": False,  # 停用推理模式，避免 Qwen3/DeepSeek-R1 等模型預設啟用推理
-            "keep_alive": "10m",  # 批量翻譯期間保持模型載入，避免反覆載入
-            "options": {
-                "temperature": 0.7 if is_qwen35 else 0.1,
-                "num_predict": 256,  # 限制回應長度，字幕翻譯不需要長回應
-                **({"top_p": 0.8, "top_k": 20} if is_qwen35 else {}),
-            },
-        }
+        payload = self._build_ollama_payload(messages, model_name)
 
         api_url = f"{self.base_url}/api/chat"
 
@@ -875,10 +969,6 @@ class TranslationClient:
                     # 記錄 thinking 欄位（若模型忽略 think:false 仍返回推理過程）
                     if msg.get("thinking"):
                         logger.debug("Ollama 模型返回了推理過程，已忽略 thinking 欄位")
-                    # 清理 content 中內嵌的 <think>...</think> 標籤
-                    # 部分模型（如 Qwen3.5）即使設定 think:false 仍會在 content 中輸出推理過程
-                    if "<think>" in translation:
-                        translation = re.sub(r"<think>[\s\S]*?</think>\s*", "", translation).strip()
                 elif "choices" in result and len(result["choices"]) > 0:
                     # OpenAI 相容端點 /v1/chat/completions 格式
                     translation = result["choices"][0]["message"]["content"].strip()
@@ -889,6 +979,7 @@ class TranslationClient:
                     logger.warning(f"未知的 Ollama API 回應格式: {result}")
                     translation = str(result).strip()
 
+                translation = self._sanitize_ollama_translation(translation)
                 logger.debug(f"Ollama API 回應翻譯: {translation}")
                 return translation
 
@@ -981,7 +1072,12 @@ class TranslationClient:
 
         # 使用動態並發數（受 concurrent_limit 上限限制）
         adaptive_concurrency = self.concurrency_controller.get_current()
-        batch_size = min(concurrent_limit, adaptive_concurrency, len(api_requests))
+        batch_size = self._get_ollama_batch_size(
+            model_name,
+            concurrent_limit,
+            adaptive_concurrency,
+            len(api_requests),
+        )
         logger.info(
             f"批量翻譯 {len(api_requests)} 個字幕，"
             f"並發數: {batch_size} (動態調整: {adaptive_concurrency}, 上限: {concurrent_limit})"

@@ -296,6 +296,27 @@ class TestModelManagerOllamaModelsAsync:
         config_file.parent.mkdir(exist_ok=True)
         return ModelManager(str(config_file))
 
+    def test_detect_ollama_model_family_qwen35_custom_name(self, manager):
+        """測試可從自訂模型名稱辨識 Qwen3.5 家族"""
+        family = manager._detect_ollama_model_family(
+            "HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0"
+        )
+
+        assert family == "qwen3.5"
+
+    def test_build_dynamic_ollama_model_info_qwen35(self, manager):
+        """測試 Qwen3.5 動態模型資訊會套用專屬設定"""
+        model = manager._build_dynamic_ollama_model_info(
+            "HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0",
+            {"family": "qwen35", "parameter_size": "9.3B", "quantization_level": "Q8_0"},
+        )
+
+        assert model.provider == "ollama"
+        assert model.parallel == 1
+        assert model.context_length == 262144
+        assert "q8_0" in model.tags
+        assert model.capabilities["chinese"] >= 0.9
+
     @pytest.mark.asyncio
     async def test_get_ollama_models_api_tags_format(self, manager):
         """測試從 /api/tags 端點獲取模型（標準格式）"""
@@ -305,8 +326,12 @@ class TestModelManagerOllamaModelsAsync:
         mock_resp.status = 200
         mock_resp.json = AsyncMock(return_value=mock_response)
 
-        mock_session = AsyncMock()
-        mock_session.get.return_value.__aenter__.return_value = mock_resp
+        mock_context_manager = MagicMock()
+        mock_context_manager.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_context_manager.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_context_manager
 
         with patch.object(manager, "_init_async_session", return_value=None):
             manager.session = mock_session
@@ -320,18 +345,58 @@ class TestModelManagerOllamaModelsAsync:
             assert "mistral" in model_ids
 
     @pytest.mark.asyncio
+    async def test_get_ollama_models_api_tags_qwen35_details(self, manager):
+        """測試可從 /api/tags 的 details 欄位辨識 Qwen3.5 特性"""
+        mock_response = {
+            "models": [
+                {
+                    "name": "HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0",
+                    "details": {"family": "qwen35", "parameter_size": "9.3B", "quantization_level": "Q8_0"},
+                }
+            ]
+        }
+
+        mock_resp = AsyncMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value=mock_response)
+
+        mock_context_manager = MagicMock()
+        mock_context_manager.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_context_manager.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_context_manager
+
+        with patch.object(manager, "_init_async_session", return_value=None):
+            manager.session = mock_session
+
+            result = await manager._get_ollama_models_async()
+
+            model = next(
+                item
+                for item in result
+                if item.id == "HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0"
+            )
+            assert model.parallel == 1
+            assert model.context_length == 262144
+            assert "q8_0" in model.tags
+
+    @pytest.mark.asyncio
     async def test_get_ollama_models_dict_format(self, manager):
         """測試模型以字典格式返回"""
         mock_response = {"models": {"llama3": {"size": "4.7GB"}, "mistral": {"size": "4.1GB"}}}
 
-        async def mock_get(*args, **kwargs):
+        def mock_get(*args, **kwargs):
             mock_resp = AsyncMock()
             mock_resp.status = 200
             mock_resp.json = AsyncMock(return_value=mock_response)
-            return mock_resp
+            mock_context_manager = MagicMock()
+            mock_context_manager.__aenter__ = AsyncMock(return_value=mock_resp)
+            mock_context_manager.__aexit__ = AsyncMock(return_value=None)
+            return mock_context_manager
 
         with patch.object(manager, "_init_async_session", return_value=None):
-            manager.session = AsyncMock()
+            manager.session = MagicMock()
             manager.session.get = mock_get
 
             result = await manager._get_ollama_models_async()
@@ -344,14 +409,17 @@ class TestModelManagerOllamaModelsAsync:
         """測試模型以列表格式返回（無 'models' 鍵）"""
         mock_response = [{"name": "llama3"}, {"name": "mistral"}]
 
-        async def mock_get(*args, **kwargs):
+        def mock_get(*args, **kwargs):
             mock_resp = AsyncMock()
             mock_resp.status = 200
             mock_resp.json = AsyncMock(return_value=mock_response)
-            return mock_resp
+            mock_context_manager = MagicMock()
+            mock_context_manager.__aenter__ = AsyncMock(return_value=mock_resp)
+            mock_context_manager.__aexit__ = AsyncMock(return_value=None)
+            return mock_context_manager
 
         with patch.object(manager, "_init_async_session", return_value=None):
-            manager.session = AsyncMock()
+            manager.session = MagicMock()
             manager.session.get = mock_get
 
             result = await manager._get_ollama_models_async()
@@ -363,13 +431,16 @@ class TestModelManagerOllamaModelsAsync:
     async def test_get_ollama_models_api_error_fallback(self, manager):
         """測試 API 錯誤時使用預設模型"""
 
-        async def mock_get(*args, **kwargs):
+        def mock_get(*args, **kwargs):
             mock_resp = AsyncMock()
             mock_resp.status = 500
-            return mock_resp
+            mock_context_manager = MagicMock()
+            mock_context_manager.__aenter__ = AsyncMock(return_value=mock_resp)
+            mock_context_manager.__aexit__ = AsyncMock(return_value=None)
+            return mock_context_manager
 
         with patch.object(manager, "_init_async_session", return_value=None):
-            manager.session = AsyncMock()
+            manager.session = MagicMock()
             manager.session.get = mock_get
 
             result = await manager._get_ollama_models_async()
@@ -379,18 +450,42 @@ class TestModelManagerOllamaModelsAsync:
             assert len(result) >= 1
 
     @pytest.mark.asyncio
+    async def test_get_ollama_models_default_fallback_includes_qwen35(self, manager):
+        """測試 API 失敗時的預設模型清單包含 Qwen3.5"""
+
+        def mock_get(*args, **kwargs):
+            mock_resp = AsyncMock()
+            mock_resp.status = 500
+            mock_context_manager = MagicMock()
+            mock_context_manager.__aenter__ = AsyncMock(return_value=mock_resp)
+            mock_context_manager.__aexit__ = AsyncMock(return_value=None)
+            return mock_context_manager
+
+        with patch.object(manager, "_init_async_session", return_value=None):
+            manager.session = MagicMock()
+            manager.session.get = mock_get
+
+            result = await manager._get_ollama_models_async()
+
+            model_ids = [m.id for m in result]
+            assert "qwen3.5" in model_ids
+
+    @pytest.mark.asyncio
     async def test_get_ollama_models_includes_default(self, manager):
         """測試結果包含預設模型"""
         mock_response = {"models": [{"name": "mistral"}]}
 
-        async def mock_get(*args, **kwargs):
+        def mock_get(*args, **kwargs):
             mock_resp = AsyncMock()
             mock_resp.status = 200
             mock_resp.json = AsyncMock(return_value=mock_response)
-            return mock_resp
+            mock_context_manager = MagicMock()
+            mock_context_manager.__aenter__ = AsyncMock(return_value=mock_resp)
+            mock_context_manager.__aexit__ = AsyncMock(return_value=None)
+            return mock_context_manager
 
         with patch.object(manager, "_init_async_session", return_value=None):
-            manager.session = AsyncMock()
+            manager.session = MagicMock()
             manager.session.get = mock_get
 
             result = await manager._get_ollama_models_async()
@@ -409,14 +504,17 @@ class TestModelManagerOllamaModelsAsync:
 
         mock_response = {"models": models}
 
-        async def mock_get(*args, **kwargs):
+        def mock_get(*args, **kwargs):
             mock_resp = AsyncMock()
             mock_resp.status = 200
             mock_resp.json = AsyncMock(return_value=mock_response)
-            return mock_resp
+            mock_context_manager = MagicMock()
+            mock_context_manager.__aenter__ = AsyncMock(return_value=mock_resp)
+            mock_context_manager.__aexit__ = AsyncMock(return_value=None)
+            return mock_context_manager
 
         with patch.object(manager, "_init_async_session", return_value=None):
-            manager.session = AsyncMock()
+            manager.session = MagicMock()
             manager.session.get = mock_get
 
             result = await manager._get_ollama_models_async()

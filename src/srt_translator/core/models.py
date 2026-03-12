@@ -382,6 +382,18 @@ class ModelManager:
                 tags=["free", "local", "fast"],
                 capabilities={"translation": 0.78, "multilingual": 0.75, "context_handling": 0.76},
             ),
+            "qwen3.5": ModelInfo(
+                id="qwen3.5",
+                provider="ollama",
+                name="Qwen 3.5",
+                description="Qwen 3.5 系列模型，對繁體中文與多語字幕翻譯表現較佳",
+                context_length=262144,
+                pricing="免費(本機執行)",
+                recommended_for="高品質中日英字幕翻譯與長上下文任務",
+                parallel=1,
+                tags=["free", "local", "chinese", "multilingual", "long-context"],
+                capabilities={"translation": 0.9, "multilingual": 0.88, "context_handling": 0.92, "chinese": 0.95},
+            ),
             "qwen": ModelInfo(
                 id="qwen",
                 provider="ollama",
@@ -660,15 +672,91 @@ class ModelManager:
         if key in self.model_database:
             model = self.model_database[key]
         else:
-            model = ModelInfo(
-                id=self.default_ollama_model,
-                provider="ollama",
-                name=self.default_ollama_model.capitalize(),
-                description="預設 Ollama 模型",
-                pricing="免費(本機執行)",
-                recommended_for="一般翻譯任務",
-            )
+            model = self._build_dynamic_ollama_model_info(self.default_ollama_model)
         return model
+
+    def _detect_ollama_model_family(self, model_id: str, details: Optional[Dict[str, Any]] = None) -> str:
+        """從模型名稱與 API 細節欄位推斷 Ollama 模型家族"""
+        detail_parts: List[str] = [model_id]
+        if details:
+            family = details.get("family")
+            if isinstance(family, str) and family:
+                detail_parts.append(family)
+
+            families = details.get("families")
+            if isinstance(families, list):
+                detail_parts.extend(str(item) for item in families if item)
+
+        normalized = " ".join(detail_parts).lower()
+
+        if re.search(r"qwen(?:[-_/\s]?3\.5|35)", normalized):
+            return "qwen3.5"
+        if re.search(r"qwen[-_/\s]?3\b", normalized):
+            return "qwen3"
+        if "qwen" in normalized:
+            return "qwen"
+        if "llama" in normalized:
+            return "llama"
+        if "gemma" in normalized:
+            return "gemma"
+        if "mistral" in normalized:
+            return "mistral"
+        return "default"
+
+    def _build_dynamic_ollama_model_info(self, model_id: str, details: Optional[Dict[str, Any]] = None) -> ModelInfo:
+        """根據模型家族與 API 細節建立動態 Ollama 模型資訊"""
+        details = details or {}
+        family = self._detect_ollama_model_family(model_id, details)
+        parameter_size = str(details.get("parameter_size", "")).strip()
+        quantization_level = str(details.get("quantization_level", "")).strip()
+
+        if family == "qwen3.5":
+            description = "Qwen 3.5 系列模型，對繁體中文與多語字幕翻譯表現較佳"
+            if parameter_size:
+                description += f"（{parameter_size}）"
+
+            tags = ["free", "local", "chinese", "multilingual", "long-context"]
+            if quantization_level:
+                tags.append(quantization_level.lower())
+
+            return ModelInfo(
+                id=model_id,
+                provider="ollama",
+                name=self._format_model_name(model_id),
+                description=description,
+                context_length=262144,
+                pricing="免費(本機執行)",
+                recommended_for="高品質中日英字幕翻譯與長上下文任務",
+                parallel=1,
+                tags=tags,
+                capabilities={"translation": 0.9, "multilingual": 0.88, "context_handling": 0.92, "chinese": 0.95},
+            )
+
+        if family in {"qwen3", "qwen"}:
+            return ModelInfo(
+                id=model_id,
+                provider="ollama",
+                name=self._format_model_name(model_id),
+                description="Qwen 系列模型，對中文翻譯支援較佳",
+                context_length=32768 if family == "qwen3" else 8192,
+                pricing="免費(本機執行)",
+                recommended_for="中文與多語翻譯任務",
+                parallel=2,
+                tags=["free", "local", "chinese"],
+                capabilities={"translation": 0.82, "multilingual": 0.78, "context_handling": 0.8, "chinese": 0.9},
+            )
+
+        return ModelInfo(
+            id=model_id,
+            provider="ollama",
+            name=self._format_model_name(model_id),
+            description="Ollama 模型",
+            pricing="免費(本機執行)",
+            recommended_for="一般翻譯任務",
+            parallel=2,
+            tags=["free", "local"],
+            capabilities={"translation": 0.75, "multilingual": 0.7, "context_handling": 0.7},
+        )
 
     def _create_default_openai_model(self) -> ModelInfo:
         """建立預設 OpenAI 模型"""
@@ -1240,7 +1328,7 @@ class ModelManager:
             if not self.session:
                 await self._init_async_session()
 
-            models = set()
+            models: Dict[str, Dict[str, Any]] = {}
 
             # 使用 Ollama 模型列表 API 端點
             endpoints = ["/api/tags"]
@@ -1262,14 +1350,18 @@ class ModelManager:
                         if "models" in result and isinstance(result["models"], list):
                             for model in result["models"]:
                                 if isinstance(model, dict) and "name" in model:
-                                    models.add(model["name"])
+                                    models[model["name"]] = model.get("details", {})
                         elif "models" in result and isinstance(result["models"], dict):
-                            for model_name in result["models"]:
-                                models.add(model_name)
+                            for model_name, model_details in result["models"].items():
+                                models[model_name] = (
+                                    model_details.get("details", {})
+                                    if isinstance(model_details, dict)
+                                    else {}
+                                )
                         elif isinstance(result, list):
                             for item in result:
                                 if isinstance(item, dict) and "name" in item:
-                                    models.add(item["name"])
+                                    models[item["name"]] = item.get("details", {})
 
                         # 如果成功獲取了模型，跳出循環
                         if len(models) > 0:
@@ -1281,14 +1373,14 @@ class ModelManager:
 
             # 如果沒有找到模型，嘗試使用系統自帶的模型列表
             if len(models) == 0:
-                default_models = ["llama3.2", "qwen3", "gemma3", "mistral"]
+                default_models = ["llama3.2", "qwen3.5", "qwen3", "gemma3", "mistral"]
                 for model in default_models:
-                    models.add(model)
+                    models[model] = {}
 
                 logger.warning(f"無法從 API 獲取模型，使用預設模型列表: {default_models}")
 
             # 添加預設模型
-            models.add(self.default_ollama_model)
+            models.setdefault(self.default_ollama_model, {})
 
             # 過濾和排序
             model_set = set(models)
@@ -1311,18 +1403,7 @@ class ModelManager:
                 if key in self.model_database:
                     model_info = self.model_database[key]
                 else:
-                    # 建立新的模型資訊
-                    model_info = ModelInfo(
-                        id=model_id,
-                        provider="ollama",
-                        name=self._format_model_name(model_id),
-                        description="Ollama 模型",
-                        pricing="免費(本機執行)",
-                        recommended_for="一般翻譯任務",
-                        parallel=2,
-                        tags=["free", "local"],
-                        capabilities={"translation": 0.75, "multilingual": 0.7, "context_handling": 0.7},
-                    )
+                    model_info = self._build_dynamic_ollama_model_info(model_id, models.get(model_id))
 
                 model_info_list.append(model_info)
 
