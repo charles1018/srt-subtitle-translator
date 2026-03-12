@@ -54,6 +54,14 @@ def create_parser() -> argparse.ArgumentParser:
 
   # 使用術語表翻譯
   srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
+
+  # 結構-文本分離工作流
+  srt-translator extract video.srt              # 提取結構與文本
+  srt-translator assemble video                 # 組合翻譯後 SRT
+  srt-translator qa video.srt video.zh-TW.srt   # 結構驗證
+
+  # CPS 可讀性審計
+  srt-translator cps-audit video.zh-TW.srt
 """,
     )
 
@@ -81,6 +89,10 @@ def create_parser() -> argparse.ArgumentParser:
     translate_parser.add_argument("-g", "--glossary", action="append", help="使用指定術語表 (可多次指定)")
     translate_parser.add_argument("-q", "--quiet", action="store_true", help="安靜模式，僅顯示錯誤")
     translate_parser.add_argument("-v", "--verbose", action="store_true", help="詳細輸出模式")
+    translate_parser.add_argument(
+        "--structure-text", action="store_true",
+        help="使用結構-文本分離翻譯模式（實驗性：將多個字幕合併為單一批次，減少 API 呼叫）",
+    )
 
     # models 子命令
     models_parser = subparsers.add_parser("models", help="列出可用模型")
@@ -157,6 +169,48 @@ def create_parser() -> argparse.ArgumentParser:
 
     # version 子命令
     subparsers.add_parser("version", help="顯示版本資訊")
+
+    # ── 字幕工具子命令 ──────────────────────────────────────
+
+    # extract 子命令
+    extract_parser = subparsers.add_parser(
+        "extract",
+        help="從 SRT 提取結構與文本（結構-文本分離工作流）",
+    )
+    extract_parser.add_argument("input", help="輸入 SRT 檔案路徑")
+    extract_parser.add_argument("-o", "--output-prefix", help="輸出檔案前綴 (預設: 輸入檔案名稱去除副檔名)")
+
+    # assemble 子命令
+    assemble_parser = subparsers.add_parser(
+        "assemble",
+        help="將結構與翻譯文本組合為 SRT",
+    )
+    assemble_parser.add_argument("prefix", help="檔案前綴 (與 extract 輸出的相同)")
+    assemble_parser.add_argument("-t", "--text-file", help="翻譯文本檔案後綴 (預設: _translated_text.txt)")
+    assemble_parser.add_argument("-o", "--output", help="輸出 SRT 路徑 (預設: <prefix>.zh-TW.srt)")
+
+    # qa 子命令
+    qa_parser = subparsers.add_parser(
+        "qa",
+        help="驗證原始與翻譯字幕的結構完整性",
+    )
+    qa_parser.add_argument("source", help="原始 SRT 檔案路徑")
+    qa_parser.add_argument("target", help="翻譯後 SRT 檔案路徑")
+    qa_parser.add_argument("--strict", action="store_true", help="嚴格模式：警告視為錯誤")
+    qa_parser.add_argument("--cps", action="store_true", help="同時執行 CPS/可讀性審計")
+    qa_parser.add_argument("--max-cps", type=float, default=17.0, help="CPS 上限 (預設: 17.0)")
+    qa_parser.add_argument("--max-line-length", type=int, default=22, help="單行字元上限 (預設: 22)")
+
+    # cps-audit 子命令
+    cps_audit_parser = subparsers.add_parser(
+        "cps-audit",
+        help="字幕 CPS/可讀性審計",
+    )
+    cps_audit_parser.add_argument("input", help="SRT 檔案路徑")
+    cps_audit_parser.add_argument("--max-cps", type=float, default=17.0, help="CPS 上限 (預設: 17.0)")
+    cps_audit_parser.add_argument("--max-line-length", type=int, default=22, help="單行字元上限 (預設: 22)")
+    cps_audit_parser.add_argument("--max-lines", type=int, default=2, help="行數上限 (預設: 2)")
+    cps_audit_parser.add_argument("--min-duration", type=int, default=1000, help="最短持續時間 ms (預設: 1000)")
 
     return parser
 
@@ -267,6 +321,7 @@ async def cmd_translate(args: argparse.Namespace) -> int:
                 display_mode=args.display_mode,
                 llm_type=args.provider,
                 progress_callback=progress_callback,
+                use_structure_text=args.structure_text,
             )
 
             if success:
@@ -521,6 +576,125 @@ def cmd_version() -> int:
     return 0
 
 
+def cmd_extract(args: argparse.Namespace) -> int:
+    """執行提取命令"""
+    from srt_translator.tools.srt_tools import extract
+
+    try:
+        structure_path, text_path = extract(
+            args.input,
+            output_prefix=args.output_prefix,
+        )
+        print(f"結構檔案: {structure_path}")
+        print(f"文本檔案: {text_path}")
+        return 0
+    except Exception as e:
+        logger.error("提取失敗: %s", e)
+        print(f"錯誤: {e}")
+        return 1
+
+
+def cmd_assemble(args: argparse.Namespace) -> int:
+    """執行組合命令"""
+    from srt_translator.tools.srt_tools import assemble
+
+    try:
+        text_suffix = args.text_file if args.text_file else "_translated_text.txt"
+        output = assemble(
+            args.prefix,
+            text_suffix=text_suffix,
+            output_path=args.output,
+        )
+        print(f"輸出檔案: {output}")
+        return 0
+    except Exception as e:
+        logger.error("組合失敗: %s", e)
+        print(f"錯誤: {e}")
+        return 1
+
+
+def cmd_qa(args: argparse.Namespace) -> int:
+    """執行 QA 驗證命令"""
+    from srt_translator.tools.srt_tools import cps_audit, qa
+
+    try:
+        result = qa(args.source, args.target)
+        print(f"來源字幕: {result.source_count} 個")
+        print(f"目標字幕: {result.target_count} 個")
+
+        if result.errors:
+            print("\n錯誤:")
+            for err in result.errors:
+                print(f"  - {err}")
+        if result.warnings:
+            print("\n警告:")
+            for warn in result.warnings:
+                print(f"  - {warn}")
+
+        if result.is_valid:
+            if args.strict and result.warnings:
+                print("\nQA 失敗（嚴格模式：有警告）")
+            else:
+                print("\nQA 通過")
+        else:
+            print("\nQA 失敗")
+
+        # 附加 CPS 審計
+        if args.cps:
+            print("\n--- CPS/可讀性審計 ---")
+            report = cps_audit(
+                args.target,
+                max_cps=args.max_cps,
+                max_line_length=args.max_line_length,
+            )
+            _print_cps_report(report)
+
+        is_failed = not result.is_valid or (args.strict and result.warnings)
+        return 1 if is_failed else 0
+    except Exception as e:
+        logger.error("QA 驗證失敗: %s", e)
+        print(f"錯誤: {e}")
+        return 1
+
+
+def cmd_cps_audit(args: argparse.Namespace) -> int:
+    """執行 CPS 審計命令"""
+    from srt_translator.tools.srt_tools import cps_audit
+
+    try:
+        report = cps_audit(
+            args.input,
+            max_cps=args.max_cps,
+            max_line_length=args.max_line_length,
+            max_lines=args.max_lines,
+            min_duration_ms=args.min_duration,
+        )
+        _print_cps_report(report)
+        return 0 if report.problematic_count == 0 else 1
+    except Exception as e:
+        logger.error("CPS 審計失敗: %s", e)
+        print(f"錯誤: {e}")
+        return 1
+
+
+def _print_cps_report(report) -> None:
+    """輸出 CPS 審計報告"""
+    print(f"總字幕數: {report.total_subtitles}")
+    print(f"問題字幕: {report.problematic_count}")
+    print(f"平均 CPS: {report.avg_cps}")
+    print(f"最高 CPS: {report.max_cps}")
+    if report.summary:
+        print("\n問題統計:")
+        for key, count in report.summary.items():
+            if count > 0:
+                print(f"  {key}: {count}")
+    if report.entries:
+        print(f"\n問題字幕詳情 (前 {min(20, len(report.entries))} 筆):")
+        for entry in report.entries[:20]:
+            issues_str = ", ".join(entry.issues)
+            print(f"  #{entry.index} [{issues_str}] {entry.text}")
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     """CLI 主程式入口"""
     parser = create_parser()
@@ -547,6 +721,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         return cmd_glossary(args)
     elif args.command == "version":
         return cmd_version()
+    elif args.command == "extract":
+        return cmd_extract(args)
+    elif args.command == "assemble":
+        return cmd_assemble(args)
+    elif args.command == "qa":
+        return cmd_qa(args)
+    elif args.command == "cps-audit":
+        return cmd_cps_audit(args)
     else:
         parser.print_help()
         return 0

@@ -826,3 +826,71 @@ class TestPromptManagerEdgeCases:
 
         assert manager is not None
         assert manager.config_file == config_file
+
+
+class TestPromptWorkbenchEnhancements:
+    """測試 subtitle-workbench 啟發的 prompt 改進"""
+
+    @pytest.fixture(autouse=True)
+    def reset_instances(self):
+        PromptManager._instance = None
+        ConfigManager._instances = {}
+        yield
+        PromptManager._instance = None
+        ConfigManager._instances = {}
+
+    @pytest.fixture
+    def manager(self, temp_dir):
+        config_file = temp_dir / "config" / "prompt_config.json"
+        config_file.parent.mkdir(exist_ok=True)
+        return PromptManager(str(config_file))
+
+    def test_filler_word_instruction_in_general(self, manager):
+        """填充詞過濾指令存在於 general prompt"""
+        prompt = manager.get_prompt("ollama", "general")
+        assert "Filler Word" in prompt or "filler" in prompt.lower()
+
+    def test_dynamic_equivalency_in_general(self, manager):
+        """動態對等指令存在於 general prompt"""
+        prompt = manager.get_prompt("openai", "general")
+        assert "Dynamic Equivalency" in prompt
+
+    def test_cps_compression_in_general(self, manager):
+        """CPS 壓縮指令存在於 general prompt"""
+        prompt = manager.get_prompt("ollama", "general")
+        assert "CPS Compression" in prompt or "Conciseness" in prompt
+
+    def test_enhancement_in_all_content_types(self, manager):
+        """所有 content type 都包含增強指令"""
+        for content_type in ["general", "adult", "anime", "movie", "english_drama"]:
+            for llm_type in ["ollama", "openai"]:
+                prompt = manager.get_prompt(llm_type, content_type)
+                assert "Filler Word" in prompt, (
+                    f"Missing filler word instruction in {content_type}/{llm_type}"
+                )
+                assert "Dynamic Equivalency" in prompt, (
+                    f"Missing dynamic equivalency in {content_type}/{llm_type}"
+                )
+
+    def test_netflix_rules_still_present(self, manager):
+        """既有 Netflix 規則未被破壞"""
+        prompt = manager.get_prompt("ollama", "general")
+        assert "Netflix" in prompt
+        assert "16" in prompt  # 16 chars per line
+
+    def test_taiwanese_colloquial_still_present(self, manager):
+        """既有台式口語規則未被破壞"""
+        prompt = manager.get_prompt("ollama", "general")
+        assert "Taiwanese" in prompt
+
+    def test_batch_line_mapping_instruction(self, manager):
+        """批次行映射指令可取得且內容正確"""
+        instruction = manager.get_batch_line_mapping_instruction()
+        assert "same number of lines" in instruction.lower()
+        assert "MUST" in instruction
+        assert "\\n" in instruction  # literal \n 保留指令
+
+    def test_batch_instruction_not_in_default_prompts(self, manager):
+        """批次行映射指令不應出現在預設 prompt 中"""
+        prompt = manager.get_prompt("ollama", "general")
+        assert "Strict Line Mapping" not in prompt

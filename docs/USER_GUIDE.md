@@ -7,6 +7,7 @@
 - [快速開始](#快速開始)
 - [詳細安裝指南](#詳細安裝指南)
 - [CLI 命令列模式](#cli-命令列模式) *(1.1.0 新增)*
+- [SRT 工具箱](#srt-工具箱) *(NEW)*
 - [術語表管理](#術語表管理) *(1.1.0 新增)*
 - [介面說明](#介面說明)
 - [使用範例](#使用範例)
@@ -233,6 +234,25 @@ srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
 | `--glossary` | `-g` | 套用的術語表名稱 | - |
 | `--output` | `-o` | 輸出目錄 | 原檔案目錄 |
 | `--concurrent` | `-c` | 並發數 | 5 |
+| `--structure-text` | - | 使用結構-文本分離翻譯模式（實驗性）| 關閉 |
+
+### 結構-文本分離翻譯模式
+
+使用 `--structure-text` 旗標啟用實驗性的結構-文本分離翻譯模式。此模式將多個字幕合併為單一批次字串以單一 API 呼叫翻譯，可以：
+
+- 減少 API 呼叫次數，降低 token 消耗
+- 消除 LLM 損壞字幕結構（timestamp、index）的風險
+- 嚴格驗證翻譯行數 1:1 對應
+
+```bash
+# 使用結構-文本分離模式翻譯
+srt-translator translate video.srt -s 英文 -t 繁體中文 --structure-text
+
+# 搭配指定模型使用
+srt-translator translate video.srt -s 英文 -t 繁體中文 -p openai -m gpt-4o --structure-text
+```
+
+> **注意**：此為實驗性功能。若批次翻譯的行數不匹配，系統會自動重試，最終退回標準逐條翻譯模式。
 
 ### 模型管理
 
@@ -266,6 +286,91 @@ srt-translator config --show
 # 設定預設值
 srt-translator config --set source_lang 日文
 srt-translator config --set target_lang 繁體中文
+```
+
+---
+
+## SRT 工具箱
+
+SRT 工具箱提供字幕檔案的結構-文本分離、品質檢驗等獨立工具，可在不翻譯的情況下使用。
+
+### Extract（拆分）
+
+將 SRT 檔案拆分為結構檔（`_structure.json`）和純文字檔（`_text.txt`）：
+
+```bash
+srt-translator extract video.srt
+# 輸出：video_structure.json + video_text.txt
+
+# 自訂輸出前綴
+srt-translator extract video.srt -o my_prefix
+# 輸出：my_prefix_structure.json + my_prefix_text.txt
+```
+
+### Assemble（重組）
+
+將翻譯後的文字檔與結構檔重組為完整 SRT：
+
+```bash
+# 預設尋找 video_translated_text.txt
+srt-translator assemble video
+
+# 指定翻譯文字檔
+srt-translator assemble video -t custom_translated.txt
+
+# 指定輸出檔名
+srt-translator assemble video -o output.srt
+```
+
+### QA（品質檢驗）
+
+比對源檔與翻譯檔的結構完整性：
+
+```bash
+srt-translator qa source.srt translated.srt
+
+# 嚴格模式（任何不匹配即失敗）
+srt-translator qa source.srt translated.srt --strict
+```
+
+檢查項目：字幕數量、timestamp 一致性、index 連續性。
+
+### CPS Audit（可讀性審計）
+
+分析字幕的 CPS（Characters Per Second）可讀性：
+
+```bash
+srt-translator cps-audit translated.srt
+
+# 自訂閾值
+srt-translator cps-audit translated.srt --max-cps 15 --max-line-length 20 --min-duration 1200
+```
+
+預設閾值：
+| 指標 | 預設值 | 說明 |
+|------|--------|------|
+| `--max-cps` | 17.0 | 最大 CPS（每秒字元數） |
+| `--max-line-length` | 22 | 最大行長（字元數） |
+| `--max-lines` | 2 | 最大行數 |
+| `--min-duration` | 1000 | 最短持續時間（毫秒） |
+
+### 完整工作流範例
+
+```bash
+# 1. 拆分字幕
+srt-translator extract episode_01.srt
+
+# 2. 手動翻譯或用外部工具翻譯 episode_01_text.txt
+#    儲存為 episode_01_translated_text.txt
+
+# 3. 重組 SRT
+srt-translator assemble episode_01
+
+# 4. 品質檢驗
+srt-translator qa episode_01.srt episode_01_translated.srt
+
+# 5. 可讀性審計
+srt-translator cps-audit episode_01_translated.srt
 ```
 
 ---
@@ -979,5 +1084,5 @@ find data/ -name "*.db" -mtime +90 -delete
 
 ---
 
-**最後更新**：2026-01-15
+**最後更新**：2026-03-04
 **版本**：1.1.0

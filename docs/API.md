@@ -17,6 +17,9 @@
   - [FileHandler](#filehandler)
 - [服務工廠 (services)](#服務工廠-services)
   - [ServiceFactory](#servicefactory)
+- [SRT 工具模組 (tools)](#srt-工具模組-tools)
+  - [extract / assemble / qa / cps_audit](#extract--assemble--qa--cps_audit)
+  - [批次文本輔助函式](#批次文本輔助函式)
 - [工具模組 (utils)](#工具模組-utils)
   - [錯誤類別](#錯誤類別)
   - [輔助函數](#輔助函數)
@@ -48,6 +51,8 @@ src/srt_translator/
 │   └── manager.py     # TranslationManager
 ├── file_handling/     # 檔案處理
 │   └── handler.py     # FileHandler
+├── tools/             # SRT 工具箱
+│   └── srt_tools.py   # extract/assemble/qa/cps-audit
 ├── services/          # 服務工廠
 │   └── factory.py     # ServiceFactory
 └── utils/             # 工具模組
@@ -727,6 +732,95 @@ ServiceFactory.reset_services()
 
 ---
 
+## SRT 工具模組 (tools)
+
+### extract / assemble / qa / cps_audit
+
+SRT 工具箱提供結構-文本分離工作流和品質檢驗功能。
+
+#### 使用方式
+
+```python
+from srt_translator.tools import extract, assemble, qa, cps_audit
+```
+
+##### `extract(srt_path: str, output_prefix: str | None = None) -> tuple[str, str]`
+
+將 SRT 拆分為結構檔和純文字檔。
+
+**參數**：
+- `srt_path` (str): SRT 檔案路徑
+- `output_prefix` (str, 可選): 輸出檔案前綴，預設使用原檔名
+
+**回傳**：`tuple[str, str]` - (結構檔路徑, 文字檔路徑)
+
+**範例**：
+```python
+structure_path, text_path = extract("video.srt")
+# ('video_structure.json', 'video_text.txt')
+```
+
+##### `assemble(base_prefix: str, text_suffix: str = "_translated_text.txt", output_path: str | None = None) -> str`
+
+將翻譯後的文字與結構重組為 SRT。
+
+**參數**：
+- `base_prefix` (str): 基礎前綴（對應 extract 的輸出）
+- `text_suffix` (str): 翻譯文字檔後綴
+- `output_path` (str, 可選): 輸出 SRT 路徑
+
+**回傳**：`str` - 輸出 SRT 路徑
+
+##### `qa(source_srt_path: str, target_srt_path: str) -> QAResult`
+
+比對源檔與翻譯檔的結構完整性。
+
+**回傳**：`QAResult` - 包含 `passed`、`issues` 等屬性
+
+```python
+result = qa("source.srt", "translated.srt")
+if result.passed:
+    print("結構完整性檢查通過")
+else:
+    for issue in result.issues:
+        print(f"問題: {issue}")
+```
+
+##### `cps_audit(srt_path: str, max_cps: float = 17.0, ...) -> CpsAuditReport`
+
+CPS 可讀性審計。
+
+**回傳**：`CpsAuditReport` - 包含 `total`、`flagged`、`entries` 等屬性
+
+```python
+report = cps_audit("translated.srt")
+print(f"總字幕: {report.total}, 有問題: {report.flagged}")
+for entry in report.entries:
+    print(f"#{entry.index}: CPS={entry.cps:.1f}, 問題={entry.issues}")
+```
+
+### 批次文本輔助函式
+
+##### `texts_to_batch_string(texts: list[str]) -> str`
+
+將字幕文本列表序列化為批次字串（每行一字幕，多行字幕用 literal `\n` 合併）。
+
+##### `batch_string_to_texts(batch_string: str, expected_count: int) -> list[str]`
+
+將批次翻譯結果反序列化為字幕文本列表，含行數驗證。
+
+```python
+from srt_translator.tools import texts_to_batch_string, batch_string_to_texts
+
+batch = texts_to_batch_string(["Hello\nWorld", "Goodbye"])
+# "Hello\\nWorld\nGoodbye"
+
+texts = batch_string_to_texts("你好\\n世界\n再見", 2)
+# ["你好\n世界", "再見"]
+```
+
+---
+
 ## 工具模組 (utils)
 
 ### 錯誤類別
@@ -1013,5 +1107,5 @@ uv run mypy src/srt_translator
 
 ---
 
-**最後更新**：2025-01-28
-**版本**：1.0.0
+**最後更新**：2026-03-04
+**版本**：1.1.0

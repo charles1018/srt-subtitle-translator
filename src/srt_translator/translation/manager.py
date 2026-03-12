@@ -127,6 +127,9 @@ class TranslationManager:
         self.llm_type = llm_type
         self.api_key = api_key
 
+        # 結構-文本分離模式（實驗性）
+        self.use_structure_text_separation = False
+
         # 初始化服務
         self.translation_service = ServiceFactory.get_translation_service()
         self.file_service = ServiceFactory.get_file_service()
@@ -448,12 +451,139 @@ class TranslationManager:
         context_end = min(len(subs), index + self.context_window + 1)
         return [s.text for s in subs[context_start:context_end]]
 
+    async def _process_batch_structure_text(
+        self, subs: List, batch_indices: List[int]
+    ) -> Tuple[int, int, int]:
+        """使用結構-文本分離方式處理一批字幕
+
+        將多個字幕合併為單一批次字串（每行一字幕），以單一 API 呼叫完成翻譯，
+        然後驗證行數 1:1 對應後拆分回個別結果。
+
+        行數不匹配時最多重試 max_retries 次，最終退回到逐條翻譯模式。
+
+        回傳:
+            Tuple[成功數, 失敗數, 跳過數]
+        """
+        from srt_translator.tools.srt_tools import batch_string_to_texts, texts_to_batch_string
+
+        if not batch_indices:
+            return 0, 0, 0
+
+        # 過濾已翻譯的
+        pending_indices: List[int] = []
+        skipped_count = 0
+        for idx in batch_indices:
+            if idx in self.translated_indices:
+                skipped_count += 1
+            else:
+                pending_indices.append(idx)
+
+        if not pending_indices:
+            return 0, 0, skipped_count
+
+        # 收集文本並構建批次字串
+        source_texts: List[str] = []
+        for idx in pending_indices:
+            text = subs[idx].text
+            source_texts.append(text)
+            self.stats.total_chars += len(text)
+
+        batch_string = texts_to_batch_string(source_texts)
+        expected_count = len(source_texts)
+
+        # 取得批次行映射指令
+        prompt_manager = self.translation_service.prompt_manager
+        if prompt_manager is None:
+            from srt_translator.core.prompt import PromptManager
+
+            prompt_manager = PromptManager.get_instance()
+        batch_instruction = prompt_manager.get_batch_line_mapping_instruction()
+
+        # 嘗試以單一 API 呼叫翻譯整批
+        for attempt in range(self.max_retries):
+            try:
+                # 在批次字串前加上行數提示
+                prefixed_text = (
+                    f"[BATCH: {expected_count} lines — translate each line, output exactly {expected_count} lines]\n"
+                    f"{batch_string}"
+                )
+                # 用空上下文，指令已在 system prompt + batch_instruction 中
+                translation = await self.translation_service.translate_text(
+                    prefixed_text, [batch_instruction], self.llm_type, self.model_name
+                )
+
+                if not translation or "[翻譯錯誤" in translation:
+                    logger.warning(
+                        "結構-文本分離模式: 批次翻譯回傳錯誤 (attempt %d/%d)",
+                        attempt + 1, self.max_retries,
+                    )
+                    continue
+
+                # 驗證並拆分
+                translated_texts = batch_string_to_texts(translation, expected_count)
+
+                # 成功 — 套用翻譯
+                success_count = 0
+                failed_count = 0
+                for i, idx in enumerate(pending_indices):
+                    sub = subs[idx]
+                    processed = self._post_process_translation(sub.text, translated_texts[i])
+                    self._apply_translation(sub, processed)
+                    self.translated_indices.add(idx)
+                    success_count += 1
+                    self.stats.translated_count += 1
+                    if self.progress_callback:
+                        self.progress_callback(self.stats.translated_count, self.stats.total_subtitles)
+
+                self._adjust_batch_size(True)
+                logger.info(
+                    "結構-文本分離模式: 批次成功翻譯 %d 個字幕 (attempt %d)",
+                    success_count, attempt + 1,
+                )
+                return success_count, failed_count, skipped_count
+
+            except Exception as e:
+                logger.warning(
+                    "結構-文本分離模式: attempt %d/%d 失敗: %s",
+                    attempt + 1, self.max_retries, e,
+                )
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.retry_delay)
+
+        # 所有重試失敗，退回到逐條翻譯模式
+        logger.warning(
+            "結構-文本分離模式: %d 次重試均失敗，退回逐條翻譯模式",
+            self.max_retries,
+        )
+        return await self._process_batch_individual_fallback(subs, pending_indices, skipped_count)
+
+    async def _process_batch_individual_fallback(
+        self, subs: List, pending_indices: List[int], skipped_count: int
+    ) -> Tuple[int, int, int]:
+        """逐條翻譯退回模式（結構-文本分離模式失敗時使用）"""
+        success_count = 0
+        failed_count = 0
+
+        for idx in pending_indices:
+            sub = subs[idx]
+            result = await self._translate_single_subtitle(sub, idx, subs)
+            if result:
+                success_count += 1
+            else:
+                failed_count += 1
+
+        return success_count, failed_count, skipped_count
+
     async def _process_subtitle_batch(self, subs: List, batch_indices: List[int]) -> Tuple[int, int, int]:
         """處理一批字幕翻譯
 
         回傳:
             Tuple[成功數, 失敗數, 跳過數]
         """
+        # 結構-文本分離模式
+        if self.use_structure_text_separation:
+            return await self._process_batch_structure_text(subs, batch_indices)
+
         if not batch_indices:
             return 0, 0, 0
 

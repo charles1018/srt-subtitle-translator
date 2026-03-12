@@ -12,12 +12,11 @@ import threading
 import tkinter as tk
 from typing import Any, Dict, List, Optional
 
-try:
-    from tkinterdnd2 import TkinterDnD
+from srt_translator.utils.tkdnd_check import TKDND_AVAILABLE
 
-    TKDND_AVAILABLE = True
-except ImportError:
-    TKDND_AVAILABLE = False
+if TKDND_AVAILABLE:
+    from tkinterdnd2 import TkinterDnD
+else:
     from tkinter import Tk as TkBase
 
     TkinterDnD = type("TkinterDnD", (object,), {"Tk": TkBase})

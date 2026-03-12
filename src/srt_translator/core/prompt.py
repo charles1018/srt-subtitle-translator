@@ -170,6 +170,29 @@ Use natural Taiwanese Mandarin, avoiding Mainland Chinese expressions or overly 
 - Culturally appropriate for Taiwan audience
 """
 
+        # 翻譯品質強化規則（借鑑 subtitle-workbench 最佳實踐）
+        translation_enhancement_rules = """
+
+## Filler Word Filtering:
+Omit verbal fillers (well, uh, um, you know, like, I mean, so, right, basically) from the translation
+UNLESS they carry emotional weight or characterize the speaker's hesitation/nervousness.
+When uncertain, omit. Do NOT pad Chinese with unnecessary 嗯/喔/啊/那個.
+
+## Dynamic Equivalency for Idioms/Slang:
+When the source contains idioms, slang, or culturally-bound expressions:
+- NEVER translate literally — find a functionally equivalent expression in Taiwan Traditional Chinese
+- If no equivalent exists, convey the underlying meaning concisely
+- Preserve the register (formal/informal/vulgar) of the original
+Examples: "sticky fingers" → 手腳不乾淨, "hit the sack" → 去睡了, "a long shot" → 希望渺茫
+
+## CPS Compression (Conciseness):
+Subtitle translations must be concise and punchy for comfortable reading speed:
+- Prefer short, impactful phrasing over verbose translations
+- Remove unnecessary particles, connectives, and hedging language
+- When the original is verbose, compress meaning without losing intent or emotion
+- Prioritize readability at natural viewing speed
+"""
+
         # Netflix 繁體中文字幕規範（共用部分）
         netflix_rules = """
 
@@ -240,6 +263,7 @@ Please strictly follow these rules:
 7. Your response must contain ONLY the translated text, nothing else.
 {taiwanese_colloquial}
 {netflix_rules}
+{translation_enhancement_rules}
 """,
                 "openai": f"""
 You are a high-efficiency subtitle translator. Your task:
@@ -250,6 +274,7 @@ You are a high-efficiency subtitle translator. Your task:
 5. Be concise and direct - output ONLY the translated text.
 {taiwanese_colloquial}
 {netflix_rules}
+{translation_enhancement_rules}
 """,
             },
             "adult": {
@@ -265,6 +290,7 @@ Please strictly follow these rules:
 7. Your response must contain ONLY the translated text, nothing else.
 {taiwanese_colloquial}
 {netflix_rules}
+{translation_enhancement_rules}
 """,
                 "openai": f"""
 You are a high-efficiency adult content subtitle translator. Your task:
@@ -276,6 +302,7 @@ You are a high-efficiency adult content subtitle translator. Your task:
 6. Be direct and accurate - output ONLY the translated text.
 {taiwanese_colloquial}
 {netflix_rules}
+{translation_enhancement_rules}
 """,
             },
             "anime": {
@@ -304,6 +331,7 @@ Please strictly follow these rules:
 
 {taiwanese_colloquial}
 {netflix_rules}
+{translation_enhancement_rules}
 """,
                 "openai": f"""
 You are an anime subtitle translator. Your task:
@@ -322,6 +350,7 @@ You are an anime subtitle translator. Your task:
 
 {taiwanese_colloquial}
 {netflix_rules}
+{translation_enhancement_rules}
 """,
             },
             "movie": {
@@ -339,6 +368,7 @@ Please strictly follow these rules:
 {name_preservation_rules}
 {taiwanese_colloquial}
 {netflix_rules}
+{translation_enhancement_rules}
 """,
                 "openai": f"""
 You are a movie subtitle translator. Your task:
@@ -352,6 +382,7 @@ You are a movie subtitle translator. Your task:
 {name_preservation_rules}
 {taiwanese_colloquial}
 {netflix_rules}
+{translation_enhancement_rules}
 """,
             },
             "english_drama": {
@@ -436,6 +467,7 @@ Subtitles must account for reading speed - appropriately condense while retainin
 
 {taiwanese_colloquial}
 {netflix_rules}
+{translation_enhancement_rules}
 
 ## Translation Workflow:
 1. Identify key elements (names, places, technical terms, emotional tone, idioms)
@@ -508,6 +540,7 @@ Balance readability and fidelity:
 
 {taiwanese_colloquial}
 {netflix_rules}
+{translation_enhancement_rules}
 
 Output the translated text directly. No preamble, no explanations.
 """,
@@ -583,6 +616,26 @@ Output the translated text directly. No preamble, no explanations.
 
         # 更新配置
         self.config_manager.set_value("custom_prompts", self.custom_prompts)
+
+    def get_batch_line_mapping_instruction(self) -> str:
+        """取得批次翻譯的嚴格行對行映射指令
+
+        用於結構-文本分離工作流中，確保 LLM 輸出行數與輸入完全一致。
+        此指令不會加入預設 prompt，僅供批次翻譯模式調用。
+
+        回傳:
+            嚴格行對行映射指令文本
+        """
+        return """
+## Strict Line Mapping (CRITICAL):
+Your output MUST have EXACTLY the same number of lines as the input.
+Each input line maps to exactly one output line — no exceptions.
+- If input has N lines, output MUST have exactly N lines
+- Do NOT merge lines, skip lines, or add extra lines
+- Do NOT add blank lines or explanatory text between translations
+- Preserve literal \\n (two characters: backslash + n) when present in a line
+- Count your output lines carefully before submitting
+"""
 
     def get_prompt(self, llm_type: str = "ollama", content_type: Optional[str] = None, style: Optional[str] = None) -> str:
         """根據 LLM 類型、內容類型和風格取得適合的 Prompt

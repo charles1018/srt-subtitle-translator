@@ -22,6 +22,30 @@
   - 提供 `.env.example` 範例檔案
   - 更安全的 API 金鑰管理方式
 
+#### SRT 工具箱（結構-文本分離工作流）
+- 🔧 **新增 `tools/srt_tools.py` 模組**
+  - `extract`：將 SRT 拆分為 `_structure.json`（timestamp/index）+ `_text.txt`（純文字）
+  - `assemble`：將翻譯後的文字與結構檔重組為完整 SRT
+  - `qa`：比對源檔與翻譯檔的結構完整性（字幕數量、timestamp、index）
+  - `cps_audit`：CPS（每秒字元數）可讀性審計，標記 CPS>17、行長>22、行數>2、持續<1秒 的字幕
+  - `texts_to_batch_string` / `batch_string_to_texts`：批次文本序列化/反序列化輔助函式
+- 🖥️ **新增 CLI 子命令**：`extract`、`assemble`、`qa`、`cps-audit`
+
+#### 結構-文本分離翻譯模式（實驗性）
+- 🔬 **新增 `--structure-text` 旗標**
+  - 將多個字幕合併為單一批次字串，以單一 API 呼叫翻譯
+  - 嚴格 1:1 行數驗證，行數不匹配時自動重試
+  - 重試均失敗時自動退回標準逐條翻譯模式
+  - 減少 API 呼叫次數、降低 token 消耗、消除 LLM 損壞結構的風險
+  - 同時整合到 `TranslationService`（CLI）和 `TranslationManager`（GUI）
+
+#### 提示詞策略增強
+- 🎯 **新增三大翻譯指令**（整合至所有 5 種內容類型）：
+  - **Filler Word Filtering**：過濾無意義填充詞（well, uh, you know），除非帶有情感重量
+  - **Dynamic Equivalency**：慣用語/俚語不直譯，找台灣繁體中文自然對等語
+  - **CPS Compression**：精簡表達，目標 CPS ≤ 17，符合觀眾閱讀速度
+- 🔧 **新增 `get_batch_line_mapping_instruction()`** 方法，供批次翻譯使用
+
 ### 🎨 改進
 
 #### GUI 主題重設計
