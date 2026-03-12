@@ -251,10 +251,10 @@ class TranslationClient:
         # 連線池設定
         self.conn_limit = 10  # 最大連線數
         self.conn_timeout = aiohttp.ClientTimeout(
-            total=60,  # 總逾時
+            total=120,  # 總逾時（大型本地模型首次載入可能需要較長時間）
             connect=10,  # 連線逾時
             sock_connect=10,  # Socket 連線逾時
-            sock_read=30,  # Socket 讀取逾時
+            sock_read=90,  # Socket 讀取逾時（本地模型推理可能較慢）
         )
 
         # 回退機制設定
@@ -843,6 +843,9 @@ class TranslationClient:
         if not self.session:
             raise TranslationError("Ollama 客戶端未初始化，請使用非同步上下文管理器")
 
+        # 判斷是否為 Qwen3.5 系列模型，使用推薦的非思考模式參數
+        is_qwen35 = "qwen3.5" in model_name.lower()
+
         payload = {
             "model": model_name,
             "messages": messages,
@@ -850,8 +853,9 @@ class TranslationClient:
             "think": False,  # 停用推理模式，避免 Qwen3/DeepSeek-R1 等模型預設啟用推理
             "keep_alive": "10m",  # 批量翻譯期間保持模型載入，避免反覆載入
             "options": {
-                "temperature": 0.1,
+                "temperature": 0.7 if is_qwen35 else 0.1,
                 "num_predict": 256,  # 限制回應長度，字幕翻譯不需要長回應
+                **({"top_p": 0.8, "top_k": 20} if is_qwen35 else {}),
             },
         }
 
@@ -871,6 +875,10 @@ class TranslationClient:
                     # 記錄 thinking 欄位（若模型忽略 think:false 仍返回推理過程）
                     if msg.get("thinking"):
                         logger.debug("Ollama 模型返回了推理過程，已忽略 thinking 欄位")
+                    # 清理 content 中內嵌的 <think>...</think> 標籤
+                    # 部分模型（如 Qwen3.5）即使設定 think:false 仍會在 content 中輸出推理過程
+                    if "<think>" in translation:
+                        translation = re.sub(r"<think>[\s\S]*?</think>\s*", "", translation).strip()
                 elif "choices" in result and len(result["choices"]) > 0:
                     # OpenAI 相容端點 /v1/chat/completions 格式
                     translation = result["choices"][0]["message"]["content"].strip()
