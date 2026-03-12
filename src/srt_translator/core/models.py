@@ -1166,8 +1166,12 @@ class ModelManager:
                 if not self.session:
                     await self._init_async_session()
                 assert self.session is not None
-                url = f"{self.base_url}/api/generate"
-                payload = {"model": model_name, "prompt": "Hello", "stream": False}
+                url = f"{self.base_url}/api/chat"
+                payload = {
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": "Hello"}],
+                    "stream": False,
+                }
                 async with self.session.post(url, json=payload, timeout=10) as response:
                     if response.status == 200:
                         return {"success": True, "message": "模型回應正常"}

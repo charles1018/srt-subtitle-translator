@@ -299,24 +299,24 @@ class TestModelManagerOllamaModelsAsync:
     @pytest.mark.asyncio
     async def test_get_ollama_models_api_tags_format(self, manager):
         """測試從 /api/tags 端點獲取模型（標準格式）"""
-        mock_response = {"models": [{"name": "llama3"}, {"name": "mistral"}, {"name": "qwen"}]}
+        mock_response = {"models": [{"name": "llama3.2"}, {"name": "mistral"}, {"name": "qwen3"}]}
 
-        async def mock_get(*args, **kwargs):
-            mock_resp = AsyncMock()
-            mock_resp.status = 200
-            mock_resp.json = AsyncMock(return_value=mock_response)
-            return mock_resp
+        mock_resp = AsyncMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value=mock_response)
+
+        mock_session = AsyncMock()
+        mock_session.get.return_value.__aenter__.return_value = mock_resp
 
         with patch.object(manager, "_init_async_session", return_value=None):
-            manager.session = AsyncMock()
-            manager.session.get = mock_get
+            manager.session = mock_session
 
             result = await manager._get_ollama_models_async()
 
             assert isinstance(result, list)
             assert len(result) >= 3
             model_ids = [m.id for m in result]
-            assert "llama3" in model_ids
+            assert "llama3.2" in model_ids
             assert "mistral" in model_ids
 
     @pytest.mark.asyncio
