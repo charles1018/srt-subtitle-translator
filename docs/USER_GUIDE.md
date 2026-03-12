@@ -23,13 +23,13 @@
 
 ### 前置需求
 
-1. **Python 環境**：Python 3.9 或更高版本
+1. **Python 環境**：Python 3.10 或更高版本
 2. **網路連接**：使用 API 模式時必須
 3. **AI 服務**（擇一）：
    - Ollama（本地）
    - OpenAI API 金鑰
-   - Anthropic API 金鑰
-   - Google Gemini API 金鑰
+   - Google Gemini API 金鑰（GUI）
+   - Anthropic API 金鑰（目前僅模型資訊 / 金鑰層）
 
 ### 5 分鐘快速上手
 
@@ -52,11 +52,29 @@ export GOOGLE_API_KEY="your-api-key"
 # 3. 啟動
 uv run srt-translator
 
-# 4. 在介面中選擇檔案、設定參數、開始翻譯！
+# 4. 在介面中選擇檔案、設定參數、開始翻譯
 
-# 或使用 CLI 模式（1.1.0 新增）
+# 或使用 CLI 模式
 srt-translator translate video.srt -s 日文 -t 繁體中文
 ```
+
+### Provider 現況（請先看）
+
+目前專案不同層級對 provider 的支援範圍仍在整理中，使用前請先區分：
+
+| 層級 | 目前狀態 |
+|------|----------|
+| 實際翻譯 runtime | `ollama`、`openai`、`google` |
+| CLI `translate` / `models` 參數 | `ollama`、`openai`、`anthropic` |
+| GUI provider 下拉 | `ollama`、`openai`、`anthropic`、`google` |
+| 模型 metadata / 金鑰載入 | `ollama`、`openai`、`anthropic`、`google` |
+| `ConfigManager` 驗證 `user.llm_type` | `ollama`、`openai` |
+| OpenRouter | 規劃中，尚未實作 |
+
+> 實務上：
+> - CLI `translate` 目前建議只使用 `ollama` 或 `openai`
+> - GUI provider 下拉目前會顯示 `google`，但一般使用者工作流仍以 `ollama`、`openai` 最穩定
+> - `anthropic` 目前已接到金鑰與模型資訊層，但尚無第一級翻譯 runtime
 
 ---
 
@@ -181,9 +199,12 @@ $env:GOOGLE_API_KEY="your-google-api-key"
 ```bash
 echo "sk-your-openai-api-key" > openapi_api_key.txt
 echo "sk-ant-your-anthropic-api-key" > anthropic_api_key.txt
+echo "your-google-api-key" > google_api_key.txt
 ```
 
 > **優先順序**：環境變數 > .env 檔案 > 金鑰檔案
+>
+> **補充**：程式碼目前可讀取 `OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`，但是否能在特定介面直接用於翻譯，仍以上方 provider 現況表為準。
 
 #### 取得 API 金鑰
 
@@ -200,6 +221,12 @@ echo "sk-ant-your-anthropic-api-key" > anthropic_api_key.txt
 > *1.1.0 版本新增功能*
 
 除了 GUI 圖形介面外，本工具也提供完整的命令列介面（CLI），適合自動化工作流程和批次處理。
+
+> **目前狀態說明**
+> - CLI parser 目前接受 `ollama`、`openai`、`anthropic`
+> - CLI 實際翻譯目前建議只使用 `ollama`、`openai`
+> - `anthropic` 目前較適合用於 `models -p anthropic` 檢視模型資訊，尚無第一級翻譯 runtime
+> - `google` 執行路徑已存在，但尚未暴露在 CLI `--provider`
 
 ### 基本指令
 
@@ -229,7 +256,7 @@ srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
 |------|------|------|--------|
 | `--source` | `-s` | 來源語言 | 英文 |
 | `--target` | `-t` | 目標語言 | 繁體中文 |
-| `--provider` | `-p` | AI 引擎（ollama/openai/anthropic）| ollama |
+| `--provider` | `-p` | CLI 參數可選值：`ollama` / `openai` / `anthropic`。其中實際翻譯目前建議使用 `ollama` / `openai` | ollama |
 | `--model` | `-m` | 模型名稱 | 各引擎推薦模型 |
 | `--display-mode` | `-d` | 顯示模式（僅譯文/雙語對照/僅原文）| 僅譯文 |
 | `--glossary` | `-g` | 套用的術語表名稱（可多次指定）| - |
@@ -295,16 +322,18 @@ srt-translator config --set target_lang 繁體中文
 
 SRT 工具箱提供字幕檔案的結構-文本分離、品質檢驗等獨立工具，可在不翻譯的情況下使用。
 
+> **目前狀態說明**：`extract` / `assemble` / `qa` / `cps-audit` 已在 `src/srt_translator/cli.py` 定義，但目前建議直接以 `uv run python -m srt_translator.cli ...` 呼叫，避免入口點 dispatch 差異。
+
 ### Extract（拆分）
 
 將 SRT 檔案拆分為結構檔（`_structure.json`）和純文字檔（`_text.txt`）：
 
 ```bash
-srt-translator extract video.srt
+uv run python -m srt_translator.cli extract video.srt
 # 輸出：video_structure.json + video_text.txt
 
 # 自訂輸出前綴
-srt-translator extract video.srt -o my_prefix
+uv run python -m srt_translator.cli extract video.srt -o my_prefix
 # 輸出：my_prefix_structure.json + my_prefix_text.txt
 ```
 
@@ -314,13 +343,13 @@ srt-translator extract video.srt -o my_prefix
 
 ```bash
 # 預設尋找 video_translated_text.txt
-srt-translator assemble video
+uv run python -m srt_translator.cli assemble video
 
 # 指定翻譯文字檔
-srt-translator assemble video -t custom_translated.txt
+uv run python -m srt_translator.cli assemble video -t custom_translated.txt
 
 # 指定輸出檔名
-srt-translator assemble video -o output.srt
+uv run python -m srt_translator.cli assemble video -o output.srt
 ```
 
 ### QA（品質檢驗）
@@ -328,10 +357,10 @@ srt-translator assemble video -o output.srt
 比對源檔與翻譯檔的結構完整性：
 
 ```bash
-srt-translator qa source.srt translated.srt
+uv run python -m srt_translator.cli qa source.srt translated.srt
 
 # 嚴格模式（任何不匹配即失敗）
-srt-translator qa source.srt translated.srt --strict
+uv run python -m srt_translator.cli qa source.srt translated.srt --strict
 ```
 
 檢查項目：字幕數量、timestamp 一致性、index 連續性。
@@ -341,10 +370,10 @@ srt-translator qa source.srt translated.srt --strict
 分析字幕的 CPS（Characters Per Second）可讀性：
 
 ```bash
-srt-translator cps-audit translated.srt
+uv run python -m srt_translator.cli cps-audit translated.srt
 
 # 自訂閾值
-srt-translator cps-audit translated.srt --max-cps 15 --max-line-length 20 --min-duration 1200
+uv run python -m srt_translator.cli cps-audit translated.srt --max-cps 15 --max-line-length 20 --min-duration 1200
 ```
 
 預設閾值：
@@ -359,19 +388,19 @@ srt-translator cps-audit translated.srt --max-cps 15 --max-line-length 20 --min-
 
 ```bash
 # 1. 拆分字幕
-srt-translator extract episode_01.srt
+uv run python -m srt_translator.cli extract episode_01.srt
 
 # 2. 手動翻譯或用外部工具翻譯 episode_01_text.txt
 #    儲存為 episode_01_translated_text.txt
 
 # 3. 重組 SRT
-srt-translator assemble episode_01
+uv run python -m srt_translator.cli assemble episode_01
 
 # 4. 品質檢驗
-srt-translator qa episode_01.srt episode_01_translated.srt
+uv run python -m srt_translator.cli qa episode_01.srt episode_01_translated.srt
 
 # 5. 可讀性審計
-srt-translator cps-audit episode_01_translated.srt
+uv run python -m srt_translator.cli cps-audit episode_01_translated.srt
 ```
 
 ---
@@ -425,17 +454,17 @@ srt-translator glossary show anime
 
 ```bash
 # 匯出為 JSON（推薦，保留所有資訊）
-srt-translator glossary export anime -f json -o anime_terms.json
+srt-translator glossary export anime anime_terms.json -f json
 
 # 匯出為 CSV（方便用 Excel 編輯）
-srt-translator glossary export anime -f csv -o anime_terms.csv
+srt-translator glossary export anime anime_terms.csv -f csv
 
 # 匯出為 TXT（簡單格式）
-srt-translator glossary export anime -f txt -o anime_terms.txt
+srt-translator glossary export anime anime_terms.txt -f txt
 
 # 匯入術語
-srt-translator glossary import anime terms.json
-srt-translator glossary import anime terms.csv
+srt-translator glossary import terms.json -n anime
+srt-translator glossary import terms.csv -n anime
 ```
 
 ### JSON 格式範例
@@ -474,7 +503,13 @@ srt-translator translate ./subtitles/ -s 日文 -t 繁體中文 -g anime
 
 ### GUI 中使用術語表
 
-在 GUI 介面中，翻譯設定區域會顯示可用的術語表下拉選單，選擇後即可套用。
+GUI 目前沒有獨立的術語表下拉選單。若要在 GUI 翻譯時套用術語表，請先用 CLI 啟用：
+
+```bash
+srt-translator glossary activate anime
+```
+
+翻譯服務會自動套用目前已啟用的術語表；完成後可再用 `srt-translator glossary deactivate anime` 停用。
 
 ---
 
@@ -532,7 +567,7 @@ ollama pull llama3.2
 | **清除全部** | 清空檔案清單 |
 | **源語言** | 選擇字幕原始語言 |
 | **目標語言** | 選擇翻譯目標語言 |
-| **LLM 類型** | 選擇 AI 引擎（ollama/openai/anthropic/google）|
+| **LLM 類型** | GUI 下拉目前顯示 `ollama` / `openai` / `anthropic` / `google`；其中實際翻譯 runtime 目前為 `ollama` / `openai` / `google` |
 | **模型** | 選擇要使用的 AI 模型 |
 | **並發數** | 設定同時翻譯的字幕數量 |
 | **顯示模式** | 選擇輸出字幕的顯示方式 |
@@ -562,7 +597,7 @@ ollama pull llama3.2
 
 **範例輸出檔名**：
 - 原檔案：`episode_01.srt`
-- 輸出檔案：`episode_01_zh-TW.srt`
+- 輸出檔案：依 `config/file_handler_config.json` 的 `batch_settings.name_pattern` 產生（預設為 `episode_01_繁體中文.srt`）
 
 ### 範例 2：批量翻譯多個檔案
 
@@ -582,36 +617,41 @@ ollama pull llama3.2
 
 4. **查看結果**：
    ```
-   episode_01.srt → episode_01_zh-TW.srt
-   episode_02.srt → episode_02_zh-TW.srt
-   episode_03.srt → episode_03_zh-TW.srt
+   episode_01.srt → episode_01_繁體中文.srt
+   episode_02.srt → episode_02_繁體中文.srt
+   episode_03.srt → episode_03_繁體中文.srt
    ```
 
-### 範例 3：使用 Anthropic Claude
+### 範例 3：使用結構-文本分離模式（CLI）
 
-1. **設定 API 金鑰**（擇一方式）：
+1. **準備命令**：
    ```bash
-   # 方式 A：環境變數（推薦）
-   export ANTHROPIC_API_KEY="sk-ant-your-key"
-
-   # 方式 B：金鑰檔案
-   echo "sk-ant-your-key" > anthropic_api_key.txt
+   srt-translator translate episode_01.srt \
+     -s 英文 \
+     -t 繁體中文 \
+     -p openai \
+     -m gpt-4o \
+     --structure-text
    ```
 
-2. **在介面中設定**：
-   - LLM 類型：anthropic
-   - 模型：claude-3-opus-20240229
-   - 並發數：10（Anthropic 支援較高並發）
+2. **適用情境**：
+   - 想減少 API 呼叫次數
+   - 想降低 LLM 改壞 timestamp / index 的風險
+   - 想在大批次字幕上維持 1:1 行數驗證
 
-3. **開始翻譯**：Claude 模型通常提供更自然的翻譯結果
+3. **注意事項**：
+   - 這是實驗性功能
+   - 若行數不匹配，系統會自動重試，必要時退回逐條翻譯模式
 
 ### 範例 4：自訂提示詞
 
-1. **點擊「編輯 Prompt」按鈕**（需要在介面中實作）
+1. **開啟提示詞編輯器**
+   - GUI 選單：`設定` → `提示詞編輯`
 2. **選擇內容類型**：
    - general：一般內容
    - anime：動畫內容
    - movie：電影內容
+   - english_drama：英語劇集
    - adult：成人內容
 3. **選擇翻譯風格**：
    - standard：標準翻譯
@@ -626,6 +666,11 @@ ollama pull llama3.2
 ## 進階功能
 
 ### 顯示模式詳解
+
+> **介面差異**：
+> - GUI 提供四種模式：`雙語對照`、`僅顯示翻譯`、`翻譯在上`、`原文在上`
+> - CLI 目前提供三種模式：`雙語對照`、`僅譯文`、`僅原文`
+> - CLI 與 GUI 的顯示模式命名目前尚未完全對齊；若你需要四種模式的精確控制，請優先使用 GUI
 
 #### 1. 僅顯示翻譯
 
@@ -707,8 +752,9 @@ rm data/translation_cache.db
 |---------|-----------|------|
 | **Ollama** | 1-3 | 受限於本地 GPU/CPU 資源 |
 | **OpenAI** | 3-6 | 速率限制較嚴格，建議保守 |
-| **Anthropic** | 5-15 | 速率限制較寬鬆 |
-| **Google Gemini** | 3-8 | 速率限制適中 |
+| **Google（GUI）** | 3-8 | 速率限制適中 |
+
+> `anthropic` 目前尚無第一級翻譯 runtime，因此不列入並發建議。
 
 #### 自動調整
 
@@ -724,7 +770,7 @@ rm data/translation_cache.db
 
 1. **覆蓋**：直接覆蓋現有檔案
 2. **重新命名**：自動在檔名後加上時間戳記
-   - 範例：`episode_01_zh-TW_20250128_143022.srt`
+   - 範例：`episode_01.zh_tw_1.srt`（實際格式取決於 `name_pattern` 與衝突處理設定）
 3. **跳過**：跳過此檔案，繼續處理下一個
 
 ---
@@ -754,9 +800,10 @@ config/
   "version": "1.0.0",
   "debug_mode": false,
   "data_dir": "data",
+  "checkpoints_dir": "data/checkpoints",
   "logs_dir": "logs",
   "cache_expiry": 30,
-  "max_retries": 3
+  "last_update": "2026-03-13T00:00:00"
 }
 ```
 
@@ -764,17 +811,19 @@ config/
 
 ```json
 {
-  "source_lang": "日文",
+  "source_lang": "英文",
   "target_lang": "繁體中文",
   "llm_type": "openai",
-  "model_name": "gpt-3.5-turbo",
-  "parallel_requests": 5,
-  "display_mode": "雙語對照",
+  "model_name": "",
+  "parallel_requests": 3,
+  "display_mode": "僅顯示翻譯",
   "auto_save": true,
   "play_sound": true,
   "theme": "default"
 }
 ```
+
+> 若手動編輯 `user_settings.json`，請注意 `ConfigManager` 目前只接受 `llm_type = "ollama"` 或 `"openai"`；GUI 雖然會顯示 `anthropic` / `google`，但設定驗證層尚未完全對齊。
 
 #### cache_config.json
 
@@ -840,7 +889,7 @@ code config/user_settings.json
 **解決方案**：
 ```bash
 # 檢查 Python 版本
-python --version  # 應為 3.9+
+python --version  # 應為 3.10+
 
 # 重新安裝依賴
 uv sync --all-extras --dev
@@ -860,7 +909,10 @@ python -m srt_translator
 
 **解決方案**：
 ```bash
-# 檢查 API 金鑰
+# 檢查環境變數
+printenv OPENAI_API_KEY
+
+# 若你仍使用舊式金鑰檔案，再檢查檔案內容
 cat openapi_api_key.txt
 
 # 測試網路連接
@@ -958,36 +1010,28 @@ cat logs/translation.log
 | **並發數** | 適當提高並發可顯著加速 |
 | **快取命中** | 命中快取可立即回傳結果 |
 
-**參考數據**（100 條字幕）：
-- Ollama（本地）：2-5 分鐘
-- OpenAI API：3-8 分鐘（並發 5）
-- Anthropic API：2-6 分鐘（並發 10）
+**建議做法**：
+- 先用 10-20 條字幕的小樣本測試
+- Ollama 的速度主要取決於本機硬體與模型大小
+- 雲端 provider 的速度則受網路、速率限制與模型負載影響
 
 ### Q4：翻譯品質如何？
 
-**A**：品質取決於選擇的模型：
+**A**：品質主要取決於三件事：
 
-| 模型 | 品質評級 | 適用場景 |
-|------|---------|---------|
-| **GPT-4** | ⭐⭐⭐⭐⭐ | 最佳品質，成本較高 |
-| **Claude-3-Opus** | ⭐⭐⭐⭐⭐ | 優秀品質，自然流暢 |
-| **Gemini-2.0-Flash** | ⭐⭐⭐⭐ | 快速回應，品質良好 |
-| **GPT-3.5-Turbo** | ⭐⭐⭐⭐ | 良好品質，成本適中 |
-| **Llama2（本地）** | ⭐⭐⭐ | 可接受，完全免費 |
+- 模型本身是否擅長字幕翻譯
+- 內容類型與提示詞是否選對
+- 並發數是否過高而導致輸出不穩定
+
+若你要先求穩定，建議從 `openai` 或 `ollama` 的小樣本測試開始，再依內容類型調整 prompt。
 
 ### Q5：費用如何計算？
 
 **A**：
-- **Ollama（本地）**：完全免費，但需要本地運算資源
-- **OpenAI**：按 token 計費，約 $0.002-0.02 / 1K tokens
-- **Anthropic**：按 token 計費，約 $0.003-0.015 / 1K tokens
-- **Google Gemini**：按 token 計費，約 $0.001-0.007 / 1K tokens（有免費額度）
+- **Ollama（本地）**：不收 API 費，但需要自備本機運算資源
+- **雲端 provider**：通常依 token 計費，且價格與模型名稱常變動
 
-**估算**：1 小時動畫（約 400 條字幕）：
-- GPT-3.5：約 $0.10-0.30
-- GPT-4：約 $1.00-3.00
-- Claude-3-Opus：約 $0.50-1.50
-- Gemini-2.0-Flash：約 $0.05-0.15（或免費額度內）
+> 建議直接查看各 provider 官方價格頁。這部分變動頻繁，不建議把文件中的估算值當成最新報價。
 
 ### Q6：可以翻譯多種語言嗎？
 
@@ -1008,7 +1052,7 @@ cat logs/translation.log
 ### Q8：如何提升翻譯品質？
 
 **A**：建議：
-1. 選擇更好的模型（GPT-4 或 Claude-3-Opus）
+1. 選擇更好的模型（GPT-4o / GPT-4，或 GUI 的 Gemini 2.x）
 2. 調整提示詞以符合內容類型
 3. 選擇適合的翻譯風格
 4. 提供更多上下文（使用較低的並發數）
@@ -1029,8 +1073,8 @@ cat logs/translation.log
 
 | 內容類型 | 推薦模型 | 並發數 | 顯示模式 |
 |---------|---------|--------|---------|
-| **動畫** | Claude-3-Opus / GPT-4 | 3-5 | 雙語對照 |
-| **電影** | GPT-4 / Claude-3-Opus | 3-5 | 僅顯示翻譯 |
+| **動畫** | GPT-4o / GPT-4 / Qwen3.5 | 3-5 | 雙語對照 |
+| **電影** | GPT-4o / Gemini 2.x（GUI） | 3-5 | 僅顯示翻譯 |
 | **紀錄片** | GPT-3.5-Turbo | 5-8 | 雙語對照 |
 | **教學影片** | GPT-3.5-Turbo | 5-10 | 僅顯示翻譯 |
 

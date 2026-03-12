@@ -13,13 +13,13 @@
 
 ## 概覽
 
-本專案使用 **pytest** 作為測試框架，配合 **pytest-cov** 生成覆蓋率報告。測試分為單元測試和整合測試兩大類。
+本專案使用 **pytest** 作為測試框架，配合 **pytest-cov** 生成覆蓋率報告。測試目前涵蓋 `unit`、`integration`、`e2e`，另有 `gui` marker 可做條件過濾。
 
 ### 測試統計
 
-- **總測試數量**: 775+ 個
-- **測試通過率**: 100%
-- **代碼覆蓋率**: 63%
+- **可收集測試數量**: 841 個（以 `uv run pytest --collect-only -q` 為準）
+- **測試類型**: unit / integration / e2e / gui marker
+- **覆蓋率報告**: 正常執行 `uv run pytest -v` 會產生終端機摘要與 `htmlcov/`
 
 ---
 

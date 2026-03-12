@@ -20,10 +20,21 @@
 
 ### 必要條件
 
-- **Python**: 3.8 或更高版本
+- **Python**: 3.10 或更高版本
 - **uv**: 推薦的套件管理器
 - **Git**: 版本控制
 - **Make**: 任務自動化（可選）
+
+### Provider 現況（開發時請以 `src/` 為準）
+
+目前專案正處於 provider 整理階段，開發時請先區分各層支援範圍：
+
+- 實際翻譯 runtime：`ollama`、`openai`、`google`
+- CLI `translate` / `models` 參數：`ollama`、`openai`、`anthropic`
+- GUI provider 下拉：`ollama`、`openai`、`anthropic`、`google`
+- `ConfigManager` 對 `user.llm_type` 驗證：`ollama`、`openai`
+- `ModelManager` / 模型 metadata / 金鑰載入：`ollama`、`openai`、`anthropic`、`google`
+- OpenRouter：規劃中，尚未實作
 
 ### 推薦工具
 
@@ -87,14 +98,17 @@ pytest -v
 # Linux/macOS
 export OPENAI_API_KEY="sk-test-key"
 export ANTHROPIC_API_KEY="sk-ant-test-key"
+export GOOGLE_API_KEY="test-google-key"
 
 # Windows PowerShell
 $env:OPENAI_API_KEY="sk-test-key"
 $env:ANTHROPIC_API_KEY="sk-ant-test-key"
+$env:GOOGLE_API_KEY="test-google-key"
 
 # Windows CMD
 set OPENAI_API_KEY=sk-test-key
 set ANTHROPIC_API_KEY=sk-ant-test-key
+set GOOGLE_API_KEY=test-google-key
 ```
 
 **方法 2：金鑰檔案**
@@ -103,11 +117,16 @@ set ANTHROPIC_API_KEY=sk-ant-test-key
 # OpenAI（如需測試 OpenAI 整合）
 echo "sk-test-key" > openapi_api_key.txt
 
-# Anthropic（如需測試 Anthropic 整合）
+# Anthropic（如需測試模型資訊 / 金鑰讀取）
 echo "sk-ant-test-key" > anthropic_api_key.txt
+
+# Google（GUI / runtime 路徑）
+echo "test-google-key" > google_api_key.txt
 ```
 
 > **注意**：環境變數優先於金鑰檔案。使用環境變數更安全，避免將金鑰意外提交到版本控制。
+>
+> **補充**：`anthropic` 目前已接到模型資訊與金鑰層，但尚無第一級翻譯 runtime；`google` 則已有 runtime 路徑，但尚未暴露到 CLI `--provider`。
 
 ### VS Code 設定
 
@@ -350,12 +369,12 @@ from srt_translator.translation.client import TranslationClient
 @pytest.mark.asyncio
 async def test_translate_text(mock_openai_client):
     """測試文本翻譯"""
-    client = TranslationClient("openai", "gpt-3.5-turbo", "test-key")
+    client = TranslationClient("openai", api_key="test-key")
 
-    result = await client.translate(
+    result = await client.translate_text(
         "Hello",
-        "English",
-        "Chinese"
+        [],
+        "gpt-3.5-turbo",
     )
 
     assert result is not None
@@ -380,7 +399,7 @@ def cache_manager(tmp_path):
 def test_cache_save_and_get(cache_manager):
     """測試快取儲存與讀取"""
     # 儲存
-    cache_manager.save_translation(
+    cache_manager.store_translation(
         "Hello",
         "你好",
         [],
@@ -592,7 +611,7 @@ SELECT COUNT(*) FROM translations;
 
 ### Q1：虛擬環境無法啟動
 
-**A**：確認 Python 版本 >= 3.8，並檢查虛擬環境路徑。
+**A**：確認 Python 版本 >= 3.10，並檢查虛擬環境路徑。
 
 ```bash
 # 檢查 Python 版本
@@ -702,7 +721,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13']
 
     steps:
       - uses: actions/checkout@v3

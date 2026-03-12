@@ -38,6 +38,15 @@
 - 🐛 問題除錯
 - 🧪 單元測試
 
+### 現況提醒
+
+- 文件若與 `src/` 內實作衝突，請以 `src/` 為準
+- provider 相關資訊需要區分「模型資訊 / 可用模型發現」與「真正可執行的翻譯 runtime」
+- 目前 `TranslationClient` 的翻譯執行路徑實作為 `ollama`、`openai`、`google`
+- `anthropic` 目前主要接在模型資訊與金鑰層，尚未是第一級翻譯 runtime
+- provider 支援目前仍有分層差異：runtime 為 `ollama` / `openai` / `google`；CLI parser 為 `ollama` / `openai` / `anthropic`；GUI 下拉為 `ollama` / `openai` / `anthropic` / `google`
+- OpenRouter 仍屬規劃中，不在目前 public API 範圍內
+
 ### 架構概覽
 
 ```
@@ -236,7 +245,7 @@ translation = cache_manager.get_cached_translation(
 )
 ```
 
-##### `save_translation(text: str, translation: str, context: List[str], model_name: str) -> bool`
+##### `store_translation(source_text: str, target_text: str, context_texts: List[str], model_name: str, style: str = "standard", prompt_version: str = "") -> bool`
 
 儲存翻譯到快取。
 
@@ -250,7 +259,7 @@ translation = cache_manager.get_cached_translation(
 
 **範例**：
 ```python
-cache_manager.save_translation(
+cache_manager.store_translation(
     "Hello, world!",
     "你好，世界！",
     ["Previous subtitle"],
@@ -393,55 +402,60 @@ model_manager = ModelManager()
 
 #### 主要方法
 
-##### `get_available_models(llm_type: str) -> List[str]`
+##### `get_model_list_async(llm_type: str, api_key: str | None = None) -> list[ModelInfo]`
 
 獲取可用模型列表。
 
 **參數**：
-- `llm_type` (str): LLM 類型 ("ollama", "openai", "anthropic", "google")
+- `llm_type` (str): LLM 類型（`"ollama"`、`"openai"`、`"anthropic"`、`"google"`）
+- `api_key` (str | None): 覆蓋預設金鑰的可選值
 
-**回傳**：`List[str]` - 模型名稱列表
+**回傳**：`list[ModelInfo]` - 包含 provider、能力、可用性等資訊的模型列表
 
 **範例**：
 ```python
-# 獲取 OpenAI 模型
-models = await model_manager.get_available_models("openai")
-# ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo']
+models = await model_manager.get_model_list_async("openai")
+model_ids = [model.id for model in models]
 
-# 獲取 Ollama 本地模型
-models = await model_manager.get_available_models("ollama")
-# ['llama3.2', 'qwen3', 'gemma3', 'mistral']
+# ['gpt-4o', 'gpt-4-turbo', ...]
 ```
 
-##### `get_recommended_model(task: str, llm_type: str) -> str`
+##### `get_model_list(llm_type: str, api_key: str | None = None) -> list[str]`
+
+同步包裝版，回傳純模型 ID 清單，主要用於向後相容。
+
+##### `get_recommended_model(task_type: str = "translation", provider: str | None = None) -> ModelInfo | None`
 
 獲取推薦模型。
 
 **參數**：
-- `task` (str): 任務類型 ("translation", "summarization", etc.)
-- `llm_type` (str): LLM 類型
+- `task_type` (str): 任務類型
+- `provider` (str | None): 指定 provider；未指定時依目前設定挑選
 
-**回傳**：`str` - 推薦的模型名稱
+**回傳**：`ModelInfo | None` - 推薦模型資訊；若找不到則回傳 `None`
 
 **範例**：
 ```python
 model = model_manager.get_recommended_model("translation", "openai")
-# 'gpt-3.5-turbo'
+if model:
+    print(model.id, model.provider)
 ```
 
-##### `validate_model(model_name: str, llm_type: str) -> bool`
+##### `test_model_connection(model_name: str, provider: str, api_key: str | None = None) -> dict[str, Any]`
 
-驗證模型是否可用。
+測試模型連線。
 
 **參數**：
 - `model_name` (str): 模型名稱
-- `llm_type` (str): LLM 類型
+- `provider` (str): provider 名稱
+- `api_key` (str | None): 可選覆蓋金鑰
 
-**回傳**：`bool` - 模型是否可用
+**回傳**：`dict[str, Any]` - 包含 `success` 與 `message`
 
 **範例**：
 ```python
-is_valid = model_manager.validate_model("gpt-4", "openai")
+result = await model_manager.test_model_connection("gpt-4o", "openai")
+print(result["success"], result["message"])
 ```
 
 ---
@@ -467,7 +481,7 @@ prompt_manager = PromptManager()
 
 #### 主要方法
 
-##### `get_prompt(llm_type: str, content_type: str = "general", style: str = "standard") -> str`
+##### `get_prompt(llm_type: str = "ollama", content_type: str | None = None, style: str | None = None, model_name: str | None = None) -> str`
 
 獲取翻譯提示詞。
 
@@ -475,6 +489,7 @@ prompt_manager = PromptManager()
 - `llm_type` (str): LLM 類型
 - `content_type` (str): 內容類型 ("general", "anime", "movie", "adult", "english_drama")
 - `style` (str): 翻譯風格 ("standard", "literal", "localized", "specialized")
+- `model_name` (str | None): 模型名稱；部分模型特化 prompt 會使用此值
 
 **回傳**：`str` - 提示詞文本
 
@@ -487,15 +502,14 @@ prompt = prompt_manager.get_prompt("openai", "general", "standard")
 prompt = prompt_manager.get_prompt("openai", "anime", "localized")
 ```
 
-##### `set_prompt(llm_type: str, content_type: str, style: str, prompt: str) -> bool`
+##### `set_prompt(new_prompt: str, llm_type: str = "ollama", content_type: str | None = None) -> bool`
 
 設定自訂提示詞。
 
 **參數**：
+- `new_prompt` (str): 提示詞文本
 - `llm_type` (str): LLM 類型
-- `content_type` (str): 內容類型
-- `style` (str): 翻譯風格
-- `prompt` (str): 提示詞文本
+- `content_type` (str | None): 內容類型；未指定時沿用當前設定
 
 **回傳**：`bool` - 是否成功
 
@@ -504,10 +518,10 @@ prompt = prompt_manager.get_prompt("openai", "anime", "localized")
 custom_prompt = """Translate the following subtitle to Traditional Chinese.
 Focus on natural expression and cultural adaptation."""
 
-prompt_manager.set_prompt("openai", "movie", "standard", custom_prompt)
+prompt_manager.set_prompt(custom_prompt, "openai", "movie")
 ```
 
-##### `get_all_content_types() -> List[str]`
+##### `get_available_content_types() -> list[str]`
 
 獲取所有內容類型。
 
@@ -515,7 +529,7 @@ prompt_manager.set_prompt("openai", "movie", "standard", custom_prompt)
 
 **範例**：
 ```python
-types = prompt_manager.get_all_content_types()
+types = prompt_manager.get_available_content_types()
 # ['general', 'anime', 'movie', 'adult', 'english_drama']
 ```
 
@@ -553,64 +567,72 @@ from srt_translator.translation.client import TranslationClient
 
 client = TranslationClient(
     llm_type="openai",
-    model_name="gpt-3.5-turbo",
-    api_key="your-api-key"
+    api_key="your-api-key",
+    cache_db_path="data/translation_cache.db"
 )
 ```
 
+> `TranslationClient` 目前的翻譯執行路徑實作為 `ollama`、`openai`、`google`；`anthropic` 尚未是第一級 runtime。
+
 #### 主要方法
 
-##### `__init__(llm_type: str, model_name: str, api_key: Optional[str] = None)`
+##### `__init__(llm_type: str, base_url: str = "http://localhost:11434", api_key: str | None = None, cache_db_path: str = "data/translation_cache.db", netflix_style_config: dict[str, Any] | None = None)`
 
 初始化翻譯客戶端。
 
 **參數**：
-- `llm_type` (str): LLM 類型 ("ollama", "openai", "anthropic")
-- `model_name` (str): 模型名稱
+- `llm_type` (str): runtime 支援的 LLM 類型（`"ollama"`、`"openai"`、`"google"`）
+- `base_url` (str): API 基礎位址（Ollama 可覆蓋）
 - `api_key` (Optional[str]): API 金鑰（Ollama 不需要）
+- `cache_db_path` (str): 翻譯快取資料庫路徑
+- `netflix_style_config` (dict | None): 後處理配置
 
-##### `translate(text: str, source_lang: str, target_lang: str, context: Optional[List[str]] = None) -> str`
+##### `translate_text(text: str, context_texts: list[str], model_name: str) -> str`
 
 翻譯文本。
 
 **參數**：
 - `text` (str): 要翻譯的文本
-- `source_lang` (str): 源語言
-- `target_lang` (str): 目標語言
-- `context` (Optional[List[str]]): 上下文列表
+- `context_texts` (list[str]): 上下文列表
+- `model_name` (str): 模型名稱
 
 **回傳**：`str` - 翻譯結果
 
 **範例**：
 ```python
-translation = await client.translate(
+translation = await client.translate_text(
     "Hello, world!",
-    "English",
-    "Traditional Chinese",
-    context=["Previous subtitle here"]
+    ["Previous subtitle here"],
+    "gpt-4o"
 )
 # '你好，世界！'
 ```
 
-##### `translate_batch(texts: List[str], source_lang: str, target_lang: str, concurrent_limit: int = 5) -> List[str]`
+##### `translate_with_retry(text: str, context_texts: list[str], model_name: str, max_retries: int = 3, use_fallback: bool = True) -> str`
+
+帶有重試與 fallback 的單句翻譯入口，通常是上層服務真正呼叫的方法。
+
+##### `translate_batch(texts: list[tuple[str, list[str]]], model_name: str, concurrent_limit: int = 5) -> list[str]`
 
 批量翻譯。
 
 **參數**：
-- `texts` (List[str]): 要翻譯的文本列表
-- `source_lang` (str): 源語言
-- `target_lang` (str): 目標語言
+- `texts` (list[tuple[str, list[str]]]): `(text, context_texts)` 組成的列表
+- `model_name` (str): 模型名稱
 - `concurrent_limit` (int): 並發限制
 
-**回傳**：`List[str]` - 翻譯結果列表
+**回傳**：`list[str]` - 翻譯結果列表
 
 **範例**：
 ```python
-texts = ["Hello", "World", "How are you?"]
+texts = [
+    ("Hello", []),
+    ("World", ["Hello"]),
+    ("How are you?", ["Hello", "World"]),
+]
 translations = await client.translate_batch(
     texts,
-    "English",
-    "Traditional Chinese",
+    "gpt-4o",
     concurrent_limit=3
 )
 # ['你好', '世界', '你好嗎？']
@@ -634,43 +656,36 @@ class TranslationManager:
 ```python
 from srt_translator.translation.manager import TranslationManager
 
-manager = TranslationManager()
+manager = TranslationManager(
+    file_path="input.srt",
+    source_lang="日文",
+    target_lang="繁體中文",
+    model_name="gpt-4o",
+    parallel_requests=3,
+    progress_callback=None,
+    complete_callback=None,
+    display_mode="雙語對照",
+    llm_type="openai",
+)
 ```
 
 #### 主要方法
 
-##### `translate_file(input_path: str, output_path: str, source_lang: str, target_lang: str, llm_type: str, model_name: str, display_mode: str = "bilingual", progress_callback: Optional[Callable] = None) -> bool`
+##### `initialize() -> None`
 
-翻譯整個字幕檔案。
+初始化所需服務、模型客戶端與統計狀態。
 
-**參數**：
-- `input_path` (str): 輸入檔案路徑
-- `output_path` (str): 輸出檔案路徑
-- `source_lang` (str): 源語言
-- `target_lang` (str): 目標語言
-- `llm_type` (str): LLM 類型
-- `model_name` (str): 模型名稱
-- `display_mode` (str): 顯示模式
-- `progress_callback` (Optional[Callable]): 進度回調函數
+##### `translate_subtitles() -> None`
 
-**回傳**：`bool` - 是否成功
+執行整個字幕翻譯流程。
 
-**範例**：
-```python
-def on_progress(current, total):
-    print(f"進度: {current}/{total}")
+##### `cleanup() -> None`
 
-success = await manager.translate_file(
-    "input.srt",
-    "output.srt",
-    "Japanese",
-    "Traditional Chinese",
-    "openai",
-    "gpt-3.5-turbo",
-    display_mode="bilingual",
-    progress_callback=on_progress
-)
-```
+釋放客戶端與執行期資源。
+
+##### `pause() / resume() / stop()`
+
+控制長時間翻譯任務。
 
 ---
 
@@ -1071,8 +1086,8 @@ if cached:
     print(f"快取命中: {cached}")
 else:
     # 翻譯並儲存到快取
-    translation = await translate("Hello")
-    cache_manager.save_translation(
+    translation = "你好"
+    cache_manager.store_translation(
         "Hello",
         translation,
         [],
@@ -1104,22 +1119,21 @@ import asyncio
 from srt_translator.translation.client import TranslationClient
 
 async def batch_translate():
-    client = TranslationClient("openai", "gpt-3.5-turbo", "your-api-key")
+    client = TranslationClient("openai", api_key="your-api-key")
 
     texts = [
-        "Hello, world!",
-        "How are you?",
-        "Nice to meet you."
+        ("Hello, world!", []),
+        ("How are you?", ["Hello, world!"]),
+        ("Nice to meet you.", ["Hello, world!", "How are you?"]),
     ]
 
     results = await client.translate_batch(
         texts,
-        "English",
-        "Traditional Chinese",
+        "gpt-3.5-turbo",
         concurrent_limit=3
     )
 
-    for original, translated in zip(texts, results):
+    for (original, _), translated in zip(texts, results):
         print(f"{original} → {translated}")
 
 asyncio.run(batch_translate())
@@ -1150,7 +1164,7 @@ from srt_translator.utils import safe_execute, format_exception
 from srt_translator.utils.errors import TranslationError
 
 try:
-    result = await translate(text)
+    result = await client.translate_text(text, [], "gpt-3.5-turbo")
 except TranslationError as e:
     logger.error(format_exception(e))
 ```
@@ -1161,10 +1175,10 @@ except TranslationError as e:
 
 ```python
 # ✅ 正確
-translation = await client.translate(text, source_lang, target_lang)
+translation = await client.translate_text(text, context_texts, "gpt-3.5-turbo")
 
 # ❌ 錯誤
-translation = client.translate(text, source_lang, target_lang)
+translation = client.translate_text(text, context_texts, "gpt-3.5-turbo")
 ```
 
 ### 4. 資源清理

@@ -1,21 +1,21 @@
 # SRT Subtitle Translator
 
-[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-775%20passing-brightgreen.svg)](tests/)
-[![Code Coverage](https://img.shields.io/badge/coverage-63%25-green.svg)](htmlcov/)
+[![Tests](https://img.shields.io/badge/tests-841%20collected-brightgreen.svg)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-htmlcov-lightgrey.svg)](htmlcov/)
 
-基於 Python 的 SRT 字幕檔自動翻譯工具，支援使用 Ollama 本地模型、OpenAI API、Anthropic API 或 Google Gemini API 進行多語言翻譯。本工具提供批量處理、翻譯記憶快取、多種顯示模式等功能，並配備友善的圖形使用者介面。
+基於 Python 的 SRT 字幕檔自動翻譯工具。本專案近期正在整理 provider 整合，各層支援範圍目前仍有差異：實際翻譯 runtime 已實作 `ollama`、`openai`、`google`；CLI `translate/models` 參數目前接受 `ollama`、`openai`、`anthropic`；GUI provider 下拉目前顯示 `ollama`、`openai`、`anthropic`、`google`；OpenRouter 仍是規劃中工作。
 
 ## ✨ 功能特點
 
 ### 核心功能
 - 🌍 **多語言支援**：支援日文、英文、韓文、法文、德文、西班牙文、俄文、繁體中文等語言
 - 🤖 **多引擎支援**：
-  - Ollama 本地 AI 模型
-  - OpenAI API (GPT-3.5、GPT-4 等)
-  - Anthropic API (Claude 系列模型)
-  - Google Gemini API (Gemini 2.0、1.5 系列)
+  - 實際翻譯 runtime：Ollama、OpenAI、Google
+  - CLI provider 參數：Ollama、OpenAI、Anthropic
+  - GUI provider 下拉 / 模型發現：Ollama、OpenAI、Anthropic、Google
+  - OpenRouter：尚未實作
 - 📝 **多格式支援**：SRT、VTT、ASS/SSA 字幕格式
 
 ### 進階功能
@@ -27,9 +27,8 @@
 - 💾 **翻譯快取**：自動快取翻譯結果，減少重複 API 呼叫
   - 🆕 **GUI 快取管理**：完整的快取管理界面，支援查看統計資訊和一鍵清除快取
 - 🎨 **多種顯示模式**：
-  - 僅顯示翻譯
-  - 雙語對照
-  - 翻譯在上/原文在上
+  - GUI：僅顯示翻譯、雙語對照、翻譯在上、原文在上
+  - CLI：僅譯文、雙語對照、僅原文
 - 🎬 **Netflix 繁體中文字幕風格**：
   - 自動套用 Netflix 繁體中文字幕規範
   - 智慧修正標點符號、引號、數字格式
@@ -50,13 +49,26 @@
 
 ## 📋 系統需求
 
-- **Python**：3.9 或更高版本
+- **Python**：3.10 或更高版本
 - **網路連接**：使用 API 模式時需要
 - **API 金鑰**（依使用模式）：
-  - OpenAI 模式：需要 OpenAI API 金鑰
-  - Anthropic 模式：需要 Anthropic API 金鑰
-  - Google Gemini 模式：需要 Google API 金鑰
+  - OpenAI：`OPENAI_API_KEY` 或 `openapi_api_key.txt`
+  - Anthropic：`ANTHROPIC_API_KEY` 或 `anthropic_api_key.txt`
+  - Google Gemini：`GOOGLE_API_KEY` / `GEMINI_API_KEY` 或 `google_api_key.txt`
   - Ollama 模式：需要在本機安裝 [Ollama](https://ollama.ai) 服務
+
+## 🔎 目前 Provider 現況
+
+| 層級 | 目前狀態 |
+|------|----------|
+| 實際翻譯 runtime | `ollama`、`openai`、`google` |
+| CLI `translate` / `models` 參數 | `ollama`、`openai`、`anthropic` |
+| GUI provider 下拉 | `ollama`、`openai`、`anthropic`、`google` |
+| 模型 metadata / 可用模型發現 | `ollama`、`openai`、`anthropic`、`google` |
+| `ConfigManager` 對 `user.llm_type` 驗證 | `ollama`、`openai` |
+| OpenRouter | 僅規劃中，尚未落地 |
+
+> 文件若與程式碼衝突，請以 `src/` 內實作為準。
 
 ## 🚀 快速開始
 
@@ -133,11 +145,14 @@ $env:GOOGLE_API_KEY="your-google-api-key"
 ```bash
 echo "your-openai-api-key" > openapi_api_key.txt
 echo "your-anthropic-api-key" > anthropic_api_key.txt
+echo "your-google-api-key" > google_api_key.txt
 ```
 
 > **優先順序**：環境變數 > .env 檔案 > 金鑰檔案
 >
 > **安全提示**：`.env` 檔案已加入 `.gitignore`，不會被提交到版本控制。
+>
+> **補充**：程式碼目前可讀取 `OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`，但端到端翻譯流程仍以 `ollama` / `openai` 最穩定。
 
 #### Ollama（本地模型）
 確保 Ollama 服務正在運行：
@@ -183,11 +198,11 @@ srt-translator translate video.srt -s 英文 -t 繁體中文 --structure-text
 # 批次翻譯資料夾
 srt-translator translate ./subtitles/ -s 英文 -t 繁體中文 -g anime
 
-# SRT 工具箱
-srt-translator extract video.srt              # 拆分為結構+文字
-srt-translator assemble video                 # 重組翻譯後的 SRT
-srt-translator qa source.srt translated.srt   # 比對結構完整性
-srt-translator cps-audit translated.srt       # CPS 可讀性審計
+# SRT 工具箱（目前建議直接呼叫 CLI 模組）
+uv run python -m srt_translator.cli extract video.srt
+uv run python -m srt_translator.cli assemble video
+uv run python -m srt_translator.cli qa source.srt translated.srt
+uv run python -m srt_translator.cli cps-audit translated.srt
 
 # 術語表管理
 srt-translator glossary create anime -s 日文 -t 繁體中文
@@ -199,6 +214,8 @@ srt-translator models -p ollama
 # 快取管理
 srt-translator cache --stats
 ```
+
+> `translate` 目前實際建議使用 `ollama` 或 `openai`。`google` 執行路徑已存在，但尚未暴露於 CLI 參數；`anthropic` 目前可列模型與讀取金鑰，但尚無第一級翻譯 runtime。
 
 ## 📚 文檔
 
@@ -284,14 +301,11 @@ uv run mypy src/srt_translator
 
 ## 📊 測試狀態
 
-本專案擁有完整的測試體系：
+本專案擁有完整的測試體系。以目前 `uv run pytest --collect-only -q` 的結果為準：
 
-- **總測試數**：775+ 個
-- **單元測試**：約 700 個
-- **整合測試**：約 30 個
-- **E2E 測試**：約 40 個
-- **測試通過率**：100%
-- **覆蓋率**：63%
+- **可收集測試數**：841 個
+- **測試類型**：unit / integration / e2e / gui marker
+- **覆蓋率報告**：`pytest` 預設會產生 `htmlcov/`
 
 ## ⚙️ 配置
 
@@ -325,8 +339,7 @@ uv run mypy src/srt_translator
 
 - **Ollama**：一般建議 1-3；Qwen3.5 建議 1，且目前程式會自動限制
 - **OpenAI**：3-6（避免觸發速率限制）
-- **Anthropic**：5-15（相對寬鬆的速率限制）
-- **Google Gemini**：3-8（速率限制適中）
+- **Google**：3-8（目前走 GUI / runtime 路徑）
 
 ### 🆕 快取系統優化
 
@@ -397,9 +410,9 @@ uv run mypy src/srt_translator
 
 - **開發開始**：2023
 - **當前版本**：1.1.0
-- **程式碼行數**：5000+ 行
-- **測試行數**：13000+ 行
-- **支援語言**：10+ 種
+- **Python 需求**：3.10+
+- **目前最穩定的翻譯工作流**：Ollama / OpenAI
+- **仍在整理中的 provider**：Anthropic / Google / OpenRouter（規劃）
 
 ---
 

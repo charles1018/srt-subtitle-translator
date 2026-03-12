@@ -129,8 +129,10 @@ he's got a great spot waiting for him up there at the FD in Detroit
    - 在「內容類型」下拉選單中選擇 **"english_drama"**
 
 3. **選擇 LLM 引擎**
-   - 推薦使用 OpenAI GPT-4 或 Anthropic Claude 以獲得最佳翻譯質量
-   - Ollama 本地模型也支持，但可能需要較大的模型
+   - 目前建議優先使用 OpenAI GPT-4 / GPT-4o
+   - GUI 雖然會顯示 Google Gemini，但仍建議先用 OpenAI 驗證流程
+   - Ollama 本地模型也可用，但建議選較大的中文友善模型
+   - `anthropic` 目前尚無第一級翻譯 runtime，先不要當成穩定路徑
 
 4. **選擇字幕檔案**
    - 點擊「選擇輸入檔案」或直接拖放檔案
@@ -144,13 +146,15 @@ he's got a great spot waiting for him up there at the FD in Detroit
 
 ### 在命令列中使用
 
+CLI 目前沒有 `--content-type` 或 `--llm-type` 這類旗標。若要在 CLI 使用 `english_drama` 提示詞，請先透過 GUI 的「設定 → 提示詞編輯」切換內容類型，或直接調整 `config/prompt_config.json` 的 `current_content_type` 為 `english_drama`，再執行一般 `translate` 指令。
+
 ```bash
-uv run srt-translator \
-  --content-type english_drama \
-  --llm-type openai \
-  --model gpt-4 \
-  --input your_subtitle.srt \
-  --output translated_subtitle.srt
+uv run srt-translator translate \
+  your_subtitle.srt \
+  -s 英文 \
+  -t 繁體中文 \
+  -p openai \
+  -m gpt-4o
 ```
 
 ## 🎓 翻譯範例
@@ -216,7 +220,7 @@ he's got a great spot waiting for him up there at the FD in Detroit.
 如果需要針對特定劇集調整術語或風格：
 
 1. **開啟提示詞編輯器**
-   - GUI 中選擇「工具」→「編輯提示詞」
+   - GUI 中選擇「設定」→「提示詞編輯」
 
 2. **選擇 english_drama 類型**
    - 在內容類型下拉選單選擇 "english_drama"
@@ -265,7 +269,8 @@ he's got a great spot waiting for him up there at the FD in Detroit.
    - ✅ 情感語氣保留
 
 3. **效能優化**
-   - 使用 OpenAI GPT-4 或 Anthropic Claude 3.5 Sonnet 獲得最佳質量
+   - 使用 OpenAI GPT-4 / GPT-4o 獲得最佳質量
+   - 若要測試 GUI 內的其他 provider，請先用小檔案驗證整體流程
    - 啟用翻譯快取以節省 API 成本
    - 合理設定並發數（建議 3-5）
 
