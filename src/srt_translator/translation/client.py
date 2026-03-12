@@ -848,16 +848,18 @@ class TranslationClient:
                 response.raise_for_status()
                 result = await response.json()
 
-                # 處理不同的 Ollama API 回應格式
-                if "choices" in result and len(result["choices"]) > 0:
-                    # 標準 OpenAI 格式
+                # 處理 Ollama /api/chat 回應格式
+                # 標準格式: {"message": {"role": "assistant", "content": "..."}, "done": true}
+                if "message" in result and isinstance(result["message"], dict):
+                    translation = result["message"].get("content", "").strip()
+                elif "choices" in result and len(result["choices"]) > 0:
+                    # OpenAI 相容端點 /v1/chat/completions 格式
                     translation = result["choices"][0]["message"]["content"].strip()
                 elif "response" in result:
-                    # 舊版 Ollama 格式
+                    # /api/generate 端點的回應格式
                     translation = result["response"].strip()
                 else:
                     logger.warning(f"未知的 Ollama API 回應格式: {result}")
-                    # 嘗試從結果中提取任何文字內容
                     translation = str(result).strip()
 
                 logger.debug(f"Ollama API 回應翻譯: {translation}")
