@@ -1238,8 +1238,8 @@ class ModelManager:
 
             models = set()
 
-            # 嘗試使用不同的 API 端點獲取模型列表
-            endpoints = ["/api/tags", "/api/models"]
+            # 使用 Ollama 模型列表 API 端點
+            endpoints = ["/api/tags"]
 
             for endpoint in endpoints:
                 try:
@@ -1277,7 +1277,7 @@ class ModelManager:
 
             # 如果沒有找到模型，嘗試使用系統自帶的模型列表
             if len(models) == 0:
-                default_models = ["llama3", "mistral", "mixtral", "phi3"]
+                default_models = ["llama3.2", "qwen3", "gemma3", "mistral"]
                 for model in default_models:
                     models.add(model)
 

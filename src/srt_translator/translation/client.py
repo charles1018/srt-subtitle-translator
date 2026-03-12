@@ -260,7 +260,12 @@ class TranslationClient:
         # 回退機制設定
         self.fallback_models = {
             "openai": {"gpt-4": ["gpt-3.5-turbo"], "gpt-4-turbo": ["gpt-4", "gpt-3.5-turbo"], "gpt-3.5-turbo": []},
-            "ollama": {"llama3": ["mistral"], "mixtral": ["mistral", "tinyllama"], "mistral": ["tinyllama"]},
+            "ollama": {
+                "llama3.2": ["qwen3", "gemma3"],
+                "qwen3": ["llama3.2", "gemma3"],
+                "gemma3": ["llama3.2", "qwen3"],
+                "mistral": ["llama3.2", "qwen3"],
+            },
             "google": {
                 "gemini-2.5-pro": ["gemini-2.5-flash", "gemini-2.0-flash"],
                 "gemini-2.5-flash": ["gemini-2.0-flash", "gemini-1.5-flash"],
@@ -1122,7 +1127,7 @@ if __name__ == "__main__":
 
             # 選擇測試模式
             llm_type = "ollama" if not api_key else "openai"
-            model = "llama3" if llm_type == "ollama" else "gpt-3.5-turbo"
+            model = "llama3.2" if llm_type == "ollama" else "gpt-3.5-turbo"
 
             # 初始化客戶端
             client = TranslationClient(llm_type=llm_type, api_key=api_key)
