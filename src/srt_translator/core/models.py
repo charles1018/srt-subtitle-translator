@@ -666,6 +666,30 @@ class ModelManager:
             elif not loop.is_closed():
                 loop.close()
 
+    def _get_ollama_models_via_cli(self) -> dict[str, dict[str, Any]]:
+        """透過 ollama list 指令取得本地已安裝的模型，作為 API 呼叫失敗時的 fallback"""
+        import subprocess
+
+        models: dict[str, dict[str, Any]] = {}
+        try:
+            result = subprocess.run(
+                ["ollama", "list"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                for line in result.stdout.strip().splitlines()[1:]:  # 跳過標題行
+                    parts = line.split()
+                    if parts:
+                        model_name = parts[0]  # e.g. qwen3.5-ud:latest
+                        models[model_name] = {}
+                if models:
+                    logger.info(f"透過 CLI 取得 {len(models)} 個 Ollama 模型: {list(models.keys())}")
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
+            logger.warning(f"透過 CLI 獲取 Ollama 模型失敗: {e!s}")
+        return models
+
     def _create_default_ollama_model(self) -> ModelInfo:
         """建立預設 Ollama 模型"""
         key = f"ollama:{self.default_ollama_model}"
@@ -1370,13 +1394,16 @@ class ModelManager:
                     logger.warning(f"從端點 {endpoint} 獲取模型失敗: {e!s}")
                     continue
 
-            # 如果沒有找到模型，嘗試使用系統自帶的模型列表
+            # 如果沒有找到模型，嘗試透過 ollama list 指令取得本地模型
+            if len(models) == 0:
+                models = self._get_ollama_models_via_cli()
+
+            # 若 CLI 也失敗，使用硬編碼預設清單
             if len(models) == 0:
                 default_models = ["llama3.2", "qwen3.5", "qwen3", "gemma3", "mistral"]
                 for model in default_models:
                     models[model] = {}
-
-                logger.warning(f"無法從 API 獲取模型，使用預設模型列表: {default_models}")
+                logger.warning(f"無法從 API 或 CLI 獲取模型，使用預設模型列表: {default_models}")
 
             # 添加預設模型
             models.setdefault(self.default_ollama_model, {})

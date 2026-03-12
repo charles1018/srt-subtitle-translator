@@ -461,7 +461,8 @@ class TestModelManagerOllamaModelsAsync:
             mock_context_manager.__aexit__ = AsyncMock(return_value=None)
             return mock_context_manager
 
-        with patch.object(manager, "_init_async_session", return_value=None):
+        with patch.object(manager, "_init_async_session", return_value=None), \
+             patch.object(manager, "_get_ollama_models_via_cli", return_value={}):
             manager.session = MagicMock()
             manager.session.get = mock_get
 
