@@ -848,6 +848,7 @@ class TranslationClient:
             "messages": messages,
             "stream": False,
             "think": False,  # 停用推理模式，避免 Qwen3/DeepSeek-R1 等模型預設啟用推理
+            "keep_alive": "10m",  # 批量翻譯期間保持模型載入，避免反覆載入
             "options": {
                 "temperature": 0.1,
                 "num_predict": 256,  # 限制回應長度，字幕翻譯不需要長回應
