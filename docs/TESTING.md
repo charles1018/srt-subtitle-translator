@@ -196,13 +196,13 @@ import pytest
 def sample_config():
     """提供範例配置資料"""
     return {
-        "model": "llama2",
+        "model": "llama3.2",
         "timeout": 300,
     }
 
 def test_config_loading(sample_config):
     """測試配置載入"""
-    assert sample_config["model"] == "llama2"
+    assert sample_config["model"] == "llama3.2"
 ```
 
 ### 測試例外

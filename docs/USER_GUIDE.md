@@ -487,10 +487,10 @@ srt-translator translate ./subtitles/ -s 日文 -t 繁體中文 -g anime
 ollama serve
 ```
 
-3. 拉取模型（例如 llama2）：
+3. 拉取模型（例如 llama3.2）：
 
 ```bash
-ollama pull llama2
+ollama pull llama3.2
 ```
 
 ---
@@ -512,7 +512,7 @@ ollama pull llama2
 │                                             │
 │  源語言: [日文 ▼]   目標語言: [繁體中文 ▼] │
 │  LLM 類型: [ollama ▼]                       │
-│  模型: [llama2 ▼]                           │
+│  模型: [llama3.2 ▼]                          │
 │  並發數: [3 ▼]                              │
 │  顯示模式: [雙語對照 ▼]                     │
 │                                             │
@@ -574,7 +574,7 @@ ollama pull llama2
    - 源語言：英文
    - 目標語言：繁體中文
    - LLM 類型：ollama
-   - 模型：llama2
+   - 模型：llama3.2
    - 並發數：3（本地模型建議較低）
    - 顯示模式：僅顯示翻譯
 

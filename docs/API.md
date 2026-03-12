@@ -410,7 +410,7 @@ models = await model_manager.get_available_models("openai")
 
 # 獲取 Ollama 本地模型
 models = await model_manager.get_available_models("ollama")
-# ['llama2', 'mistral', 'codellama']
+# ['llama3.2', 'qwen3', 'gemma3', 'mistral']
 ```
 
 ##### `get_recommended_model(task: str, llm_type: str) -> str`

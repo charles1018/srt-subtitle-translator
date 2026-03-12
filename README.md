@@ -148,7 +148,7 @@ echo "your-anthropic-api-key" > anthropic_api_key.txt
 ollama serve
 
 # 拉取模型（例如）
-ollama pull llama2
+ollama pull llama3.2
 ```
 
 ### 基本使用
