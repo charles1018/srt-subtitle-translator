@@ -181,7 +181,7 @@ class TranslationService:
 
         # 取得當前翻譯風格和提示詞版本（用於快取 key）
         current_style = self.prompt_manager.current_style
-        prompt_version = self.prompt_manager.get_prompt_version(llm_type)
+        prompt_version = self.prompt_manager.get_prompt_version(llm_type, model_name=model_name)
 
         # 檢查快取
         cached_result = self.cache_service.get_translation(

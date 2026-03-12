@@ -12,7 +12,6 @@ from srt_translator.translation.client import (
     TranslationClient,
 )
 
-
 # ============================================================
 # ApiMetrics Tests
 # ============================================================
@@ -337,6 +336,23 @@ class TestTranslationClientHelpers:
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    def test_build_ollama_payload_qwen35_ud_profile(self, mock_prompt, mock_cache):
+        """Test qwen3.5-ud uses a tighter Ollama payload profile."""
+        client = TranslationClient(llm_type="ollama")
+        messages = [{"role": "system", "content": "test"}]
+
+        payload = client._build_ollama_payload(messages, "qwen3.5-ud:latest")
+
+        assert payload["think"] is False
+        assert payload["keep_alive"] == "15m"
+        assert payload["options"]["temperature"] == 0.4
+        assert payload["options"]["top_p"] == 0.8
+        assert payload["options"]["top_k"] == 20
+        assert payload["options"]["min_p"] == 0.0
+        assert payload["options"]["num_predict"] == 96
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     def test_sanitize_ollama_translation_removes_think_and_chatml(self, mock_prompt, mock_cache):
         """Test cleaning residual thinking blocks and ChatML assistant markers."""
         client = TranslationClient(llm_type="ollama")
@@ -372,6 +388,18 @@ class TestTranslationClientHelpers:
         )
 
         assert fallback_models == ["qwen3", "llama3.2", "gemma3"]
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    def test_get_fallback_models_qwen35_ud_prefers_uncensored_variant(self, mock_prompt, mock_cache):
+        """Test qwen3.5-ud falls back to uncensored sibling before generic family fallbacks."""
+        client = TranslationClient(llm_type="ollama")
+
+        fallback_models = client._get_fallback_models("qwen3.5-ud:latest")
+
+        assert fallback_models[0] == "qwen3.5-uncensored:latest"
+        assert "qwen3" in fallback_models
+        assert "llama3.2" in fallback_models
 
 
 class TestTranslationClientErrorClassification:
@@ -573,6 +601,32 @@ class TestTranslationClientAsync:
         assert result == "cached translation"
         assert client.metrics.cache_hits == 1
 
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    async def test_translate_text_from_cache_uses_prompt_version(self, mock_prompt, mock_cache):
+        """Test translating text from cache includes style and prompt version in cache lookup."""
+        mock_cache_instance = MagicMock()
+        mock_cache_instance.get_cached_translation.return_value = "cached translation"
+        mock_cache.return_value = mock_cache_instance
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.get_prompt_version.return_value = "qwen35udv1"
+        mock_prompt.return_value = mock_prompt_instance
+
+        client = TranslationClient(llm_type="ollama")
+        result = await client.translate_text("Hello", [], "qwen3.5-ud:latest")
+
+        assert result == "cached translation"
+        mock_cache_instance.get_cached_translation.assert_called_once_with(
+            "Hello",
+            [],
+            "qwen3.5-ud:latest",
+            "standard",
+            "qwen35udv1",
+        )
+
     @pytest.mark.skip(reason="Complex async mock setup needed")
     @pytest.mark.asyncio
     async def test_translate_with_ollama(self):
@@ -621,6 +675,39 @@ class TestTranslationClientAsync:
         assert request_payload["options"]["top_p"] == 0.8
         assert request_payload["options"]["top_k"] == 20
         assert request_payload["options"]["min_p"] == 0.0
+        assert result == "翻譯結果"
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    async def test_translate_with_ollama_qwen35_ud_payload(self, mock_prompt, mock_cache):
+        """Test qwen3.5-ud Ollama request uses tightened profile."""
+        mock_cache_instance = MagicMock()
+        mock_cache.return_value = mock_cache_instance
+
+        mock_resp = AsyncMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json = AsyncMock(return_value={"message": {"role": "assistant", "content": "翻譯結果"}})
+
+        mock_context_manager = MagicMock()
+        mock_context_manager.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_context_manager.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = MagicMock()
+        mock_session.post.return_value = mock_context_manager
+
+        client = TranslationClient(llm_type="ollama")
+        client.session = mock_session
+
+        result = await client._translate_with_ollama(
+            [{"role": "user", "content": "test"}],
+            "qwen3.5-ud:latest",
+        )
+
+        request_payload = mock_session.post.call_args.kwargs["json"]
+        assert request_payload["keep_alive"] == "15m"
+        assert request_payload["options"]["temperature"] == 0.4
+        assert request_payload["options"]["num_predict"] == 96
         assert result == "翻譯結果"
 
     @pytest.mark.asyncio

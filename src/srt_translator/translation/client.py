@@ -232,6 +232,17 @@ class TranslationClient:
                 "num_predict": 256,
             },
         },
+        "qwen3.5-ud": {
+            "keep_alive": "15m",
+            "batch_concurrency_limit": 1,
+            "options": {
+                "temperature": 0.4,
+                "top_p": 0.8,
+                "top_k": 20,
+                "min_p": 0.0,
+                "num_predict": 96,
+            },
+        },
     }
 
     def __init__(
@@ -369,8 +380,7 @@ class TranslationClient:
 
     def _detect_ollama_model_family(self, model_name: str) -> str:
         """根據模型名稱偵測 Ollama 模型家族"""
-        normalized = model_name.strip().lower()
-        normalized = normalized.split("@", maxsplit=1)[0]
+        normalized = self._normalize_model_name(model_name)
 
         if re.search(r"qwen(?:[-_/\s]?3\.5|35)", normalized):
             return "qwen3.5"
@@ -386,14 +396,61 @@ class TranslationClient:
             return "mistral"
         return "default"
 
+    def _normalize_model_name(self, model_name: str) -> str:
+        """標準化模型名稱，便於做家族與變體判斷"""
+        normalized = model_name.strip().lower()
+        return normalized.split("@", maxsplit=1)[0]
+
+    def _is_qwen35_ud_model(self, model_name: str) -> bool:
+        """判斷是否為 qwen3.5-ud 變體"""
+        if self._detect_ollama_model_family(model_name) != "qwen3.5":
+            return False
+
+        normalized = self._normalize_model_name(model_name)
+        tokens = [token for token in re.split(r"[^a-z0-9]+", normalized) if token]
+        return "ud" in tokens
+
+    def _dedupe_preserve_order(self, values: List[str]) -> List[str]:
+        """去除重複項目並保留原始順序"""
+        deduped: List[str] = []
+        seen = set()
+
+        for value in values:
+            normalized = value.strip()
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            deduped.append(normalized)
+
+        return deduped
+
+    def _get_qwen35_ud_fallback_candidates(self, model_name: str) -> List[str]:
+        """取得 qwen3.5-ud 的優先回退候選模型"""
+        if not self._is_qwen35_ud_model(model_name):
+            return []
+
+        tag = ""
+        if ":" in model_name:
+            tag = model_name.split(":", maxsplit=1)[1].strip()
+
+        candidates = []
+        if tag:
+            candidates.append(f"qwen3.5-uncensored:{tag}")
+
+        candidates.extend(["qwen3.5-uncensored:latest", "qwen3.5-uncensored"])
+        candidates = [candidate for candidate in candidates if candidate != model_name]
+        return self._dedupe_preserve_order(candidates)
+
     def _get_ollama_model_profile(self, model_name: str) -> Dict[str, Any]:
         """取得 Ollama 模型的請求設定"""
         family = self._detect_ollama_model_family(model_name)
+        profile_key = "qwen3.5-ud" if self._is_qwen35_ud_model(model_name) else family
         default_profile = self.OLLAMA_MODEL_PROFILES["default"]
-        family_profile = self.OLLAMA_MODEL_PROFILES.get(family, {})
+        family_profile = self.OLLAMA_MODEL_PROFILES.get(profile_key, {})
 
         return {
             "family": family,
+            "profile": profile_key,
             "keep_alive": family_profile.get("keep_alive", default_profile["keep_alive"]),
             "batch_concurrency_limit": family_profile.get("batch_concurrency_limit"),
             "options": {
@@ -445,6 +502,11 @@ class TranslationClient:
         """取得當前模型可用的回退模型清單"""
         provider_fallbacks = self.fallback_models.get(self.llm_type, {})
         fallback_options = provider_fallbacks.get(model_name, [])
+
+        if self.llm_type == "ollama" and self._is_qwen35_ud_model(model_name):
+            family = self._detect_ollama_model_family(model_name)
+            qwen35_ud_fallbacks = self._get_qwen35_ud_fallback_candidates(model_name)
+            return self._dedupe_preserve_order(qwen35_ud_fallbacks + fallback_options + provider_fallbacks.get(family, []))
 
         if fallback_options or self.llm_type != "ollama":
             return fallback_options
@@ -795,9 +857,17 @@ class TranslationClient:
         logger.debug(f"開始翻譯文字: '{text}'，上下文長度: {len(context_texts)}，模型: {model_name}")
         start_time = time.time()
         self.metrics.total_requests += 1
+        current_style = getattr(self.prompt_manager, "current_style", "standard") or "standard"
+        prompt_version = self.prompt_manager.get_prompt_version(self.llm_type, model_name=model_name)
 
         # 首先嘗試從快取獲取，這步很快不需要非同步
-        cached_result = self.cache_manager.get_cached_translation(text, context_texts, model_name)
+        cached_result = self.cache_manager.get_cached_translation(
+            text,
+            context_texts,
+            model_name,
+            current_style,
+            prompt_version,
+        )
         if cached_result:
             logger.debug(f"從快取獲取翻譯結果: {cached_result}")
             self.metrics.cache_hits += 1
@@ -849,7 +919,14 @@ class TranslationClient:
             logger.debug(f"翻譯成功，耗時: {elapsed_time:.2f} 秒")
 
             # 存入快取
-            self.cache_manager.store_translation(text, result, context_texts, model_name)
+            self.cache_manager.store_translation(
+                text,
+                result,
+                context_texts,
+                model_name,
+                current_style,
+                prompt_version,
+            )
             return result
 
         except Exception as e:
@@ -1052,10 +1129,18 @@ class TranslationClient:
         results = [""] * len(texts)
         cache_hits = []
         api_requests = []
+        current_style = getattr(self.prompt_manager, "current_style", "standard") or "standard"
+        prompt_version = self.prompt_manager.get_prompt_version(self.llm_type, model_name=model_name)
 
         # 首先檢查快取
         for i, (text, context) in enumerate(texts):
-            cached = self.cache_manager.get_cached_translation(text, context, model_name)
+            cached = self.cache_manager.get_cached_translation(
+                text,
+                context,
+                model_name,
+                current_style,
+                prompt_version,
+            )
             if cached:
                 cache_hits.append((i, cached))
                 self.metrics.cache_hits += 1

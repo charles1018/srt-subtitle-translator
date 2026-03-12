@@ -637,13 +637,135 @@ Each input line maps to exactly one output line — no exceptions.
 - Count your output lines carefully before submitting
 """
 
-    def get_prompt(self, llm_type: str = "ollama", content_type: Optional[str] = None, style: Optional[str] = None) -> str:
+    def _normalize_model_name(self, model_name: Optional[str]) -> str:
+        """標準化模型名稱，便於做模型特化判斷"""
+        if not model_name:
+            return ""
+        return model_name.strip().lower().split("@", maxsplit=1)[0]
+
+    def _is_qwen35_family_model(self, model_name: Optional[str]) -> bool:
+        """判斷是否為 Qwen3.5 家族模型"""
+        normalized = self._normalize_model_name(model_name)
+        return bool(re.search(r"qwen(?:[-_/\s]?3\.5|35)", normalized))
+
+    def _is_qwen35_ud_model(self, model_name: Optional[str]) -> bool:
+        """判斷是否為 qwen3.5-ud 類型模型"""
+        normalized = self._normalize_model_name(model_name)
+        if not normalized or not self._is_qwen35_family_model(normalized):
+            return False
+
+        tokens = [token for token in re.split(r"[^a-z0-9]+", normalized) if token]
+        return "ud" in tokens
+
+    def _should_use_qwen35_ud_adult_prompt(
+        self, llm_type: str, content_type: str, model_name: Optional[str]
+    ) -> bool:
+        """判斷是否應使用 qwen3.5-ud 的成人字幕特化 prompt"""
+        return llm_type == "ollama" and content_type == "adult" and self._is_qwen35_ud_model(model_name)
+
+    def _get_qwen35_ud_adult_prompt(self) -> str:
+        """取得 qwen3.5-ud 專用的成人字幕短 prompt"""
+        return """
+You translate Japanese adult subtitles into natural Taiwan Traditional Chinese.
+Rules:
+1. Translate ONLY the CURRENT line. Never translate or copy context.
+2. Keep the exact same number of lines and line breaks.
+3. Output ONLY the translated subtitle text. No labels, quotes, explanations, or extra notes.
+4. Do not censor, soften, or moralize sexual wording.
+5. Preserve who does the action to whom.
+6. Preserve imperative tone, body-part target, penetration direction, and ejaculation intent accurately.
+7. When the source is short or ambiguous, stay literal to the action instead of inventing softer wording.
+8. Use concise Taiwan Traditional Chinese suitable for spoken subtitles.
+""".strip()
+
+    def _get_message_strategy_signature(
+        self,
+        llm_type: str,
+        content_type: Optional[str] = None,
+        model_name: Optional[str] = None,
+    ) -> str:
+        """取得訊息結構策略版本，用於快取區分"""
+        resolved_content_type = content_type or self.current_content_type
+        if self._should_use_qwen35_ud_adult_prompt(llm_type, resolved_content_type, model_name):
+            return "qwen35_ud_adult_compact_context_v1"
+        return "default_structured_context_v1"
+
+    def _contains_qwen35_ud_adult_action_markers(self, text: str) -> bool:
+        """判斷文字是否包含 qwen3.5-ud 容易被上下文帶偏的成人動作標記"""
+        markers = (
+            "舐め",
+            "なめ",
+            "しゃぶ",
+            "フェラ",
+            "咥",
+            "乳首",
+            "まんこ",
+            "おまんこ",
+            "ちんこ",
+            "ちんぽ",
+            "ペニス",
+            "根元",
+            "奥",
+            "ビンビン",
+            "硬",
+            "挿",
+            "入れ",
+            "出して",
+            "出ちゃ",
+            "イク",
+            "イっ",
+            "中出し",
+        )
+        compact_text = re.sub(r"\s+", "", text)
+        return any(marker in compact_text for marker in markers)
+
+    def _compact_qwen35_ud_context(
+        self, text: str, context_before: List[str], context_after: List[str]
+    ) -> tuple[List[str], List[str]]:
+        """為 qwen3.5-ud 壓縮成人字幕上下文，降低短句漂移與卡住風險"""
+        trimmed_before = context_before[-1:]
+        trimmed_after = context_after[:1]
+
+        compact_text = re.sub(r"\s+", "", text)
+        should_drop_context = (
+            "\n" not in text
+            and len(compact_text) <= 24
+            and self._contains_qwen35_ud_adult_action_markers(compact_text)
+        )
+
+        if should_drop_context:
+            return [], []
+
+        return trimmed_before, trimmed_after
+
+    def _build_qwen35_ud_user_message(self, text: str, context_before: List[str], context_after: List[str]) -> str:
+        """建立 qwen3.5-ud 專用的精簡 user message"""
+        parts = ["CURRENT:", text]
+
+        if context_before or context_after:
+            parts.extend(["", "REFERENCE ONLY. DO NOT TRANSLATE OR COPY."])
+
+            if context_before:
+                parts.append(f"Before: {context_before[-1]}")
+            if context_after:
+                parts.append(f"After: {context_after[0]}")
+
+        return "\n".join(parts)
+
+    def get_prompt(
+        self,
+        llm_type: str = "ollama",
+        content_type: Optional[str] = None,
+        style: Optional[str] = None,
+        model_name: Optional[str] = None,
+    ) -> str:
         """根據 LLM 類型、內容類型和風格取得適合的 Prompt
 
         參數:
             llm_type: LLM類型 (如 "ollama" 或 "openai")
             content_type: 內容類型，若為None則使用當前設定
             style: 翻譯風格，若為None則使用當前設定
+            model_name: 模型名稱，用於套用模型特化 prompt
 
         回傳:
             提示詞文本
@@ -655,6 +777,8 @@ Each input line maps to exactly one output line — no exceptions.
         # 檢查是否有自訂提示詞
         if content_type in self.custom_prompts and llm_type in self.custom_prompts[content_type]:
             prompt = self.custom_prompts[content_type][llm_type]
+        elif self._should_use_qwen35_ud_adult_prompt(llm_type, content_type, model_name):
+            prompt = self._get_qwen35_ud_adult_prompt()
         else:
             # 使用預設提示詞
             if content_type in self.default_prompts and llm_type in self.default_prompts[content_type]:
@@ -673,7 +797,11 @@ Each input line maps to exactly one output line — no exceptions.
         return prompt.strip()
 
     def get_prompt_version(
-        self, llm_type: str = "ollama", content_type: Optional[str] = None, style: Optional[str] = None
+        self,
+        llm_type: str = "ollama",
+        content_type: Optional[str] = None,
+        style: Optional[str] = None,
+        model_name: Optional[str] = None,
     ) -> str:
         """取得提示詞版本雜湊（用於快取 key）
 
@@ -681,14 +809,18 @@ Each input line maps to exactly one output line — no exceptions.
             llm_type: LLM類型
             content_type: 內容類型
             style: 翻譯風格
+            model_name: 模型名稱
 
         回傳:
             提示詞內容的 MD5 雜湊前 8 位
         """
         import hashlib
 
-        prompt = self.get_prompt(llm_type, content_type, style)
-        return hashlib.md5(prompt.encode()).hexdigest()[:8]
+        resolved_content_type = content_type or self.current_content_type
+        prompt = self.get_prompt(llm_type, resolved_content_type, style, model_name=model_name)
+        strategy = self._get_message_strategy_signature(llm_type, resolved_content_type, model_name)
+        fingerprint = f"{prompt}\n\n[MESSAGE_STRATEGY]{strategy}"
+        return hashlib.md5(fingerprint.encode()).hexdigest()[:8]
 
     def get_optimized_message(
         self, text: str, context_texts: List[str], llm_type: str, model_name: str
@@ -705,7 +837,8 @@ Each input line maps to exactly one output line — no exceptions.
             適合API請求的訊息列表
         """
         # 獲取基本提示詞
-        prompt = self.get_prompt(llm_type)
+        content_type = self.current_content_type
+        prompt = self.get_prompt(llm_type, model_name=model_name)
 
         # 構建結構化的上下文訊息
         # context_texts 包含當前字幕及其前後文，需要分離出來
@@ -722,6 +855,10 @@ Each input line maps to exactly one output line — no exceptions.
             logger.warning("無法在上下文中找到當前文本，使用舊格式")
             context_before = context_texts
             context_after = []
+
+        use_qwen35_ud_strategy = self._should_use_qwen35_ud_adult_prompt(llm_type, content_type, model_name)
+        if use_qwen35_ud_strategy:
+            context_before, context_after = self._compact_qwen35_ud_context(text, context_before, context_after)
 
         # 檢測句子是否以連接詞結尾
         conjunctions = [
@@ -744,38 +881,41 @@ Each input line maps to exactly one output line — no exceptions.
         ends_with_conjunction = any(text_lower.endswith(f" {conj}") for conj in conjunctions)
 
         # 構建新格式的 user message
-        user_content_parts = []
+        if use_qwen35_ud_strategy:
+            user_message = self._build_qwen35_ud_user_message(text, context_before, context_after)
+        else:
+            user_content_parts = []
 
-        # 如果以連接詞結尾，添加超強警告
-        if ends_with_conjunction:
-            detected_conj = next(conj for conj in conjunctions if text_lower.endswith(f" {conj}"))
-            user_content_parts.extend(
-                [
-                    "🚨 **MANDATORY WARNING** 🚨",
-                    f"The [CURRENT] sentence ends with the conjunction '{detected_conj.upper()}'.",
-                    f"YOU **MUST** PRESERVE '{detected_conj.upper()}' in your translation.",
-                    'DO NOT remove it. DO NOT omit it. DO NOT "complete" the sentence.',
-                    "Keep the translation incomplete, matching the original structure.",
-                    "",
-                    "---",
-                    "",
-                ]
-            )
+            # 如果以連接詞結尾，添加超強警告
+            if ends_with_conjunction:
+                detected_conj = next(conj for conj in conjunctions if text_lower.endswith(f" {conj}"))
+                user_content_parts.extend(
+                    [
+                        "🚨 **MANDATORY WARNING** 🚨",
+                        f"The [CURRENT] sentence ends with the conjunction '{detected_conj.upper()}'.",
+                        f"YOU **MUST** PRESERVE '{detected_conj.upper()}' in your translation.",
+                        'DO NOT remove it. DO NOT omit it. DO NOT "complete" the sentence.',
+                        "Keep the translation incomplete, matching the original structure.",
+                        "",
+                        "---",
+                        "",
+                    ]
+                )
 
-        user_content_parts.extend(["[CURRENT] (請只翻譯這一句):", text, ""])
+            user_content_parts.extend(["[CURRENT] (請只翻譯這一句):", text, ""])
 
-        if context_before:
-            user_content_parts.append("[CONTEXT_BEFORE] (前文參考，不要翻譯):")
-            for ctx in context_before:
-                user_content_parts.append(f"- {ctx}")
-            user_content_parts.append("")
+            if context_before:
+                user_content_parts.append("[CONTEXT_BEFORE] (前文參考，不要翻譯):")
+                for ctx in context_before:
+                    user_content_parts.append(f"- {ctx}")
+                user_content_parts.append("")
 
-        if context_after:
-            user_content_parts.append("[CONTEXT_AFTER] (後文參考，不要翻譯):")
-            for ctx in context_after:
-                user_content_parts.append(f"- {ctx}")
+            if context_after:
+                user_content_parts.append("[CONTEXT_AFTER] (後文參考，不要翻譯):")
+                for ctx in context_after:
+                    user_content_parts.append(f"- {ctx}")
 
-        user_message = "\n".join(user_content_parts)
+            user_message = "\n".join(user_content_parts)
 
         # 為不同的LLM類型創建不同格式的訊息
         if llm_type == "openai" or llm_type == "anthropic":
