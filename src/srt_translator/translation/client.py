@@ -866,7 +866,11 @@ class TranslationClient:
                 # 處理 Ollama /api/chat 回應格式
                 # 標準格式: {"message": {"role": "assistant", "content": "..."}, "done": true}
                 if "message" in result and isinstance(result["message"], dict):
-                    translation = result["message"].get("content", "").strip()
+                    msg = result["message"]
+                    translation = msg.get("content", "").strip()
+                    # 記錄 thinking 欄位（若模型忽略 think:false 仍返回推理過程）
+                    if msg.get("thinking"):
+                        logger.debug("Ollama 模型返回了推理過程，已忽略 thinking 欄位")
                 elif "choices" in result and len(result["choices"]) > 0:
                     # OpenAI 相容端點 /v1/chat/completions 格式
                     translation = result["choices"][0]["message"]["content"].strip()
