@@ -145,6 +145,10 @@ class TranslationService:
             current = 0
         self.stats[key] = current + amount
 
+    def _is_failed_translation_result(self, translation: str) -> bool:
+        """判斷翻譯結果是否代表失敗。"""
+        return not translation or translation.startswith("[翻譯錯誤")
+
     def _initialize_members(self) -> None:
         """初始化服務成員"""
         try:
@@ -347,6 +351,9 @@ class TranslationService:
             encoding = self._get_subtitle_encoding(file_path)
             subs = pysrt.open(file_path, encoding=encoding)
             total_subtitles = len(subs)
+            successful_count = 0
+            failed_count = 0
+            last_error = ""
 
             # 設定進度回調
             progress_service = ServiceFactory.get_progress_service()
@@ -389,12 +396,57 @@ class TranslationService:
 
                 # 應用翻譯結果
                 for batch_idx, idx in enumerate(batch_indices):
-                    if batch_idx < len(translations):
-                        # 應用翻譯
-                        self._apply_translation(subs[idx], translations[batch_idx], display_mode)
-
-                        # 更新進度
+                    if batch_idx >= len(translations):
+                        failed_count += 1
+                        self._incr_stat("failed_translations")
+                        last_error = "[翻譯錯誤: 批量翻譯結果數量不足]"
+                        logger.warning(
+                            "批量翻譯結果數量不足: 檔案=%s, 預期=%d, 實際=%d, 字幕索引=%d",
+                            file_path,
+                            len(batch_indices),
+                            len(translations),
+                            idx + 1,
+                        )
                         progress_service.increment_progress()
+                        continue
+
+                    translation = translations[batch_idx]
+                    if self._is_failed_translation_result(translation):
+                        failed_count += 1
+                        self._incr_stat("failed_translations")
+                        last_error = translation or "[翻譯錯誤: 空白翻譯結果]"
+                        logger.warning(
+                            "字幕翻譯失敗: 檔案=%s, 字幕索引=%d, 錯誤=%s",
+                            file_path,
+                            idx + 1,
+                            last_error,
+                        )
+                        progress_service.increment_progress()
+                        continue
+
+                    # 應用翻譯
+                    self._apply_translation(subs[idx], translation, display_mode)
+                    successful_count += 1
+
+                    # 更新進度
+                    progress_service.increment_progress()
+
+            # 更新結束時間
+            self.stats["end_time"] = time.time()
+
+            # 計算耗時
+            elapsed_time = self.get_elapsed_time_str()
+
+            if successful_count == 0 and failed_count > 0:
+                message = f"翻譯失敗 | 0/{total_subtitles} 句字幕成功，未輸出檔案"
+                if last_error:
+                    message = f"{message}。最後錯誤: {last_error}"
+
+                logger.error(message)
+                if complete_callback:
+                    complete_callback(message, elapsed_time)
+
+                return False, last_error or "所有字幕翻譯失敗"
 
             # 取得輸出路徑
             output_path = self.file_service.get_output_path(file_path, target_lang)
@@ -404,18 +456,19 @@ class TranslationService:
             # 保存檔案
             subs.save(output_path, encoding="utf-8")
 
-            # 更新結束時間
-            self.stats["end_time"] = time.time()
-
             # 保存專有名詞詞典
             self._save_key_terms_dictionary(file_path)
 
-            # 計算耗時
-            elapsed_time = self.get_elapsed_time_str()
-
             # 呼叫完成回調
             if complete_callback:
-                complete_callback(f"翻譯完成 | 檔案已成功儲存為: {output_path}", elapsed_time)
+                if failed_count > 0:
+                    complete_callback(
+                        f"翻譯部分完成 | 檔案已成功儲存為: {output_path} | "
+                        f"成功 {successful_count}/{total_subtitles}，失敗 {failed_count}",
+                        elapsed_time,
+                    )
+                else:
+                    complete_callback(f"翻譯完成 | 檔案已成功儲存為: {output_path}", elapsed_time)
 
             return True, output_path
 

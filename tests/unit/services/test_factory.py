@@ -1,7 +1,8 @@
 """Tests for services/factory.py module."""
 
 import time
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -572,6 +573,111 @@ class TestTranslationService:
 
         assert result == "cached translation"
         assert service.stats["cached_translations"] == 1
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.pysrt.open")
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_subtitle_file_does_not_save_when_all_items_fail(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config, mock_pysrt_open
+    ):
+        """當整份字幕都翻譯失敗時，不應輸出檔案。"""
+        mock_config.get_instance.return_value = MagicMock()
+
+        class FakeSubs(list):
+            def __init__(self, items):
+                super().__init__(items)
+                self.save = MagicMock()
+
+        subs = FakeSubs(
+            [
+                SimpleNamespace(text="こんにちは"),
+                SimpleNamespace(text="ありがとう"),
+            ]
+        )
+        mock_pysrt_open.return_value = subs
+
+        service = TranslationService()
+        service.file_service = MagicMock()
+        service.file_service.get_subtitle_info.return_value = {}
+        service.file_service.get_output_path.return_value = "/tmp/output.srt"
+        service.translate_batch = AsyncMock(
+            return_value=["[翻譯錯誤: connection fail]", "[翻譯錯誤: connection fail]"]
+        )
+
+        success, result = await service.translate_subtitle_file(
+            "input.srt",
+            "日文",
+            "繁體中文",
+            "mistral",
+            1,
+            "僅顯示翻譯",
+            "ollama",
+        )
+
+        assert success is False
+        assert result == "[翻譯錯誤: connection fail]"
+        subs.save.assert_not_called()
+        service.file_service.get_output_path.assert_not_called()
+        assert subs[0].text == "こんにちは"
+        assert subs[1].text == "ありがとう"
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.pysrt.open")
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_subtitle_file_reports_partial_completion(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config, mock_pysrt_open
+    ):
+        """部分字幕失敗時，應儲存部分成果並回報失敗數。"""
+        mock_config.get_instance.return_value = MagicMock()
+
+        class FakeSubs(list):
+            def __init__(self, items):
+                super().__init__(items)
+                self.save = MagicMock()
+
+        subs = FakeSubs(
+            [
+                SimpleNamespace(text="こんにちは"),
+                SimpleNamespace(text="ありがとう"),
+            ]
+        )
+        mock_pysrt_open.return_value = subs
+
+        service = TranslationService()
+        service.file_service = MagicMock()
+        service.file_service.get_subtitle_info.return_value = {}
+        service.file_service.get_output_path.return_value = "/tmp/output.srt"
+        service.translate_batch = AsyncMock(return_value=["你好", "[翻譯錯誤: connection fail]"])
+        complete_callback = MagicMock()
+
+        success, result = await service.translate_subtitle_file(
+            "input.srt",
+            "日文",
+            "繁體中文",
+            "mistral",
+            1,
+            "僅顯示翻譯",
+            "ollama",
+            complete_callback=complete_callback,
+        )
+
+        assert success is True
+        assert result == "/tmp/output.srt"
+        subs.save.assert_called_once_with("/tmp/output.srt", encoding="utf-8")
+        assert subs[0].text == "你好"
+        assert subs[1].text == "ありがとう"
+        assert any(
+            "翻譯部分完成" in call.args[0] and "成功 1/2，失敗 1" in call.args[0]
+            for call in complete_callback.call_args_list
+        )
 
 
 # ============================================================

@@ -5,6 +5,7 @@
 - CLI 模式: srt-translator translate [選項] 檔案...
 """
 
+import asyncio
 import logging
 import os
 import sys
@@ -229,20 +230,60 @@ class App:
 
             messagebox.showinfo("功能開發中", "進階設定功能正在開發中")
 
+    def _run_async_in_new_loop(self, coroutine):
+        """在獨立事件迴圈中執行非同步工作。"""
+        loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
+            return loop.run_until_complete(coroutine)
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
+
+    def _validate_translation_request(self, llm_type: str, model_name: str) -> tuple[bool, str]:
+        """在啟動翻譯前檢查提供者與模型是否可用。"""
+        invalid_models = {"", "載入中...", "無可用模型", "無法載入模型"}
+        if model_name in invalid_models:
+            return False, "目前沒有可用模型，請先確認模型列表是否已成功載入。"
+
+        if llm_type == "ollama":
+            ollama_url = get_config("model", "ollama_url", "http://localhost:11434")
+
+            try:
+                result = self._run_async_in_new_loop(
+                    self.model_service.test_model_connection(model_name, "ollama")
+                )
+            except Exception as e:
+                logger.error(f"Ollama 預檢失敗: {format_exception(e)}")
+                return (
+                    False,
+                    f"Ollama 連線失敗，目前設定的服務位址為 {ollama_url}。"
+                    f"請確認 Ollama 已啟動，或將 config/model_config.json 的 ollama_url 改回 "
+                    f"http://localhost:11434。詳細原因: {e!s}",
+                )
+
+            if not result.get("success", False):
+                detail = str(result.get("message", "未知錯誤"))
+                return (
+                    False,
+                    f"Ollama 連線失敗，目前設定的服務位址為 {ollama_url}。"
+                    f"請確認 Ollama 已啟動，或將 config/model_config.json 的 ollama_url 改回 "
+                    f"http://localhost:11434。詳細原因: {detail}",
+                )
+
+            return True, ""
+
+        if not check_internet_connection():
+            return False, "網路連線異常，請檢查網路後重試。"
+
+        return True, ""
+
     def start_translation(self) -> None:
         """開始翻譯處理"""
         files = self.gui.get_selected_files()
         if not files:
             tk.messagebox.showwarning("警告", "請先選擇要翻譯的檔案")
             return
-
-        # 檢查網路連線
-        if not check_internet_connection():
-            tk.messagebox.showerror("錯誤", "網路連線異常，請檢查網路後重試")
-            return
-
-        # 禁用界面控制項
-        self.gui.disable_controls()
 
         # 獲取翻譯參數
         source_lang = self.gui.source_lang.get()
@@ -251,6 +292,14 @@ class App:
         parallel_requests = int(self.gui.parallel_requests.get())
         display_mode = self.gui.display_mode.get()
         llm_type = self.gui.llm_type.get()
+
+        is_valid, validation_message = self._validate_translation_request(llm_type, model_name)
+        if not is_valid:
+            tk.messagebox.showerror("錯誤", validation_message)
+            return
+
+        # 禁用界面控制項
+        self.gui.disable_controls()
 
         # 啟動翻譯任務
         success = self.task_manager.start_translation(
