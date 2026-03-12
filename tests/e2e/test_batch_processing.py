@@ -10,7 +10,6 @@
 import asyncio
 import time
 from pathlib import Path
-from typing import List
 from unittest.mock import AsyncMock, Mock
 
 import pysrt
@@ -115,7 +114,7 @@ def mock_all_services_for_batch(mock_translation_client, mock_translation_respon
 
 @pytest.mark.asyncio
 async def test_small_batch_translation(
-    batch_srt_files: List[Path], e2e_temp_dir: Path, mock_all_services_for_batch, assert_srt_valid
+    batch_srt_files: list[Path], e2e_temp_dir: Path, mock_all_services_for_batch, assert_srt_valid
 ):
     """測試 1：小批量翻譯（2-3 個檔案）
 
@@ -217,7 +216,7 @@ async def test_mixed_language_batch_translation(
 
 @pytest.mark.asyncio
 async def test_batch_translation_error_handling(
-    batch_srt_files: List[Path], invalid_srt_path: Path, e2e_temp_dir: Path, mock_all_services_for_batch
+    batch_srt_files: list[Path], invalid_srt_path: Path, e2e_temp_dir: Path, mock_all_services_for_batch
 ):
     """測試 3：批量翻譯錯誤處理
 
@@ -314,13 +313,13 @@ async def test_concurrent_translation_correctness(mock_all_services_for_batch, m
     assert len(results) == len(test_texts), "結果數量應該與輸入一致"
 
     # 驗證每個翻譯都正確
-    for text, result in zip(test_texts, results):
+    for text, result in zip(test_texts, results, strict=True):
         expected = mock_translation_responses[text]
         assert result == expected, f"翻譯 '{text}' 應該正確"
 
 
 @pytest.mark.asyncio
-async def test_concurrent_batch_translation(batch_srt_files: List[Path], mock_all_services_for_batch):
+async def test_concurrent_batch_translation(batch_srt_files: list[Path], mock_all_services_for_batch):
     """測試 5：並發批量翻譯（使用 translate_batch）
 
     驗證：
@@ -396,7 +395,7 @@ async def test_concurrent_limit_behavior(mock_all_services_for_batch, mock_trans
         assert len(translations) == len(test_texts), f"並發限制 {concurrent_limit} - 翻譯數量應該一致"
 
         # 驗證所有翻譯都正確
-        for text, translation in zip(test_texts, translations):
+        for text, translation in zip(test_texts, translations, strict=True):
             expected = mock_translation_responses[text]
             assert translation == expected, f"並發限制 {concurrent_limit} - 翻譯 '{text}' 應該正確"
 

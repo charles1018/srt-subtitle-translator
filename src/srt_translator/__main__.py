@@ -10,7 +10,7 @@ import os
 import sys
 import threading
 import tkinter as tk
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from srt_translator.utils.tkdnd_check import TKDND_AVAILABLE
 
@@ -184,7 +184,7 @@ class App:
             logger.error(f"更新模型列表失敗: {format_exception(e)}")
             self.gui.set_model_list(["無法載入模型"], "")
 
-    def _update_model_dropdown(self, models: List[str], llm_type: str) -> None:
+    def _update_model_dropdown(self, models: list[str], llm_type: str) -> None:
         """更新模型下拉選單（在主線程中調用）"""
         if not models:
             self.gui.set_model_list(["無可用模型"], "")
@@ -312,7 +312,7 @@ class App:
             self.task_manager.pause_all()
             self.gui.pause_button.config(text="繼續")
 
-    def _update_progress(self, current: int, total: int, extra_data: Optional[Dict[str, Any]] = None) -> None:
+    def _update_progress(self, current: int, total: int, extra_data: dict[str, Any] | None = None) -> None:
         """處理翻譯進度更新"""
         # 處理檔案衝突
         if extra_data and extra_data.get("type") == "file_conflict":

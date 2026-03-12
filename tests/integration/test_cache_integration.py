@@ -137,7 +137,7 @@ class TestCacheTranslationWorkflow:
         texts = [f"text_{i}" for i in range(10)]
         translations = [f"翻譯_{i}" for i in range(10)]
 
-        for text, translation in zip(texts, translations):
+        for text, translation in zip(texts, translations, strict=True):
             cache_manager.store_translation(text, translation, [], model)
 
         # 批量讀取

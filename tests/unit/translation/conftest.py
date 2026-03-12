@@ -1,7 +1,8 @@
 """Translation module test fixtures."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 @pytest.fixture

@@ -4,7 +4,7 @@ import re
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
 import aiohttp
 import tiktoken
@@ -103,7 +103,7 @@ class ApiMetrics:
             return 0
         return (self.cache_hits / self.total_requests) * 100
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """生成效能指標摘要
 
         回傳:
@@ -195,7 +195,7 @@ class AdaptiveConcurrencyController:
         """
         return self.current
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """獲取統計資訊（執行緒安全）
 
         回傳:
@@ -212,7 +212,7 @@ class AdaptiveConcurrencyController:
 
 
 class TranslationClient:
-    OLLAMA_MODEL_PROFILES: ClassVar[Dict[str, Dict[str, Any]]] = {
+    OLLAMA_MODEL_PROFILES: ClassVar[dict[str, dict[str, Any]]] = {
         "default": {
             "keep_alive": "10m",
             "batch_concurrency_limit": None,
@@ -249,9 +249,9 @@ class TranslationClient:
         self,
         llm_type: str,
         base_url: str = "http://localhost:11434",
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         cache_db_path: str = "data/translation_cache.db",
-        netflix_style_config: Optional[Dict[str, Any]] = None,
+        netflix_style_config: dict[str, Any] | None = None,
     ):
         """
         初始化翻譯客戶端
@@ -334,17 +334,17 @@ class TranslationClient:
                 logger.error("未安裝 OpenAI 客戶端函式庫，OpenAI 模式不可用")
                 raise ImportError("請安裝 OpenAI Python 套件: pip install openai")
 
-            self.openai_client: Optional[AsyncOpenAI] = AsyncOpenAI(api_key=api_key, timeout=self.conn_timeout.total)
+            self.openai_client: AsyncOpenAI | None = AsyncOpenAI(api_key=api_key, timeout=self.conn_timeout.total)
 
             # 為各模型載入適當的 tokenizer
-            self.tokenizers: Dict[str, Any] = {}
+            self.tokenizers: dict[str, Any] = {}
             self._load_tokenizers()
 
             # 速率限制追蹤
-            self.request_timestamps: List[float] = []  # 用於追蹤 API 請求時間
+            self.request_timestamps: list[float] = []  # 用於追蹤 API 請求時間
             self.max_requests_per_minute = 3500  # OpenAI API 預設限制
             self.max_tokens_per_minute = 180000  # OpenAI API 預設限制
-            self.token_usage: List[Tuple[float, int]] = []  # 用於追蹤 token 使用量
+            self.token_usage: list[tuple[float, int]] = []  # 用於追蹤 token 使用量
 
             # 價格計算
             self.pricing = {
@@ -410,9 +410,9 @@ class TranslationClient:
         tokens = [token for token in re.split(r"[^a-z0-9]+", normalized) if token]
         return "ud" in tokens
 
-    def _dedupe_preserve_order(self, values: List[str]) -> List[str]:
+    def _dedupe_preserve_order(self, values: list[str]) -> list[str]:
         """去除重複項目並保留原始順序"""
-        deduped: List[str] = []
+        deduped: list[str] = []
         seen = set()
 
         for value in values:
@@ -424,7 +424,7 @@ class TranslationClient:
 
         return deduped
 
-    def _get_qwen35_ud_fallback_candidates(self, model_name: str) -> List[str]:
+    def _get_qwen35_ud_fallback_candidates(self, model_name: str) -> list[str]:
         """取得 qwen3.5-ud 的優先回退候選模型"""
         if not self._is_qwen35_ud_model(model_name):
             return []
@@ -441,7 +441,7 @@ class TranslationClient:
         candidates = [candidate for candidate in candidates if candidate != model_name]
         return self._dedupe_preserve_order(candidates)
 
-    def _get_ollama_model_profile(self, model_name: str) -> Dict[str, Any]:
+    def _get_ollama_model_profile(self, model_name: str) -> dict[str, Any]:
         """取得 Ollama 模型的請求設定"""
         family = self._detect_ollama_model_family(model_name)
         profile_key = "qwen3.5-ud" if self._is_qwen35_ud_model(model_name) else family
@@ -459,7 +459,7 @@ class TranslationClient:
             },
         }
 
-    def _build_ollama_payload(self, messages: List[Dict[str, str]], model_name: str) -> Dict[str, Any]:
+    def _build_ollama_payload(self, messages: list[dict[str, str]], model_name: str) -> dict[str, Any]:
         """建立 Ollama chat API 請求內容"""
         profile = self._get_ollama_model_profile(model_name)
 
@@ -498,7 +498,7 @@ class TranslationClient:
 
         return max(1, batch_size)
 
-    def _get_fallback_models(self, model_name: str) -> List[str]:
+    def _get_fallback_models(self, model_name: str) -> list[str]:
         """取得當前模型可用的回退模型清單"""
         provider_fallbacks = self.fallback_models.get(self.llm_type, {})
         fallback_options = provider_fallbacks.get(model_name, [])
@@ -580,7 +580,7 @@ class TranslationClient:
             finally:
                 self.google_client = None
 
-    async def _count_tokens(self, messages: List[Dict[str, str]], model: str) -> int:
+    async def _count_tokens(self, messages: list[dict[str, str]], model: str) -> int:
         """使用正確的 tokenizer 計算 token 數量"""
         if not self.tokenizers:
             # 備用估算方法
@@ -622,7 +622,7 @@ class TranslationClient:
             logger.warning(f"使用 tokenizer 計算 tokens 時發生錯誤: {e!s}，使用估算方法")
             return await self._estimate_token_count(messages)
 
-    async def _estimate_token_count(self, messages: List[Dict[str, str]]) -> int:
+    async def _estimate_token_count(self, messages: list[dict[str, str]]) -> int:
         """估算請求中的 token 數量 (粗略估計)"""
         try:
             # 基本計數：每則訊息的角色標記和訊息格式標記
@@ -715,7 +715,7 @@ class TranslationClient:
             logger.warning(f"接近 OpenAI 限制 ({delay_reason})，等待 {wait_time:.2f} 秒")
             await asyncio.sleep(wait_time)
 
-    def _classify_error(self, error: Exception) -> Tuple[ApiErrorType, Exception]:
+    def _classify_error(self, error: Exception) -> tuple[ApiErrorType, Exception]:
         """分類 API 錯誤類型，用於自定義重試策略"""
         error_str = str(error).lower()
 
@@ -741,7 +741,7 @@ class TranslationClient:
 
         return ApiErrorType.UNKNOWN, error
 
-    def _get_retry_strategy(self, error_type: ApiErrorType) -> Dict[str, Any]:
+    def _get_retry_strategy(self, error_type: ApiErrorType) -> dict[str, Any]:
         """根據錯誤類型獲取重試策略"""
         # 基本策略
         base_strategy = {
@@ -792,7 +792,7 @@ class TranslationClient:
             return base_strategy
 
     async def translate_with_retry(
-        self, text: str, context_texts: List[str], model_name: str, max_tries: int = 3, use_fallback: bool = True
+        self, text: str, context_texts: list[str], model_name: str, max_tries: int = 3, use_fallback: bool = True
     ) -> str:
         """使用自定義重試和回退策略翻譯文字"""
         original_model = model_name
@@ -849,7 +849,7 @@ class TranslationClient:
         logger.error(f"翻譯失敗，所有嘗試和回退都失敗: {error_summary}")
         return f"[翻譯錯誤: {error_summary}]"
 
-    async def translate_text(self, text: str, context_texts: List[str], model_name: str) -> str:
+    async def translate_text(self, text: str, context_texts: list[str], model_name: str) -> str:
         """翻譯文字，根據 LLM 類型選擇不同的處理方式"""
         if not text.strip():
             return ""
@@ -965,7 +965,7 @@ class TranslationClient:
         # 原文是多行，保持原樣
         return translated_text
 
-    async def _translate_with_openai(self, messages: List[Dict[str, str]], model_name: str) -> str:
+    async def _translate_with_openai(self, messages: list[dict[str, str]], model_name: str) -> str:
         """使用 OpenAI API 翻譯"""
         # 估算 token 數量
         estimated_tokens = await self._count_tokens(messages, model_name)
@@ -1023,7 +1023,7 @@ class TranslationClient:
             logger.error(f"OpenAI API 請求失敗: {e!s}")
             raise
 
-    async def _translate_with_ollama(self, messages: List[Dict[str, str]], model_name: str) -> str:
+    async def _translate_with_ollama(self, messages: list[dict[str, str]], model_name: str) -> str:
         """使用 Ollama API 翻譯"""
         if not self.session:
             raise TranslationError("Ollama 客戶端未初始化，請使用非同步上下文管理器")
@@ -1070,7 +1070,7 @@ class TranslationClient:
             logger.error(f"Ollama API 請求失敗: {e!s}")
             raise
 
-    async def _translate_with_google(self, messages: List[Dict[str, str]], model_name: str) -> str:
+    async def _translate_with_google(self, messages: list[dict[str, str]], model_name: str) -> str:
         """使用 Google Gemini API 翻譯"""
         if not self.google_client:
             raise TranslationError("Google Gemini 客戶端未初始化")
@@ -1120,8 +1120,8 @@ class TranslationClient:
             raise
 
     async def translate_batch(
-        self, texts: List[Tuple[str, List[str]]], model_name: str, concurrent_limit: int = 5
-    ) -> List[str]:
+        self, texts: list[tuple[str, list[str]]], model_name: str, concurrent_limit: int = 5
+    ) -> list[str]:
         """批量翻譯多個字幕，帶有並發控制"""
         if not texts:
             return []
@@ -1296,7 +1296,7 @@ class TranslationClient:
             logger.error(f"API 可用性檢查失敗: {e!s}")
             return False
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """取得 API 使用指標"""
         return self.metrics.get_summary()
 

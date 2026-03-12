@@ -8,7 +8,7 @@ Netflix 字幕風格後處理器
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +19,9 @@ class ProcessingWarning:
 
     code: str
     message: str
-    line_number: Optional[int] = None
-    original_text: Optional[str] = None
-    fixed_text: Optional[str] = None
+    line_number: int | None = None
+    original_text: str | None = None
+    fixed_text: str | None = None
 
 
 @dataclass
@@ -29,7 +29,7 @@ class ProcessingResult:
     """處理結果"""
 
     text: str
-    warnings: List[ProcessingWarning] = field(default_factory=list)
+    warnings: list[ProcessingWarning] = field(default_factory=list)
     auto_fixed: int = 0
 
     def add_warning(self, code: str, message: str, **kwargs: Any) -> None:
@@ -52,7 +52,7 @@ class NetflixStylePostProcessor:
     """
 
     # 標點符號映射表
-    PUNCTUATION_MAP: ClassVar[Dict[str, str]] = {
+    PUNCTUATION_MAP: ClassVar[dict[str, str]] = {
         ",": "，",
         ";": "；",
         ":": "：",
@@ -65,7 +65,7 @@ class NetflixStylePostProcessor:
     }
 
     # 引號映射表
-    QUOTE_MAP: ClassVar[Dict[str, Tuple[str, str]]] = {
+    QUOTE_MAP: ClassVar[dict[str, tuple[str, str]]] = {
         '"': ("「", "」"),
         "'": ("「", "」"),
         """: ('「', '」'),
@@ -310,7 +310,7 @@ class NetflixStylePostProcessor:
 
         return text
 
-    def _smart_split_line(self, line: str, max_chars: int) -> List[str]:
+    def _smart_split_line(self, line: str, max_chars: int) -> list[str]:
         """智慧分割長行
 
         優先在以下位置斷行:

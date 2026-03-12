@@ -553,9 +553,8 @@ class TestNetworkTools:
     @patch("socket.create_connection")
     def test_check_internet_connection_failure(self, mock_socket):
         """測試網路連接失敗"""
-        import socket
 
-        mock_socket.side_effect = socket.timeout()
+        mock_socket.side_effect = TimeoutError()
         result = check_internet_connection()
         assert result is False
 

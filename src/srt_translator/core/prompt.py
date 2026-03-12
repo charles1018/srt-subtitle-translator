@@ -5,7 +5,7 @@ import os
 import re
 import threading
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # 從配置管理器導入
 from srt_translator.core.config import ConfigManager, get_config
@@ -36,7 +36,7 @@ class PromptManager:
     _lock = threading.Lock()
 
     @classmethod
-    def get_instance(cls, config_file: Optional[str] = None) -> "PromptManager":
+    def get_instance(cls, config_file: str | None = None) -> "PromptManager":
         """獲取提示詞管理器的單例實例
 
         參數:
@@ -102,10 +102,10 @@ class PromptManager:
         self.current_language_pair = self.config_manager.get_value("current_language_pair", "日文→繁體中文")
 
         # 載入版本歷史
-        self.version_history: Dict[str, Any] = self.config_manager.get_value("version_history", default={}) or {}
+        self.version_history: dict[str, Any] = self.config_manager.get_value("version_history", default={}) or {}
 
         # 載入自訂提示詞
-        self.custom_prompts: Dict[str, Any] = self.config_manager.get_value("custom_prompts", default={}) or {}
+        self.custom_prompts: dict[str, Any] = self.config_manager.get_value("custom_prompts", default={}) or {}
         self._load_custom_prompts()
 
         # 設置配置變更監聽器
@@ -113,7 +113,7 @@ class PromptManager:
 
         logger.info("PromptManager 初始化完成")
 
-    def _get_default_prompts(self) -> Dict[str, Dict[str, str]]:
+    def _get_default_prompts(self) -> dict[str, dict[str, str]]:
         """獲取預設提示詞，從配置檔案或內置預設值"""
         # 嘗試從配置獲取預設提示詞
         default_config = ConfigManager.get_instance("default_prompt")
@@ -567,7 +567,7 @@ Output the translated text directly. No preamble, no explanations.
         # 儲存配置
         self.config_manager.save_config()
 
-    def _config_changed(self, config_type: str, config: Dict[str, Any]) -> None:
+    def _config_changed(self, config_type: str, config: dict[str, Any]) -> None:
         """配置變更時的回調函數
 
         參數:
@@ -637,18 +637,18 @@ Each input line maps to exactly one output line — no exceptions.
 - Count your output lines carefully before submitting
 """
 
-    def _normalize_model_name(self, model_name: Optional[str]) -> str:
+    def _normalize_model_name(self, model_name: str | None) -> str:
         """標準化模型名稱，便於做模型特化判斷"""
         if not model_name:
             return ""
         return model_name.strip().lower().split("@", maxsplit=1)[0]
 
-    def _is_qwen35_family_model(self, model_name: Optional[str]) -> bool:
+    def _is_qwen35_family_model(self, model_name: str | None) -> bool:
         """判斷是否為 Qwen3.5 家族模型"""
         normalized = self._normalize_model_name(model_name)
         return bool(re.search(r"qwen(?:[-_/\s]?3\.5|35)", normalized))
 
-    def _is_qwen35_ud_model(self, model_name: Optional[str]) -> bool:
+    def _is_qwen35_ud_model(self, model_name: str | None) -> bool:
         """判斷是否為 qwen3.5-ud 類型模型"""
         normalized = self._normalize_model_name(model_name)
         if not normalized or not self._is_qwen35_family_model(normalized):
@@ -658,7 +658,7 @@ Each input line maps to exactly one output line — no exceptions.
         return "ud" in tokens
 
     def _should_use_qwen35_ud_adult_prompt(
-        self, llm_type: str, content_type: str, model_name: Optional[str]
+        self, llm_type: str, content_type: str, model_name: str | None
     ) -> bool:
         """判斷是否應使用 qwen3.5-ud 的成人字幕特化 prompt"""
         return llm_type == "ollama" and content_type == "adult" and self._is_qwen35_ud_model(model_name)
@@ -681,8 +681,8 @@ Rules:
     def _get_message_strategy_signature(
         self,
         llm_type: str,
-        content_type: Optional[str] = None,
-        model_name: Optional[str] = None,
+        content_type: str | None = None,
+        model_name: str | None = None,
     ) -> str:
         """取得訊息結構策略版本，用於快取區分"""
         resolved_content_type = content_type or self.current_content_type
@@ -720,8 +720,8 @@ Rules:
         return any(marker in compact_text for marker in markers)
 
     def _compact_qwen35_ud_context(
-        self, text: str, context_before: List[str], context_after: List[str]
-    ) -> tuple[List[str], List[str]]:
+        self, text: str, context_before: list[str], context_after: list[str]
+    ) -> tuple[list[str], list[str]]:
         """為 qwen3.5-ud 壓縮成人字幕上下文，降低短句漂移與卡住風險"""
         trimmed_before = context_before[-1:]
         trimmed_after = context_after[:1]
@@ -738,7 +738,7 @@ Rules:
 
         return trimmed_before, trimmed_after
 
-    def _build_qwen35_ud_user_message(self, text: str, context_before: List[str], context_after: List[str]) -> str:
+    def _build_qwen35_ud_user_message(self, text: str, context_before: list[str], context_after: list[str]) -> str:
         """建立 qwen3.5-ud 專用的精簡 user message"""
         parts = ["CURRENT:", text]
 
@@ -755,9 +755,9 @@ Rules:
     def get_prompt(
         self,
         llm_type: str = "ollama",
-        content_type: Optional[str] = None,
-        style: Optional[str] = None,
-        model_name: Optional[str] = None,
+        content_type: str | None = None,
+        style: str | None = None,
+        model_name: str | None = None,
     ) -> str:
         """根據 LLM 類型、內容類型和風格取得適合的 Prompt
 
@@ -799,9 +799,9 @@ Rules:
     def get_prompt_version(
         self,
         llm_type: str = "ollama",
-        content_type: Optional[str] = None,
-        style: Optional[str] = None,
-        model_name: Optional[str] = None,
+        content_type: str | None = None,
+        style: str | None = None,
+        model_name: str | None = None,
     ) -> str:
         """取得提示詞版本雜湊（用於快取 key）
 
@@ -823,8 +823,8 @@ Rules:
         return hashlib.md5(fingerprint.encode()).hexdigest()[:8]
 
     def get_optimized_message(
-        self, text: str, context_texts: List[str], llm_type: str, model_name: str
-    ) -> List[Dict[str, str]]:
+        self, text: str, context_texts: list[str], llm_type: str, model_name: str
+    ) -> list[dict[str, str]]:
         """根據不同LLM和模型生成優化的提示訊息格式
 
         參數:
@@ -991,7 +991,7 @@ Rules:
 
         return prompt
 
-    def set_prompt(self, new_prompt: str, llm_type: str = "ollama", content_type: Optional[str] = None) -> bool:
+    def set_prompt(self, new_prompt: str, llm_type: str = "ollama", content_type: str | None = None) -> bool:
         """設置特定 LLM 和內容類型的提示詞
 
         參數:
@@ -1078,7 +1078,7 @@ Rules:
             logger.error(f"儲存模板檔案時發生錯誤: {format_exception(e)}")
             return False
 
-    def get_version_history(self, content_type: Optional[str] = None, llm_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_version_history(self, content_type: str | None = None, llm_type: str | None = None) -> list[dict[str, Any]]:
         """取得提示詞的版本歷史
 
         參數:
@@ -1136,7 +1136,7 @@ Rules:
         logger.warning("無法恢復版本，找不到對應的版本記錄")
         return False
 
-    def reset_to_default(self, llm_type: Optional[str] = None, content_type: Optional[str] = None) -> bool:
+    def reset_to_default(self, llm_type: str | None = None, content_type: str | None = None) -> bool:
         """重置為預設提示詞
 
         參數:
@@ -1214,7 +1214,7 @@ Rules:
             return True
         return False
 
-    def get_available_content_types(self) -> List[str]:
+    def get_available_content_types(self) -> list[str]:
         """取得可用的內容類型
 
         回傳:
@@ -1222,7 +1222,7 @@ Rules:
         """
         return ["general", "adult", "anime", "movie", "english_drama"]
 
-    def get_available_styles(self) -> Dict[str, str]:
+    def get_available_styles(self) -> dict[str, str]:
         """取得可用的翻譯風格
 
         回傳:
@@ -1230,7 +1230,7 @@ Rules:
         """
         return self.translation_styles
 
-    def get_available_language_pairs(self) -> List[str]:
+    def get_available_language_pairs(self) -> list[str]:
         """取得可用的語言對
 
         回傳:
@@ -1238,7 +1238,7 @@ Rules:
         """
         return list(self.language_pairs.keys())
 
-    def export_prompt(self, content_type: Optional[str] = None, llm_type: Optional[str] = None, file_path: Optional[str] = None) -> Optional[str]:
+    def export_prompt(self, content_type: str | None = None, llm_type: str | None = None, file_path: str | None = None) -> str | None:
         """匯出提示詞至檔案
 
                 參數:
@@ -1328,7 +1328,7 @@ Rules:
             logger.error(f"匯入提示詞時發生錯誤: {format_exception(e)}")
             return False
 
-    def analyze_prompt(self, prompt: str) -> Dict[str, Any]:
+    def analyze_prompt(self, prompt: str) -> dict[str, Any]:
         """分析提示詞文本的品質得分
 
         參數:

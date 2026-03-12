@@ -2,9 +2,10 @@ import copy
 import json
 import os
 import re
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar
 
 from srt_translator.utils.errors import ConfigError
 from srt_translator.utils.logging_config import setup_logger
@@ -21,7 +22,7 @@ class ConfigManager:
     ALLOWED_CONFIG_TYPES = frozenset({"app", "user", "model", "prompt", "file", "cache", "theme", "default_prompt"})
 
     # 類變量，儲存已建立的配置管理器實例（單例模式）
-    _instances: ClassVar[Dict[str, "ConfigManager"]] = {}
+    _instances: ClassVar[dict[str, "ConfigManager"]] = {}
 
     @classmethod
     def get_instance(cls, config_type: str = "app") -> "ConfigManager":
@@ -72,15 +73,15 @@ class ConfigManager:
         self.default_configs = self._get_default_configs()
 
         # 先初始化監聽器列表，避免在 load_config 呼叫儲存時未定義 listeners
-        self.listeners: List[Callable[..., Any]] = []
+        self.listeners: list[Callable[..., Any]] = []
 
         # 載入配置
-        self.configs: Dict[str, Dict[str, Any]] = {}
+        self.configs: dict[str, dict[str, Any]] = {}
         self.load_config()
 
         logger.info(f"配置管理器初始化完成: {config_type}")
 
-    def _get_default_configs(self) -> Dict[str, Dict[str, Any]]:
+    def _get_default_configs(self) -> dict[str, dict[str, Any]]:
         """獲取預設配置值
 
         回傳:
@@ -241,7 +242,7 @@ class ConfigManager:
             # 使用預設配置
             self.configs[config_type] = default_config
 
-    def _merge_configs(self, default_config: Dict[str, Any], loaded_config: Dict[str, Any]) -> Dict[str, Any]:
+    def _merge_configs(self, default_config: dict[str, Any], loaded_config: dict[str, Any]) -> dict[str, Any]:
         """合併預設配置和載入的配置，確保所有必要的配置項都存在
 
         參數:
@@ -254,7 +255,7 @@ class ConfigManager:
         result = copy.deepcopy(default_config)
 
         # 遞迴合併配置
-        def merge_dict(base: Dict[str, Any], override: Dict[str, Any]) -> None:
+        def merge_dict(base: dict[str, Any], override: dict[str, Any]) -> None:
             for key, value in override.items():
                 if key in base and isinstance(base[key], dict) and isinstance(value, dict):
                     # 遞迴合併嵌套字典
@@ -326,7 +327,7 @@ class ConfigManager:
             logger.error(f"儲存配置失敗 {config_path}: {e!s}")
             return False
 
-    def get_config(self, config_type: Optional[str] = None) -> Dict[str, Any]:
+    def get_config(self, config_type: str | None = None) -> dict[str, Any]:
         """獲取完整配置
 
         參數:
@@ -346,7 +347,7 @@ class ConfigManager:
 
         return copy.deepcopy(self.configs.get(config_type, {}))
 
-    def get_value(self, key: str, config_type: Optional[str] = None, default: Any = None) -> Any:
+    def get_value(self, key: str, config_type: str | None = None, default: Any = None) -> Any:
         """獲取特定配置值
 
         參數:
@@ -376,7 +377,7 @@ class ConfigManager:
         except (KeyError, TypeError):
             return default
 
-    def set_value(self, key: str, value: Any, config_type: Optional[str] = None, auto_save: bool = True) -> bool:
+    def set_value(self, key: str, value: Any, config_type: str | None = None, auto_save: bool = True) -> bool:
         """設置特定配置值
 
         參數:
@@ -436,7 +437,7 @@ class ConfigManager:
         if listener_func in self.listeners:
             self.listeners.remove(listener_func)
 
-    def reset_to_default(self, config_type: Optional[str] = None, keys: Optional[List[str]] = None) -> bool:
+    def reset_to_default(self, config_type: str | None = None, keys: list[str] | None = None) -> bool:
         """重置配置為預設值
 
         參數:
@@ -464,7 +465,7 @@ class ConfigManager:
         # 儲存變更
         return self._save_specific_config(config_type)
 
-    def export_config(self, export_path: str, config_type: Optional[str] = None) -> bool:
+    def export_config(self, export_path: str, config_type: str | None = None) -> bool:
         """匯出配置到指定路徑
 
         參數:
@@ -496,7 +497,7 @@ class ConfigManager:
             logger.error(f"匯出配置失敗: {e!s}")
             return False
 
-    def import_config(self, import_path: str, config_type: Optional[str] = None, merge: bool = True) -> bool:
+    def import_config(self, import_path: str, config_type: str | None = None, merge: bool = True) -> bool:
         """從檔案匯入配置
 
         參數:
@@ -541,7 +542,7 @@ class ConfigManager:
             logger.error(f"匯入配置失敗: {e!s}")
             return False
 
-    def validate_config(self, config_type: Optional[str] = None) -> Dict[str, List[str]]:
+    def validate_config(self, config_type: str | None = None) -> dict[str, list[str]]:
         """驗證配置是否符合預期格式和規則
 
         參數:
@@ -586,7 +587,7 @@ class ConfigManager:
 
         return errors
 
-    def _validate_app_config(self, config: Dict[str, Any]) -> Dict[str, List[str]]:
+    def _validate_app_config(self, config: dict[str, Any]) -> dict[str, list[str]]:
         """驗證應用程式配置"""
         errors = {}
 
@@ -608,7 +609,7 @@ class ConfigManager:
 
         return errors
 
-    def _validate_user_config(self, config: Dict[str, Any]) -> Dict[str, List[str]]:
+    def _validate_user_config(self, config: dict[str, Any]) -> dict[str, list[str]]:
         """驗證使用者配置"""
         errors = {}
 
@@ -641,7 +642,7 @@ class ConfigManager:
 
         return errors
 
-    def _validate_model_config(self, config: Dict[str, Any]) -> Dict[str, List[str]]:
+    def _validate_model_config(self, config: dict[str, Any]) -> dict[str, list[str]]:
         """驗證模型配置"""
         errors = {}
 
@@ -674,7 +675,7 @@ class ConfigManager:
 
         return errors
 
-    def _validate_prompt_config(self, config: Dict[str, Any]) -> Dict[str, List[str]]:
+    def _validate_prompt_config(self, config: dict[str, Any]) -> dict[str, list[str]]:
         """驗證提示詞配置"""
         errors = {}
 
@@ -714,7 +715,7 @@ class ConfigManager:
 
         return errors
 
-    def _validate_file_config(self, config: Dict[str, Any]) -> Dict[str, List[str]]:
+    def _validate_file_config(self, config: dict[str, Any]) -> dict[str, list[str]]:
         """驗證檔案處理配置"""
         errors = {}
 
@@ -758,7 +759,7 @@ class ConfigManager:
 
         return errors
 
-    def _validate_cache_config(self, config: Dict[str, Any]) -> Dict[str, List[str]]:
+    def _validate_cache_config(self, config: dict[str, Any]) -> dict[str, list[str]]:
         """驗證快取配置"""
         errors = {}
 
@@ -779,7 +780,7 @@ class ConfigManager:
 
         return errors
 
-    def _validate_theme_config(self, config: Dict[str, Any]) -> Dict[str, List[str]]:
+    def _validate_theme_config(self, config: dict[str, Any]) -> dict[str, list[str]]:
         """驗證主題配置"""
         errors = {}
 
@@ -799,7 +800,7 @@ class ConfigManager:
 
         return errors
 
-    def create_backup(self, config_type: Optional[str] = None) -> Optional[str]:
+    def create_backup(self, config_type: str | None = None) -> str | None:
         """建立配置備份
 
         參數:
@@ -829,7 +830,7 @@ class ConfigManager:
             logger.error(f"建立配置備份失敗: {e!s}")
             return None
 
-    def restore_backup(self, backup_path: str, config_type: Optional[str] = None) -> bool:
+    def restore_backup(self, backup_path: str, config_type: str | None = None) -> bool:
         """從備份還原配置
 
         參數:
@@ -857,7 +858,7 @@ class ConfigManager:
             logger.error(f"還原配置備份失敗: {e!s}")
             return False
 
-    def list_backups(self, config_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_backups(self, config_type: str | None = None) -> list[dict[str, Any]]:
         """列出可用的配置備份
 
         參數:
@@ -903,7 +904,7 @@ class ConfigManager:
             logger.error(f"列出配置備份失敗: {e!s}")
             return []
 
-    def is_config_valid(self, config_type: Optional[str] = None) -> bool:
+    def is_config_valid(self, config_type: str | None = None) -> bool:
         """檢查配置是否有效
 
         參數:
@@ -915,7 +916,7 @@ class ConfigManager:
         errors = self.validate_config(config_type)
         return len(errors) == 0
 
-    def get_config_path(self, config_type: Optional[str] = None) -> str:
+    def get_config_path(self, config_type: str | None = None) -> str:
         """獲取配置檔案路徑
 
         參數:
@@ -929,7 +930,7 @@ class ConfigManager:
 
 
 # 全域函數：快速存取配置
-def get_config(config_type: str = "app", key: Optional[str] = None, default: Any = None) -> Any:
+def get_config(config_type: str = "app", key: str | None = None, default: Any = None) -> Any:
     """全域函數：快速存取配置
 
     參數:

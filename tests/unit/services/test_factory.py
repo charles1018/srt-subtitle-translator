@@ -1,7 +1,7 @@
 """Tests for services/factory.py module."""
 
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -12,10 +12,8 @@ from srt_translator.services.factory import (
     ProgressService,
     ServiceFactory,
     TranslationService,
-    TranslationTask,
     TranslationTaskManager,
 )
-
 
 # ============================================================
 # ServiceFactory Tests
@@ -233,8 +231,8 @@ class TestProgressService:
         assert "1" in elapsed_str
         assert "分" in elapsed_str or ":" in elapsed_str
 
-    def test_increment_progress(self):
-        """Test incrementing progress."""
+    def test_increment_progress_from_zero(self):
+        """Test incrementing progress from zero."""
         service = ProgressService()
         service.set_total(10)
         service.increment_progress()

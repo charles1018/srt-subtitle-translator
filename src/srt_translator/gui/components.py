@@ -5,7 +5,6 @@ import tkinter as tk
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from tkinter import filedialog, messagebox, scrolledtext, ttk
-from typing import List
 
 # 從新模組導入
 from srt_translator.core.config import ConfigManager, get_config, set_config
@@ -814,7 +813,7 @@ class GUIComponents:
             logger.error(f"處理拖放檔案時發生錯誤: {format_exception(e)}")
             messagebox.showerror("錯誤", f"處理拖放檔案時發生錯誤: {e!s}")
 
-    def get_selected_files(self) -> List[str]:
+    def get_selected_files(self) -> list[str]:
         """取得所有選中的檔案路徑"""
         return self.selected_files.copy()
 
@@ -929,7 +928,7 @@ class GUIComponents:
         # 保存設置到配置
         set_config("user", "netflix_style_enabled", enabled)
 
-    def set_model_list(self, models: List[str], default_model: str = "") -> None:
+    def set_model_list(self, models: list[str], default_model: str = "") -> None:
         """設置模型列表"""
         if isinstance(models, list) and models:
             self.model_combo["values"] = models

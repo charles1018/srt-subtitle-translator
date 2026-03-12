@@ -12,9 +12,10 @@ import re
 import threading
 import time
 import traceback
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 # 導入錯誤類別
 from srt_translator.utils.errors import AppError, TranslationError
@@ -266,7 +267,7 @@ def truncate_text(text: str, max_length: int = 100, with_ellipsis: bool = True) 
         return text[:max_length]
 
 
-def split_sentences(text: str) -> List[str]:
+def split_sentences(text: str) -> list[str]:
     """將文本分割為句子
 
     參數:
@@ -343,7 +344,7 @@ def parse_srt_time(time_str: str) -> int:
     return hours * 3600000 + minutes * 60000 + seconds * 1000 + millis
 
 
-def generate_unique_filename(base_path: str, extension: Optional[str] = None) -> str:
+def generate_unique_filename(base_path: str, extension: str | None = None) -> str:
     """生成不會衝突的唯一文件名
 
     參數:
@@ -442,7 +443,7 @@ def format_elapsed_time(seconds: float) -> str:
     return f"{hours} 小時 {minutes} 分 {seconds} 秒"
 
 
-def format_datetime(dt: Optional[datetime] = None, format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
+def format_datetime(dt: datetime | None = None, format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
     """格式化日期時間
 
     參數:
@@ -483,7 +484,7 @@ def format_file_size(size_bytes: int) -> str:
 class ProgressTracker:
     """進度追踪器，支持回調和估計剩餘時間"""
 
-    def __init__(self, total: int = 0, description: str = "", callback: Optional[Callable] = None):
+    def __init__(self, total: int = 0, description: str = "", callback: Callable | None = None):
         """初始化進度追踪器
 
         參數:
@@ -496,12 +497,12 @@ class ProgressTracker:
         self.description = description
         self.callback = callback
 
-        self.start_time: Optional[float] = None
-        self.last_update_time: Optional[float] = None
-        self.estimated_end_time: Optional[float] = None
+        self.start_time: float | None = None
+        self.last_update_time: float | None = None
+        self.estimated_end_time: float | None = None
 
         # 用於計算平均速率
-        self.progress_history: List[Tuple[float, int]] = []
+        self.progress_history: list[tuple[float, int]] = []
         self.max_history = 20
 
     def start(self) -> None:
@@ -514,7 +515,7 @@ class ProgressTracker:
 
         logger.debug(f"進度追踪開始: {self.description}, 總項目: {self.total}")
 
-    def update(self, current: Optional[int] = None, increment: Optional[int] = None, description: Optional[str] = None) -> None:
+    def update(self, current: int | None = None, increment: int | None = None, description: str | None = None) -> None:
         """更新進度
 
         參數:
@@ -544,7 +545,7 @@ class ProgressTracker:
         self.last_update_time = now
         self._update()
 
-    def increment(self, amount: int = 1, description: Optional[str] = None) -> None:
+    def increment(self, amount: int = 1, description: str | None = None) -> None:
         """增加進度
 
         參數:
@@ -553,7 +554,7 @@ class ProgressTracker:
         """
         self.update(increment=amount, description=description)
 
-    def complete(self, description: Optional[str] = None) -> None:
+    def complete(self, description: str | None = None) -> None:
         """完成進度追踪
 
         參數:
@@ -685,7 +686,7 @@ def check_internet_connection() -> bool:
         # 嘗試連接到Google的DNS伺服器
         socket.create_connection(("8.8.8.8", 53), timeout=3)
         return True
-    except (OSError, socket.timeout):
+    except (TimeoutError, OSError):
         return False
 
 
@@ -711,7 +712,7 @@ def check_api_connection(api_url: str, timeout: int = 5) -> bool:
 # ================ 系統信息工具 ================
 
 
-def get_system_info() -> Dict[str, Any]:
+def get_system_info() -> dict[str, Any]:
     """獲取系統信息
 
     回傳:
@@ -748,7 +749,7 @@ def get_system_info() -> Dict[str, Any]:
     return info
 
 
-def check_python_packages() -> Dict[str, str]:
+def check_python_packages() -> dict[str, str]:
     """檢查關鍵Python包的版本
 
     回傳:
@@ -797,7 +798,7 @@ class LocaleManager:
         self.locale_dir = locale_dir
         self.default_locale = default_locale
         self.current_locale = default_locale
-        self.translations: Dict[str, Dict[str, str]] = {}
+        self.translations: dict[str, dict[str, str]] = {}
 
         # 確保目錄存在
         os.makedirs(self.locale_dir, exist_ok=True)
@@ -891,7 +892,7 @@ class LocaleManager:
 
         return text
 
-    def save_translations(self, locale_code: Optional[str] = None) -> bool:
+    def save_translations(self, locale_code: str | None = None) -> bool:
         """保存翻譯到文件
 
         參數:
@@ -917,7 +918,7 @@ class LocaleManager:
             logger.error(f"保存語言文件 {locale_file} 失敗: {e!s}")
             return False
 
-    def add_translation(self, key: str, text: str, locale_code: Optional[str] = None) -> bool:
+    def add_translation(self, key: str, text: str, locale_code: str | None = None) -> bool:
         """添加或更新翻譯
 
         參數:
@@ -941,7 +942,7 @@ class LocaleManager:
         # 保存到文件
         return self.save_translations(locale_code)
 
-    def get_available_locales(self) -> List[str]:
+    def get_available_locales(self) -> list[str]:
         """獲取所有可用的語言
 
         回傳:
@@ -973,7 +974,7 @@ class MemoryCache:
             max_size: 最大項目數
             ttl: 存活時間（秒）
         """
-        self.cache: Dict[str, Dict[str, Any]] = {}
+        self.cache: dict[str, dict[str, Any]] = {}
         self.max_size = max_size
         self.ttl = ttl
         self.lock = threading.RLock()
@@ -1002,7 +1003,7 @@ class MemoryCache:
             item["last_access"] = time.time()
             return item["value"]
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
+    def set(self, key: str, value: Any, ttl: int | None = None) -> bool:
         """設置快取項目
 
         參數:
@@ -1068,7 +1069,7 @@ class MemoryCache:
                     for k, _ in oldest_items:
                         del self.cache[k]
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """獲取快取統計信息
 
         回傳:
@@ -1096,7 +1097,7 @@ class MemoryCache:
 # ================ 執行常用命令工具 ================
 
 
-def execute_command(command: List[str], timeout: int = 60, capture_output: bool = True) -> Tuple[int, str, str]:
+def execute_command(command: list[str], timeout: int = 60, capture_output: bool = True) -> tuple[int, str, str]:
     """執行系統命令
 
     參數:

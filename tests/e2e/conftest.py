@@ -6,8 +6,8 @@
 import shutil
 import sys
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Dict, Generator, List
 from unittest.mock import AsyncMock, Mock, patch
 
 import pysrt
@@ -100,7 +100,7 @@ def empty_srt_path(fixtures_dir: Path) -> Path:
 
 
 @pytest.fixture
-def batch_srt_files(fixtures_dir: Path) -> List[Path]:
+def batch_srt_files(fixtures_dir: Path) -> list[Path]:
     """提供批量測試用的多個 SRT 檔案路徑"""
     batch_dir = fixtures_dir / "batch"
     return [
@@ -134,7 +134,7 @@ def special_chars_srt_path(fixtures_dir: Path) -> Path:
 
 
 @pytest.fixture
-def mock_translation_responses() -> Dict[str, str]:
+def mock_translation_responses() -> dict[str, str]:
     """提供 Mock 翻譯回應
 
     支持多語言 -> 繁體中文翻譯
@@ -191,19 +191,19 @@ def mock_translation_responses() -> Dict[str, str]:
 
 
 @pytest.fixture
-def mock_translation_client(mock_translation_responses: Dict[str, str]):
+def mock_translation_client(mock_translation_responses: dict[str, str]):
     """提供 Mock 的翻譯客戶端
 
     這個 Mock 客戶端會返回預設的翻譯結果，而不會真正呼叫 API。
     """
     client = AsyncMock()
 
-    async def mock_translate(text: str, context: List[str], model_name: str) -> str:
+    async def mock_translate(text: str, context: list[str], model_name: str) -> str:
         """Mock 翻譯函數"""
         # 返回預定義的翻譯或原文
         return mock_translation_responses.get(text, f"[Mock翻譯] {text}")
 
-    async def mock_translate_batch(texts_with_context: List, model_name: str, concurrent_limit: int = 5) -> List[str]:
+    async def mock_translate_batch(texts_with_context: list, model_name: str, concurrent_limit: int = 5) -> list[str]:
         """Mock 批量翻譯函數"""
         results = []
         for text, _context in texts_with_context:
@@ -279,7 +279,7 @@ class SRTComparator:
             if len(subs1) != len(subs2):
                 return False
 
-            for sub1, sub2 in zip(subs1, subs2):
+            for sub1, sub2 in zip(subs1, subs2, strict=True):
                 # 比對文字內容
                 if sub1.text.strip() != sub2.text.strip():
                     return False
@@ -294,7 +294,7 @@ class SRTComparator:
             return False
 
     @staticmethod
-    def get_subtitle_texts(file_path: Path) -> List[str]:
+    def get_subtitle_texts(file_path: Path) -> list[str]:
         """取得 SRT 檔案中的所有字幕文字
 
         Args:

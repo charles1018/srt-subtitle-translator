@@ -7,9 +7,10 @@ import re
 import shutil
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 import pysrt
 
@@ -43,7 +44,7 @@ class TranslationStats:
     total_processing_time: float = 0  # 總處理時間
     batch_count: int = 0  # 批次數量
     retry_count: int = 0  # 重試次數
-    errors: List[str] = field(default_factory=list)  # 錯誤訊息列表
+    errors: list[str] = field(default_factory=list)  # 錯誤訊息列表
 
     def get_elapsed_time(self) -> float:
         """取得總耗時（秒）"""
@@ -69,7 +70,7 @@ class TranslationStats:
             return 0
         return self.total_chars / mins
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """取得統計摘要資訊"""
         return {
             "總字幕數": self.total_subtitles,
@@ -96,11 +97,11 @@ class TranslationManager:
         target_lang: str,
         model_name: str,
         parallel_requests: int,
-        progress_callback: Optional[Callable[..., Any]],
-        complete_callback: Optional[Callable[..., Any]],
+        progress_callback: Callable[..., Any] | None,
+        complete_callback: Callable[..., Any] | None,
         display_mode: str,
         llm_type: str,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
     ):
         """初始化翻譯管理器
 
@@ -137,7 +138,7 @@ class TranslationManager:
         self.progress_service = ServiceFactory.get_progress_service()
 
         # 初始化專有名詞詞典
-        self._key_terms_dict: Dict[str, str] = {}
+        self._key_terms_dict: dict[str, str] = {}
 
         # 控制狀態
         self.running = True
@@ -152,7 +153,7 @@ class TranslationManager:
 
         # 恢復狀態
         self.checkpoint_path = self._get_checkpoint_path()
-        self.translated_indices: Set[int] = set()  # 已翻譯的索引集合
+        self.translated_indices: set[int] = set()  # 已翻譯的索引集合
 
         # 批次處理設定
         self.min_batch_size = 1
@@ -445,15 +446,15 @@ class TranslationManager:
         # 使用自適應大小（如果存在）
         return min(self.adaptive_batch_size or base_size, base_size)
 
-    async def _get_context_for_subtitle(self, subs: List, index: int) -> List[str]:
+    async def _get_context_for_subtitle(self, subs: list, index: int) -> list[str]:
         """取得字幕的上下文"""
         context_start = max(0, index - self.context_window)
         context_end = min(len(subs), index + self.context_window + 1)
         return [s.text for s in subs[context_start:context_end]]
 
     async def _process_batch_structure_text(
-        self, subs: List, batch_indices: List[int]
-    ) -> Tuple[int, int, int]:
+        self, subs: list, batch_indices: list[int]
+    ) -> tuple[int, int, int]:
         """使用結構-文本分離方式處理一批字幕
 
         將多個字幕合併為單一批次字串（每行一字幕），以單一 API 呼叫完成翻譯，
@@ -470,7 +471,7 @@ class TranslationManager:
             return 0, 0, 0
 
         # 過濾已翻譯的
-        pending_indices: List[int] = []
+        pending_indices: list[int] = []
         skipped_count = 0
         for idx in batch_indices:
             if idx in self.translated_indices:
@@ -482,7 +483,7 @@ class TranslationManager:
             return 0, 0, skipped_count
 
         # 收集文本並構建批次字串
-        source_texts: List[str] = []
+        source_texts: list[str] = []
         for idx in pending_indices:
             text = subs[idx].text
             source_texts.append(text)
@@ -558,8 +559,8 @@ class TranslationManager:
         return await self._process_batch_individual_fallback(subs, pending_indices, skipped_count)
 
     async def _process_batch_individual_fallback(
-        self, subs: List, pending_indices: List[int], skipped_count: int
-    ) -> Tuple[int, int, int]:
+        self, subs: list, pending_indices: list[int], skipped_count: int
+    ) -> tuple[int, int, int]:
         """逐條翻譯退回模式（結構-文本分離模式失敗時使用）"""
         success_count = 0
         failed_count = 0
@@ -574,7 +575,7 @@ class TranslationManager:
 
         return success_count, failed_count, skipped_count
 
-    async def _process_subtitle_batch(self, subs: List, batch_indices: List[int]) -> Tuple[int, int, int]:
+    async def _process_subtitle_batch(self, subs: list, batch_indices: list[int]) -> tuple[int, int, int]:
         """處理一批字幕翻譯
 
         回傳:
@@ -679,7 +680,7 @@ class TranslationManager:
 
             return success_count, failed_count, skipped_count
 
-    async def _translate_single_subtitle(self, sub: Any, index: int, all_subs: List[Any]) -> bool:
+    async def _translate_single_subtitle(self, sub: Any, index: int, all_subs: list[Any]) -> bool:
         """翻譯單個字幕
 
         回傳:
@@ -1018,7 +1019,7 @@ class TranslationThread(threading.Thread):
         """檢查任務是否仍在執行"""
         return super().is_alive() and self._is_running
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """取得翻譯統計資訊"""
         if self.manager and hasattr(self.manager, "stats"):
             return dict(self.manager.stats.get_summary())

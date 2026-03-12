@@ -6,14 +6,14 @@
 import logging
 import os
 from logging.handlers import TimedRotatingFileHandler
-from typing import Any, Optional, Union
+from typing import Any
 
 # 全局日誌格式設定
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s"
 
 
 def setup_logger(
-    name: str, log_file: Optional[str] = None, level: int = logging.DEBUG, log_dir: str = "logs"
+    name: str, log_file: str | None = None, level: int = logging.DEBUG, log_dir: str = "logs"
 ) -> logging.Logger:
     """設定並返回日誌記錄器
 
@@ -40,7 +40,7 @@ def setup_logger(
 
     # 避免重複添加處理程序（雙重檢查）
     if not logger.handlers:
-        handler: Union[TimedRotatingFileHandler, logging.StreamHandler[Any]]
+        handler: TimedRotatingFileHandler | logging.StreamHandler[Any]
         if log_file:
             # 檔案處理程序（每日輪替）
             file_path = os.path.join(log_dir, log_file)

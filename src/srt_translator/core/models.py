@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass, field
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import aiohttp
 
@@ -80,11 +80,11 @@ class ModelInfo:
     pricing: str = "未知"  # 價格描述
     recommended_for: str = "一般翻譯"  # 推薦用途
     parallel: int = 10  # 建議並行數量
-    tags: List[str] = field(default_factory=list)  # 模型標籤
-    capabilities: Dict[str, float] = field(default_factory=dict)  # 能力評分(0-1)
+    tags: list[str] = field(default_factory=list)  # 模型標籤
+    capabilities: dict[str, float] = field(default_factory=dict)  # 能力評分(0-1)
     available: bool = True  # 是否可用
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """轉換為字典格式"""
         return {
             "id": self.id,
@@ -109,7 +109,7 @@ class ModelManager:
     _lock = threading.Lock()
 
     @classmethod
-    def get_instance(cls, config_file: Optional[str] = None) -> "ModelManager":
+    def get_instance(cls, config_file: str | None = None) -> "ModelManager":
         """獲取模型管理器的單例實例
 
         參數:
@@ -169,8 +169,8 @@ class ModelManager:
         )
 
         # 快取設定
-        self.cached_models: Dict[str, List[ModelInfo]] = {}
-        self.cache_time: Dict[str, float] = {}
+        self.cached_models: dict[str, list[ModelInfo]] = {}
+        self.cache_time: dict[str, float] = {}
         self.cache_expiry = self.config.get("cache_expiry", 600)  # 10 分鐘快取過期
 
         # 用於測試 API 的逾時設定
@@ -178,11 +178,11 @@ class ModelManager:
         self.request_timeout = self.config.get("request_timeout", 10)
 
         # 非同步 HTTP 客戶端
-        self.session: Optional[aiohttp.ClientSession] = None
+        self.session: aiohttp.ClientSession | None = None
         self._session_lock = asyncio.Lock()
 
         # API 金鑰集合
-        self.api_keys: Dict[str, str] = {}
+        self.api_keys: dict[str, str] = {}
 
         # 初始化模型資訊庫
         self._init_model_info_database()
@@ -192,7 +192,7 @@ class ModelManager:
 
         logger.info(f"ModelManager 初始化完成，預設 Ollama 模型: {self.default_ollama_model}")
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> dict[str, Any]:
         """從配置管理器載入設定"""
         return self.config_manager.get_config()
 
@@ -278,7 +278,7 @@ class ModelManager:
 
     def _init_model_info_database(self) -> None:
         """初始化模型資訊資料庫"""
-        self.model_database: Dict[str, ModelInfo] = {}
+        self.model_database: dict[str, ModelInfo] = {}
 
         # OpenAI 模型資訊
         openai_models = {
@@ -573,7 +573,7 @@ class ModelManager:
                 self.session = None
                 logger.debug("已關閉非同步 HTTP 客戶端")
 
-    async def get_model_list_async(self, llm_type: str, api_key: Optional[str] = None) -> List[ModelInfo]:
+    async def get_model_list_async(self, llm_type: str, api_key: str | None = None) -> list[ModelInfo]:
         """非同步獲取模型列表
 
         參數:
@@ -635,7 +635,7 @@ class ModelManager:
 
             return []
 
-    def get_model_list(self, llm_type: str, api_key: Optional[str] = None) -> List[str]:
+    def get_model_list(self, llm_type: str, api_key: str | None = None) -> list[str]:
         """同步獲取模型列表(字串列表版本，向後相容)
 
         參數:
@@ -675,9 +675,9 @@ class ModelManager:
             model = self._build_dynamic_ollama_model_info(self.default_ollama_model)
         return model
 
-    def _detect_ollama_model_family(self, model_id: str, details: Optional[Dict[str, Any]] = None) -> str:
+    def _detect_ollama_model_family(self, model_id: str, details: dict[str, Any] | None = None) -> str:
         """從模型名稱與 API 細節欄位推斷 Ollama 模型家族"""
-        detail_parts: List[str] = [model_id]
+        detail_parts: list[str] = [model_id]
         if details:
             family = details.get("family")
             if isinstance(family, str) and family:
@@ -703,7 +703,7 @@ class ModelManager:
             return "mistral"
         return "default"
 
-    def _build_dynamic_ollama_model_info(self, model_id: str, details: Optional[Dict[str, Any]] = None) -> ModelInfo:
+    def _build_dynamic_ollama_model_info(self, model_id: str, details: dict[str, Any] | None = None) -> ModelInfo:
         """根據模型家族與 API 細節建立動態 Ollama 模型資訊"""
         details = details or {}
         family = self._detect_ollama_model_family(model_id, details)
@@ -790,7 +790,7 @@ class ModelManager:
             )
         return model
 
-    async def _get_anthropic_models_async(self, api_key: str) -> List[ModelInfo]:
+    async def _get_anthropic_models_async(self, api_key: str) -> list[ModelInfo]:
         """非同步獲取 Anthropic 模型列表
 
         參數:
@@ -864,7 +864,7 @@ class ModelManager:
             logger.error(f"獲取 Anthropic 模型列表失敗: {e!s}")
             return []
 
-    async def _get_google_models_async(self, api_key: str) -> List[ModelInfo]:
+    async def _get_google_models_async(self, api_key: str) -> list[ModelInfo]:
         """非同步獲取 Google Gemini 模型列表
 
         參數:
@@ -986,15 +986,14 @@ class ModelManager:
         回傳:
             預設模型名稱
         """
-        if llm_type == "openai":
-            return "gpt-3.5-turbo"  # 最經濟的選擇
-        elif llm_type == "anthropic":
-            return "claude-3-haiku-20240307"  # 最快速的選擇
-        elif llm_type == "google":
-            return "gemini-2.0-flash"  # 最快速且經濟的選擇
-        return self.default_ollama_model
+        provider_defaults = {
+            "openai": "gpt-3.5-turbo",  # 最經濟的選擇
+            "anthropic": "claude-3-haiku-20240307",  # 最快速的選擇
+            "google": "gemini-2.0-flash",  # 最快速且經濟的選擇
+        }
+        return provider_defaults.get(llm_type, self.default_ollama_model)
 
-    def get_model_info(self, model_name: str, provider: Optional[str] = None) -> Dict[str, Any]:
+    def get_model_info(self, model_name: str, provider: str | None = None) -> dict[str, Any]:
         """獲取模型的詳細資訊
 
         參數:
@@ -1053,8 +1052,8 @@ class ModelManager:
         return {}
 
     def get_recommended_model(
-        self, task_type: str = "translation", provider: Optional[str] = None
-    ) -> Optional[ModelInfo]:
+        self, task_type: str = "translation", provider: str | None = None
+    ) -> ModelInfo | None:
         """根據任務類型獲取推薦模型
 
         參數:
@@ -1101,7 +1100,7 @@ class ModelManager:
             return None
 
         # 計算每個模型的得分
-        scored_models: List[Tuple[ModelInfo, float]] = []
+        scored_models: list[tuple[ModelInfo, float]] = []
         for model in all_models:
             score: float = 0.0
             for capability, weight in weights.items():
@@ -1123,7 +1122,7 @@ class ModelManager:
             return scored_models[0][0]
         return None
 
-    async def _test_openai_connection(self, model_name: str, api_key: str) -> Tuple[bool, str]:
+    async def _test_openai_connection(self, model_name: str, api_key: str) -> tuple[bool, str]:
         """測試 OpenAI 模型連線
 
         參數:
@@ -1161,7 +1160,7 @@ class ModelManager:
         except Exception as e:
             return False, f"測試連線時發生錯誤: {e!s}"
 
-    async def _test_anthropic_connection(self, model_name: str, api_key: str) -> Tuple[bool, str]:
+    async def _test_anthropic_connection(self, model_name: str, api_key: str) -> tuple[bool, str]:
         """測試 Anthropic 模型連線
 
         參數:
@@ -1199,7 +1198,7 @@ class ModelManager:
             else:
                 return False, f"測試連線時發生錯誤: {e!s}"
 
-    async def _test_google_connection(self, model_name: str, api_key: str) -> Tuple[bool, str]:
+    async def _test_google_connection(self, model_name: str, api_key: str) -> tuple[bool, str]:
         """測試 Google Gemini 模型連線
 
         參數:
@@ -1236,8 +1235,8 @@ class ModelManager:
                 return False, f"測試連線時發生錯誤: {e!s}"
 
     async def test_model_connection(
-        self, model_name: str, provider: str, api_key: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, model_name: str, provider: str, api_key: str | None = None
+    ) -> dict[str, Any]:
         """測試與指定模型的連線
 
         參數:
@@ -1282,7 +1281,7 @@ class ModelManager:
         else:
             return {"success": False, "message": f"不支援的提供者: {provider}"}
 
-    async def get_provider_status(self) -> Dict[str, bool]:
+    async def get_provider_status(self) -> dict[str, bool]:
         """獲取各提供者的連線狀態
 
         回傳:
@@ -1318,7 +1317,7 @@ class ModelManager:
         """非同步上下文管理器退出"""
         await self._close_async_session()
 
-    async def _get_ollama_models_async(self) -> List[ModelInfo]:
+    async def _get_ollama_models_async(self) -> list[ModelInfo]:
         """非同步獲取 Ollama 模型列表
 
         回傳:
@@ -1328,7 +1327,7 @@ class ModelManager:
             if not self.session:
                 await self._init_async_session()
 
-            models: Dict[str, Dict[str, Any]] = {}
+            models: dict[str, dict[str, Any]] = {}
 
             # 使用 Ollama 模型列表 API 端點
             endpoints = ["/api/tags"]
@@ -1487,7 +1486,7 @@ class ModelManager:
         except Exception:
             return model_id
 
-    async def _get_openai_models_async(self, api_key: str) -> List[ModelInfo]:
+    async def _get_openai_models_async(self, api_key: str) -> list[ModelInfo]:
         """非同步獲取 OpenAI 模型列表
 
         參數:
@@ -1574,7 +1573,7 @@ class ModelManager:
             default_model = self._create_default_openai_model()
             return [default_model]
 
-    def update_config(self, new_config: Dict[str, Any]) -> bool:
+    def update_config(self, new_config: dict[str, Any]) -> bool:
         """更新模型管理器配置
 
         參數:
@@ -1606,7 +1605,7 @@ class ModelManager:
 
 
 # 提供便捷的全域函數
-def get_model_info(model_name: str, provider: Optional[str] = None) -> Dict[str, Any]:
+def get_model_info(model_name: str, provider: str | None = None) -> dict[str, Any]:
     """全域函數：獲取模型資訊
 
     參數:
@@ -1620,7 +1619,7 @@ def get_model_info(model_name: str, provider: Optional[str] = None) -> Dict[str,
     return manager.get_model_info(model_name, provider)
 
 
-def get_recommended_model(task_type: str = "translation", provider: Optional[str] = None) -> str:
+def get_recommended_model(task_type: str = "translation", provider: str | None = None) -> str:
     """全域函數：根據任務類型獲取推薦模型
 
     參數:
@@ -1637,7 +1636,7 @@ def get_recommended_model(task_type: str = "translation", provider: Optional[str
     return manager.get_default_model(provider or "ollama")
 
 
-async def test_model_connection(model_name: str, provider: str, api_key: Optional[str] = None) -> Dict[str, Any]:
+async def test_model_connection(model_name: str, provider: str, api_key: str | None = None) -> dict[str, Any]:
     """全域函數：測試與模型的連線
 
     參數:

@@ -5,7 +5,7 @@ import logging
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, cast
+from typing import Any, cast
 
 from srt_translator.core.singleton import SingletonMixin
 
@@ -30,7 +30,7 @@ class Glossary:
     name: str  # 術語表名稱
     source_lang: str  # 來源語言
     target_lang: str  # 目標語言
-    entries: Dict[str, GlossaryEntry] = field(default_factory=dict)
+    entries: dict[str, GlossaryEntry] = field(default_factory=dict)
     description: str = ""
 
     def add_entry(
@@ -63,7 +63,7 @@ class Glossary:
             return True
         return False
 
-    def get_entry(self, source: str) -> Optional[GlossaryEntry]:
+    def get_entry(self, source: str) -> GlossaryEntry | None:
         """取得術語條目"""
         # 先嘗試不區分大小寫
         key = source.lower()
@@ -88,7 +88,7 @@ class Glossary:
 
         return result
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """轉換為字典格式"""
         return {
             "name": self.name,
@@ -108,7 +108,7 @@ class Glossary:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Glossary":
+    def from_dict(cls, data: dict[str, Any]) -> "Glossary":
         """從字典格式建立術語表"""
         glossary = cls(
             name=data.get("name", ""),
@@ -134,8 +134,8 @@ class GlossaryManager(SingletonMixin):
 
     def __init__(self) -> None:
         """初始化術語表管理器"""
-        self._glossaries: Dict[str, Glossary] = {}
-        self._active_glossaries: Set[str] = set()
+        self._glossaries: dict[str, Glossary] = {}
+        self._active_glossaries: set[str] = set()
         self._glossary_dir = os.path.join("data", "glossaries")
 
         # 確保目錄存在
@@ -164,7 +164,7 @@ class GlossaryManager(SingletonMixin):
                 except Exception as e:
                     logger.error(f"載入術語表失敗 {filename}: {e}")
 
-    def _load_glossary_file(self, file_path: str) -> Optional[Glossary]:
+    def _load_glossary_file(self, file_path: str) -> Glossary | None:
         """載入單一術語表檔案"""
         try:
             with open(file_path, encoding="utf-8") as f:
@@ -214,15 +214,15 @@ class GlossaryManager(SingletonMixin):
         self._save_glossary(glossary)
         return glossary
 
-    def get_glossary(self, name: str) -> Optional[Glossary]:
+    def get_glossary(self, name: str) -> Glossary | None:
         """取得指定術語表"""
         return self._glossaries.get(name)
 
-    def list_glossaries(self) -> List[str]:
+    def list_glossaries(self) -> list[str]:
         """列出所有術語表名稱"""
         return list(self._glossaries.keys())
 
-    def get_all_glossaries(self) -> Dict[str, Glossary]:
+    def get_all_glossaries(self) -> dict[str, Glossary]:
         """取得所有術語表"""
         return self._glossaries.copy()
 
@@ -289,7 +289,7 @@ class GlossaryManager(SingletonMixin):
             return True
         return False
 
-    def get_active_glossaries(self) -> List[str]:
+    def get_active_glossaries(self) -> list[str]:
         """取得已啟用的術語表名稱"""
         return list(self._active_glossaries)
 
@@ -371,10 +371,10 @@ class GlossaryManager(SingletonMixin):
     def import_glossary(
         self,
         file_path: str,
-        name: Optional[str] = None,
+        name: str | None = None,
         source_lang: str = "",
         target_lang: str = "",
-    ) -> Optional[Glossary]:
+    ) -> Glossary | None:
         """從檔案匯入術語表
 
         參數:
@@ -446,7 +446,7 @@ class GlossaryManager(SingletonMixin):
             logger.error(f"匯入術語表失敗: {e}")
             return None
 
-    def find_glossaries_for_languages(self, source_lang: str, target_lang: str) -> List[Glossary]:
+    def find_glossaries_for_languages(self, source_lang: str, target_lang: str) -> list[Glossary]:
         """尋找適用於指定語言對的術語表"""
         result = []
         for glossary in self._glossaries.values():

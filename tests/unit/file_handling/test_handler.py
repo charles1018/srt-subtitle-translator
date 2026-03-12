@@ -1,14 +1,10 @@
 """Tests for file_handling/handler.py module."""
 
-import os
-import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from srt_translator.file_handling.handler import FileHandler, SubtitleInfo
-
 
 # ============================================================
 # SubtitleInfo Tests

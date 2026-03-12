@@ -5,7 +5,6 @@ import asyncio
 import logging
 import os
 import sys
-from typing import List, Optional
 
 from srt_translator.core.config import ConfigManager
 from srt_translator.services.factory import ServiceFactory
@@ -215,7 +214,7 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def collect_files(paths: List[str]) -> List[str]:
+def collect_files(paths: list[str]) -> list[str]:
     """收集所有要翻譯的檔案"""
     files = []
     supported_extensions = {".srt", ".vtt", ".ass", ".ssa"}
@@ -239,7 +238,7 @@ def collect_files(paths: List[str]) -> List[str]:
     return files
 
 
-def print_progress(current: int, total: int, extra_data: Optional[dict] = None) -> None:
+def print_progress(current: int, total: int, extra_data: dict | None = None) -> None:
     """在終端顯示翻譯進度"""
     if total <= 0:
         return
@@ -695,7 +694,7 @@ def _print_cps_report(report) -> None:
             print(f"  #{entry.index} [{issues_str}] {entry.text}")
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI 主程式入口"""
     parser = create_parser()
     args = parser.parse_args(argv)

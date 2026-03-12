@@ -1,19 +1,14 @@
 """Tests for translation/manager.py module."""
 
-import os
-import tempfile
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from srt_translator.translation.manager import (
-    TranslationManager,
-    TranslationStats,
-    TranslationThread,
-)
 from srt_translator.services.factory import TranslationTaskManager
-
+from srt_translator.translation.manager import (
+    TranslationStats,
+)
 
 # ============================================================
 # TranslationStats Tests

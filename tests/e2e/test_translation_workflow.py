@@ -178,7 +178,7 @@ async def test_single_file_translation_with_output(
     assert_srt_valid(output_file)
 
     # 驗證時間軸保持不變
-    for i, (input_sub, output_sub) in enumerate(zip(input_subs, output_subs)):
+    for i, (input_sub, output_sub) in enumerate(zip(input_subs, output_subs, strict=True)):
         assert output_sub.start == input_sub.start, f"字幕 {i + 1} 開始時間應該相同"
         assert output_sub.end == input_sub.end, f"字幕 {i + 1} 結束時間應該相同"
 

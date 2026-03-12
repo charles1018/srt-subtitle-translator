@@ -4,7 +4,8 @@ import os
 import re
 import threading
 import time
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, Type, TypeVar, Union
+from collections.abc import Callable
+from typing import Any, ClassVar, Optional, TypeVar
 
 import pysrt
 
@@ -36,7 +37,7 @@ class ServiceFactory:
     """服務工廠類，管理所有服務實例並提供統一的訪問方式"""
 
     # 儲存所有建立的服務實例
-    _instances: ClassVar[Dict[str, Any]] = {}
+    _instances: ClassVar[dict[str, Any]] = {}
 
     @classmethod
     def get_translation_service(cls) -> "TranslationService":
@@ -64,7 +65,7 @@ class ServiceFactory:
         return cls._get_service_instance(ProgressService)
 
     @classmethod
-    def _get_service_instance(cls, service_class: Type[T]) -> T:
+    def _get_service_instance(cls, service_class: type[T]) -> T:
         """獲取指定服務類的實例（單例模式）"""
         service_name = service_class.__name__
         if service_name not in cls._instances:
@@ -89,13 +90,13 @@ class TranslationService:
     """翻譯服務，提供統一的翻譯介面"""
 
     # 成員變數型別宣告
-    prompt_manager: Optional[PromptManager]
+    prompt_manager: PromptManager | None
     model_service: Optional["ModelService"]
     cache_service: Optional["CacheService"]
     file_service: Optional["FileService"]
     config_manager: ConfigManager
-    stats: Dict[str, Union[int, float, None]]
-    key_terms_dict: Dict[str, str]
+    stats: dict[str, int | float | None]
+    key_terms_dict: dict[str, str]
 
     def __init__(self) -> None:
         """初始化翻譯服務"""
@@ -137,7 +138,7 @@ class TranslationService:
             return default
         return float(val)
 
-    def _incr_stat(self, key: str, amount: Union[int, float] = 1) -> None:
+    def _incr_stat(self, key: str, amount: int | float = 1) -> None:
         """安全地增加統計值"""
         current = self.stats.get(key, 0)
         if current is None:
@@ -158,7 +159,7 @@ class TranslationService:
             logger.error(f"初始化翻譯服務成員時發生錯誤: {e!s}")
             raise
 
-    async def translate_text(self, text: str, context_texts: List[str], llm_type: str, model_name: str) -> str:
+    async def translate_text(self, text: str, context_texts: list[str], llm_type: str, model_name: str) -> str:
         """翻譯單一文本
 
         參數:
@@ -229,8 +230,8 @@ class TranslationService:
             return f"[翻譯錯誤: {e!s}]"
 
     async def translate_batch(
-        self, texts_with_context: List[Tuple[str, List[str]]], llm_type: str, model_name: str, concurrent_limit: int = 5
-    ) -> List[str]:
+        self, texts_with_context: list[tuple[str, list[str]]], llm_type: str, model_name: str, concurrent_limit: int = 5
+    ) -> list[str]:
         """批量翻譯多個文本
 
         參數:
@@ -307,10 +308,10 @@ class TranslationService:
         parallel_requests: int,
         display_mode: str,
         llm_type: str,
-        progress_callback: Optional[Callable] = None,
-        complete_callback: Optional[Callable] = None,
+        progress_callback: Callable | None = None,
+        complete_callback: Callable | None = None,
         use_structure_text: bool = False,
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """翻譯字幕檔案
 
         參數:
@@ -622,13 +623,13 @@ class TranslationService:
         except Exception as e:
             logger.error(f"儲存專有名詞詞典失敗: {e!s}")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """獲取翻譯統計資訊
 
         回傳:
             包含統計資訊的字典
         """
-        stats: Dict[str, Any] = self.stats.copy()
+        stats: dict[str, Any] = self.stats.copy()
 
         total = self._get_stat_int("total_translations")
         cached = self._get_stat_int("cached_translations")
@@ -706,8 +707,8 @@ class ModelService:
 
     # 成員變數型別宣告
     model_manager: ModelManager
-    translation_clients: Dict[str, TranslationClient]
-    api_keys: Dict[str, str]
+    translation_clients: dict[str, TranslationClient]
+    api_keys: dict[str, str]
 
     def __init__(self) -> None:
         """初始化模型服務"""
@@ -787,7 +788,7 @@ class ModelService:
 
         return client
 
-    async def get_available_models(self, llm_type: str) -> List[str]:
+    async def get_available_models(self, llm_type: str) -> list[str]:
         """獲取可用的模型列表
 
         參數:
@@ -800,7 +801,7 @@ class ModelService:
         models = await self.model_manager.get_model_list_async(llm_type, api_key)
         return [model.id for model in models]
 
-    def get_model_info(self, model_name: str, provider: Optional[str] = None) -> Dict[str, Any]:
+    def get_model_info(self, model_name: str, provider: str | None = None) -> dict[str, Any]:
         """獲取模型的詳細資訊
 
         參數:
@@ -812,7 +813,7 @@ class ModelService:
         """
         return self.model_manager.get_model_info(model_name, provider)
 
-    def get_recommended_model(self, task_type: str = "translation", provider: Optional[str] = None) -> str:
+    def get_recommended_model(self, task_type: str = "translation", provider: str | None = None) -> str:
         """根據任務類型獲取推薦模型
 
         參數:
@@ -827,7 +828,7 @@ class ModelService:
             return model_info.id
         return self.model_manager.get_default_model(provider or "ollama")
 
-    async def test_model_connection(self, model_name: str, provider: str) -> Dict[str, Any]:
+    async def test_model_connection(self, model_name: str, provider: str) -> dict[str, Any]:
         """測試與模型的連線
 
         參數:
@@ -843,7 +844,7 @@ class ModelService:
         api_key = self.api_keys.get(provider)
         return await _test_connection(model_name, provider, api_key)
 
-    async def get_provider_status(self) -> Dict[str, bool]:
+    async def get_provider_status(self) -> dict[str, bool]:
         """獲取各提供者的連線狀態
 
         回傳:
@@ -904,11 +905,11 @@ class CacheService:
     def get_translation(
         self,
         source_text: str,
-        context_texts: List[str],
+        context_texts: list[str],
         model_name: str,
         style: str = "standard",
         prompt_version: str = "",
-    ) -> Optional[str]:
+    ) -> str | None:
         """從快取獲取翻譯結果
 
         參數:
@@ -929,7 +930,7 @@ class CacheService:
         self,
         source_text: str,
         target_text: str,
-        context_texts: List[str],
+        context_texts: list[str],
         model_name: str,
         style: str = "standard",
         prompt_version: str = "",
@@ -981,7 +982,7 @@ class CacheService:
         """
         return self.cache_manager.clear_all_cache()
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """獲取快取統計資訊
 
         回傳:
@@ -1008,7 +1009,7 @@ class CacheService:
         """
         return self.cache_manager.export_cache(output_path)
 
-    def import_cache(self, input_path: str) -> Tuple[bool, int]:
+    def import_cache(self, input_path: str) -> tuple[bool, int]:
         """從檔案匯入快取
 
         參數:
@@ -1035,7 +1036,7 @@ class FileService:
 
         logger.info("檔案服務初始化完成")
 
-    def select_files(self) -> List[str]:
+    def select_files(self) -> list[str]:
         """通過對話框選擇檔案
 
         回傳:
@@ -1051,7 +1052,7 @@ class FileService:
         """
         return self.file_handler.select_directory()
 
-    def scan_directory(self, directory: str, recursive: bool = True) -> List[str]:
+    def scan_directory(self, directory: str, recursive: bool = True) -> list[str]:
         """掃描目錄下的字幕檔案
 
         參數:
@@ -1063,7 +1064,7 @@ class FileService:
         """
         return self.file_handler.scan_directory(directory, recursive)
 
-    def get_subtitle_info(self, file_path: str, force_refresh: bool = False) -> Dict[str, Any]:
+    def get_subtitle_info(self, file_path: str, force_refresh: bool = False) -> dict[str, Any]:
         """獲取字幕檔案的資訊
 
         參數:
@@ -1076,8 +1077,8 @@ class FileService:
         return self.file_handler.get_subtitle_info(file_path, force_refresh)
 
     def get_output_path(
-        self, file_path: str, target_lang: str, progress_callback: Optional[Callable[..., Any]] = None
-    ) -> Optional[str]:
+        self, file_path: str, target_lang: str, progress_callback: Callable[..., Any] | None = None
+    ) -> str | None:
         """獲取輸出檔案路徑並處理衝突
 
         參數:
@@ -1090,7 +1091,7 @@ class FileService:
         """
         return self.file_handler.get_output_path(file_path, target_lang, progress_callback)
 
-    def set_batch_settings(self, settings: Dict[str, Any]) -> None:
+    def set_batch_settings(self, settings: dict[str, Any]) -> None:
         """設定批次處理設定
 
         參數:
@@ -1098,16 +1099,16 @@ class FileService:
         """
         self.file_handler.set_batch_settings(settings)
 
-    def get_batch_settings(self) -> Dict[str, Any]:
+    def get_batch_settings(self) -> dict[str, Any]:
         """獲取批次處理設定
 
         回傳:
             批次處理設定字典
         """
-        settings: Dict[str, Any] = self.file_handler.batch_settings
+        settings: dict[str, Any] = self.file_handler.batch_settings
         return settings
 
-    def convert_subtitle_format(self, input_path: str, target_format: str) -> Optional[str]:
+    def convert_subtitle_format(self, input_path: str, target_format: str) -> str | None:
         """轉換字幕檔案格式
 
         參數:
@@ -1119,7 +1120,7 @@ class FileService:
         """
         return self.file_handler.convert_subtitle_format(input_path, target_format)
 
-    def extract_subtitle(self, video_path: str, callback: Optional[Callable[..., Any]] = None) -> Optional[str]:
+    def extract_subtitle(self, video_path: str, callback: Callable[..., Any] | None = None) -> str | None:
         """從影片檔案中提取字幕
 
         參數:
@@ -1154,7 +1155,7 @@ class FileService:
         """
         return self.file_handler.save_api_key(api_key, file_path)
 
-    def handle_drop(self, event: Any) -> List[str]:
+    def handle_drop(self, event: Any) -> list[str]:
         """處理檔案拖放事件
 
         參數:
@@ -1179,12 +1180,12 @@ class ProgressService:
     """進度追蹤服務，管理進度回調和統計"""
 
     # 成員變數型別宣告
-    progress_callback: Optional[Callable[..., Any]]
-    complete_callback: Optional[Callable[..., Any]]
+    progress_callback: Callable[..., Any] | None
+    complete_callback: Callable[..., Any] | None
     total: int
     current: int
-    start_time: Optional[float]
-    end_time: Optional[float]
+    start_time: float | None
+    end_time: float | None
 
     def __init__(self) -> None:
         """初始化進度追蹤服務"""
@@ -1372,8 +1373,8 @@ class TranslationTask(threading.Thread):
         parallel_requests: int,
         display_mode: str,
         llm_type: str,
-        progress_callback: Optional[Callable[..., Any]] = None,
-        complete_callback: Optional[Callable[..., Any]] = None,
+        progress_callback: Callable[..., Any] | None = None,
+        complete_callback: Callable[..., Any] | None = None,
     ) -> None:
         """初始化翻譯任務
 
@@ -1406,7 +1407,7 @@ class TranslationTask(threading.Thread):
         self._pause_condition = threading.Condition()
 
         # 服務實例將在執行緒中初始化
-        self.translation_service: Optional[TranslationService] = None
+        self.translation_service: TranslationService | None = None
 
     def run(self) -> None:
         """執行翻譯任務"""
@@ -1497,7 +1498,7 @@ class TranslationTaskManager:
     """翻譯任務管理器，管理多個翻譯任務"""
 
     # 成員變數型別宣告
-    tasks: Dict[str, TranslationTask]
+    tasks: dict[str, TranslationTask]
     total_files: int
     completed_files: int
     config_manager: ConfigManager
@@ -1515,15 +1516,15 @@ class TranslationTaskManager:
 
     def start_translation(
         self,
-        files: List[str],
+        files: list[str],
         source_lang: str,
         target_lang: str,
         model_name: str,
         parallel_requests: int,
         display_mode: str,
         llm_type: str,
-        progress_callback: Optional[Callable[..., Any]] = None,
-        complete_callback: Optional[Callable[..., Any]] = None,
+        progress_callback: Callable[..., Any] | None = None,
+        complete_callback: Callable[..., Any] | None = None,
     ) -> bool:
         """開始翻譯多個檔案
 
@@ -1570,7 +1571,7 @@ class TranslationTaskManager:
         return True
 
     def _complete_wrapper(
-        self, file_path: str, original_callback: Optional[Callable[..., Any]]
+        self, file_path: str, original_callback: Callable[..., Any] | None
     ) -> Callable[[str, str], None]:
         """包裝完成回調函數，以便追蹤已完成的檔案數"""
 

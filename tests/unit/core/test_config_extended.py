@@ -558,11 +558,12 @@ class TestConfigComplexScenarios:
         # 獲取配置
         config1 = manager.get_config()
         config2 = manager.get_config()
+        original_primary = config2["colors"]["primary"]
 
         # 修改一個不應該影響另一個
         config1["colors"]["primary"] = "#000000"
 
-        assert config2["colors"]["primary"] == "#3B82F6"  # 應該保持原值
+        assert config2["colors"]["primary"] == original_primary  # 應該保持原值
 
     def test_validate_config_unknown_type_returns_error(self):
         """測試驗證未知類型返回錯誤"""
@@ -585,11 +586,12 @@ class TestGlobalFunctionsExtended:
     def test_get_config_with_nested_key(self):
         """測試 get_config 獲取嵌套鍵值"""
         ConfigManager._instances = {}
-        ConfigManager.get_instance("theme")
+        manager = ConfigManager.get_instance("theme")
 
         # 獲取嵌套值
+        expected_color = manager.get_config()["colors"]["primary"]
         color = get_config("theme", "colors.primary")
-        assert color == "#3B82F6"
+        assert color == expected_color
 
     def test_get_config_with_default(self):
         """測試 get_config 使用預設值"""

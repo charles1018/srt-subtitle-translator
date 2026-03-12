@@ -32,7 +32,7 @@
 
 import json
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 # ================ 錯誤處理類 ================
 
@@ -40,7 +40,7 @@ from typing import Any, Dict, Optional
 class AppError(Exception):
     """應用程式自定義基礎異常類"""
 
-    def __init__(self, message: str, error_code: int = 1000, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, error_code: int = 1000, details: dict[str, Any] | None = None):
         """初始化應用程式異常
 
         參數:
@@ -57,7 +57,7 @@ class AppError(Exception):
         """格式化錯誤訊息"""
         return f"[{self.error_code}] {self.message}"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """轉換為字典格式"""
         return {
             "error_code": self.error_code,
@@ -78,35 +78,35 @@ class AppError(Exception):
 class ConfigError(AppError):
     """配置相關錯誤"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, 1100, details)
 
 
 class ModelError(AppError):
     """模型相關錯誤"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, 1200, details)
 
 
 class TranslationError(AppError):
     """翻譯相關錯誤"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, 1300, details)
 
 
 class FileError(AppError):
     """檔案相關錯誤"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, 1400, details)
 
 
 class NetworkError(AppError):
     """網路相關錯誤"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, 1500, details)
 
 
@@ -116,7 +116,7 @@ class APIKeyError(AppError):
     當 API 金鑰遺失、無效或權限不足時拋出此例外。
     """
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, 1600, details)
 
 
@@ -126,7 +126,7 @@ class ModelNotFoundError(AppError):
     當請求的翻譯模型不存在或無法載入時拋出此例外。
     """
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, 1700, details)
 
 
@@ -136,7 +136,7 @@ class CacheError(AppError):
     當快取讀取、寫入或清除操作失敗時拋出此例外。
     """
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, 1800, details)
 
 
@@ -146,7 +146,7 @@ class ValidationError(AppError):
     當輸入資料格式不正確或驗證失敗時拋出此例外。
     """
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, 1900, details)
 
 
@@ -157,7 +157,7 @@ class OperationTimeoutError(AppError):
     注意：此類別名稱避免與 Python 內建的 TimeoutError 衝突。
     """
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, 2000, details)
 
 

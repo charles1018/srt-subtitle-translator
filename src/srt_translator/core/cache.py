@@ -5,10 +5,11 @@ import shutil
 import sqlite3
 import threading
 import time
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import lru_cache
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any
 
 # 從配置管理器導入
 from srt_translator.core.config import ConfigManager
@@ -53,7 +54,7 @@ class CacheManager:
     CLEANUP_KEEP_RATIO = 0.7  # 清理後保留 70% 的最近使用項目
 
     @classmethod
-    def get_instance(cls, db_path: Optional[str] = None) -> "CacheManager":
+    def get_instance(cls, db_path: str | None = None) -> "CacheManager":
         """獲取快取管理器的單例實例
 
         參數:
@@ -85,8 +86,8 @@ class CacheManager:
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
         self.db_path = db_path
-        self.memory_cache: Dict[str, Dict[str, Any]] = {}  # 記憶體快取層
-        self.stats: Dict[str, Any] = {"total_queries": 0, "cache_hits": 0, "db_errors": 0, "last_cleanup": None}
+        self.memory_cache: dict[str, dict[str, Any]] = {}  # 記憶體快取層
+        self.stats: dict[str, Any] = {"total_queries": 0, "cache_hits": 0, "db_errors": 0, "last_cleanup": None}
 
         # 讀取配置
         cache_config = ConfigManager.get_instance("cache")
@@ -220,7 +221,7 @@ class CacheManager:
             return False
 
     @lru_cache(maxsize=1000)  # noqa: B019 - Intentional: cache bound to instance lifetime
-    def _compute_context_hash(self, context_tuple: Tuple[str, ...]) -> str:
+    def _compute_context_hash(self, context_tuple: tuple[str, ...]) -> str:
         """計算上下文的雜湊值，使用LRU快取加速"""
         parts = []
         for text in context_tuple:
@@ -249,7 +250,7 @@ class CacheManager:
         """
         return f"{source_text}|{context_hash}|{model_name}|{style}|{prompt_version}"
 
-    def _is_error_translation(self, text: Optional[str]) -> bool:
+    def _is_error_translation(self, text: str | None) -> bool:
         """判斷是否為錯誤翻譯結果"""
         if not text:
             return False
@@ -258,11 +259,11 @@ class CacheManager:
     def get_cached_translation(
         self,
         source_text: str,
-        context_texts: List[str],
+        context_texts: list[str],
         model_name: str,
         style: str = "standard",
         prompt_version: str = "",
-    ) -> Optional[str]:
+    ) -> str | None:
         """獲取快取的翻譯結果，先檢查記憶體，再檢查資料庫
 
         參數:
@@ -353,7 +354,7 @@ class CacheManager:
         self,
         source_text: str,
         target_text: str,
-        context_texts: List[str],
+        context_texts: list[str],
         model_name: str,
         style: str = "standard",
         prompt_version: str = "",
@@ -452,7 +453,7 @@ class CacheManager:
                 f"(限制: {self.max_memory_cache})"
             )
 
-    def _auto_cleanup(self, conn: sqlite3.Connection, days_threshold: Optional[int] = None) -> None:
+    def _auto_cleanup(self, conn: sqlite3.Connection, days_threshold: int | None = None) -> None:
         """自動清理過期快取
 
         參數:
@@ -493,7 +494,7 @@ class CacheManager:
         except sqlite3.Error as e:
             logger.error(f"自動清理時發生錯誤: {e!s}")
 
-    def clear_old_cache(self, days_threshold: Optional[int] = None) -> int:
+    def clear_old_cache(self, days_threshold: int | None = None) -> int:
         """手動清理過期快取 (超過一定天數的舊資料)
 
         參數:
@@ -562,7 +563,7 @@ class CacheManager:
             logger.error(f"按模型清理快取時發生錯誤: {e!s}")
             return 0
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """獲取快取統計資訊
 
         回傳:
@@ -645,7 +646,7 @@ class CacheManager:
             logger.error(f"匯出快取時發生錯誤: {e!s}")
             return False
 
-    def import_cache(self, input_path: str) -> Tuple[bool, int]:
+    def import_cache(self, input_path: str) -> tuple[bool, int]:
         """從JSON檔案匯入快取資料
 
         參數:
@@ -764,7 +765,7 @@ class CacheManager:
             logger.error(f"清空快取時發生錯誤: {e!s}")
             return False
 
-    def search_cache(self, keyword: str, model_name: Optional[str] = None) -> List[Dict[str, Any]]:
+    def search_cache(self, keyword: str, model_name: str | None = None) -> list[dict[str, Any]]:
         """搜尋快取
 
         參數:

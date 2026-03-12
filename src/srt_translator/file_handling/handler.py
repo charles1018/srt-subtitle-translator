@@ -4,11 +4,12 @@ import os
 import re
 import threading
 import tkinter as tk
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
 from tkinter import filedialog, messagebox
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 import chardet
 
@@ -76,8 +77,8 @@ class SubtitleInfo:
         self.format = self._detect_format(file_path)
         self.encoding = self._detect_encoding(file_path)
         self.subtitle_count = 0
-        self.duration: Union[int, float] = 0  # Seconds
-        self.languages: List[str] = []
+        self.duration: int | float = 0  # Seconds
+        self.languages: list[str] = []
         self.file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
         self.last_modified = os.path.getmtime(file_path) if os.path.exists(file_path) else 0
 
@@ -290,7 +291,7 @@ class SubtitleInfo:
         if not self.languages:
             self.languages.append("未知")
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Get subtitle file summary information
 
         Returns:
@@ -354,7 +355,7 @@ class FileHandler:
     _lock = threading.Lock()
 
     @classmethod
-    def get_instance(cls, root: Optional[tk.Tk] = None, config_section: str = "file") -> "FileHandler":
+    def get_instance(cls, root: tk.Tk | None = None, config_section: str = "file") -> "FileHandler":
         """Get file handler singleton instance
 
         Args:
@@ -373,7 +374,7 @@ class FileHandler:
 
             return cls._instance
 
-    def __init__(self, root: Optional[tk.Tk] = None, config_section: str = "file"):
+    def __init__(self, root: tk.Tk | None = None, config_section: str = "file"):
         """Initialize file handler
 
         Args:
@@ -394,7 +395,7 @@ class FileHandler:
         self.config_manager = ConfigManager.get_instance(config_section)
 
         # Language suffix mapping
-        self.lang_suffix: Dict[str, str] = self.config_manager.get_value(
+        self.lang_suffix: dict[str, str] = self.config_manager.get_value(
             "lang_suffix",
             default={
                 "繁體中文": ".zh_tw",
@@ -409,7 +410,7 @@ class FileHandler:
         ) or {}
 
         # Supported subtitle formats
-        self.supported_formats: List[tuple[str, str]] = self.config_manager.get_value(
+        self.supported_formats: list[tuple[str, str]] = self.config_manager.get_value(
             "supported_formats",
             default=[
                 (".srt", "SRT subtitle file"),
@@ -421,13 +422,13 @@ class FileHandler:
         ) or []
 
         # Cache for subtitle file information
-        self.subtitle_info_cache: Dict[str, SubtitleInfo] = {}
+        self.subtitle_info_cache: dict[str, SubtitleInfo] = {}
 
         # Remember last used directory
         self.last_directory: str = str(self.config_manager.get_value("last_directory", default="") or "")
 
         # Batch settings
-        self.batch_settings: Dict[str, Any] = self.config_manager.get_value(
+        self.batch_settings: dict[str, Any] = self.config_manager.get_value(
             "batch_settings",
             default={
                 "name_pattern": "{filename}_{language}{ext}",
@@ -454,7 +455,7 @@ class FileHandler:
             self.config_manager.set_value("lang_suffix", self.lang_suffix)
             logger.debug(f"Added language suffix mapping: {language} -> {suffix}")
 
-    def select_files(self) -> List[str]:
+    def select_files(self) -> list[str]:
         """Select files via dialog
 
         Returns:
@@ -537,7 +538,7 @@ class FileHandler:
 
         return ""
 
-    def handle_drop(self, event: Any) -> List[str]:
+    def handle_drop(self, event: Any) -> list[str]:
         """Handle file drop event
 
         Args:
@@ -591,7 +592,7 @@ class FileHandler:
             logger.error(f"Error handling dropped files: {format_exception(e)}")
             return []
 
-    def scan_directory(self, directory: str, recursive: bool = True) -> List[str]:
+    def scan_directory(self, directory: str, recursive: bool = True) -> list[str]:
         """Scan directory for subtitle files
 
         Args:
@@ -626,7 +627,7 @@ class FileHandler:
 
         return valid_files
 
-    def get_subtitle_info(self, file_path: str, force_refresh: bool = False) -> Dict[str, Any]:
+    def get_subtitle_info(self, file_path: str, force_refresh: bool = False) -> dict[str, Any]:
         """Get subtitle file information
 
         Args:
@@ -654,7 +655,7 @@ class FileHandler:
                 logger.error(f"Error getting subtitle information: {format_exception(e)}")
                 return {"error": f"Processing error: {e!s}"}
 
-    def set_batch_settings(self, settings: Dict[str, Any]) -> None:
+    def set_batch_settings(self, settings: dict[str, Any]) -> None:
         """Set batch processing settings
 
         Args:
@@ -666,7 +667,7 @@ class FileHandler:
                 self.config_manager.set_value("batch_settings", self.batch_settings)
                 logger.debug(f"Updated batch settings: {self.batch_settings}")
 
-    def get_output_path(self, file_path: str, target_lang: str, progress_callback: Optional[Callable[..., Any]] = None) -> Optional[str]:
+    def get_output_path(self, file_path: str, target_lang: str, progress_callback: Callable[..., Any] | None = None) -> str | None:
         """Get output file path and handle conflicts
 
         Args:
@@ -910,7 +911,7 @@ class FileHandler:
             logger.error(f"Error saving API key: {format_exception(e)}")
             return False
 
-    def convert_subtitle_format(self, input_path: str, target_format: str) -> Optional[str]:
+    def convert_subtitle_format(self, input_path: str, target_format: str) -> str | None:
         """Convert subtitle file format
 
         Args:
@@ -1053,7 +1054,7 @@ class FileHandler:
 
         return True
 
-    def extract_subtitle(self, video_path: str, callback: Optional[Callable[..., Any]] = None) -> Optional[str]:
+    def extract_subtitle(self, video_path: str, callback: Callable[..., Any] | None = None) -> str | None:
         """Extract subtitle from video file
 
         Args:
@@ -1154,7 +1155,7 @@ class FileHandler:
 
 
 # Global functions for easy access
-def get_file_handler(root: Optional[tk.Tk] = None) -> FileHandler:
+def get_file_handler(root: tk.Tk | None = None) -> FileHandler:
     """Get file handler instance
 
     Args:
@@ -1166,7 +1167,7 @@ def get_file_handler(root: Optional[tk.Tk] = None) -> FileHandler:
     return FileHandler.get_instance(root)
 
 
-def select_files(root: Optional[tk.Tk] = None) -> List[str]:
+def select_files(root: tk.Tk | None = None) -> list[str]:
     """Select subtitle files
 
     Args:
@@ -1179,7 +1180,7 @@ def select_files(root: Optional[tk.Tk] = None) -> List[str]:
     return handler.select_files()
 
 
-def get_subtitle_info(file_path: str) -> Dict[str, Any]:
+def get_subtitle_info(file_path: str) -> dict[str, Any]:
     """Get subtitle file information
 
     Args:
@@ -1192,7 +1193,7 @@ def get_subtitle_info(file_path: str) -> Dict[str, Any]:
     return handler.get_subtitle_info(file_path)
 
 
-def scan_directory(directory: str, recursive: bool = True) -> List[str]:
+def scan_directory(directory: str, recursive: bool = True) -> list[str]:
     """Scan directory for subtitle files
 
     Args:
