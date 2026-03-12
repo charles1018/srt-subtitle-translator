@@ -56,6 +56,20 @@
   - 統一深色風格應用於所有對話框
   - 主題配置檔：`config/theme_settings.json`
 
+### 🐛 修復
+
+#### GUI tkinterdnd2 相容性
+- 🔧 **改用 subprocess 方式偵測 tkinterdnd2 可用性**（`utils/tkdnd_check.py`）
+  - 原先直接 import 會在無 tkinterdnd2 環境下拋出未預期錯誤
+  - 改用獨立 subprocess 測試，避免污染主程序的 Tkinter 狀態
+  - **Commit**: 81fd14b
+
+#### 結構-文本邊界情況修正
+- 🔧 **修正 `srt_tools` 結構-文本分離的邊界情況**
+  - 修正空行、多空白、特殊字元在 extract/assemble 流程中的處理
+  - 確保 `texts_to_batch_string` / `batch_string_to_texts` 在邊界輸入下的正確性
+  - **Commit**: e5c24fd
+
 ### ⚠️ 重大變更
 
 - **Python 版本要求提升至 3.9+**（因 google-genai 依賴）
@@ -524,7 +538,7 @@
 
 ---
 
-**最後更新**：2026-01-13
+**最後更新**：2026-03-12
 
 [Unreleased]: https://github.com/charles1018/srt-subtitle-translator/compare/v1.1.0...HEAD
 [1.1.0]: https://github.com/charles1018/srt-subtitle-translator/compare/v1.0.0...v1.1.0

@@ -229,11 +229,13 @@ srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
 |------|------|------|--------|
 | `--source` | `-s` | 來源語言 | 英文 |
 | `--target` | `-t` | 目標語言 | 繁體中文 |
-| `--provider` | `-p` | AI 引擎（ollama/openai/anthropic/google）| openai |
-| `--model` | `-m` | 模型名稱 | gpt-3.5-turbo |
-| `--glossary` | `-g` | 套用的術語表名稱 | - |
-| `--output` | `-o` | 輸出目錄 | 原檔案目錄 |
-| `--concurrent` | `-c` | 並發數 | 5 |
+| `--provider` | `-p` | AI 引擎（ollama/openai/anthropic）| ollama |
+| `--model` | `-m` | 模型名稱 | 各引擎推薦模型 |
+| `--display-mode` | `-d` | 顯示模式（僅譯文/雙語對照/僅原文）| 僅譯文 |
+| `--glossary` | `-g` | 套用的術語表名稱（可多次指定）| - |
+| `--output-dir` | `-o` | 輸出目錄 | 原檔案目錄 |
+| `--concurrency` | `-c` | 並發數 | 3 |
+| `--no-cache` | - | 不使用翻譯快取 | 關閉 |
 | `--structure-text` | - | 使用結構-文本分離翻譯模式（實驗性）| 關閉 |
 
 ### 結構-文本分離翻譯模式
@@ -264,7 +266,6 @@ srt-translator models
 srt-translator models -p ollama
 srt-translator models -p openai
 srt-translator models -p anthropic
-srt-translator models -p google
 ```
 
 ### 快取管理
@@ -1084,5 +1085,5 @@ find data/ -name "*.db" -mtime +90 -delete
 
 ---
 
-**最後更新**：2026-03-04
-**版本**：1.1.0
+**最後更新**：2026-03-12
+**版本**：1.1.0+

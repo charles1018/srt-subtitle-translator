@@ -8,6 +8,7 @@
 - [核心模組 (core)](#核心模組-core)
   - [ConfigManager](#configmanager)
   - [CacheManager](#cachemanager)
+  - [GlossaryManager](#glossarymanager)
   - [ModelManager](#modelmanager)
   - [PromptManager](#promptmanager)
 - [翻譯模組 (translation)](#翻譯模組-translation)
@@ -290,6 +291,87 @@ deleted = cache_manager.clear_cache(older_than_days=30)
 
 ---
 
+### GlossaryManager
+
+術語表管理器，確保專有名詞翻譯一致性。
+
+#### 類別簽名
+
+```python
+class GlossaryManager:
+    """管理翻譯術語表"""
+```
+
+#### 建立實例
+
+```python
+from srt_translator.core.glossary import GlossaryManager
+
+glossary_manager = GlossaryManager()
+```
+
+#### 主要方法
+
+##### `create_glossary(name: str, source_lang: str, target_lang: str) -> bool`
+
+建立新術語表。
+
+**參數**：
+- `name` (str): 術語表名稱
+- `source_lang` (str): 來源語言
+- `target_lang` (str): 目標語言
+
+**回傳**：`bool` - 是否成功
+
+**範例**：
+```python
+glossary_manager.create_glossary("anime", "日文", "繁體中文")
+```
+
+##### `add_term(glossary_name: str, source: str, target: str) -> bool`
+
+新增術語到術語表。
+
+**參數**：
+- `glossary_name` (str): 術語表名稱
+- `source` (str): 原始詞彙
+- `target` (str): 翻譯詞彙
+
+**範例**：
+```python
+glossary_manager.add_term("anime", "エレン", "艾連")
+```
+
+##### `get_terms(glossary_name: str) -> Dict[str, str]`
+
+取得術語表中所有詞彙。
+
+**回傳**：`Dict[str, str]` - `{source: target}` 字典
+
+**範例**：
+```python
+terms = glossary_manager.get_terms("anime")
+# {"エレン": "艾連", "ミカサ": "米卡莎"}
+```
+
+##### `list_glossaries() -> List[str]`
+
+列出所有術語表名稱。
+
+**回傳**：`List[str]` - 術語表名稱列表
+
+##### `export_glossary(name: str, format: str = "json") -> str`
+
+匯出術語表為指定格式（json / csv / txt）。
+
+**回傳**：`str` - 序列化後的內容
+
+##### `import_glossary(name: str, content: str, format: str = "json") -> bool`
+
+從字串匯入術語表。
+
+---
+
 ### ModelManager
 
 AI 模型管理器，管理模型清單和推薦。
@@ -316,7 +398,7 @@ model_manager = ModelManager()
 獲取可用模型列表。
 
 **參數**：
-- `llm_type` (str): LLM 類型 ("ollama", "openai", "anthropic")
+- `llm_type` (str): LLM 類型 ("ollama", "openai", "anthropic", "google")
 
 **回傳**：`List[str]` - 模型名稱列表
 
@@ -391,7 +473,7 @@ prompt_manager = PromptManager()
 
 **參數**：
 - `llm_type` (str): LLM 類型
-- `content_type` (str): 內容類型 ("general", "anime", "movie", "adult")
+- `content_type` (str): 內容類型 ("general", "anime", "movie", "adult", "english_drama")
 - `style` (str): 翻譯風格 ("standard", "literal", "localized", "specialized")
 
 **回傳**：`str` - 提示詞文本
@@ -434,7 +516,19 @@ prompt_manager.set_prompt("openai", "movie", "standard", custom_prompt)
 **範例**：
 ```python
 types = prompt_manager.get_all_content_types()
-# ['general', 'anime', 'movie', 'adult']
+# ['general', 'anime', 'movie', 'adult', 'english_drama']
+```
+
+##### `get_batch_line_mapping_instruction() -> str`
+
+取得批次翻譯的行對應說明，供 `--structure-text` 模式使用。
+
+**回傳**：`str` - 說明文字，要求模型保持嚴格 1:1 行數對應
+
+**範例**：
+```python
+instruction = prompt_manager.get_batch_line_mapping_instruction()
+# 回傳要求 LLM 保持行數 1:1 的指令字串
 ```
 
 ---
@@ -1107,5 +1201,5 @@ uv run mypy src/srt_translator
 
 ---
 
-**最後更新**：2026-03-04
-**版本**：1.1.0
+**最後更新**：2026-03-12
+**版本**：1.1.0+
