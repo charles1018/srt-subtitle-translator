@@ -313,9 +313,12 @@ class TranslationClient:
         """
         self.llm_type = llm_type
         if llm_type == "ollama":
-            self.base_url = base_url
+            self.base_url = base_url.rstrip("/")
         elif llm_type == "llamacpp":
-            self.base_url = base_url or "http://localhost:8080"
+            normalized_base_url = (base_url or "http://localhost:8080").rstrip("/")
+            if normalized_base_url.endswith("/v1"):
+                normalized_base_url = normalized_base_url[:-3]
+            self.base_url = normalized_base_url
         elif llm_type == "google":
             self.base_url = "https://generativelanguage.googleapis.com"
         else:
@@ -325,6 +328,9 @@ class TranslationClient:
         self.session = None
         self.api_key = api_key
         self.metrics = ApiMetrics()
+        self._llamacpp_server_diagnostics: dict[str, Any] | None = None
+        self._llamacpp_server_diagnostics_timestamp = 0.0
+        self._llamacpp_server_diagnostics_ttl = 30.0
 
         # 連線池設定
         self.conn_limit = 10  # 最大連線數
@@ -556,6 +562,108 @@ class TranslationClient:
             "extra_body": extra_body,
         }
 
+    def _get_llamacpp_server_root_url(self) -> str:
+        """取得 llama.cpp server 根 URL（不含 /v1 前綴）"""
+        base_url = self.base_url.rstrip("/")
+        if base_url.endswith("/v1"):
+            return base_url[:-3]
+        return base_url
+
+    def _build_llamacpp_server_url(self, path: str) -> str:
+        """組合 llama.cpp server 管理端 URL"""
+        return f"{self._get_llamacpp_server_root_url()}{path}"
+
+    async def _get_llamacpp_server_diagnostics(self, force_refresh: bool = False) -> dict[str, Any]:
+        """查詢 llama.cpp server 健康狀態與可用 slots"""
+        if self.llm_type != "llamacpp":
+            return {}
+
+        now = time.time()
+        if (
+            not force_refresh
+            and self._llamacpp_server_diagnostics is not None
+            and now - self._llamacpp_server_diagnostics_timestamp < self._llamacpp_server_diagnostics_ttl
+        ):
+            return self._llamacpp_server_diagnostics
+
+        diagnostics: dict[str, Any] = {
+            "available": False,
+            "total_slots": None,
+            "slot_n_ctx": None,
+            "model_path": "",
+            "is_sleeping": False,
+            "slots_endpoint_available": None,
+        }
+
+        session = self.session
+        should_close_session = False
+
+        if session is None:
+            timeout = aiohttp.ClientTimeout(total=5, connect=3, sock_connect=3, sock_read=5)
+            session = aiohttp.ClientSession(timeout=timeout)
+            should_close_session = True
+
+        try:
+            health_url = self._build_llamacpp_server_url("/health")
+            async with session.get(health_url, timeout=5) as response:
+                diagnostics["available"] = response.status == 200
+                if response.status != 200:
+                    logger.debug(f"llama.cpp /health 狀態異常: {response.status}")
+                    return diagnostics
+
+            props_url = self._build_llamacpp_server_url("/props")
+            try:
+                async with session.get(props_url, timeout=5) as response:
+                    if response.status == 200:
+                        props = await response.json()
+                        if isinstance(props, dict):
+                            total_slots = props.get("total_slots")
+                            if isinstance(total_slots, int) and total_slots > 0:
+                                diagnostics["total_slots"] = total_slots
+
+                            default_settings = props.get("default_generation_settings", {})
+                            if isinstance(default_settings, dict):
+                                slot_n_ctx = default_settings.get("n_ctx")
+                                if isinstance(slot_n_ctx, int) and slot_n_ctx > 0:
+                                    diagnostics["slot_n_ctx"] = slot_n_ctx
+
+                            model_path = props.get("model_path", "")
+                            if isinstance(model_path, str):
+                                diagnostics["model_path"] = model_path
+
+                            diagnostics["is_sleeping"] = bool(props.get("is_sleeping", False))
+            except Exception as e:
+                logger.debug(f"讀取 llama.cpp /props 失敗，將改用其他端點補足資訊: {e!s}")
+
+            slots_url = self._build_llamacpp_server_url("/slots")
+            try:
+                async with session.get(slots_url, timeout=5) as response:
+                    if response.status == 200:
+                        slots_payload = await response.json()
+                        diagnostics["slots_endpoint_available"] = True
+                        if isinstance(slots_payload, list):
+                            if diagnostics["total_slots"] is None and slots_payload:
+                                diagnostics["total_slots"] = len(slots_payload)
+                            if diagnostics["slot_n_ctx"] is None and slots_payload and isinstance(slots_payload[0], dict):
+                                slot_n_ctx = slots_payload[0].get("n_ctx")
+                                if isinstance(slot_n_ctx, int) and slot_n_ctx > 0:
+                                    diagnostics["slot_n_ctx"] = slot_n_ctx
+                    elif response.status == 501:
+                        diagnostics["slots_endpoint_available"] = False
+                    else:
+                        logger.debug(f"llama.cpp /slots 狀態異常: {response.status}")
+            except Exception as e:
+                logger.debug(f"讀取 llama.cpp /slots 失敗: {e!s}")
+        except Exception as e:
+            logger.debug(f"探測 llama.cpp server 診斷資訊失敗: {e!s}")
+        finally:
+            if should_close_session and session is not None:
+                await session.close()
+
+        self._llamacpp_server_diagnostics = diagnostics
+        self._llamacpp_server_diagnostics_timestamp = time.time()
+        return diagnostics
+
     def _should_apply_qwen35_ud_runtime_guards(self, model_name: str) -> bool:
         """判斷是否應啟用 qwen3.5-ud 成人字幕的額外保護機制。"""
         return (
@@ -646,6 +754,45 @@ class TranslationClient:
 
         return max(1, batch_size)
 
+    async def _get_effective_batch_size(
+        self,
+        model_name: str,
+        concurrent_limit: int,
+        adaptive_concurrency: int,
+        pending: int,
+    ) -> int:
+        """根據 provider 與 server 狀態計算實際批次並發數"""
+        if self.llm_type == "ollama":
+            return self._get_ollama_batch_size(model_name, concurrent_limit, adaptive_concurrency, pending)
+
+        batch_size = min(concurrent_limit, adaptive_concurrency, pending)
+        if self.llm_type != "llamacpp":
+            return max(1, batch_size)
+
+        profile = self._get_llamacpp_model_profile(model_name)
+        model_limit = profile.get("batch_concurrency_limit")
+        if model_limit is not None:
+            limited_batch_size = min(batch_size, model_limit)
+            if limited_batch_size != batch_size:
+                logger.info(
+                    f"llama.cpp 模型 {model_name} ({profile['family']}) "
+                    f"限制並發數為 {limited_batch_size}，原始計算值: {batch_size}"
+                )
+            batch_size = limited_batch_size
+
+        diagnostics = await self._get_llamacpp_server_diagnostics()
+        total_slots = diagnostics.get("total_slots")
+        if isinstance(total_slots, int) and total_slots > 0:
+            limited_batch_size = min(batch_size, total_slots)
+            if limited_batch_size != batch_size:
+                logger.info(
+                    f"llama.cpp server slots 限制並發數為 {limited_batch_size}，"
+                    f"原始計算值: {batch_size}，總 slots: {total_slots}"
+                )
+            batch_size = limited_batch_size
+
+        return max(1, batch_size)
+
     def _get_fallback_models(self, model_name: str) -> list[str]:
         """取得當前模型可用的回退模型清單"""
         provider_fallbacks = self.fallback_models.get(self.llm_type, {})
@@ -689,20 +836,20 @@ class TranslationClient:
 
     async def __aenter__(self):
         """使用非同步上下文管理器初始化"""
-        if self.llm_type == "ollama":
-            # 使用 TCP 連接器以自定義連線限制
+        if self.llm_type in {"ollama", "llamacpp"}:
+            # 本地 provider 共用 aiohttp session 進行健康檢查與管理端探測
             connector = aiohttp.TCPConnector(
                 limit=self.conn_limit,
                 limit_per_host=self.conn_limit,
-                ssl=False,  # Ollama 通常是本機執行，不需要 SSL
+                ssl=False,
             )
             self.session = aiohttp.ClientSession(connector=connector, timeout=self.conn_timeout)  # type: ignore[assignment]
-            logger.debug(f"初始化 aiohttp.ClientSession for Ollama，連線限制: {self.conn_limit}")
+            logger.debug(f"初始化 aiohttp.ClientSession for {self.llm_type}，連線限制: {self.conn_limit}")
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """非同步上下文管理器清理"""
-        # 關閉 Ollama session
+        # 關閉本地 provider session
         if self.session:
             await self.session.close()
             self.session = None
@@ -1382,7 +1529,7 @@ class TranslationClient:
 
         # 使用動態並發數（受 concurrent_limit 上限限制）
         adaptive_concurrency = self.concurrency_controller.get_current()
-        batch_size = self._get_ollama_batch_size(
+        batch_size = await self._get_effective_batch_size(
             model_name,
             concurrent_limit,
             adaptive_concurrency,
@@ -1517,6 +1664,10 @@ class TranslationClient:
                     except Exception as e:
                         logger.error(f"Ollama API 連線測試失敗: {e!s}")
                         return False
+
+            elif self.llm_type == "llamacpp":
+                diagnostics = await self._get_llamacpp_server_diagnostics(force_refresh=True)
+                return bool(diagnostics.get("available"))
 
             return False
         except Exception as e:

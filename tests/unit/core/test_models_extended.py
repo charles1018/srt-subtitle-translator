@@ -526,6 +526,135 @@ class TestModelManagerOllamaModelsAsync:
             # 至少應該有符合模式的模型
             assert any(pattern in " ".join(model_ids).lower() for pattern in manager.model_patterns)
 
+class TestModelManagerLlamaCppModelsAsync:
+    """測試 _get_llamacpp_models_async 的各種場景"""
+
+    @pytest.fixture(autouse=True)
+    def reset_instances(self):
+        """每個測試前重置單例實例"""
+        ModelManager._instance = None
+        ConfigManager._instances = {}
+        yield
+        ModelManager._instance = None
+        ConfigManager._instances = {}
+
+    @pytest.fixture
+    def manager(self, temp_dir):
+        """提供測試用的 ModelManager"""
+        config_file = temp_dir / "config" / "model_config.json"
+        config_file.parent.mkdir(exist_ok=True)
+        return ModelManager(str(config_file))
+
+    @pytest.mark.asyncio
+    async def test_get_llamacpp_models_reads_props_slots_and_models(self, manager):
+        """測試 llama.cpp 模型列表會整合 props 與 slots 資訊"""
+        props_response = {
+            "total_slots": 3,
+            "model_path": "/models/Qwen3.5-8B-Instruct-Q8_0.gguf",
+            "default_generation_settings": {"n_ctx": 8192},
+        }
+        slots_response = [{"n_ctx": 8192}, {"n_ctx": 8192}, {"n_ctx": 8192}]
+        models_response = {
+            "data": [
+                {
+                    "id": "qwen3.5-8b-instruct",
+                    "meta": {
+                        "n_params": 8_000_000_000,
+                        "n_ctx_train": 131072,
+                    },
+                }
+            ]
+        }
+
+        def mock_get(url, *args, **kwargs):
+            if url.endswith("/props"):
+                payload = props_response
+                status = 200
+            elif url.endswith("/slots"):
+                payload = slots_response
+                status = 200
+            elif url.endswith("/v1/models"):
+                payload = models_response
+                status = 200
+            else:
+                payload = {}
+                status = 404
+
+            mock_resp = AsyncMock()
+            mock_resp.status = status
+            mock_resp.json = AsyncMock(return_value=payload)
+            mock_context_manager = MagicMock()
+            mock_context_manager.__aenter__ = AsyncMock(return_value=mock_resp)
+            mock_context_manager.__aexit__ = AsyncMock(return_value=None)
+            return mock_context_manager
+
+        with patch.object(manager, "_init_async_session", return_value=None):
+            manager.session = MagicMock()
+            manager.session.get = mock_get
+
+            result = await manager._get_llamacpp_models_async()
+
+            assert len(result) == 1
+            model = result[0]
+            assert model.id == "qwen3.5-8b-instruct"
+            assert model.name == "Qwen3.5-8B-Instruct-Q8_0"
+            assert model.parallel == 3
+            assert model.context_length == 8192
+            assert "8.0B 參數" in model.description
+            assert "3 個並行槽" in model.description
+
+    @pytest.mark.asyncio
+    async def test_get_llamacpp_models_falls_back_to_props_model_path(self, manager):
+        """測試 /v1/models 不可用時仍可用 /props 建立單一模型資訊"""
+        props_response = {
+            "total_slots": 2,
+            "model_path": "/models/Qwen3.5-8B-Instruct-Q8_0.gguf",
+            "default_generation_settings": {"n_ctx": 4096},
+        }
+
+        def mock_get(url, *args, **kwargs):
+            if url.endswith("/props"):
+                payload = props_response
+                status = 200
+            elif url.endswith("/slots"):
+                payload = {"error": "not supported"}
+                status = 501
+            elif url.endswith("/v1/models"):
+                payload = {"error": "unavailable"}
+                status = 404
+            else:
+                payload = {}
+                status = 404
+
+            mock_resp = AsyncMock()
+            mock_resp.status = status
+            mock_resp.json = AsyncMock(return_value=payload)
+            mock_context_manager = MagicMock()
+            mock_context_manager.__aenter__ = AsyncMock(return_value=mock_resp)
+            mock_context_manager.__aexit__ = AsyncMock(return_value=None)
+            return mock_context_manager
+
+        with patch.object(manager, "_init_async_session", return_value=None):
+            manager.session = MagicMock()
+            manager.session.get = mock_get
+
+            result = await manager._get_llamacpp_models_async()
+
+            assert len(result) == 1
+            model = result[0]
+            assert model.id == "Qwen3.5-8B-Instruct-Q8_0.gguf"
+            assert model.name == "Qwen3.5-8B-Instruct-Q8_0"
+            assert model.parallel == 2
+            assert model.context_length == 4096
+            assert model.available is True
+
+    def test_get_llamacpp_fallback_models_uses_updated_startup_hint(self, manager):
+        """測試 llama.cpp fallback 提示改為非思考翻譯建議參數"""
+        fallback_model = manager._get_llamacpp_fallback_models()[0]
+
+        assert "--reasoning off" in fallback_model.description
+        assert "--parallel 1" in fallback_model.description
+
 
 class TestModelManagerOpenAIModelsAsync:
     """測試 _get_openai_models_async 的各種場景"""

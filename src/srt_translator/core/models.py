@@ -1486,7 +1486,7 @@ class ModelManager:
     async def _get_llamacpp_models_async(self) -> list[ModelInfo]:
         """非同步獲取 llama.cpp server 載入的模型
 
-        透過 /v1/models 端點查詢 llama-server 目前載入的模型。
+        透過 /props、/slots 與 /v1/models 端點查詢 llama-server 目前狀態。
 
         回傳:
             ModelInfo 物件列表（通常只有一個模型）
@@ -1494,64 +1494,98 @@ class ModelManager:
         try:
             await self._init_async_session()
 
-            url = f"{self.llamacpp_url}/v1/models"
-            logger.debug(f"嘗試從 {url} 獲取 llama.cpp 模型")
+            base_url = self.llamacpp_url.rstrip("/")
+            if base_url.endswith("/v1"):
+                base_url = base_url[:-3]
 
-            assert self.session is not None
-            async with self.session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as response:
-                if response.status != 200:
-                    logger.warning(f"llama-server /v1/models 返回狀態碼: {response.status}")
-                    return self._get_llamacpp_fallback_models()
+            async def fetch_json(endpoint: str) -> Any | None:
+                url = f"{base_url}{endpoint}"
+                logger.debug(f"嘗試從 {url} 讀取 llama.cpp 狀態")
+                assert self.session is not None
+                async with self.session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as response:
+                    if response.status != 200:
+                        logger.debug(f"llama.cpp {endpoint} 返回狀態碼: {response.status}")
+                        return None
+                    return await response.json()
 
-                result = await response.json()
-                models = result.get("data", [])
+            props = await fetch_json("/props")
+            slots = await fetch_json("/slots")
+            result = await fetch_json("/v1/models")
 
-                if not models:
-                    logger.warning("llama-server 未載入任何模型")
-                    return self._get_llamacpp_fallback_models()
+            props_data = props if isinstance(props, dict) else {}
+            slots_data = slots if isinstance(slots, list) else []
+            models = result.get("data", []) if isinstance(result, dict) else []
 
-                model_info_list = []
-                for model_data in models:
-                    model_id = model_data.get("id", "unknown")
-                    # 從路徑中提取檔案名稱作為顯示名稱
-                    display_name = Path(model_id).stem if "/" in model_id or "\\" in model_id else model_id
+            total_slots = props_data.get("total_slots")
+            if not isinstance(total_slots, int) or total_slots <= 0:
+                total_slots = len(slots_data) if slots_data else 1
 
-                    meta = model_data.get("meta", {})
-                    n_params = meta.get("n_params", 0)
-                    n_ctx_train = meta.get("n_ctx_train", 4096)
+            default_generation_settings = props_data.get("default_generation_settings", {})
+            slot_n_ctx = (
+                default_generation_settings.get("n_ctx")
+                if isinstance(default_generation_settings, dict)
+                else None
+            )
+            if (not isinstance(slot_n_ctx, int) or slot_n_ctx <= 0) and slots_data and isinstance(slots_data[0], dict):
+                slot_n_ctx = slots_data[0].get("n_ctx")
+            if not isinstance(slot_n_ctx, int) or slot_n_ctx <= 0:
+                slot_n_ctx = 4096
 
-                    # 格式化參數量
-                    param_str = ""
-                    if n_params > 0:
-                        if n_params >= 1e9:
-                            param_str = f"{n_params / 1e9:.1f}B"
-                        elif n_params >= 1e6:
-                            param_str = f"{n_params / 1e6:.0f}M"
+            model_path = props_data.get("model_path", "")
+            if not models and model_path:
+                models = [{"id": Path(model_path).name, "meta": {}}]
 
-                    description = "llama.cpp 本地模型"
-                    if param_str:
-                        description += f"（{param_str} 參數）"
+            if not models:
+                logger.warning("llama-server 未回報任何模型資訊")
+                return self._get_llamacpp_fallback_models()
 
-                    model_info = ModelInfo(
-                        id=model_id,
-                        provider="llamacpp",
-                        name=display_name,
-                        description=description,
-                        context_length=n_ctx_train,
-                        pricing="免費(本機執行)",
-                        recommended_for="本地高速推理翻譯",
-                        parallel=4,
-                        tags=["free", "local", "llamacpp"],
-                        capabilities={
-                            "translation": 0.85,
-                            "multilingual": 0.80,
-                            "context_handling": 0.85,
-                        },
-                    )
-                    model_info_list.append(model_info)
+            model_info_list = []
+            for model_data in models:
+                model_id = str(model_data.get("id") or Path(model_path).name or "unknown")
+                display_source = model_path if isinstance(model_path, str) and model_path else model_id
+                display_name = Path(display_source).stem if "/" in display_source or "\\" in display_source else display_source
 
-                logger.info(f"檢測到 {len(model_info_list)} 個 llama.cpp 模型")
-                return model_info_list
+                meta = model_data.get("meta", {})
+                n_params = meta.get("n_params", 0) if isinstance(meta, dict) else 0
+                n_ctx_train = meta.get("n_ctx_train", slot_n_ctx) if isinstance(meta, dict) else slot_n_ctx
+
+                param_str = ""
+                if isinstance(n_params, int) and n_params > 0:
+                    if n_params >= 1_000_000_000:
+                        param_str = f"{n_params / 1_000_000_000:.1f}B"
+                    elif n_params >= 1_000_000:
+                        param_str = f"{n_params / 1_000_000:.0f}M"
+
+                description_parts = []
+                if param_str:
+                    description_parts.append(f"{param_str} 參數")
+                if total_slots > 0:
+                    description_parts.append(f"{total_slots} 個並行槽")
+
+                description = "llama.cpp 本地模型"
+                if description_parts:
+                    description += f"（{'，'.join(description_parts)}）"
+
+                model_info = ModelInfo(
+                    id=model_id,
+                    provider="llamacpp",
+                    name=display_name,
+                    description=description,
+                    context_length=slot_n_ctx,
+                    pricing="免費(本機執行)",
+                    recommended_for="本地高速推理翻譯",
+                    parallel=total_slots,
+                    tags=["free", "local", "llamacpp"],
+                    capabilities={
+                        "translation": 0.85,
+                        "multilingual": 0.80,
+                        "context_handling": 0.85 if isinstance(n_ctx_train, int) and n_ctx_train >= 32768 else 0.80,
+                    },
+                )
+                model_info_list.append(model_info)
+
+            logger.info(f"檢測到 {len(model_info_list)} 個 llama.cpp 模型（server slots: {total_slots}）")
+            return model_info_list
 
         except Exception as e:
             logger.error(f"獲取 llama.cpp 模型列表失敗: {e!s}")
@@ -1564,7 +1598,11 @@ class ModelManager:
                 id="llama-server-offline",
                 provider="llamacpp",
                 name="llama-server (未連線)",
-                description="請先啟動 llama-server：llama-server -m <model.gguf> -ngl 99 --flash-attn",
+                description=(
+                    "請先啟動 llama-server："
+                    "llama-server -m <model.gguf> --jinja --reasoning off "
+                    "--reasoning-format none --reasoning-budget 0 --parallel 1"
+                ),
                 context_length=4096,
                 pricing="免費(本機執行)",
                 recommended_for="本地高速推理翻譯",

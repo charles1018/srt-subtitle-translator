@@ -223,7 +223,7 @@ class TestTranslationClientInit:
         """Test initialization with llama.cpp."""
         client = TranslationClient(
             llm_type="llamacpp",
-            base_url="http://localhost:8080",
+            base_url="http://localhost:8080/v1",
         )
         assert client.llm_type == "llamacpp"
         assert client.base_url == "http://localhost:8080"
@@ -460,6 +460,29 @@ class TestTranslationClientHelpers:
         )
 
         assert batch_size == 1
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    async def test_get_effective_batch_size_limits_llamacpp_to_server_slots(
+        self, mock_openai, mock_prompt, mock_cache
+    ):
+        """Test llama.cpp batch concurrency respects detected server slot count."""
+        client = TranslationClient(llm_type="llamacpp", base_url="http://localhost:8080")
+        client._get_llamacpp_server_diagnostics = AsyncMock(  # type: ignore[method-assign]
+            return_value={"available": True, "total_slots": 2}
+        )
+
+        batch_size = await client._get_effective_batch_size(
+            "llama3.2",
+            concurrent_limit=6,
+            adaptive_concurrency=5,
+            pending=8,
+        )
+
+        assert batch_size == 2
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
@@ -1137,3 +1160,21 @@ class TestTranslationClientApiAvailability:
         client = TranslationClient(llm_type="openai", api_key=None)
         result = await client.is_api_available()
         assert result is False
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    async def test_is_api_available_llamacpp_success(
+        self, mock_openai, mock_prompt, mock_cache
+    ):
+        """Test llama.cpp availability check delegates to server diagnostics."""
+        client = TranslationClient(llm_type="llamacpp", base_url="http://localhost:8080")
+        client._get_llamacpp_server_diagnostics = AsyncMock(  # type: ignore[method-assign]
+            return_value={"available": True, "total_slots": 1}
+        )
+
+        result = await client.is_api_available()
+
+        assert result is True
