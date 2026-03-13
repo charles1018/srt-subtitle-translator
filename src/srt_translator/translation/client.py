@@ -258,7 +258,9 @@ class TranslationClient:
                 "max_tokens": 256,
             },
             "extra_body": {
+                "cache_prompt": True,
                 "reasoning_format": "none",
+                "seed": 42,
                 "chat_template_kwargs": {"enable_thinking": False},
             },
         },
@@ -270,6 +272,7 @@ class TranslationClient:
                 "max_tokens": 256,
             },
             "extra_body": {
+                "presence_penalty": 1.5,
                 "top_k": 20,
                 "min_p": 0.0,
             },
@@ -282,6 +285,7 @@ class TranslationClient:
                 "max_tokens": 96,
             },
             "extra_body": {
+                "presence_penalty": 1.5,
                 "top_k": 20,
                 "min_p": 0.0,
             },

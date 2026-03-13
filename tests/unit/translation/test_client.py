@@ -412,8 +412,11 @@ class TestTranslationClientHelpers:
         assert profile["options"]["temperature"] == 0.7
         assert profile["options"]["top_p"] == 0.8
         assert profile["options"]["max_tokens"] == 256
+        assert profile["extra_body"]["cache_prompt"] is True
         assert profile["extra_body"]["reasoning_format"] == "none"
+        assert profile["extra_body"]["seed"] == 42
         assert profile["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
+        assert profile["extra_body"]["presence_penalty"] == 1.5
         assert profile["extra_body"]["top_k"] == 20
         assert profile["extra_body"]["min_p"] == 0.0
 
@@ -430,8 +433,11 @@ class TestTranslationClientHelpers:
         assert profile["options"]["temperature"] == 0.4
         assert profile["options"]["top_p"] == 0.8
         assert profile["options"]["max_tokens"] == 96
+        assert profile["extra_body"]["cache_prompt"] is True
         assert profile["extra_body"]["reasoning_format"] == "none"
+        assert profile["extra_body"]["seed"] == 42
         assert profile["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
+        assert profile["extra_body"]["presence_penalty"] == 1.5
         assert profile["extra_body"]["top_k"] == 20
         assert profile["extra_body"]["min_p"] == 0.0
 
@@ -990,8 +996,11 @@ class TestTranslationClientAsync:
         assert request_payload["temperature"] == 0.7
         assert request_payload["top_p"] == 0.8
         assert request_payload["max_tokens"] == 256
+        assert request_payload["extra_body"]["cache_prompt"] is True
         assert request_payload["extra_body"]["reasoning_format"] == "none"
+        assert request_payload["extra_body"]["seed"] == 42
         assert request_payload["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
+        assert request_payload["extra_body"]["presence_penalty"] == 1.5
         assert request_payload["extra_body"]["top_k"] == 20
         assert request_payload["extra_body"]["min_p"] == 0.0
         assert result == "翻譯結果"
