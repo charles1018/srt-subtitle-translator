@@ -29,11 +29,11 @@
 
 目前專案正處於 provider 整理階段，開發時請先區分各層支援範圍：
 
-- 實際翻譯 runtime：`ollama`、`openai`、`google`
-- CLI `translate` / `models` 參數：`ollama`、`openai`、`anthropic`
-- GUI provider 下拉：`ollama`、`openai`、`anthropic`、`google`
-- `ConfigManager` 對 `user.llm_type` 驗證：`ollama`、`openai`
-- `ModelManager` / 模型 metadata / 金鑰載入：`ollama`、`openai`、`anthropic`、`google`
+- 實際翻譯 runtime：`ollama`、`openai`、`google`、`llamacpp`
+- CLI `translate` / `models` 參數：`ollama`、`openai`、`anthropic`、`llamacpp`
+- GUI provider 下拉：`ollama`、`openai`、`anthropic`、`google`、`llamacpp`
+- `ConfigManager` 對 `user.llm_type` 驗證：`ollama`、`openai`、`anthropic`、`google`、`llamacpp`
+- `ModelManager` / 模型 metadata / 金鑰載入：`ollama`、`openai`、`anthropic`、`google`、`llamacpp`
 - OpenRouter：規劃中，尚未實作
 
 ### 推薦工具

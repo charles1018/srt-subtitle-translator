@@ -44,6 +44,8 @@
 - provider 相關資訊需要區分「模型資訊 / 可用模型發現」與「真正可執行的翻譯 runtime」
 - 目前 `TranslationClient` 的翻譯執行路徑實作為 `ollama`、`openai`、`google`、`llamacpp`
 - `llamacpp` 透過 OpenAI 相容 API 連接本地 `llama-server`，不需要 API 金鑰
+- `llamacpp` 目前會額外探測 `llama-server` 的 `/health`、`/props`、`/slots`，用於健康檢查、模型 metadata 與實際並發對齊
+- `llamacpp` 目前預設會送出 non-thinking 控制、Qwen3.5 專屬採樣參數，並使用 `response_format=json_schema` 將翻譯輸出鎖定為單一 `translation` 欄位
 - `anthropic` 目前主要接在模型資訊與金鑰層，尚未是第一級翻譯 runtime
 - provider 支援目前仍有分層差異：runtime 為 `ollama` / `openai` / `google` / `llamacpp`；CLI parser 為 `ollama` / `openai` / `anthropic` / `llamacpp`；GUI 下拉為 `ollama` / `openai` / `anthropic` / `google` / `llamacpp`
 - OpenRouter 仍屬規劃中，不在目前 public API 範圍內
@@ -574,6 +576,11 @@ client = TranslationClient(
 ```
 
 > `TranslationClient` 目前的翻譯執行路徑實作為 `ollama`、`openai`、`google`、`llamacpp`；`anthropic` 尚未是第一級 runtime。
+>
+> `llamacpp` 補充：
+> - 會依模型家族套用專屬 profile；Qwen3.5 會明確關閉 thinking，並補 `presence_penalty`、`cache_prompt`、`seed`
+> - 批次翻譯的實際並發數會受 `llama-server --parallel` 與 `/slots` 探測結果限制
+> - 若 server 支援，回應會以 schema-constrained JSON 輸出，再由 client 提取 `translation`
 
 #### 主要方法
 
