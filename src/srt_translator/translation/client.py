@@ -792,7 +792,13 @@ class TranslationClient:
             return base_strategy
 
     async def translate_with_retry(
-        self, text: str, context_texts: list[str], model_name: str, max_tries: int = 3, use_fallback: bool = True
+        self,
+        text: str,
+        context_texts: list[str],
+        model_name: str,
+        max_tries: int = 3,
+        use_fallback: bool = True,
+        current_index: int | None = None,
     ) -> str:
         """使用自定義重試和回退策略翻譯文字"""
         original_model = model_name
@@ -802,7 +808,7 @@ class TranslationClient:
         while tries < max_tries:
             tries += 1
             try:
-                result = await self.translate_text(text, context_texts, model_name)
+                result = await self.translate_text(text, context_texts, model_name, current_index=current_index)
 
                 # 成功後，如果使用了回退模型，記錄
                 if model_name != original_model:
@@ -849,7 +855,9 @@ class TranslationClient:
         logger.error(f"翻譯失敗，所有嘗試和回退都失敗: {error_summary}")
         return f"[翻譯錯誤: {error_summary}]"
 
-    async def translate_text(self, text: str, context_texts: list[str], model_name: str) -> str:
+    async def translate_text(
+        self, text: str, context_texts: list[str], model_name: str, current_index: int | None = None
+    ) -> str:
         """翻譯文字，根據 LLM 類型選擇不同的處理方式"""
         if not text.strip():
             return ""
@@ -861,8 +869,8 @@ class TranslationClient:
         prompt_version = self.prompt_manager.get_prompt_version(self.llm_type, model_name=model_name)
 
         # 對 qwen3.5-ud，快取鍵使用壓縮後的上下文，確保與實際 prompt 一致
-        effective_context = self.prompt_manager.get_effective_context_texts(
-            text, context_texts, self.llm_type, model_name
+        effective_context = self.prompt_manager.get_effective_cache_context_texts(
+            text, context_texts, self.llm_type, model_name, current_index=current_index
         )
 
         # 首先嘗試從快取獲取，這步很快不需要非同步
@@ -879,7 +887,9 @@ class TranslationClient:
             return cached_result
 
         # 獲取適合當前 LLM 類型的提示訊息
-        messages = self.prompt_manager.get_optimized_message(text, context_texts, self.llm_type, model_name)
+        messages = self.prompt_manager.get_optimized_message(
+            text, context_texts, self.llm_type, model_name, current_index=current_index
+        )
 
         try:
             if self.llm_type == "openai":
@@ -1125,7 +1135,11 @@ class TranslationClient:
             raise
 
     async def translate_batch(
-        self, texts: list[tuple[str, list[str]]], model_name: str, concurrent_limit: int = 5
+        self,
+        texts: list[tuple[str, list[str]]],
+        model_name: str,
+        concurrent_limit: int = 5,
+        current_indices: list[int | None] | None = None,
     ) -> list[str]:
         """批量翻譯多個字幕，帶有並發控制"""
         if not texts:
@@ -1139,8 +1153,9 @@ class TranslationClient:
 
         # 首先檢查快取（使用有效上下文確保與 translate_text 的快取鍵一致）
         for i, (text, context) in enumerate(texts):
-            effective_ctx = self.prompt_manager.get_effective_context_texts(
-                text, context, self.llm_type, model_name
+            current_index = current_indices[i] if current_indices and i < len(current_indices) else None
+            effective_ctx = self.prompt_manager.get_effective_cache_context_texts(
+                text, context, self.llm_type, model_name, current_index=current_index
             )
             cached = self.cache_manager.get_cached_translation(
                 text,
@@ -1153,7 +1168,7 @@ class TranslationClient:
                 cache_hits.append((i, cached))
                 self.metrics.cache_hits += 1
             else:
-                api_requests.append((i, text, context))
+                api_requests.append((i, text, context, current_index))
 
         # 填入快取命中的結果
         for i, translation in cache_hits:
@@ -1179,18 +1194,20 @@ class TranslationClient:
         # 非同步批次處理
         semaphore = asyncio.Semaphore(batch_size)
 
-        async def process_item(idx, txt, ctx):
+        async def process_item(idx, txt, ctx, current_index):
             async with semaphore:
                 try:
                     # 使用帶重試功能的翻譯
-                    translation = await self.translate_with_retry(txt, ctx, model_name)
+                    translation = await self.translate_with_retry(
+                        txt, ctx, model_name, current_index=current_index
+                    )
                     return idx, translation, None
                 except Exception as e:
                     logger.error(f"批量翻譯中的項目 {idx} 失敗: {e!s}")
                     return idx, f"[翻譯錯誤: {e!s}]", e
 
         # 建立所有任務
-        tasks = [process_item(idx, txt, ctx) for idx, txt, ctx in api_requests]
+        tasks = [process_item(idx, txt, ctx, current_index) for idx, txt, ctx, current_index in api_requests]
 
         # 等待所有任務完成
         completed = await asyncio.gather(*tasks, return_exceptions=True)

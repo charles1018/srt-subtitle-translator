@@ -610,6 +610,65 @@ class TestTranslationService:
         assert service.stats["cached_translations"] == 1
 
     @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_text_passes_current_index_to_client_and_cache(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
+    ):
+        """Test current_index is forwarded to prompt manager, client, and cache storage."""
+        mock_config.get_instance.return_value = MagicMock()
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.get_prompt_version.return_value = "promptv2"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CURRENT_INDEX]2", "Hello"]
+        mock_prompt.return_value = mock_prompt_instance
+
+        mock_client = AsyncMock()
+        mock_client.translate_with_retry = AsyncMock(return_value="你好")
+
+        service = TranslationService()
+        service.prompt_manager = mock_prompt_instance
+        service.cache_service = MagicMock()
+        service.cache_service.get_translation.return_value = None
+        service.model_service = MagicMock()
+        service.model_service.get_translation_client = AsyncMock(return_value=mock_client)
+
+        result = await service.translate_text(
+            "Hello",
+            ["前一行", "Hello", "Hello", "後一行"],
+            "ollama",
+            "qwen3.5-ud:latest",
+            current_index=2,
+        )
+
+        assert result == "你好"
+        mock_prompt_instance.get_effective_cache_context_texts.assert_called_once_with(
+            "Hello",
+            ["前一行", "Hello", "Hello", "後一行"],
+            "ollama",
+            "qwen3.5-ud:latest",
+            current_index=2,
+        )
+        mock_client.translate_with_retry.assert_awaited_once_with(
+            "Hello",
+            ["前一行", "Hello", "Hello", "後一行"],
+            "qwen3.5-ud:latest",
+            current_index=2,
+        )
+        service.cache_service.store_translation.assert_called_once_with(
+            "Hello",
+            "你好",
+            ["[CURRENT_INDEX]2", "Hello"],
+            "qwen3.5-ud:latest",
+            "standard",
+            "promptv2",
+        )
+
+    @pytest.mark.asyncio
     @patch("srt_translator.services.factory.pysrt.open")
     @patch("srt_translator.services.factory.ConfigManager")
     @patch("srt_translator.services.factory.PromptManager")

@@ -39,11 +39,13 @@ def mock_all_services(mock_translation_client, mock_translation_responses):
     # Mock TranslationService
     mock_translation_service = Mock()
     mock_translation_service.translate_text = AsyncMock(
-        side_effect=lambda text, context, llm_type, model: mock_translation_responses.get(text, f"[Mock] {text}")
+        side_effect=lambda text, context, llm_type, model, current_index=None: mock_translation_responses.get(
+            text, f"[Mock] {text}"
+        )
     )
     mock_translation_service.translate_batch = AsyncMock(
-        side_effect=lambda texts_with_context, llm_type, model, concurrent: [
-            mock_translation_responses.get(text, f"[Mock] {text}") for text, context in texts_with_context
+        side_effect=lambda texts_with_context, llm_type, model, concurrent, current_indices=None: [
+            mock_translation_responses.get(item[0], f"[Mock] {item[0]}") for item in texts_with_context
         ]
     )
     mock_translation_service.cleanup = Mock()

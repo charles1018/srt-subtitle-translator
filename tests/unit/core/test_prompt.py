@@ -583,6 +583,50 @@ class TestPromptManagerOptimizedMessage:
         assert "前二行" not in user_message
         assert "後二行" not in user_message
 
+    def test_get_optimized_message_qwen35_ud_respects_current_index_for_duplicate_lines(self, manager):
+        """測試重複句時會依 current_index 選到正確的前後文。"""
+        manager.current_content_type = "adult"
+        text = "もっと、もっと"
+        context = ["前二行", text, "前一行", text, "後一行"]
+
+        messages = manager.get_optimized_message(
+            text,
+            context,
+            "ollama",
+            "qwen3.5-ud:latest",
+            current_index=3,
+        )
+
+        user_message = messages[1]["content"]
+        assert "Before: 前一行" in user_message
+        assert "After: 後一行" in user_message
+        assert "前二行" not in user_message
+
+    def test_get_effective_cache_context_texts_marks_current_index(self, manager):
+        """測試快取上下文會加入 current_index 標記，避免重複句碰撞。"""
+        manager.current_content_type = "adult"
+        text = "もっと、もっと"
+        context = ["前二行", text, "前一行", text, "後一行"]
+
+        first_context = manager.get_effective_cache_context_texts(
+            text,
+            context,
+            "ollama",
+            "qwen3.5-ud:latest",
+            current_index=1,
+        )
+        second_context = manager.get_effective_cache_context_texts(
+            text,
+            context,
+            "ollama",
+            "qwen3.5-ud:latest",
+            current_index=3,
+        )
+
+        assert first_context[0] == "[CURRENT_INDEX]1"
+        assert second_context[0] == "[CURRENT_INDEX]3"
+        assert first_context != second_context
+
 
 class TestPromptManagerReset:
     """測試重置功能"""

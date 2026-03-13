@@ -34,11 +34,13 @@ def mock_all_services_for_workflow(mock_translation_client, mock_translation_res
     """為翻譯流程測試準備完整的 Mock 服務"""
 
     # Mock TranslationService 的翻譯邏輯
-    async def mock_translate_text(text, context, llm_type, model):
+    async def mock_translate_text(text, context, llm_type, model, current_index=None):
         return mock_translation_responses.get(text, f"[Mock翻譯] {text}")
 
-    async def mock_translate_batch(texts_with_context, llm_type, model, concurrent_limit=5):
-        return [mock_translation_responses.get(text, f"[Mock翻譯] {text}") for text, context in texts_with_context]
+    async def mock_translate_batch(
+        texts_with_context, llm_type, model, concurrent_limit=5, current_indices=None
+    ):
+        return [mock_translation_responses.get(item[0], f"[Mock翻譯] {item[0]}") for item in texts_with_context]
 
     # 建立 Mock TranslationService
     mock_translation_service = Mock()

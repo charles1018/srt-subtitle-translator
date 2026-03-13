@@ -198,12 +198,19 @@ def mock_translation_client(mock_translation_responses: dict[str, str]):
     """
     client = AsyncMock()
 
-    async def mock_translate(text: str, context: list[str], model_name: str) -> str:
+    async def mock_translate(
+        text: str, context: list[str], model_name: str, current_index: int | None = None
+    ) -> str:
         """Mock 翻譯函數"""
         # 返回預定義的翻譯或原文
         return mock_translation_responses.get(text, f"[Mock翻譯] {text}")
 
-    async def mock_translate_batch(texts_with_context: list, model_name: str, concurrent_limit: int = 5) -> list[str]:
+    async def mock_translate_batch(
+        texts_with_context: list,
+        model_name: str,
+        concurrent_limit: int = 5,
+        current_indices: list[int | None] | None = None,
+    ) -> list[str]:
         """Mock 批量翻譯函數"""
         results = []
         for text, _context in texts_with_context:

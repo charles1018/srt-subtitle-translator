@@ -177,7 +177,14 @@ class TranslationService:
             logger.error(f"初始化翻譯服務成員時發生錯誤: {e!s}")
             raise
 
-    async def translate_text(self, text: str, context_texts: list[str], llm_type: str, model_name: str) -> str:
+    async def translate_text(
+        self,
+        text: str,
+        context_texts: list[str],
+        llm_type: str,
+        model_name: str,
+        current_index: int | None = None,
+    ) -> str:
         """翻譯單一文本
 
         參數:
@@ -202,9 +209,13 @@ class TranslationService:
         current_style = self.prompt_manager.current_style
         prompt_version = self.prompt_manager.get_prompt_version(llm_type, model_name=model_name)
 
+        effective_context = self.prompt_manager.get_effective_cache_context_texts(
+            text, context_texts, llm_type, model_name, current_index=current_index
+        )
+
         # 檢查快取
         cached_result = self.cache_service.get_translation(
-            text, context_texts, model_name, current_style, prompt_version
+            text, effective_context, model_name, current_style, prompt_version
         )
         if cached_result:
             self._incr_stat("cached_translations")
@@ -217,13 +228,19 @@ class TranslationService:
             client = await self.model_service.get_translation_client(llm_type)
 
             # 獲取翻譯提示詞
-            self.prompt_manager.get_optimized_message(text, context_texts, llm_type, model_name)
+            self.prompt_manager.get_optimized_message(
+                text, context_texts, llm_type, model_name, current_index=current_index
+            )
 
             # 使用客戶端執行翻譯
             if hasattr(client, "translate_with_retry"):
-                translation = await client.translate_with_retry(text, context_texts, model_name)
+                translation = await client.translate_with_retry(
+                    text, context_texts, model_name, current_index=current_index
+                )
             else:
-                translation = await client.translate_text(text, context_texts, model_name)
+                translation = await client.translate_text(
+                    text, context_texts, model_name, current_index=current_index
+                )
 
             if translation and translation.startswith("[翻譯錯誤"):
                 return translation
@@ -233,7 +250,7 @@ class TranslationService:
 
             # 儲存到快取（包含風格和提示詞版本）
             self.cache_service.store_translation(
-                text, translation, context_texts, model_name, current_style, prompt_version
+                text, translation, effective_context, model_name, current_style, prompt_version
             )
 
             # 更新統計資料
@@ -248,7 +265,12 @@ class TranslationService:
             return f"[翻譯錯誤: {e!s}]"
 
     async def translate_batch(
-        self, texts_with_context: list[tuple[str, list[str]]], llm_type: str, model_name: str, concurrent_limit: int = 5
+        self,
+        texts_with_context: list[tuple[str, list[str]]],
+        llm_type: str,
+        model_name: str,
+        concurrent_limit: int = 5,
+        current_indices: list[int | None] | None = None,
     ) -> list[str]:
         """批量翻譯多個文本
 
@@ -277,7 +299,10 @@ class TranslationService:
         if hasattr(client, "translate_batch"):
             # 使用原生批量翻譯功能
             batch_results = await client.translate_batch(
-                texts_with_context, model_name, concurrent_limit=concurrent_limit
+                texts_with_context,
+                model_name,
+                concurrent_limit=concurrent_limit,
+                current_indices=current_indices,
             )
 
             # 對每個結果進行後處理
@@ -294,13 +319,23 @@ class TranslationService:
             # 自行實現批量翻譯
             semaphore = asyncio.Semaphore(concurrent_limit)
 
-            async def process_item(idx, text, context):
+            async def process_item(idx, text, context, current_index):
                 async with semaphore:
-                    translation = await self.translate_text(text, context, llm_type, model_name)
+                    translation = await self.translate_text(
+                        text, context, llm_type, model_name, current_index=current_index
+                    )
                     return idx, translation
 
             # 建立任務
-            tasks = [process_item(i, text, context) for i, (text, context) in enumerate(texts_with_context)]
+            tasks = [
+                process_item(
+                    i,
+                    text,
+                    context,
+                    current_indices[i] if current_indices and i < len(current_indices) else None,
+                )
+                for i, (text, context) in enumerate(texts_with_context)
+            ]
 
             # 等待所有任務完成
             completed = await asyncio.gather(*tasks, return_exceptions=True)
@@ -398,14 +433,20 @@ class TranslationService:
                 else:
                     # 標準模式：逐條翻譯（帶上下文）
                     texts_with_context = []
+                    current_indices = []
                     for idx in batch_indices:
                         context_start = max(0, idx - context_window)
                         context_end = min(total_subtitles, idx + context_window + 1)
                         context_texts = [s.text for s in subs[context_start:context_end]]
                         texts_with_context.append((subs[idx].text, context_texts))
+                        current_indices.append(idx - context_start)
 
                     translations = await self.translate_batch(
-                        texts_with_context, llm_type, model_name, parallel_requests
+                        texts_with_context,
+                        llm_type,
+                        model_name,
+                        parallel_requests,
+                        current_indices=current_indices,
                     )
 
                 # 應用翻譯結果
@@ -562,13 +603,21 @@ class TranslationService:
         context_window = 3
         total = len(subs)
         texts_with_context = []
+        current_indices = []
         for idx in batch_indices:
             ctx_start = max(0, idx - context_window)
             ctx_end = min(total, idx + context_window + 1)
             context_texts = [s.text for s in subs[ctx_start:ctx_end]]
             texts_with_context.append((subs[idx].text, context_texts))
+            current_indices.append(idx - ctx_start)
 
-        return await self.translate_batch(texts_with_context, llm_type, model_name, parallel_requests)
+        return await self.translate_batch(
+            texts_with_context,
+            llm_type,
+            model_name,
+            parallel_requests,
+            current_indices=current_indices,
+        )
 
     def _post_process_translation(self, original_text: str, translated_text: str) -> str:
         """對翻譯結果進行後處理，包括術語表應用、專有名詞統一和移除標點符號

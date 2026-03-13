@@ -613,6 +613,7 @@ class TestTranslationClientAsync:
         mock_prompt_instance = MagicMock()
         mock_prompt_instance.current_style = "standard"
         mock_prompt_instance.get_prompt_version.return_value = "qwen35udv1"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CURRENT_INDEX]0"]
         mock_prompt.return_value = mock_prompt_instance
 
         client = TranslationClient(llm_type="ollama")
@@ -621,10 +622,42 @@ class TestTranslationClientAsync:
         assert result == "cached translation"
         mock_cache_instance.get_cached_translation.assert_called_once_with(
             "Hello",
-            [],
+            ["[CURRENT_INDEX]0"],
             "qwen3.5-ud:latest",
             "standard",
             "qwen35udv1",
+        )
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    async def test_translate_text_passes_current_index_to_effective_cache_context(self, mock_prompt, mock_cache):
+        """Test current_index is forwarded to prompt manager cache-context helper."""
+        mock_cache_instance = MagicMock()
+        mock_cache_instance.get_cached_translation.return_value = "cached translation"
+        mock_cache.return_value = mock_cache_instance
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.get_prompt_version.return_value = "qwen35udv2"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CURRENT_INDEX]2", "Hello"]
+        mock_prompt.return_value = mock_prompt_instance
+
+        client = TranslationClient(llm_type="ollama")
+        result = await client.translate_text(
+            "Hello",
+            ["前一行", "Hello", "Hello", "後一行"],
+            "qwen3.5-ud:latest",
+            current_index=2,
+        )
+
+        assert result == "cached translation"
+        mock_prompt_instance.get_effective_cache_context_texts.assert_called_once_with(
+            "Hello",
+            ["前一行", "Hello", "Hello", "後一行"],
+            "ollama",
+            "qwen3.5-ud:latest",
+            current_index=2,
         )
 
     @pytest.mark.skip(reason="Complex async mock setup needed")

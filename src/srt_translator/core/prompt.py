@@ -690,27 +690,75 @@ Rules:
             return "qwen35_ud_adult_compact_context_v2"
         return "default_structured_context_v1"
 
-    def get_effective_context_texts(
-        self, text: str, context_texts: list[str], llm_type: str, model_name: str
-    ) -> list[str]:
-        """回傳實際用於 prompt 的壓縮後上下文列表，供快取鍵計算使用。
+    def _resolve_context_index(
+        self, text: str, context_texts: list[str], current_index: int | None = None
+    ) -> int | None:
+        """解析目前字幕在 context_texts 中的索引。
 
-        對 qwen3.5-ud adult 路徑，會先做上下文壓縮再回傳，確保快取鍵與
-        實際送給模型的內容一致。其他模型直接回傳原始 context_texts。
+        優先使用呼叫端傳入的 current_index，避免重複句被 list.index()
+        指到錯誤位置。若未提供，則回退到最接近上下文中心的匹配項。
         """
+        if current_index is not None:
+            if 0 <= current_index < len(context_texts):
+                if context_texts[current_index] == text:
+                    return current_index
+                logger.warning("提供的 current_index 與當前文字不符，退回自動解析")
+            else:
+                logger.warning("提供的 current_index 超出 context_texts 範圍，退回自動解析")
+
+        match_indices = [idx for idx, candidate in enumerate(context_texts) if candidate == text]
+        if not match_indices:
+            return None
+
+        if len(match_indices) == 1:
+            return match_indices[0]
+
+        center = (len(context_texts) - 1) / 2
+        return min(match_indices, key=lambda idx: (abs(idx - center), idx))
+
+    def _split_context_texts(
+        self, text: str, context_texts: list[str], current_index: int | None = None
+    ) -> tuple[list[str], list[str], int | None]:
+        """拆分前後文並回傳解析出的目前索引。"""
+        resolved_index = self._resolve_context_index(text, context_texts, current_index)
+        if resolved_index is None:
+            return context_texts, [], None
+
+        context_before = context_texts[:resolved_index]
+        context_after = context_texts[resolved_index + 1 :]
+        return context_before, context_after, resolved_index
+
+    def get_effective_context_texts(
+        self, text: str, context_texts: list[str], llm_type: str, model_name: str, current_index: int | None = None
+    ) -> list[str]:
+        """回傳實際用於 prompt 的壓縮後上下文列表。"""
         content_type = self.current_content_type
         if not self._should_use_qwen35_ud_adult_prompt(llm_type, content_type, model_name):
             return context_texts
 
-        try:
-            current_index = context_texts.index(text)
-            context_before = context_texts[:current_index]
-            context_after = context_texts[current_index + 1 :]
-        except ValueError:
+        context_before, context_after, resolved_index = self._split_context_texts(
+            text, context_texts, current_index
+        )
+        if resolved_index is None:
             return context_texts
 
         compacted_before, compacted_after = self._compact_qwen35_ud_context(text, context_before, context_after)
         return [*compacted_before, text, *compacted_after]
+
+    def get_effective_cache_context_texts(
+        self, text: str, context_texts: list[str], llm_type: str, model_name: str, current_index: int | None = None
+    ) -> list[str]:
+        """回傳供快取鍵使用的上下文列表。
+
+        額外加入 current_index 標記，避免重複句在相同上下文中產生快取鍵碰撞。
+        """
+        effective_context = self.get_effective_context_texts(
+            text, context_texts, llm_type, model_name, current_index=current_index
+        )
+        resolved_index = self._resolve_context_index(text, context_texts, current_index)
+        if resolved_index is None:
+            return effective_context
+        return [f"[CURRENT_INDEX]{resolved_index}", *effective_context]
 
     def _contains_qwen35_ud_adult_action_markers(self, text: str) -> bool:
         """判斷文字是否包含 qwen3.5-ud 容易被上下文帶偏的成人動作標記"""
@@ -845,7 +893,12 @@ Rules:
         return hashlib.md5(fingerprint.encode()).hexdigest()[:8]
 
     def get_optimized_message(
-        self, text: str, context_texts: list[str], llm_type: str, model_name: str
+        self,
+        text: str,
+        context_texts: list[str],
+        llm_type: str,
+        model_name: str,
+        current_index: int | None = None,
     ) -> list[dict[str, str]]:
         """根據不同LLM和模型生成優化的提示訊息格式
 
@@ -867,12 +920,10 @@ Rules:
         context_before = []
         context_after = []
 
-        # 找出當前文本在 context_texts 中的位置
-        try:
-            current_index = context_texts.index(text)
-            context_before = context_texts[:current_index]
-            context_after = context_texts[current_index + 1 :]
-        except ValueError:
+        context_before, context_after, resolved_index = self._split_context_texts(
+            text, context_texts, current_index
+        )
+        if resolved_index is None:
             # 如果找不到當前文本（極少數情況），使用原有方式
             logger.warning("無法在上下文中找到當前文本，使用舊格式")
             context_before = context_texts

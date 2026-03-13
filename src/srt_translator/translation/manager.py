@@ -433,11 +433,11 @@ class TranslationManager:
         # 使用自適應大小（如果存在）
         return min(self.adaptive_batch_size or base_size, base_size)
 
-    async def _get_context_for_subtitle(self, subs: list, index: int) -> list[str]:
-        """取得字幕的上下文"""
+    async def _get_context_for_subtitle(self, subs: list, index: int) -> tuple[list[str], int]:
+        """取得字幕的上下文與目前字幕在上下文中的相對索引。"""
         context_start = max(0, index - self.context_window)
         context_end = min(len(subs), index + self.context_window + 1)
-        return [s.text for s in subs[context_start:context_end]]
+        return [s.text for s in subs[context_start:context_end]], index - context_start
 
     async def _process_batch_structure_text(
         self, subs: list, batch_indices: list[int]
@@ -582,6 +582,7 @@ class TranslationManager:
 
         # 準備批量翻譯請求
         translation_requests = []
+        current_indices = []
         request_map = {}  # 映射 request_idx -> subtitle_idx
 
         # 建構請求列表，並跳過已翻譯的
@@ -591,8 +592,9 @@ class TranslationManager:
                 continue
 
             sub = subs[idx]
-            context = await self._get_context_for_subtitle(subs, idx)
+            context, current_index = await self._get_context_for_subtitle(subs, idx)
             translation_requests.append((sub.text, context))
+            current_indices.append(current_index)
             request_map[len(translation_requests) - 1] = idx
             self.stats.total_chars += len(sub.text)
 
@@ -603,7 +605,11 @@ class TranslationManager:
         try:
             # 批量翻譯
             translations = await self.translation_service.translate_batch(
-                translation_requests, self.llm_type, self.model_name, self.parallel_requests
+                translation_requests,
+                self.llm_type,
+                self.model_name,
+                self.parallel_requests,
+                current_indices=current_indices,
             )
 
             # 處理結果
@@ -679,7 +685,7 @@ class TranslationManager:
 
         try:
             # 取得上下文
-            context = await self._get_context_for_subtitle(all_subs, index)
+            context, current_index = await self._get_context_for_subtitle(all_subs, index)
 
             # 使用重試機制
             async with self.semaphore:
@@ -698,7 +704,11 @@ class TranslationManager:
 
                         # 使用翻譯服務
                         translation = await self.translation_service.translate_text(
-                            sub.text, context, self.llm_type, self.model_name
+                            sub.text,
+                            context,
+                            self.llm_type,
+                            self.model_name,
+                            current_index=current_index,
                         )
 
                         # 檢查翻譯結果
