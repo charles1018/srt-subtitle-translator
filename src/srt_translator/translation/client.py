@@ -212,6 +212,12 @@ class AdaptiveConcurrencyController:
 
 
 class TranslationClient:
+    JAPANESE_NAME_PLACEHOLDER_PREFIX: ClassVar[str] = "JN"
+    JAPANESE_NAME_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
+        r"(?:(?<=^)|(?<=[、，。！？!?「」（）『』\s]))"
+        r"(([ァ-ヶー]{2,10}|[ぁ-ゖーっ]{2,10})(?:ちゃん|くん|君|さん|さま|様|先輩|先生|氏))"
+        r"(?=$|[、，。！？!?」』\s]|の|が|を|に|へ|と|も|は)"
+    )
     OLLAMA_MODEL_PROFILES: ClassVar[dict[str, dict[str, Any]]] = {
         "default": {
             "keep_alive": "10m",
@@ -458,6 +464,57 @@ class TranslationClient:
                 **family_profile.get("options", {}),
             },
         }
+
+    def _should_apply_qwen35_ud_runtime_guards(self, model_name: str) -> bool:
+        """判斷是否應啟用 qwen3.5-ud 成人字幕的額外保護機制。"""
+        return (
+            self.llm_type == "ollama"
+            and self._is_qwen35_ud_model(model_name)
+            and getattr(self.prompt_manager, "current_content_type", "") == "adult"
+        )
+
+    def _extract_japanese_name_candidates(self, text: str) -> list[str]:
+        """提取需要保護的日文人名或暱稱。"""
+        candidates = [match.group(1) for match in self.JAPANESE_NAME_PATTERN.finditer(text)]
+        if not candidates:
+            return []
+
+        # 先保留較長的完整稱呼，避免部分名稱先被替換。
+        return sorted(self._dedupe_preserve_order(candidates), key=len, reverse=True)
+
+    def _protect_japanese_names_in_inputs(
+        self, text: str, context_texts: list[str]
+    ) -> tuple[str, list[str], dict[str, str]]:
+        """將日文人名替換為暫時占位符，避免模型自行翻譯名字。"""
+        candidates = self._extract_japanese_name_candidates(text)
+        if not candidates:
+            return text, context_texts, {}
+
+        protected_text = text
+        protected_contexts = list(context_texts)
+        restore_map: dict[str, str] = {}
+
+        for index, candidate in enumerate(candidates):
+            placeholder = f"[[{self.JAPANESE_NAME_PLACEHOLDER_PREFIX}{index}]]"
+            restore_map[placeholder] = candidate
+            protected_text = protected_text.replace(candidate, placeholder)
+            protected_contexts = [context.replace(candidate, placeholder) for context in protected_contexts]
+
+        logger.debug("qwen3.5-ud 啟用日文名字保護: %s", restore_map)
+        return protected_text, protected_contexts, restore_map
+
+    def _restore_protected_japanese_names(self, translation: str, restore_map: dict[str, str]) -> str:
+        """還原模型輸出中的日文名字占位符。"""
+        restored = translation
+
+        for placeholder, original in restore_map.items():
+            restored = restored.replace(placeholder, original)
+
+            inner_token = placeholder[2:-2]
+            tolerant_pattern = re.compile(rf"\[\[\s*{re.escape(inner_token)}\s*\]\]")
+            restored = tolerant_pattern.sub(original, restored)
+
+        return restored
 
     def _build_ollama_payload(self, messages: list[dict[str, str]], model_name: str) -> dict[str, Any]:
         """建立 Ollama chat API 請求內容"""
@@ -888,9 +945,18 @@ class TranslationClient:
             self.metrics.cache_hits += 1
             return cached_result
 
+        protected_text = text
+        protected_contexts = context_texts
+        protected_name_restore_map: dict[str, str] = {}
+        if self._should_apply_qwen35_ud_runtime_guards(model_name):
+            protected_text, protected_contexts, protected_name_restore_map = self._protect_japanese_names_in_inputs(
+                text,
+                context_texts,
+            )
+
         # 獲取適合當前 LLM 類型的提示訊息
         messages = self.prompt_manager.get_optimized_message(
-            text, context_texts, self.llm_type, model_name, current_index=current_index
+            protected_text, protected_contexts, self.llm_type, model_name, current_index=current_index
         )
 
         try:
@@ -902,6 +968,9 @@ class TranslationClient:
                 result = await self._translate_with_google(messages, model_name)
             else:
                 raise ValidationError(f"不支援的 LLM 類型: {self.llm_type}")
+
+            if protected_name_restore_map:
+                result = self._restore_protected_japanese_names(result, protected_name_restore_map)
 
             # Netflix 風格後處理（如果啟用）
             if self.enable_netflix_style and self.post_processor:

@@ -687,7 +687,7 @@ Rules:
         """取得訊息結構策略版本，用於快取區分"""
         resolved_content_type = content_type or self.current_content_type
         if self._should_use_qwen35_ud_adult_prompt(llm_type, resolved_content_type, model_name):
-            return "qwen35_ud_adult_compact_context_v2"
+            return "qwen35_ud_adult_compact_context_v3"
         return "default_structured_context_v1"
 
     def _resolve_context_index(
@@ -752,6 +752,16 @@ Rules:
 
         額外加入 current_index 標記，避免重複句在相同上下文中產生快取鍵碰撞。
         """
+        relaxed_context = self._get_qwen35_ud_short_line_cache_context(
+            text,
+            context_texts,
+            llm_type,
+            model_name,
+            current_index=current_index,
+        )
+        if relaxed_context is not None:
+            return relaxed_context
+
         effective_context = self.get_effective_context_texts(
             text, context_texts, llm_type, model_name, current_index=current_index
         )
@@ -759,6 +769,48 @@ Rules:
         if resolved_index is None:
             return effective_context
         return [f"[CURRENT_INDEX]{resolved_index}", *effective_context]
+
+    def _get_qwen35_ud_short_line_cache_context(
+        self,
+        text: str,
+        context_texts: list[str],
+        llm_type: str,
+        model_name: str,
+        current_index: int | None = None,
+    ) -> list[str] | None:
+        """為 qwen3.5-ud 的短句建立較寬鬆的快取鍵上下文。"""
+        if not self._should_use_qwen35_ud_adult_prompt(llm_type, self.current_content_type, model_name):
+            return None
+        if not self._is_qwen35_ud_short_cache_candidate(text):
+            return None
+
+        context_before, context_after, _ = self._split_context_texts(text, context_texts, current_index)
+        nearby_context = [*context_before[-1:], *context_after[:1]]
+
+        context_class_tokens = []
+        if any(self._contains_qwen35_ud_adult_action_markers(candidate) for candidate in nearby_context):
+            context_class_tokens.append("adult_action_nearby")
+        if any("?" in candidate or "？" in candidate for candidate in nearby_context):
+            context_class_tokens.append("question_nearby")
+        if not context_class_tokens:
+            context_class_tokens.append("plain")
+
+        context_class = "+".join(context_class_tokens)
+        return [
+            "[CACHE_MODE]qwen35_ud_short_utterance_v1",
+            f"[CONTEXT_CLASS]{context_class}",
+        ]
+
+    def _is_qwen35_ud_short_cache_candidate(self, text: str) -> bool:
+        """判斷是否適合使用較寬鬆的短句快取鍵。"""
+        if "\n" in text:
+            return False
+
+        normalized = re.sub(r"[、，。．！？!?…・「」『』（）()【】\s]", "", text)
+        if not normalized or len(normalized) > 8:
+            return False
+
+        return bool(re.fullmatch(r"[ぁ-ゖゝゞァ-ヶー]+", normalized))
 
     def _contains_qwen35_ud_adult_action_markers(self, text: str) -> bool:
         """判斷文字是否包含 qwen3.5-ud 容易被上下文帶偏的成人動作標記"""

@@ -605,7 +605,7 @@ class TestPromptManagerOptimizedMessage:
     def test_get_effective_cache_context_texts_marks_current_index(self, manager):
         """測試快取上下文會加入 current_index 標記，避免重複句碰撞。"""
         manager.current_content_type = "adult"
-        text = "もっと、もっと"
+        text = "ちゃんと根元まで入れてあげるから"
         context = ["前二行", text, "前一行", text, "後一行"]
 
         first_context = manager.get_effective_cache_context_texts(
@@ -626,6 +626,48 @@ class TestPromptManagerOptimizedMessage:
         assert first_context[0] == "[CURRENT_INDEX]1"
         assert second_context[0] == "[CURRENT_INDEX]3"
         assert first_context != second_context
+
+    def test_get_effective_cache_context_texts_relaxes_short_kana_line(self, manager):
+        """測試 qwen3.5-ud 的短片假名句會改用較寬鬆的快取鍵。"""
+        manager.current_content_type = "adult"
+
+        first_context = manager.get_effective_cache_context_texts(
+            "いいよ",
+            ["前一句", "いいよ", "後一句"],
+            "ollama",
+            "qwen3.5-ud:latest",
+            current_index=1,
+        )
+        second_context = manager.get_effective_cache_context_texts(
+            "いいよ",
+            ["另一句", "いいよ", "別一句"],
+            "ollama",
+            "qwen3.5-ud:latest",
+            current_index=1,
+        )
+
+        assert first_context == [
+            "[CACHE_MODE]qwen35_ud_short_utterance_v1",
+            "[CONTEXT_CLASS]plain",
+        ]
+        assert second_context == first_context
+
+    def test_get_effective_cache_context_texts_short_line_keeps_coarse_question_class(self, manager):
+        """測試短句 relaxed-cache 仍保留粗粒度的相鄰問題句分類。"""
+        manager.current_content_type = "adult"
+
+        relaxed_context = manager.get_effective_cache_context_texts(
+            "ほら",
+            ["真的嗎？", "ほら", "快一點"],
+            "ollama",
+            "qwen3.5-ud:latest",
+            current_index=1,
+        )
+
+        assert relaxed_context == [
+            "[CACHE_MODE]qwen35_ud_short_utterance_v1",
+            "[CONTEXT_CLASS]question_nearby",
+        ]
 
 
 class TestPromptManagerReset:

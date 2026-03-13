@@ -306,6 +306,39 @@ class TestTranslationClientHelpers:
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    def test_extract_japanese_name_candidates_for_suffix_name(self, mock_prompt, mock_cache):
+        """Test extracting Japanese names/nicknames with suffixes for protection."""
+        client = TranslationClient(llm_type="ollama")
+
+        assert client._extract_japanese_name_candidates("イチロー君のこと大好きだよ") == ["イチロー君"]
+        assert client._extract_japanese_name_candidates("やばい、たっちゃん、あ、くそ") == ["たっちゃん"]
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    def test_extract_japanese_name_candidates_ignores_common_nouns(self, mock_prompt, mock_cache):
+        """Test name protection stays narrow and does not treat common nouns as names."""
+        client = TranslationClient(llm_type="ollama")
+
+        assert client._extract_japanese_name_candidates("チーズ欲しい") == []
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    def test_protect_and_restore_japanese_names(self, mock_prompt, mock_cache):
+        """Test Japanese names are replaced before generation and restored afterward."""
+        client = TranslationClient(llm_type="ollama")
+
+        protected_text, protected_contexts, restore_map = client._protect_japanese_names_in_inputs(
+            "イチロー君のこと大好きだよ",
+            ["前文", "イチロー君のこと大好きだよ", "後文"],
+        )
+
+        assert protected_text == "[[JN0]]のこと大好きだよ"
+        assert protected_contexts[1] == "[[JN0]]のこと大好きだよ"
+        assert restore_map == {"[[JN0]]": "イチロー君"}
+        assert client._restore_protected_japanese_names("超喜歡[[ JN0 ]]啦", restore_map) == "超喜歡イチロー君啦"
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     def test_detect_ollama_model_family_qwen35_custom_name(self, mock_prompt, mock_cache):
         """Test Qwen3.5 family detection for custom Ollama model names."""
         client = TranslationClient(llm_type="ollama")
@@ -669,6 +702,52 @@ class TestTranslationClientAsync:
             "qwen35udv2",
             current_index=2,
             lookup_source="translation_client",
+        )
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    async def test_translate_text_protects_and_restores_japanese_names_for_qwen35_ud(self, mock_prompt, mock_cache):
+        """Test qwen3.5-ud adult path protects Japanese names before generation and restores them afterward."""
+        mock_cache_instance = MagicMock()
+        mock_cache_instance.get_cached_translation.return_value = None
+        mock_cache.return_value = mock_cache_instance
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.current_content_type = "adult"
+        mock_prompt_instance.get_prompt_version.return_value = "qwen35udv3"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CACHE_MODE]qwen35_ud_short_utterance_v1"]
+        mock_prompt_instance.get_optimized_message.return_value = [{"role": "user", "content": "protected"}]
+        mock_prompt.return_value = mock_prompt_instance
+
+        client = TranslationClient(llm_type="ollama")
+        client._translate_with_ollama = AsyncMock(return_value="超喜歡[[JN0]]啦")
+
+        result = await client.translate_text(
+            "イチロー君のこと大好きだよ",
+            ["前文", "イチロー君のこと大好きだよ", "後文"],
+            "qwen3.5-ud:latest",
+            current_index=1,
+        )
+
+        assert result == "超喜歡イチロー君啦"
+        mock_prompt_instance.get_optimized_message.assert_called_once_with(
+            "[[JN0]]のこと大好きだよ",
+            ["前文", "[[JN0]]のこと大好きだよ", "後文"],
+            "ollama",
+            "qwen3.5-ud:latest",
+            current_index=1,
+        )
+        mock_cache_instance.store_translation.assert_called_once_with(
+            "イチロー君のこと大好きだよ",
+            "超喜歡イチロー君啦",
+            ["[CACHE_MODE]qwen35_ud_short_utterance_v1"],
+            "qwen3.5-ud:latest",
+            "standard",
+            "qwen35udv3",
+            current_index=1,
+            lookup_source="translation_client_store",
         )
 
     @pytest.mark.skip(reason="Complex async mock setup needed")
