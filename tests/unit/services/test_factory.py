@@ -784,6 +784,67 @@ class TestTranslationService:
             for call in complete_callback.call_args_list
         )
 
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.pysrt.open")
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_subtitle_file_uses_original_snapshot_for_later_batch_context(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config, mock_pysrt_open
+    ):
+        """後續批次的上下文應維持原文，不被前批次翻譯結果污染。"""
+        mock_config.get_instance.return_value = MagicMock()
+
+        class FakeSubs(list):
+            def __init__(self, items):
+                super().__init__(items)
+                self.save = MagicMock()
+
+        subs = FakeSubs(
+            [
+                SimpleNamespace(text="こんにちは"),
+                SimpleNamespace(text="ありがとう"),
+                SimpleNamespace(text="さようなら"),
+            ]
+        )
+        mock_pysrt_open.return_value = subs
+
+        captured_calls = []
+
+        async def fake_translate_batch(
+            texts_with_context, llm_type, model_name, concurrent_limit, current_indices=None
+        ):
+            captured_calls.append((texts_with_context, current_indices))
+            if len(captured_calls) == 1:
+                return ["你好", "謝謝"]
+            return ["再見"]
+
+        service = TranslationService()
+        service.file_service = MagicMock()
+        service.file_service.get_subtitle_info.return_value = {}
+        service.file_service.get_output_path.return_value = "/tmp/output.srt"
+        service.translate_batch = AsyncMock(side_effect=fake_translate_batch)
+
+        success, result = await service.translate_subtitle_file(
+            "input.srt",
+            "日文",
+            "繁體中文",
+            "mistral",
+            1,
+            "僅顯示翻譯",
+            "ollama",
+        )
+
+        assert success is True
+        assert result == "/tmp/output.srt"
+        assert len(captured_calls) == 2
+        assert captured_calls[1][0] == [
+            ("さようなら", ["こんにちは", "ありがとう", "さようなら"])
+        ]
+        assert captured_calls[1][1] == [2]
+
 
 # ============================================================
 # TranslationTaskManager Tests

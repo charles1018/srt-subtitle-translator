@@ -1,12 +1,14 @@
 """Tests for translation/manager.py module."""
 
 import time
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 
 from srt_translator.services.factory import TranslationTaskManager
 from srt_translator.translation.manager import (
+    TranslationManager,
     TranslationStats,
 )
 
@@ -213,6 +215,46 @@ class TestTranslationManagerEncoding:
     def test_get_subtitle_encoding_from_info(self):
         """Test getting encoding from file info - skipped."""
         pass
+
+
+class TestTranslationManagerContextSnapshot:
+    """Tests for immutable source-context snapshot behavior."""
+
+    @pytest.mark.asyncio
+    async def test_get_context_for_subtitle_uses_original_snapshot(self):
+        """Context should come from the original snapshot, not mutated subtitle text."""
+        manager = TranslationManager.__new__(TranslationManager)
+        manager.context_window = 1
+        manager._source_text_snapshot = ["原文 A", "原文 B", "原文 C"]
+
+        subs = [
+            SimpleNamespace(text="譯文 A"),
+            SimpleNamespace(text="譯文 B"),
+            SimpleNamespace(text="原文 C"),
+        ]
+
+        context, current_index = await manager._get_context_for_subtitle(subs, 1)
+
+        assert context == ["原文 A", "原文 B", "原文 C"]
+        assert current_index == 1
+
+    @pytest.mark.asyncio
+    async def test_get_context_for_subtitle_falls_back_without_snapshot(self):
+        """Without snapshot, context should fall back to current subtitle text."""
+        manager = TranslationManager.__new__(TranslationManager)
+        manager.context_window = 1
+        manager._source_text_snapshot = []
+
+        subs = [
+            SimpleNamespace(text="目前 A"),
+            SimpleNamespace(text="目前 B"),
+            SimpleNamespace(text="目前 C"),
+        ]
+
+        context, current_index = await manager._get_context_for_subtitle(subs, 1)
+
+        assert context == ["目前 A", "目前 B", "目前 C"]
+        assert current_index == 1
 
 
 # ============================================================

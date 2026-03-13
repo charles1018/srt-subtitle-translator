@@ -154,6 +154,7 @@ class TranslationManager:
         # 恢復狀態
         self.checkpoint_path = self._get_checkpoint_path()
         self.translated_indices: set[int] = set()  # 已翻譯的索引集合
+        self._source_text_snapshot: list[str] = []  # 原文快照，避免已翻譯字幕污染上下文
 
         # 批次處理設定
         self.min_batch_size = 1
@@ -433,11 +434,25 @@ class TranslationManager:
         # 使用自適應大小（如果存在）
         return min(self.adaptive_batch_size or base_size, base_size)
 
+    def _capture_source_text_snapshot(self, subs: list[Any]) -> None:
+        """建立原文快照，避免後續套用翻譯後污染上下文。"""
+        self._source_text_snapshot = [str(sub.text) for sub in subs]
+
+    def _get_source_text(self, subs: list[Any], index: int) -> str:
+        """取得指定索引的原文，優先使用不可變快照。"""
+        if 0 <= index < len(self._source_text_snapshot):
+            return self._source_text_snapshot[index]
+        return str(subs[index].text)
+
     async def _get_context_for_subtitle(self, subs: list, index: int) -> tuple[list[str], int]:
         """取得字幕的上下文與目前字幕在上下文中的相對索引。"""
         context_start = max(0, index - self.context_window)
         context_end = min(len(subs), index + self.context_window + 1)
-        return [s.text for s in subs[context_start:context_end]], index - context_start
+        if len(self._source_text_snapshot) == len(subs):
+            context_texts = self._source_text_snapshot[context_start:context_end]
+        else:
+            context_texts = [str(s.text) for s in subs[context_start:context_end]]
+        return context_texts, index - context_start
 
     async def _process_batch_structure_text(
         self, subs: list, batch_indices: list[int]
@@ -472,7 +487,7 @@ class TranslationManager:
         # 收集文本並構建批次字串
         source_texts: list[str] = []
         for idx in pending_indices:
-            text = subs[idx].text
+            text = self._get_source_text(subs, idx)
             source_texts.append(text)
             self.stats.total_chars += len(text)
 
@@ -593,10 +608,11 @@ class TranslationManager:
 
             sub = subs[idx]
             context, current_index = await self._get_context_for_subtitle(subs, idx)
-            translation_requests.append((sub.text, context))
+            source_text = self._get_source_text(subs, idx)
+            translation_requests.append((source_text, context))
             current_indices.append(current_index)
             request_map[len(translation_requests) - 1] = idx
-            self.stats.total_chars += len(sub.text)
+            self.stats.total_chars += len(source_text)
 
         # 如果所有字幕都已被翻譯，直接回傳
         if not translation_requests:
@@ -619,6 +635,7 @@ class TranslationManager:
 
                 sub_idx = request_map[req_idx]
                 sub = subs[sub_idx]
+                source_text = self._get_source_text(subs, sub_idx)
 
                 if not translation or "[翻譯錯誤" in translation:
                     failed_count += 1
@@ -627,7 +644,7 @@ class TranslationManager:
                     continue
 
                 # 進行後處理
-                processed_translation = self._post_process_translation(sub.text, translation)
+                processed_translation = self._post_process_translation(source_text, translation)
 
                 # 應用翻譯
                 self._apply_translation(sub, processed_translation)
@@ -679,7 +696,9 @@ class TranslationManager:
         回傳:
             bool: 是否成功翻譯
         """
-        if not sub.text.strip():
+        source_text = self._get_source_text(all_subs, index)
+
+        if not source_text.strip():
             self.translated_indices.add(index)
             return True
 
@@ -704,7 +723,7 @@ class TranslationManager:
 
                         # 使用翻譯服務
                         translation = await self.translation_service.translate_text(
-                            sub.text,
+                            source_text,
                             context,
                             self.llm_type,
                             self.model_name,
@@ -721,7 +740,7 @@ class TranslationManager:
                             return False
 
                         # 進行後處理 - 專有名詞統一與移除標點符號
-                        processed_translation = self._post_process_translation(sub.text, translation)
+                        processed_translation = self._post_process_translation(source_text, translation)
 
                         # 應用翻譯
                         self._apply_translation(sub, processed_translation)
@@ -771,6 +790,7 @@ class TranslationManager:
             # 開啟SRT檔案
             encoding = self._get_subtitle_encoding()
             subs = pysrt.open(self.file_path, encoding=encoding)
+            self._capture_source_text_snapshot(subs)
             self.stats.total_subtitles = len(subs)
 
             # 確定未處理的字幕索引

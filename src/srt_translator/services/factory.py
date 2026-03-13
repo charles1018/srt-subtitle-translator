@@ -163,6 +163,29 @@ class TranslationService:
         """判斷翻譯結果是否代表失敗。"""
         return not translation or translation.startswith("[翻譯錯誤")
 
+    def _get_source_text_from_snapshot(self, source_text_snapshot: list[str], subs: list[Any], index: int) -> str:
+        """優先從原文快照取得指定索引的原始字幕文字。"""
+        if 0 <= index < len(source_text_snapshot):
+            return source_text_snapshot[index]
+        return str(subs[index].text)
+
+    def _get_context_from_snapshot(
+        self,
+        source_text_snapshot: list[str],
+        subs: list[Any],
+        index: int,
+        context_window: int,
+    ) -> tuple[list[str], int]:
+        """使用原文快照建立上下文，避免已翻譯字幕污染後續快取鍵。"""
+        total = len(subs)
+        ctx_start = max(0, index - context_window)
+        ctx_end = min(total, index + context_window + 1)
+        if len(source_text_snapshot) == total:
+            context_texts = source_text_snapshot[ctx_start:ctx_end]
+        else:
+            context_texts = [str(s.text) for s in subs[ctx_start:ctx_end]]
+        return context_texts, index - ctx_start
+
     def _initialize_members(self) -> None:
         """初始化服務成員"""
         try:
@@ -412,6 +435,7 @@ class TranslationService:
             # 載入字幕檔案
             encoding = self._get_subtitle_encoding(file_path)
             subs = pysrt.open(file_path, encoding=encoding)
+            source_text_snapshot = [str(sub.text) for sub in subs]
             total_subtitles = len(subs)
             successful_count = 0
             failed_count = 0
@@ -441,18 +465,27 @@ class TranslationService:
                 if use_structure_text:
                     # 結構-文本分離模式：合併為單一批次字串翻譯
                     translations = await self._translate_batch_structure_text(
-                        subs, batch_indices, llm_type, model_name, parallel_requests
+                        subs,
+                        batch_indices,
+                        llm_type,
+                        model_name,
+                        parallel_requests,
+                        source_text_snapshot=source_text_snapshot,
                     )
                 else:
                     # 標準模式：逐條翻譯（帶上下文）
                     texts_with_context = []
                     current_indices = []
                     for idx in batch_indices:
-                        context_start = max(0, idx - context_window)
-                        context_end = min(total_subtitles, idx + context_window + 1)
-                        context_texts = [s.text for s in subs[context_start:context_end]]
-                        texts_with_context.append((subs[idx].text, context_texts))
-                        current_indices.append(idx - context_start)
+                        context_texts, current_index = self._get_context_from_snapshot(
+                            source_text_snapshot,
+                            subs,
+                            idx,
+                            context_window,
+                        )
+                        source_text = self._get_source_text_from_snapshot(source_text_snapshot, subs, idx)
+                        texts_with_context.append((source_text, context_texts))
+                        current_indices.append(current_index)
 
                     translations = await self.translate_batch(
                         texts_with_context,
@@ -562,6 +595,7 @@ class TranslationService:
         llm_type: str,
         model_name: str,
         parallel_requests: int,
+        source_text_snapshot: list[str] | None = None,
     ) -> list[str]:
         """結構-文本分離模式的批次翻譯
 
@@ -570,7 +604,8 @@ class TranslationService:
         """
         from srt_translator.tools.srt_tools import batch_string_to_texts, texts_to_batch_string
 
-        source_texts = [subs[idx].text for idx in batch_indices]
+        snapshot = source_text_snapshot or []
+        source_texts = [self._get_source_text_from_snapshot(snapshot, subs, idx) for idx in batch_indices]
         batch_string = texts_to_batch_string(source_texts)
         expected_count = len(source_texts)
 
@@ -614,15 +649,13 @@ class TranslationService:
         # 退回到標準逐條翻譯
         logger.warning("結構-文本分離: 退回到標準逐條翻譯模式")
         context_window = 3
-        total = len(subs)
         texts_with_context = []
         current_indices = []
         for idx in batch_indices:
-            ctx_start = max(0, idx - context_window)
-            ctx_end = min(total, idx + context_window + 1)
-            context_texts = [s.text for s in subs[ctx_start:ctx_end]]
-            texts_with_context.append((subs[idx].text, context_texts))
-            current_indices.append(idx - ctx_start)
+            context_texts, current_index = self._get_context_from_snapshot(snapshot, subs, idx, context_window)
+            source_text = self._get_source_text_from_snapshot(snapshot, subs, idx)
+            texts_with_context.append((source_text, context_texts))
+            current_indices.append(current_index)
 
         return await self.translate_batch(
             texts_with_context,
