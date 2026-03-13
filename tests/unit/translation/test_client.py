@@ -219,6 +219,20 @@ class TestTranslationClientInit:
     @patch("srt_translator.translation.client.PromptManager")
     @patch("srt_translator.translation.client.AsyncOpenAI")
     @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    def test_init_llamacpp(self, mock_openai, mock_prompt, mock_cache):
+        """Test initialization with llama.cpp."""
+        client = TranslationClient(
+            llm_type="llamacpp",
+            base_url="http://localhost:8080",
+        )
+        assert client.llm_type == "llamacpp"
+        assert client.base_url == "http://localhost:8080"
+        assert client.openai_client is not None
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
     def test_init_openai(self, mock_openai, mock_prompt, mock_cache):
         """Test initialization with OpenAI."""
         client = TranslationClient(
@@ -383,6 +397,43 @@ class TestTranslationClientHelpers:
         assert payload["options"]["top_k"] == 20
         assert payload["options"]["min_p"] == 0.0
         assert payload["options"]["num_predict"] == 96
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    def test_get_llamacpp_model_profile_qwen35(self, mock_prompt, mock_cache):
+        """Test Qwen3.5 uses the specialized llama.cpp profile."""
+        client = TranslationClient(llm_type="ollama")
+
+        profile = client._get_llamacpp_model_profile(
+            "HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0"
+        )
+
+        assert profile["family"] == "qwen3.5"
+        assert profile["options"]["temperature"] == 0.7
+        assert profile["options"]["top_p"] == 0.8
+        assert profile["options"]["max_tokens"] == 256
+        assert profile["extra_body"]["reasoning_format"] == "none"
+        assert profile["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
+        assert profile["extra_body"]["top_k"] == 20
+        assert profile["extra_body"]["min_p"] == 0.0
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    def test_get_llamacpp_model_profile_qwen35_ud(self, mock_prompt, mock_cache):
+        """Test qwen3.5-ud uses the tighter llama.cpp profile."""
+        client = TranslationClient(llm_type="ollama")
+
+        profile = client._get_llamacpp_model_profile("qwen3.5-ud:latest")
+
+        assert profile["family"] == "qwen3.5"
+        assert profile["profile"] == "qwen3.5-ud"
+        assert profile["options"]["temperature"] == 0.4
+        assert profile["options"]["top_p"] == 0.8
+        assert profile["options"]["max_tokens"] == 96
+        assert profile["extra_body"]["reasoning_format"] == "none"
+        assert profile["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
+        assert profile["extra_body"]["top_k"] == 20
+        assert profile["extra_body"]["min_p"] == 0.0
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
@@ -831,6 +882,42 @@ class TestTranslationClientAsync:
         assert request_payload["keep_alive"] == "15m"
         assert request_payload["options"]["temperature"] == 0.4
         assert request_payload["options"]["num_predict"] == 96
+        assert result == "翻譯結果"
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    async def test_translate_with_llamacpp_qwen35_payload(
+        self, mock_openai_cls, mock_prompt, mock_cache
+    ):
+        """Test Qwen3.5 llama.cpp request payload disables thinking explicitly."""
+        mock_cache_instance = MagicMock()
+        mock_cache.return_value = mock_cache_instance
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content="翻譯結果"))]
+        mock_response.usage = MagicMock(prompt_tokens=10, completion_tokens=6)
+
+        mock_openai_client = MagicMock()
+        mock_openai_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_openai_cls.return_value = mock_openai_client
+
+        client = TranslationClient(llm_type="llamacpp", base_url="http://localhost:8080")
+        result = await client._translate_with_openai(
+            [{"role": "user", "content": "test"}],
+            "HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0",
+        )
+
+        request_payload = mock_openai_client.chat.completions.create.call_args.kwargs
+        assert request_payload["temperature"] == 0.7
+        assert request_payload["top_p"] == 0.8
+        assert request_payload["max_tokens"] == 256
+        assert request_payload["extra_body"]["reasoning_format"] == "none"
+        assert request_payload["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
+        assert request_payload["extra_body"]["top_k"] == 20
+        assert request_payload["extra_body"]["min_p"] == 0.0
         assert result == "翻譯結果"
 
     @pytest.mark.asyncio

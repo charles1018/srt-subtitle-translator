@@ -250,6 +250,43 @@ class TranslationClient:
             },
         },
     }
+    LLAMACPP_MODEL_PROFILES: ClassVar[dict[str, dict[str, Any]]] = {
+        "default": {
+            "batch_concurrency_limit": None,
+            "options": {
+                "temperature": 0.1,
+                "max_tokens": 256,
+            },
+            "extra_body": {
+                "reasoning_format": "none",
+                "chat_template_kwargs": {"enable_thinking": False},
+            },
+        },
+        "qwen3.5": {
+            "batch_concurrency_limit": 1,
+            "options": {
+                "temperature": 0.7,
+                "top_p": 0.8,
+                "max_tokens": 256,
+            },
+            "extra_body": {
+                "top_k": 20,
+                "min_p": 0.0,
+            },
+        },
+        "qwen3.5-ud": {
+            "batch_concurrency_limit": 1,
+            "options": {
+                "temperature": 0.4,
+                "top_p": 0.8,
+                "max_tokens": 96,
+            },
+            "extra_body": {
+                "top_k": 20,
+                "min_p": 0.0,
+            },
+        },
+    }
 
     def __init__(
         self,
@@ -487,6 +524,36 @@ class TranslationClient:
                 **default_profile["options"],
                 **family_profile.get("options", {}),
             },
+        }
+
+    def _get_llamacpp_model_profile(self, model_name: str) -> dict[str, Any]:
+        """取得 llama.cpp 模型的請求設定"""
+        family = self._detect_ollama_model_family(model_name)
+        profile_key = "qwen3.5-ud" if self._is_qwen35_ud_model(model_name) else family
+        default_profile = self.LLAMACPP_MODEL_PROFILES["default"]
+        family_profile = self.LLAMACPP_MODEL_PROFILES.get(profile_key, {})
+
+        extra_body = {
+            **default_profile.get("extra_body", {}),
+            **family_profile.get("extra_body", {}),
+        }
+        default_chat_template_kwargs = default_profile.get("extra_body", {}).get("chat_template_kwargs", {})
+        family_chat_template_kwargs = family_profile.get("extra_body", {}).get("chat_template_kwargs", {})
+        if default_chat_template_kwargs or family_chat_template_kwargs:
+            extra_body["chat_template_kwargs"] = {
+                **default_chat_template_kwargs,
+                **family_chat_template_kwargs,
+            }
+
+        return {
+            "family": family,
+            "profile": profile_key,
+            "batch_concurrency_limit": family_profile.get("batch_concurrency_limit"),
+            "options": {
+                **default_profile["options"],
+                **family_profile.get("options", {}),
+            },
+            "extra_body": extra_body,
         }
 
     def _should_apply_qwen35_ud_runtime_guards(self, model_name: str) -> bool:
@@ -1090,21 +1157,17 @@ class TranslationClient:
         is_llamacpp = self.llm_type == "llamacpp"
 
         if is_llamacpp:
-            # llama.cpp 本地模型：使用與 Ollama 類似的模型 profile 參數
-            family = self._detect_ollama_model_family(model_name)
-            profile = self.OLLAMA_MODEL_PROFILES.get(family, self.OLLAMA_MODEL_PROFILES["default"])
+            # llama.cpp 本地模型：使用 provider 專屬的本地推理設定
+            profile = self._get_llamacpp_model_profile(model_name)
             options = profile.get("options", {})
 
             openai_params: dict[str, Any] = {
                 "model": model_name,
                 "messages": messages,
                 "temperature": options.get("temperature", 0.1),
-                "max_tokens": options.get("num_predict", 256),
+                "max_tokens": options.get("max_tokens", 256),
                 "timeout": 600,
-                # 關閉思考模式（llama-server Jinja chat template 參數）
-                "extra_body": {
-                    "chat_template_kwargs": {"enable_thinking": False},
-                },
+                "extra_body": profile.get("extra_body", {}),
             }
             # 轉發 top_p 參數（如果有設定）
             if "top_p" in options:
