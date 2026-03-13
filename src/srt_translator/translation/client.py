@@ -351,6 +351,11 @@ class TranslationClient:
                 timeout=llamacpp_timeout,
                 max_retries=1,  # 本地模型重試意義不大
             )
+            # llamacpp 不需要速率限制，但需要 token_usage 屬性以相容 OpenAI 路徑
+            self.request_timestamps: list[float] = []
+            self.token_usage: list[tuple[float, int]] = []
+            self.pricing: dict[str, dict[str, float]] = {}
+
             logger.info(f"llama.cpp 客戶端已初始化，連線至 {self.base_url}（逾時: {llamacpp_timeout}s）")
 
         # OpenAI 客戶端最佳化
