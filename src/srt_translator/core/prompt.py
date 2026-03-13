@@ -659,7 +659,7 @@ Each input line maps to exactly one output line — no exceptions.
         self, llm_type: str, content_type: str, model_name: str | None
     ) -> bool:
         """判斷是否應使用 qwen3.5-ud 的成人字幕特化 prompt"""
-        return llm_type == "ollama" and content_type == "adult" and self._is_qwen35_ud_model(model_name)
+        return llm_type in {"ollama", "llamacpp"} and content_type == "adult" and self._is_qwen35_ud_model(model_name)
 
     def _get_qwen35_ud_adult_prompt(self) -> str:
         """取得 qwen3.5-ud 專用的成人字幕短 prompt"""

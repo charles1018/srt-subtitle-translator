@@ -801,6 +801,59 @@ class TestTranslationClientAsync:
             lookup_source="translation_client_store",
         )
 
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    async def test_translate_text_protects_and_restores_japanese_names_for_qwen35_ud_llamacpp(
+        self, mock_openai_cls, mock_prompt, mock_cache
+    ):
+        """Test qwen3.5-ud protection path also applies to llama.cpp local models."""
+        mock_cache_instance = MagicMock()
+        mock_cache_instance.get_cached_translation.return_value = None
+        mock_cache.return_value = mock_cache_instance
+
+        mock_openai_client = MagicMock()
+        mock_openai_cls.return_value = mock_openai_client
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.current_content_type = "adult"
+        mock_prompt_instance.get_prompt_version.return_value = "qwen35udv3"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CACHE_MODE]qwen35_ud_short_utterance_v1"]
+        mock_prompt_instance.get_optimized_message.return_value = [{"role": "user", "content": "protected"}]
+        mock_prompt.return_value = mock_prompt_instance
+
+        client = TranslationClient(llm_type="llamacpp", base_url="http://localhost:8080")
+        client._translate_with_openai = AsyncMock(return_value="超喜歡[[JN0]]啦")
+
+        result = await client.translate_text(
+            "イチロー君のこと大好きだよ",
+            ["前文", "イチロー君のこと大好きだよ", "後文"],
+            "qwen3.5-ud:latest",
+            current_index=1,
+        )
+
+        assert result == "超喜歡イチロー君啦"
+        mock_prompt_instance.get_optimized_message.assert_called_once_with(
+            "[[JN0]]のこと大好きだよ",
+            ["前文", "[[JN0]]のこと大好きだよ", "後文"],
+            "llamacpp",
+            "qwen3.5-ud:latest",
+            current_index=1,
+        )
+        mock_cache_instance.store_translation.assert_called_once_with(
+            "イチロー君のこと大好きだよ",
+            "超喜歡イチロー君啦",
+            ["[CACHE_MODE]qwen35_ud_short_utterance_v1"],
+            "qwen3.5-ud:latest",
+            "standard",
+            "qwen35udv3",
+            current_index=1,
+            lookup_source="translation_client_store",
+        )
+
     @pytest.mark.skip(reason="Complex async mock setup needed")
     @pytest.mark.asyncio
     async def test_translate_with_ollama(self):

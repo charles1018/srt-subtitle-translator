@@ -559,7 +559,7 @@ class TranslationClient:
     def _should_apply_qwen35_ud_runtime_guards(self, model_name: str) -> bool:
         """判斷是否應啟用 qwen3.5-ud 成人字幕的額外保護機制。"""
         return (
-            self.llm_type == "ollama"
+            self.llm_type in {"ollama", "llamacpp"}
             and self._is_qwen35_ud_model(model_name)
             and getattr(self.prompt_manager, "current_content_type", "") == "adult"
         )

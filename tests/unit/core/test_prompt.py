@@ -543,6 +543,16 @@ class TestPromptManagerOptimizedMessage:
         assert "Never translate or copy context." in prompt
         assert "Netflix Traditional Chinese Subtitle Standards" not in prompt
 
+    def test_get_prompt_uses_qwen35_ud_adult_variant_for_llamacpp(self, manager):
+        """測試 llamacpp 的 qwen3.5-ud 在 adult 模式下也使用專用 prompt"""
+        manager.current_content_type = "adult"
+
+        prompt = manager.get_prompt("llamacpp", "adult", model_name="qwen3.5-ud:latest")
+
+        assert "Preserve who does the action to whom." in prompt
+        assert "Never translate or copy context." in prompt
+        assert "Netflix Traditional Chinese Subtitle Standards" not in prompt
+
     def test_get_prompt_version_differs_for_qwen35_ud_strategy(self, manager):
         """測試 qwen3.5-ud 的 prompt 版本會和一般策略區分"""
         manager.current_content_type = "adult"
@@ -575,6 +585,21 @@ class TestPromptManagerOptimizedMessage:
         context = ["前二行", "前一行", text, "後一行", "後二行"]
 
         messages = manager.get_optimized_message(text, context, "ollama", "qwen3.5-ud:latest")
+
+        user_message = messages[1]["content"]
+        assert "REFERENCE ONLY" in user_message
+        assert "Before: 前一行" in user_message
+        assert "After: 後一行" in user_message
+        assert "前二行" not in user_message
+        assert "後二行" not in user_message
+
+    def test_get_optimized_message_qwen35_ud_keeps_only_nearest_context_for_llamacpp(self, manager):
+        """測試 llamacpp 的 qwen3.5-ud 也會只保留最近一行前後文"""
+        manager.current_content_type = "adult"
+        text = "ちゃんと根元まで入れてあげるからもっと気持ちよくなってね"
+        context = ["前二行", "前一行", text, "後一行", "後二行"]
+
+        messages = manager.get_optimized_message(text, context, "llamacpp", "qwen3.5-ud:latest")
 
         user_message = messages[1]["content"]
         assert "REFERENCE ONLY" in user_message
