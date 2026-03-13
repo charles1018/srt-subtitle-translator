@@ -23,7 +23,10 @@ def create_parser() -> argparse.ArgumentParser:
     """建立命令列參數解析器"""
     parser = argparse.ArgumentParser(
         prog="srt-translator",
-        description="SRT 字幕翻譯工具 - 支援 Ollama、OpenAI、Anthropic API",
+        description=(
+            "SRT 字幕翻譯工具 - CLI provider 支援 "
+            "Ollama、OpenAI、Anthropic、llama.cpp"
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 範例:
@@ -35,6 +38,9 @@ def create_parser() -> argparse.ArgumentParser:
 
   # 使用 OpenAI 翻譯
   srt-translator translate video.srt -s 日文 -t 繁體中文 --provider openai --model gpt-4o
+
+  # 使用 llama.cpp（需先啟動 llama-server）
+  srt-translator translate video.srt -s 日文 -t 繁體中文 --provider llamacpp
 
   # 顯示可用模型
   srt-translator models --provider ollama
@@ -61,6 +67,11 @@ def create_parser() -> argparse.ArgumentParser:
 
   # CPS 可讀性審計
   srt-translator cps-audit video.zh-TW.srt
+
+說明:
+  - CLI parser 目前接受: ollama / openai / anthropic / llamacpp
+  - translate 實際建議優先使用: ollama / openai / llamacpp
+  - anthropic 目前較適合搭配 models 子命令檢視模型資訊
 """,
     )
 
@@ -72,7 +83,8 @@ def create_parser() -> argparse.ArgumentParser:
     translate_parser.add_argument("-s", "--source", required=True, help="來源語言 (如: 日文, 英文)")
     translate_parser.add_argument("-t", "--target", required=True, help="目標語言 (如: 繁體中文)")
     translate_parser.add_argument(
-        "-p", "--provider", default="ollama", choices=["ollama", "openai", "anthropic", "llamacpp"], help="LLM 提供者 (預設: ollama)"
+        "-p", "--provider", default="ollama", choices=["ollama", "openai", "anthropic", "llamacpp"],
+        help="LLM 提供者（CLI 可選: ollama/openai/anthropic/llamacpp；預設: ollama）"
     )
     translate_parser.add_argument("-m", "--model", help="模型名稱 (未指定則使用推薦模型)")
     translate_parser.add_argument(
@@ -96,7 +108,8 @@ def create_parser() -> argparse.ArgumentParser:
     # models 子命令
     models_parser = subparsers.add_parser("models", help="列出可用模型")
     models_parser.add_argument(
-        "-p", "--provider", default="ollama", choices=["ollama", "openai", "anthropic", "llamacpp"], help="LLM 提供者"
+        "-p", "--provider", default="ollama", choices=["ollama", "openai", "anthropic", "llamacpp"],
+        help="LLM 提供者（列模型支援: ollama/openai/anthropic/llamacpp）"
     )
 
     # cache 子命令
