@@ -243,7 +243,7 @@ llama-server -m model.gguf --reasoning off --reasoning-format none --reasoning-b
 - `top_k=20`
 - `min_p=0.0`
 
-另外，Qwen 官方也建議對量化模型提高 `presence_penalty` 抑制重複輸出；本專案目前在 `llamacpp` runtime 已預設送出 `presence_penalty=1.5`，並同時固定 `cache_prompt=true`、`seed=42`。若你使用其他 OpenAI 相容客戶端，也建議比照加入。
+另外，Qwen 官方也建議對量化模型提高 `presence_penalty` 抑制重複輸出；本專案目前在 `llamacpp` runtime 已預設送出 `presence_penalty=1.5`，並同時固定 `cache_prompt=true`、`seed=42`，且用 `response_format=json_schema` 將輸出鎖成單一 `translation` 欄位。若你使用其他 OpenAI 相容客戶端，也建議比照加入。
 
 ### 穩定模式與吞吐模式
 

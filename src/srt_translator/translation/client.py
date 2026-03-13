@@ -218,6 +218,20 @@ class TranslationClient:
         r"(([ァ-ヶー]{2,10}|[ぁ-ゖーっ]{2,10})(?:ちゃん|くん|君|さん|さま|様|先輩|先生|氏))"
         r"(?=$|[、，。！？!?」』\s]|の|が|を|に|へ|と|も|は)"
     )
+    LLAMACPP_TRANSLATION_RESPONSE_FORMAT: ClassVar[dict[str, Any]] = {
+        "type": "json_schema",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "translation": {
+                    "type": "string",
+                    "description": "Translated subtitle text only.",
+                }
+            },
+            "required": ["translation"],
+            "additionalProperties": False,
+        },
+    }
     OLLAMA_MODEL_PROFILES: ClassVar[dict[str, dict[str, Any]]] = {
         "default": {
             "keep_alive": "10m",
@@ -739,6 +753,28 @@ class TranslationClient:
         cleaned = re.sub(r"(?is)^<\|im_start\|>assistant\s*", "", cleaned).strip()
         cleaned = re.sub(r"(?is)\s*<\|im_end\|>$", "", cleaned).strip()
         cleaned = cleaned.replace("<think>", "").replace("</think>", "").strip()
+        return cleaned
+
+    def _extract_llamacpp_structured_translation(self, content: str) -> str:
+        """從 llama.cpp schema-constrained JSON 回應提取翻譯文字"""
+        cleaned = content.strip()
+        if not cleaned:
+            return ""
+
+        cleaned = re.sub(r"(?is)^```json\s*", "", cleaned).strip()
+        cleaned = re.sub(r"(?is)^```\s*", "", cleaned).strip()
+        cleaned = re.sub(r"(?is)\s*```$", "", cleaned).strip()
+
+        try:
+            payload = json.loads(cleaned)
+        except json.JSONDecodeError:
+            return cleaned
+
+        if isinstance(payload, dict):
+            translation = payload.get("translation")
+            if isinstance(translation, str):
+                return translation.strip()
+
         return cleaned
 
     def _get_ollama_batch_size(self, model_name: str, concurrent_limit: int, adaptive_concurrency: int, pending: int) -> int:
@@ -1317,6 +1353,7 @@ class TranslationClient:
                 "messages": messages,
                 "temperature": options.get("temperature", 0.1),
                 "max_tokens": options.get("max_tokens", 256),
+                "response_format": self.LLAMACPP_TRANSLATION_RESPONSE_FORMAT,
                 "timeout": 600,
                 "extra_body": profile.get("extra_body", {}),
             }
@@ -1343,6 +1380,9 @@ class TranslationClient:
             response = await self.openai_client.chat.completions.create(**openai_params)  # type: ignore[call-overload]
             content = response.choices[0].message.content
             translation: str = content.strip() if content else ""
+
+            if is_llamacpp and translation:
+                translation = self._extract_llamacpp_structured_translation(translation)
 
             # llama.cpp 思考模型處理：若 content 為空，嘗試從原始回應取得
             if is_llamacpp and not translation:

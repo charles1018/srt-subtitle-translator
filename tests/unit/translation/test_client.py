@@ -454,6 +454,16 @@ class TestTranslationClientHelpers:
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    def test_extract_llamacpp_structured_translation(self, mock_prompt, mock_cache):
+        """Test extracting the translation field from llama.cpp structured output."""
+        client = TranslationClient(llm_type="ollama")
+
+        result = client._extract_llamacpp_structured_translation('{"translation":"保留原文換行"}')
+
+        assert result == "保留原文換行"
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     def test_get_ollama_batch_size_limits_qwen35_to_one(self, mock_prompt, mock_cache):
         """Test Qwen3.5 batch concurrency is capped to 1 for Ollama stability."""
         client = TranslationClient(llm_type="ollama")
@@ -979,7 +989,7 @@ class TestTranslationClientAsync:
         mock_cache.return_value = mock_cache_instance
 
         mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(content="翻譯結果"))]
+        mock_response.choices = [MagicMock(message=MagicMock(content='{"translation":"翻譯結果"}'))]
         mock_response.usage = MagicMock(prompt_tokens=10, completion_tokens=6)
 
         mock_openai_client = MagicMock()
@@ -996,6 +1006,8 @@ class TestTranslationClientAsync:
         assert request_payload["temperature"] == 0.7
         assert request_payload["top_p"] == 0.8
         assert request_payload["max_tokens"] == 256
+        assert request_payload["response_format"]["type"] == "json_schema"
+        assert request_payload["response_format"]["schema"]["required"] == ["translation"]
         assert request_payload["extra_body"]["cache_prompt"] is True
         assert request_payload["extra_body"]["reasoning_format"] == "none"
         assert request_payload["extra_body"]["seed"] == 42
