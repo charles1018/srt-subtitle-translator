@@ -144,6 +144,7 @@ class ConfigManager:
             },
             "model": {
                 "ollama_url": "http://localhost:11434",
+                "llamacpp_url": "http://localhost:8080",
                 "default_ollama_model": "llama3.2",
                 "cache_expiry": 600,  # 秒數
                 "connect_timeout": 5,
@@ -660,8 +661,8 @@ class ConfigManager:
 
         # LLM 類型
         llm_type = config.get("llm_type", "")
-        if llm_type not in ["ollama", "openai"]:
-            errors["llm_type"] = ["無效的 LLM 類型，有效選項: ollama, openai"]
+        if llm_type not in ["ollama", "openai", "anthropic", "google", "llamacpp"]:
+            errors["llm_type"] = ["無效的 LLM 類型，有效選項: ollama, openai, anthropic, google, llamacpp"]
 
         # 並行請求數
         parallel = config.get("parallel_requests", 0)

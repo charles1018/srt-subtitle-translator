@@ -143,6 +143,9 @@ class ModelManager:
         self.base_url = self.config.get("ollama_url", "http://localhost:11434")
         self.default_ollama_model: str = str(self.config.get("default_ollama_model", "llama3"))
 
+        # llama.cpp 設定
+        self.llamacpp_url = self.config.get("llamacpp_url", "http://localhost:8080")
+
         # 常見模型模式，用於過濾
         self.model_patterns = self.config.get(
             "model_patterns",
@@ -631,6 +634,8 @@ class ModelManager:
                 models = await self._get_openai_models_async(api_key or "")
             elif llm_type == "anthropic" and ANTHROPIC_AVAILABLE:
                 models = await self._get_anthropic_models_async(api_key or "")
+            elif llm_type == "llamacpp":
+                models = await self._get_llamacpp_models_async()
             elif llm_type == "google" and GOOGLE_AVAILABLE:
                 models = await self._get_google_models_async(api_key or "")
             else:
@@ -1042,6 +1047,7 @@ class ModelManager:
             "openai": "gpt-3.5-turbo",  # 最經濟的選擇
             "anthropic": "claude-3-haiku-20240307",  # 最快速的選擇
             "google": "gemini-2.0-flash",  # 最快速且經濟的選擇
+            "llamacpp": "local-model",  # llama-server 載入的模型
         }
         return provider_defaults.get(llm_type, self.default_ollama_model)
 
@@ -1476,6 +1482,98 @@ class ModelManager:
             # 返回預設模型
             default_model = self._create_default_ollama_model()
             return [default_model]
+
+    async def _get_llamacpp_models_async(self) -> list[ModelInfo]:
+        """非同步獲取 llama.cpp server 載入的模型
+
+        透過 /v1/models 端點查詢 llama-server 目前載入的模型。
+
+        回傳:
+            ModelInfo 物件列表（通常只有一個模型）
+        """
+        try:
+            await self._init_async_session()
+
+            url = f"{self.llamacpp_url}/v1/models"
+            logger.debug(f"嘗試從 {url} 獲取 llama.cpp 模型")
+
+            assert self.session is not None
+            async with self.session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as response:
+                if response.status != 200:
+                    logger.warning(f"llama-server /v1/models 返回狀態碼: {response.status}")
+                    return self._get_llamacpp_fallback_models()
+
+                result = await response.json()
+                models = result.get("data", [])
+
+                if not models:
+                    logger.warning("llama-server 未載入任何模型")
+                    return self._get_llamacpp_fallback_models()
+
+                model_info_list = []
+                for model_data in models:
+                    model_id = model_data.get("id", "unknown")
+                    # 從路徑中提取檔案名稱作為顯示名稱
+                    display_name = Path(model_id).stem if "/" in model_id or "\\" in model_id else model_id
+
+                    meta = model_data.get("meta", {})
+                    n_params = meta.get("n_params", 0)
+                    n_ctx_train = meta.get("n_ctx_train", 4096)
+
+                    # 格式化參數量
+                    param_str = ""
+                    if n_params > 0:
+                        if n_params >= 1e9:
+                            param_str = f"{n_params / 1e9:.1f}B"
+                        elif n_params >= 1e6:
+                            param_str = f"{n_params / 1e6:.0f}M"
+
+                    description = "llama.cpp 本地模型"
+                    if param_str:
+                        description += f"（{param_str} 參數）"
+
+                    model_info = ModelInfo(
+                        id=model_id,
+                        provider="llamacpp",
+                        name=display_name,
+                        description=description,
+                        context_length=n_ctx_train,
+                        pricing="免費(本機執行)",
+                        recommended_for="本地高速推理翻譯",
+                        parallel=4,
+                        tags=["free", "local", "llamacpp"],
+                        capabilities={
+                            "translation": 0.85,
+                            "multilingual": 0.80,
+                            "context_handling": 0.85,
+                        },
+                    )
+                    model_info_list.append(model_info)
+
+                logger.info(f"檢測到 {len(model_info_list)} 個 llama.cpp 模型")
+                return model_info_list
+
+        except Exception as e:
+            logger.error(f"獲取 llama.cpp 模型列表失敗: {e!s}")
+            return self._get_llamacpp_fallback_models()
+
+    def _get_llamacpp_fallback_models(self) -> list[ModelInfo]:
+        """當 llama-server 無法連線時返回提示模型"""
+        return [
+            ModelInfo(
+                id="llama-server-offline",
+                provider="llamacpp",
+                name="llama-server (未連線)",
+                description="請先啟動 llama-server：llama-server -m <model.gguf> -ngl 99 --flash-attn",
+                context_length=4096,
+                pricing="免費(本機執行)",
+                recommended_for="本地高速推理翻譯",
+                parallel=1,
+                tags=["free", "local", "llamacpp"],
+                capabilities={"translation": 0.0, "multilingual": 0.0, "context_handling": 0.0},
+                available=False,
+            )
+        ]
 
     def save_api_key(self, provider: str, api_key: str) -> bool:
         """儲存 API 金鑰

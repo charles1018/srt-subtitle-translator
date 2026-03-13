@@ -72,7 +72,7 @@ def create_parser() -> argparse.ArgumentParser:
     translate_parser.add_argument("-s", "--source", required=True, help="來源語言 (如: 日文, 英文)")
     translate_parser.add_argument("-t", "--target", required=True, help="目標語言 (如: 繁體中文)")
     translate_parser.add_argument(
-        "-p", "--provider", default="ollama", choices=["ollama", "openai", "anthropic"], help="LLM 提供者 (預設: ollama)"
+        "-p", "--provider", default="ollama", choices=["ollama", "openai", "anthropic", "llamacpp"], help="LLM 提供者 (預設: ollama)"
     )
     translate_parser.add_argument("-m", "--model", help="模型名稱 (未指定則使用推薦模型)")
     translate_parser.add_argument(
@@ -96,7 +96,7 @@ def create_parser() -> argparse.ArgumentParser:
     # models 子命令
     models_parser = subparsers.add_parser("models", help="列出可用模型")
     models_parser.add_argument(
-        "-p", "--provider", default="ollama", choices=["ollama", "openai", "anthropic"], help="LLM 提供者"
+        "-p", "--provider", default="ollama", choices=["ollama", "openai", "anthropic", "llamacpp"], help="LLM 提供者"
     )
 
     # cache 子命令

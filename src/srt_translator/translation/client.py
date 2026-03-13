@@ -277,6 +277,8 @@ class TranslationClient:
         self.llm_type = llm_type
         if llm_type == "ollama":
             self.base_url = base_url
+        elif llm_type == "llamacpp":
+            self.base_url = base_url or "http://localhost:8080"
         elif llm_type == "google":
             self.base_url = "https://generativelanguage.googleapis.com"
         else:
@@ -313,6 +315,7 @@ class TranslationClient:
                 "gemini-1.5-pro": ["gemini-1.5-flash"],
                 "gemini-1.5-flash": [],
             },
+            "llamacpp": {},  # llama-server 只載入單一模型，無需回退
         }
 
         # Google Gemini 客戶端
@@ -333,6 +336,19 @@ class TranslationClient:
                 "gemini-1.5-flash": {"input": 0.000000075, "output": 0.0000003},
                 "gemini-1.5-pro": {"input": 0.00000125, "output": 0.000005},
             }
+
+        # llama.cpp 客戶端（透過 OpenAI 相容 API）
+        elif llm_type == "llamacpp":
+            if not OPENAI_AVAILABLE:
+                logger.error("未安裝 OpenAI 客戶端函式庫，llama.cpp 模式需要 openai 套件")
+                raise ImportError("請安裝 OpenAI Python 套件: pip install openai")
+
+            self.openai_client: AsyncOpenAI | None = AsyncOpenAI(
+                base_url=f"{self.base_url}/v1",
+                api_key="sk-no-key-required",  # llama-server 預設無需認證
+                timeout=self.conn_timeout.total,
+            )
+            logger.info(f"llama.cpp 客戶端已初始化，連線至 {self.base_url}")
 
         # OpenAI 客戶端最佳化
         elif llm_type == "openai":
@@ -960,7 +976,7 @@ class TranslationClient:
         )
 
         try:
-            if self.llm_type == "openai":
+            if self.llm_type in ("openai", "llamacpp"):
                 result = await self._translate_with_openai(messages, model_name)
             elif self.llm_type == "ollama":
                 result = await self._translate_with_ollama(messages, model_name)
