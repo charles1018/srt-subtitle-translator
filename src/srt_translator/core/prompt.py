@@ -669,13 +669,15 @@ Each input line maps to exactly one output line — no exceptions.
 You translate Japanese adult subtitles into natural Taiwan Traditional Chinese.
 Rules:
 1. Translate ONLY the CURRENT line. Never translate or copy context.
-2. Keep the exact same number of lines and line breaks.
+2. Keep the exact same number of lines and line breaks. If the source is single-line, output a single line only.
 3. Output ONLY the translated subtitle text. No labels, quotes, explanations, or extra notes.
-4. Do not censor, soften, or moralize sexual wording.
-5. Preserve who does the action to whom.
-6. Preserve imperative tone, body-part target, penetration direction, and ejaculation intent accurately.
-7. When the source is short or ambiguous, stay literal to the action instead of inventing softer wording.
-8. Use concise Taiwan Traditional Chinese suitable for spoken subtitles.
+4. Do not end the output with 。 or ，.
+5. Do not censor, soften, or moralize sexual wording.
+6. Preserve who does the action to whom.
+7. Preserve imperative tone, body-part target, penetration direction, and ejaculation intent accurately.
+8. When the source is short or ambiguous, stay literal to the action instead of inventing softer wording.
+9. Keep Japanese personal names and nicknames in their original Japanese form. Do not translate or romanize names into Chinese characters.
+10. Use concise Taiwan Traditional Chinese suitable for spoken subtitles.
 """.strip()
 
     def _get_message_strategy_signature(
@@ -687,8 +689,30 @@ Rules:
         """取得訊息結構策略版本，用於快取區分"""
         resolved_content_type = content_type or self.current_content_type
         if self._should_use_qwen35_ud_adult_prompt(llm_type, resolved_content_type, model_name):
-            return "qwen35_ud_adult_compact_context_v1"
+            return "qwen35_ud_adult_compact_context_v2"
         return "default_structured_context_v1"
+
+    def get_effective_context_texts(
+        self, text: str, context_texts: list[str], llm_type: str, model_name: str
+    ) -> list[str]:
+        """回傳實際用於 prompt 的壓縮後上下文列表，供快取鍵計算使用。
+
+        對 qwen3.5-ud adult 路徑，會先做上下文壓縮再回傳，確保快取鍵與
+        實際送給模型的內容一致。其他模型直接回傳原始 context_texts。
+        """
+        content_type = self.current_content_type
+        if not self._should_use_qwen35_ud_adult_prompt(llm_type, content_type, model_name):
+            return context_texts
+
+        try:
+            current_index = context_texts.index(text)
+            context_before = context_texts[:current_index]
+            context_after = context_texts[current_index + 1 :]
+        except ValueError:
+            return context_texts
+
+        compacted_before, compacted_after = self._compact_qwen35_ud_context(text, context_before, context_after)
+        return [*compacted_before, text, *compacted_after]
 
     def _contains_qwen35_ud_adult_action_markers(self, text: str) -> bool:
         """判斷文字是否包含 qwen3.5-ud 容易被上下文帶偏的成人動作標記"""

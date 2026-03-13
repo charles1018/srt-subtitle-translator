@@ -579,19 +579,6 @@ class TranslationService:
         except Exception as e:
             logger.debug(f"應用術語表時發生錯誤: {e}")
 
-        # 1. 處理專有名詞統一
-        # 使用正則表達式識別可能的專有名詞（假設專有名詞通常是2-6個漢字的連續序列）
-        potential_terms = re.findall(r"[\u4e00-\u9fff]{2,6}", translated_text)
-
-        # 對於每個潛在的專有名詞，檢查是否已在詞典中
-        for term in potential_terms:
-            # 如果該詞已在詞典中，用標準形式替換
-            if term in self.key_terms_dict:
-                translated_text = translated_text.replace(term, self.key_terms_dict[term])
-            # 否則添加到詞典，以當前形式作為標準
-            elif len(term) >= 2:  # 只考慮至少兩個字的詞
-                self.key_terms_dict[term] = term
-
         # 檢查是否需要保留原始標點符號
         preserve_punctuation = get_config("user", "preserve_punctuation", True)
         if preserve_punctuation:

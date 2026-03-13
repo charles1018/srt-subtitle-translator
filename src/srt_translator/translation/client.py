@@ -860,10 +860,15 @@ class TranslationClient:
         current_style = getattr(self.prompt_manager, "current_style", "standard") or "standard"
         prompt_version = self.prompt_manager.get_prompt_version(self.llm_type, model_name=model_name)
 
+        # 對 qwen3.5-ud，快取鍵使用壓縮後的上下文，確保與實際 prompt 一致
+        effective_context = self.prompt_manager.get_effective_context_texts(
+            text, context_texts, self.llm_type, model_name
+        )
+
         # 首先嘗試從快取獲取，這步很快不需要非同步
         cached_result = self.cache_manager.get_cached_translation(
             text,
-            context_texts,
+            effective_context,
             model_name,
             current_style,
             prompt_version,
@@ -918,11 +923,11 @@ class TranslationClient:
 
             logger.debug(f"翻譯成功，耗時: {elapsed_time:.2f} 秒")
 
-            # 存入快取
+            # 存入快取（使用與查詢相同的有效上下文）
             self.cache_manager.store_translation(
                 text,
                 result,
-                context_texts,
+                effective_context,
                 model_name,
                 current_style,
                 prompt_version,
@@ -1132,11 +1137,14 @@ class TranslationClient:
         current_style = getattr(self.prompt_manager, "current_style", "standard") or "standard"
         prompt_version = self.prompt_manager.get_prompt_version(self.llm_type, model_name=model_name)
 
-        # 首先檢查快取
+        # 首先檢查快取（使用有效上下文確保與 translate_text 的快取鍵一致）
         for i, (text, context) in enumerate(texts):
+            effective_ctx = self.prompt_manager.get_effective_context_texts(
+                text, context, self.llm_type, model_name
+            )
             cached = self.cache_manager.get_cached_translation(
                 text,
-                context,
+                effective_ctx,
                 model_name,
                 current_style,
                 prompt_version,
