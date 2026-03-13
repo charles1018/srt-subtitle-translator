@@ -1083,13 +1083,35 @@ class TranslationClient:
 
         # 準備 OpenAI 參數
         is_llamacpp = self.llm_type == "llamacpp"
-        openai_params: dict[str, Any] = {
-            "model": model_name,
-            "messages": messages,
-            "temperature": 0.1,
-            "max_tokens": 512 if is_llamacpp else min(150, 4096),
-            "timeout": 600 if is_llamacpp else 30,
-        }
+
+        if is_llamacpp:
+            # llama.cpp 本地模型：使用與 Ollama 類似的模型 profile 參數
+            family = self._detect_ollama_model_family(model_name)
+            profile = self.OLLAMA_MODEL_PROFILES.get(family, self.OLLAMA_MODEL_PROFILES["default"])
+            options = profile.get("options", {})
+
+            openai_params: dict[str, Any] = {
+                "model": model_name,
+                "messages": messages,
+                "temperature": options.get("temperature", 0.1),
+                "max_tokens": options.get("num_predict", 256),
+                "timeout": 600,
+                # 關閉思考模式（llama-server Jinja chat template 參數）
+                "extra_body": {
+                    "chat_template_kwargs": {"enable_thinking": False},
+                },
+            }
+            # 轉發 top_p 參數（如果有設定）
+            if "top_p" in options:
+                openai_params["top_p"] = options["top_p"]
+        else:
+            openai_params: dict[str, Any] = {
+                "model": model_name,
+                "messages": messages,
+                "temperature": 0.1,
+                "max_tokens": min(150, 4096),
+                "timeout": 30,
+            }
 
         # 添加 response_format 參數（適用於較新的模型）
         if not is_llamacpp and ("gpt-4" in model_name or "gpt-3.5-turbo" in model_name):
