@@ -85,7 +85,8 @@ class ServiceFactory:
                         try:
                             loop = asyncio.get_running_loop()
                             # 已在 event loop 中，排程執行但不阻塞
-                            loop.create_task(result)
+                            cleanup_task = loop.create_task(result)
+                            cleanup_task.add_done_callback(lambda _: None)
                         except RuntimeError:
                             # 不在 event loop 中，建立新 loop 同步執行
                             loop = asyncio.new_event_loop()
@@ -891,11 +892,11 @@ class ModelService:
         回傳:
             測試結果字典
         """
-        # 導入頂層測試函式
-        from srt_translator.core.models import test_model_connection as _test_connection
-
         api_key = self.api_keys.get(provider)
-        return await _test_connection(model_name, provider, api_key)
+        try:
+            return await self.model_manager.test_model_connection(model_name, provider, api_key)
+        finally:
+            await self.model_manager._close_async_session()
 
     async def get_provider_status(self) -> dict[str, bool]:
         """獲取各提供者的連線狀態

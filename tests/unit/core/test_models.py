@@ -1,13 +1,20 @@
 """測試 models 模組"""
 
+import asyncio
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from srt_translator.core.config import ConfigManager
-from srt_translator.core.models import ModelInfo, ModelManager
+from srt_translator.core.models import (
+    ModelInfo,
+    ModelManager,
+)
+from srt_translator.core.models import (
+    test_model_connection as global_test_model_connection,
+)
 
 
 class TestModelInfo:
@@ -826,6 +833,30 @@ class TestModelManagerAsync:
         # 清理
         if manager.session:
             await manager._close_async_session()
+
+    @pytest.mark.asyncio
+    async def test_test_model_connection_timeout_returns_readable_message(self, manager):
+        """測試 Ollama 連線逾時時回傳可讀訊息。"""
+        manager.session = MagicMock()
+        manager.session.post.side_effect = asyncio.TimeoutError()
+
+        result = await manager.test_model_connection("qwen3.5-ud:latest", "ollama")
+
+        assert result["success"] is False
+        assert "連線逾時" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_global_test_model_connection_closes_session(self):
+        """測試全域連線 helper 會在完成後關閉 session。"""
+        manager = MagicMock()
+        manager.test_model_connection = AsyncMock(return_value={"success": True, "message": "模型回應正常"})
+        manager._close_async_session = AsyncMock()
+
+        with patch("srt_translator.core.models.ModelManager.get_instance", return_value=manager):
+            result = await global_test_model_connection("qwen3.5-ud:latest", "ollama")
+
+        assert result["success"] is True
+        manager._close_async_session.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_get_model_list_async_with_cache(self, manager):

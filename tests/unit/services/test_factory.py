@@ -426,6 +426,24 @@ class TestModelService:
 
         assert service.api_keys.get("openai") == "sk-test-key"
 
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.ConfigManager")
+    async def test_test_model_connection_closes_manager_session(self, mock_config, mock_model):
+        """Test model connection check closes ModelManager session after use."""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_model_instance = MagicMock()
+        mock_model_instance.test_model_connection = AsyncMock(return_value={"success": True, "message": "ok"})
+        mock_model_instance._close_async_session = AsyncMock()
+        mock_model.return_value = mock_model_instance
+
+        service = ModelService()
+        result = await service.test_model_connection("qwen3.5-ud:latest", "ollama")
+
+        assert result["success"] is True
+        mock_model_instance.test_model_connection.assert_awaited_once_with("qwen3.5-ud:latest", "ollama", None)
+        mock_model_instance._close_async_session.assert_awaited_once()
+
 
 # ============================================================
 # TranslationService Tests

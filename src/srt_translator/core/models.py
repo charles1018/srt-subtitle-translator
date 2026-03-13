@@ -1292,8 +1292,14 @@ class ModelManager:
                         return {"success": True, "message": "模型回應正常"}
                     else:
                         return {"success": False, "message": f"模型回應失敗: {response.status}"}
+            except asyncio.TimeoutError:
+                return {
+                    "success": False,
+                    "message": "連線逾時，請確認 Ollama 服務可用、模型已載入完成，或提高 request_timeout",
+                }
             except Exception as e:
-                return {"success": False, "message": f"連線失敗: {e!s}"}
+                detail = str(e).strip() or e.__class__.__name__
+                return {"success": False, "message": f"連線失敗: {detail}"}
         elif provider == "openai":
             key = api_key or self.api_keys.get("openai", "")
             success, message = await self._test_openai_connection(model_name, key)
@@ -1679,7 +1685,10 @@ async def test_model_connection(model_name: str, provider: str, api_key: str | N
         測試結果字典
     """
     manager = ModelManager.get_instance()
-    return await manager.test_model_connection(model_name, provider, api_key)
+    try:
+        return await manager.test_model_connection(model_name, provider, api_key)
+    finally:
+        await manager._close_async_session()
 
 
 # 測試程式碼
