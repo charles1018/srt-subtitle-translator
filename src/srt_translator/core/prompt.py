@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any
 
 # 從配置管理器導入
-from srt_translator.core.config import ConfigManager, get_config
+from srt_translator.core.config import ConfigManager
 from srt_translator.utils import format_exception
 
 # 設定日誌記錄
@@ -47,28 +47,26 @@ class PromptManager:
         """
         with cls._lock:
             if cls._instance is None:
-                # 如果沒有指定config_file，從配置獲取
-                if config_file is None:
-                    config_file = get_config("prompt", "config_file", "config/prompt_config.json")
-
                 cls._instance = PromptManager(config_file)
             return cls._instance
 
-    def __init__(self, config_file: str = "config/prompt_config.json"):
+    def __init__(self, config_file: str | None = None):
         """初始化提示詞管理器
 
         參數:
             config_file: 配置檔案路徑
         """
-        self.config_file = config_file
-        self.config_dir = os.path.dirname(config_file) or "."
+        self.config_manager = (
+            ConfigManager.get_instance("prompt", config_path=config_file)
+            if config_file
+            else ConfigManager.get_instance("prompt")
+        )
+        self.config_file = config_file or self.config_manager.get_config_path()
+        self.config_dir = os.path.dirname(self.config_file) or "."
         self.templates_dir = os.path.join(self.config_dir, "prompt_templates")
 
         # 確保模板目錄存在
         os.makedirs(self.templates_dir, exist_ok=True)
-
-        # 獲取配置管理器實例
-        self.config_manager = ConfigManager.get_instance("prompt")
 
         # 翻譯風格定義
         self.translation_styles = {

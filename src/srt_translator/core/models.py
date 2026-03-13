@@ -120,23 +120,21 @@ class ModelManager:
         """
         with cls._lock:
             if cls._instance is None:
-                # 如果沒有指定config_file，從配置獲取
-                if config_file is None:
-                    config_file = get_config("model", "config_file", "config/model_config.json")
-
                 cls._instance = ModelManager(config_file)
             return cls._instance
 
-    def __init__(self, config_file: str = "config/model_config.json"):
+    def __init__(self, config_file: str | None = None):
         """初始化模型管理器
 
         參數:
             config_file: 配置檔案路徑
         """
-        self.config_file = config_file
-
         # 獲取配置管理器實例
-        self.config_manager = ConfigManager.get_instance("model")
+        if config_file:
+            self.config_manager = ConfigManager.get_instance("model", config_path=config_file)
+        else:
+            self.config_manager = ConfigManager.get_instance("model")
+        self.config_file = config_file or self.config_manager.get_config_path()
 
         # 從配置載入模型設定
         self.config = self._load_config()

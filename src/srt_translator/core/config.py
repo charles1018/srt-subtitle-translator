@@ -22,14 +22,41 @@ class ConfigManager:
     ALLOWED_CONFIG_TYPES = frozenset({"app", "user", "model", "prompt", "file", "cache", "theme", "default_prompt"})
 
     # 類變量，儲存已建立的配置管理器實例（單例模式）
-    _instances: ClassVar[dict[str, "ConfigManager"]] = {}
+    _instances: ClassVar[dict[tuple[str, str], "ConfigManager"]] = {}
+
+    @staticmethod
+    def _normalize_path(path: str) -> str:
+        """正規化路徑字串，避免相對路徑造成實例鍵衝突。"""
+        return str(Path(path).expanduser().resolve())
 
     @classmethod
-    def get_instance(cls, config_type: str = "app") -> "ConfigManager":
+    def _resolve_config_dir(cls, config_dir: str | None = None, config_path: str | None = None) -> str:
+        """解析配置目錄，優先使用明確指定的配置檔案路徑。"""
+        if config_path:
+            return str(Path(config_path).expanduser().resolve().parent)
+
+        candidate = config_dir or os.environ.get("CONFIG_DIR", "").strip() or "config"
+        return cls._normalize_path(candidate)
+
+    @classmethod
+    def _build_instance_key(
+        cls, config_type: str, config_dir: str | None = None, config_path: str | None = None
+    ) -> tuple[str, str]:
+        """建立實例快取鍵，讓不同配置位置可並存。"""
+        if config_path:
+            return (config_type, f"path:{cls._normalize_path(config_path)}")
+        return (config_type, f"dir:{cls._resolve_config_dir(config_dir=config_dir)}")
+
+    @classmethod
+    def get_instance(
+        cls, config_type: str = "app", *, config_dir: str | None = None, config_path: str | None = None
+    ) -> "ConfigManager":
         """獲取配置管理器實例（單例模式）
 
         參數:
             config_type: 配置類型，用於區分不同的配置管理器實例
+            config_dir: 配置目錄，未指定時使用 CONFIG_DIR 或預設的 config
+            config_path: 當前配置類型的自訂配置檔案路徑
 
         回傳:
             配置管理器實例
@@ -41,19 +68,23 @@ class ConfigManager:
             raise ConfigError(
                 f"Unknown config_type: {config_type}. Allowed types: {', '.join(sorted(cls.ALLOWED_CONFIG_TYPES))}"
             )
-        if config_type not in cls._instances:
-            cls._instances[config_type] = ConfigManager(config_type)
-        return cls._instances[config_type]
+        instance_key = cls._build_instance_key(config_type, config_dir=config_dir, config_path=config_path)
+        if instance_key not in cls._instances:
+            cls._instances[instance_key] = ConfigManager(
+                config_type, config_dir=config_dir, config_path=config_path
+            )
+        return cls._instances[instance_key]
 
-    def __init__(self, config_type: str = "app"):
+    def __init__(self, config_type: str = "app", config_dir: str | None = None, config_path: str | None = None):
         """初始化配置管理器
 
         參數:
             config_type: 配置類型，影響配置檔案的路徑和預設值
+            config_dir: 配置目錄
+            config_path: 當前配置類型的自訂配置檔案路徑
         """
         self.config_type = config_type
-        env_config_dir = os.environ.get("CONFIG_DIR", "").strip()
-        self.config_dir = env_config_dir or "config"
+        self.config_dir = self._resolve_config_dir(config_dir=config_dir, config_path=config_path)
 
         # 確保配置目錄存在
         os.makedirs(self.config_dir, exist_ok=True)
@@ -68,6 +99,8 @@ class ConfigManager:
             "cache": os.path.join(self.config_dir, "cache_config.json"),
             "theme": os.path.join(self.config_dir, "theme_settings.json"),
         }
+        if config_path and config_type in self.config_paths:
+            self.config_paths[config_type] = self._normalize_path(config_path)
 
         # 設定預設配置值
         self.default_configs = self._get_default_configs()

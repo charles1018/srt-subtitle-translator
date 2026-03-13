@@ -1,5 +1,7 @@
 """測試 models 模組"""
 
+import json
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -195,6 +197,30 @@ class TestModelManagerConfig:
 
         # 基本欄位應該存在（可能為預設值或從檔案載入）
         assert isinstance(config, dict)
+
+    def test_custom_config_file_does_not_pollute_default_config_dir(self, temp_dir, monkeypatch):
+        """測試自訂配置檔案不會寫回預設配置目錄。"""
+        default_config_dir = temp_dir / "default-config"
+        default_config_dir.mkdir(exist_ok=True)
+        monkeypatch.setenv("CONFIG_DIR", str(default_config_dir))
+
+        ConfigManager._instances = {}
+        default_config = ConfigManager.get_instance("model")
+        default_config_path = default_config.get_config_path()
+        default_before = json.loads(Path(default_config_path).read_text(encoding="utf-8"))
+
+        isolated_config_path = temp_dir / "isolated" / "model_config.json"
+        isolated_config_path.parent.mkdir(exist_ok=True)
+
+        manager = ModelManager(str(isolated_config_path))
+        manager.update_config({"ollama_url": "http://newhost:11434"})
+
+        isolated_after = json.loads(isolated_config_path.read_text(encoding="utf-8"))
+        default_after = json.loads(Path(default_config_path).read_text(encoding="utf-8"))
+
+        assert isolated_after["ollama_url"] == "http://newhost:11434"
+        assert default_before["ollama_url"] == "http://localhost:11434"
+        assert default_after["ollama_url"] == "http://localhost:11434"
 
 
 class TestModelManagerAPIKeys:
