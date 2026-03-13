@@ -880,6 +880,8 @@ class TranslationClient:
             model_name,
             current_style,
             prompt_version,
+            current_index=current_index,
+            lookup_source="translation_client",
         )
         if cached_result:
             logger.debug(f"從快取獲取翻譯結果: {cached_result}")
@@ -941,6 +943,8 @@ class TranslationClient:
                 model_name,
                 current_style,
                 prompt_version,
+                current_index=current_index,
+                lookup_source="translation_client_store",
             )
             return result
 
@@ -1163,6 +1167,8 @@ class TranslationClient:
                 model_name,
                 current_style,
                 prompt_version,
+                current_index=current_index,
+                lookup_source="translation_client_batch_precheck",
             )
             if cached:
                 cache_hits.append((i, cached))

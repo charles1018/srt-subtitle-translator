@@ -646,6 +646,15 @@ class TestTranslationService:
         )
 
         assert result == "你好"
+        service.cache_service.get_translation.assert_called_once_with(
+            "Hello",
+            ["[CURRENT_INDEX]2", "Hello"],
+            "qwen3.5-ud:latest",
+            "standard",
+            "promptv2",
+            current_index=2,
+            lookup_source="translation_service_precheck",
+        )
         mock_prompt_instance.get_effective_cache_context_texts.assert_called_once_with(
             "Hello",
             ["前一行", "Hello", "Hello", "後一行"],
@@ -666,6 +675,8 @@ class TestTranslationService:
             "qwen3.5-ud:latest",
             "standard",
             "promptv2",
+            current_index=2,
+            lookup_source="translation_service_store",
         )
 
     @pytest.mark.asyncio

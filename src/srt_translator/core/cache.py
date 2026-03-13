@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import os
 import shutil
 import sqlite3
@@ -250,6 +251,42 @@ class CacheManager:
         """
         return f"{source_text}|{context_hash}|{model_name}|{style}|{prompt_version}"
 
+    def _log_cache_diagnostic(
+        self,
+        event: str,
+        source_text: str,
+        context_texts: list[str],
+        model_name: str,
+        style: str,
+        prompt_version: str,
+        context_hash: str,
+        *,
+        current_index: int | None = None,
+        lookup_source: str = "cache_manager",
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        """記錄快取診斷資訊，便於追查 hit/miss 的 key 組成。"""
+        if not logger.isEnabledFor(logging.DEBUG):
+            return
+
+        payload: dict[str, Any] = {
+            "event": event,
+            "lookup_source": lookup_source,
+            "source_text": source_text,
+            "current_index": current_index,
+            "model_name": model_name,
+            "style": style,
+            "prompt_version": prompt_version,
+            "context_hash": context_hash,
+            "cache_key": self._generate_cache_key(source_text, context_hash, model_name, style, prompt_version),
+            "effective_context_count": len(context_texts),
+            "effective_context_texts": context_texts,
+        }
+        if extra:
+            payload.update(extra)
+
+        logger.debug("快取診斷: %s", json.dumps(payload, ensure_ascii=False, sort_keys=True))
+
     def _is_error_translation(self, text: str | None) -> bool:
         """判斷是否為錯誤翻譯結果"""
         if not text:
@@ -263,6 +300,9 @@ class CacheManager:
         model_name: str,
         style: str = "standard",
         prompt_version: str = "",
+        *,
+        current_index: int | None = None,
+        lookup_source: str = "cache_manager",
     ) -> str | None:
         """獲取快取的翻譯結果，先檢查記憶體，再檢查資料庫
 
@@ -295,6 +335,18 @@ class CacheManager:
                 else:
                     self.stats["cache_hits"] += 1
                     self.memory_cache[cache_key]["last_accessed"] = time.time()
+                    self._log_cache_diagnostic(
+                        "hit_memory",
+                        source_text,
+                        context_texts,
+                        model_name,
+                        style,
+                        prompt_version,
+                        context_hash,
+                        current_index=current_index,
+                        lookup_source=lookup_source,
+                        extra={"memory_cache_size": len(self.memory_cache)},
+                    )
                     return cached_text
 
         # 檢查資料庫快取
@@ -343,11 +395,35 @@ class CacheManager:
                             self._clean_memory_cache()
 
                     self.stats["cache_hits"] += 1
+                    self._log_cache_diagnostic(
+                        "hit_db",
+                        source_text,
+                        context_texts,
+                        model_name,
+                        style,
+                        prompt_version,
+                        context_hash,
+                        current_index=current_index,
+                        lookup_source=lookup_source,
+                        extra={"usage_count": usage_count + 1, "memory_cache_size": len(self.memory_cache)},
+                    )
                     return str(target_text)
         except sqlite3.Error as e:
             self.stats["db_errors"] += 1
             logger.error(f"資料庫查詢錯誤: {e!s}")
 
+        self._log_cache_diagnostic(
+            "miss",
+            source_text,
+            context_texts,
+            model_name,
+            style,
+            prompt_version,
+            context_hash,
+            current_index=current_index,
+            lookup_source=lookup_source,
+            extra={"memory_cache_size": len(self.memory_cache)},
+        )
         return None
 
     def store_translation(
@@ -358,6 +434,9 @@ class CacheManager:
         model_name: str,
         style: str = "standard",
         prompt_version: str = "",
+        *,
+        current_index: int | None = None,
+        lookup_source: str = "cache_manager",
     ) -> bool:
         """儲存翻譯結果到快取
 
@@ -412,6 +491,18 @@ class CacheManager:
                         datetime.now(),
                     ),
                 )
+            self._log_cache_diagnostic(
+                "store",
+                source_text,
+                context_texts,
+                model_name,
+                style,
+                prompt_version,
+                context_hash,
+                current_index=current_index,
+                lookup_source=lookup_source,
+                extra={"memory_cache_size": len(self.memory_cache)},
+            )
             return True
         except sqlite3.Error as e:
             self.stats["db_errors"] += 1

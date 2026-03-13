@@ -626,6 +626,8 @@ class TestTranslationClientAsync:
             "qwen3.5-ud:latest",
             "standard",
             "qwen35udv1",
+            current_index=None,
+            lookup_source="translation_client",
         )
 
     @pytest.mark.asyncio
@@ -658,6 +660,15 @@ class TestTranslationClientAsync:
             "ollama",
             "qwen3.5-ud:latest",
             current_index=2,
+        )
+        mock_cache_instance.get_cached_translation.assert_called_once_with(
+            "Hello",
+            ["[CURRENT_INDEX]2", "Hello"],
+            "qwen3.5-ud:latest",
+            "standard",
+            "qwen35udv2",
+            current_index=2,
+            lookup_source="translation_client",
         )
 
     @pytest.mark.skip(reason="Complex async mock setup needed")
@@ -773,6 +784,39 @@ class TestTranslationClientAsync:
 
         assert result == ["cached1", "cached2"]
         assert client.metrics.cache_hits == 2
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    async def test_translate_batch_passes_current_index_to_cache_lookup(self, mock_prompt, mock_cache):
+        """Test batch cache precheck records current_index diagnostics."""
+        mock_cache_instance = MagicMock()
+        mock_cache_instance.get_cached_translation.return_value = "cached translation"
+        mock_cache.return_value = mock_cache_instance
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.get_prompt_version.return_value = "qwen35udv3"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CURRENT_INDEX]3", "更多"]
+        mock_prompt.return_value = mock_prompt_instance
+
+        client = TranslationClient(llm_type="ollama")
+        result = await client.translate_batch(
+            [("更多", ["前一行", "更多", "更多", "後一行"])],
+            "qwen3.5-ud:latest",
+            current_indices=[3],
+        )
+
+        assert result == ["cached translation"]
+        mock_cache_instance.get_cached_translation.assert_called_once_with(
+            "更多",
+            ["[CURRENT_INDEX]3", "更多"],
+            "qwen3.5-ud:latest",
+            "standard",
+            "qwen35udv3",
+            current_index=3,
+            lookup_source="translation_client_batch_precheck",
+        )
 
     @pytest.mark.asyncio
     @patch("srt_translator.translation.client.CacheManager")

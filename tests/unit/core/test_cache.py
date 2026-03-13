@@ -1,5 +1,7 @@
 """測試 cache 模組"""
 
+import json
+import logging
 import sqlite3
 from pathlib import Path
 
@@ -163,6 +165,34 @@ class TestCacheGetSet:
         assert cached is None
         assert cache_manager.stats["total_queries"] == 1
         assert cache_manager.stats["cache_hits"] == 0
+
+    def test_get_translation_cache_miss_logs_diagnostics(self, cache_manager, caplog):
+        """測試快取未命中會記錄診斷資訊。"""
+        with caplog.at_level(logging.DEBUG, logger="srt_translator.core.cache"):
+            cached = cache_manager.get_cached_translation(
+                "もっと、もっと",
+                ["[CURRENT_INDEX]2", "前一行", "後一行"],
+                "qwen3.5-ud:latest",
+                "standard",
+                "promptv2",
+                current_index=2,
+                lookup_source="translation_client_batch_precheck",
+            )
+
+        assert cached is None
+
+        diagnostic_messages = [
+            record.getMessage() for record in caplog.records if record.getMessage().startswith("快取診斷: ")
+        ]
+        assert diagnostic_messages
+
+        payload = json.loads(diagnostic_messages[-1].split("快取診斷: ", 1)[1])
+        assert payload["event"] == "miss"
+        assert payload["lookup_source"] == "translation_client_batch_precheck"
+        assert payload["current_index"] == 2
+        assert payload["source_text"] == "もっと、もっと"
+        assert payload["effective_context_texts"] == ["[CURRENT_INDEX]2", "前一行", "後一行"]
+        assert payload["context_hash"]
 
     def test_store_empty_text_rejected(self, cache_manager):
         """測試拒絕儲存空文本"""

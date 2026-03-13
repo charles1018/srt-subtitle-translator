@@ -215,7 +215,13 @@ class TranslationService:
 
         # 檢查快取
         cached_result = self.cache_service.get_translation(
-            text, effective_context, model_name, current_style, prompt_version
+            text,
+            effective_context,
+            model_name,
+            current_style,
+            prompt_version,
+            current_index=current_index,
+            lookup_source="translation_service_precheck",
         )
         if cached_result:
             self._incr_stat("cached_translations")
@@ -250,7 +256,14 @@ class TranslationService:
 
             # 儲存到快取（包含風格和提示詞版本）
             self.cache_service.store_translation(
-                text, translation, effective_context, model_name, current_style, prompt_version
+                text,
+                translation,
+                effective_context,
+                model_name,
+                current_style,
+                prompt_version,
+                current_index=current_index,
+                lookup_source="translation_service_store",
             )
 
             # 更新統計資料
@@ -1015,6 +1028,9 @@ class CacheService:
         model_name: str,
         style: str = "standard",
         prompt_version: str = "",
+        *,
+        current_index: int | None = None,
+        lookup_source: str = "cache_service",
     ) -> str | None:
         """從快取獲取翻譯結果
 
@@ -1029,7 +1045,13 @@ class CacheService:
             翻譯結果，若不存在則回傳 None
         """
         return self.cache_manager.get_cached_translation(
-            source_text, context_texts, model_name, style, prompt_version
+            source_text,
+            context_texts,
+            model_name,
+            style,
+            prompt_version,
+            current_index=current_index,
+            lookup_source=lookup_source,
         )
 
     def store_translation(
@@ -1040,6 +1062,9 @@ class CacheService:
         model_name: str,
         style: str = "standard",
         prompt_version: str = "",
+        *,
+        current_index: int | None = None,
+        lookup_source: str = "cache_service",
     ) -> bool:
         """將翻譯結果儲存到快取
 
@@ -1055,7 +1080,14 @@ class CacheService:
             是否儲存成功
         """
         return self.cache_manager.store_translation(
-            source_text, target_text, context_texts, model_name, style, prompt_version
+            source_text,
+            target_text,
+            context_texts,
+            model_name,
+            style,
+            prompt_version,
+            current_index=current_index,
+            lookup_source=lookup_source,
         )
 
     def clear_old_cache(self, days_threshold: int = 30) -> int:
