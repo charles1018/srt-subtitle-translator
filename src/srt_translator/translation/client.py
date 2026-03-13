@@ -343,12 +343,15 @@ class TranslationClient:
                 logger.error("未安裝 OpenAI 客戶端函式庫，llama.cpp 模式需要 openai 套件")
                 raise ImportError("請安裝 OpenAI Python 套件: pip install openai")
 
+            # 本地推理可能較慢（尤其 CPU-only 或思考模型），設定較長逾時
+            llamacpp_timeout = 600  # 10 分鐘
             self.openai_client: AsyncOpenAI | None = AsyncOpenAI(
                 base_url=f"{self.base_url}/v1",
                 api_key="sk-no-key-required",  # llama-server 預設無需認證
-                timeout=self.conn_timeout.total,
+                timeout=llamacpp_timeout,
+                max_retries=1,  # 本地模型重試意義不大
             )
-            logger.info(f"llama.cpp 客戶端已初始化，連線至 {self.base_url}")
+            logger.info(f"llama.cpp 客戶端已初始化，連線至 {self.base_url}（逾時: {llamacpp_timeout}s）")
 
         # OpenAI 客戶端最佳化
         elif llm_type == "openai":
@@ -1085,7 +1088,7 @@ class TranslationClient:
             "messages": messages,
             "temperature": 0.1,
             "max_tokens": 512 if is_llamacpp else min(150, 4096),
-            "timeout": 90 if is_llamacpp else 30,
+            "timeout": 600 if is_llamacpp else 30,
         }
 
         # 添加 response_format 參數（適用於較新的模型）
