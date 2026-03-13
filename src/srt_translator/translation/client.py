@@ -1071,60 +1071,78 @@ class TranslationClient:
 
     async def _translate_with_openai(self, messages: list[dict[str, str]], model_name: str) -> str:
         """使用 OpenAI API 翻譯"""
-        # 估算 token 數量
-        estimated_tokens = await self._count_tokens(messages, model_name)
-
-        # 檢查速率限制
-        await self._check_rate_limit(model_name, estimated_tokens)
-
-        # 記錄此次請求的時間戳
+        # llama.cpp 本地模型不需要速率限制和 token 估算
         current_time = time.time()
-        self.request_timestamps.append(current_time)
+        if self.llm_type != "llamacpp":
+            estimated_tokens = await self._count_tokens(messages, model_name)
+            await self._check_rate_limit(model_name, estimated_tokens)
+            self.request_timestamps.append(current_time)
 
         # 準備 OpenAI 參數
-        openai_params = {
+        is_llamacpp = self.llm_type == "llamacpp"
+        openai_params: dict[str, Any] = {
             "model": model_name,
             "messages": messages,
             "temperature": 0.1,
-            "max_tokens": min(150, 4096),  # 限制回應長度，SRT 字幕通常不會很長
-            "timeout": 30,  # 設定逾時
+            "max_tokens": 512 if is_llamacpp else min(150, 4096),
+            "timeout": 90 if is_llamacpp else 30,
         }
 
         # 添加 response_format 參數（適用於較新的模型）
-        if "gpt-4" in model_name or "gpt-3.5-turbo" in model_name:
+        if not is_llamacpp and ("gpt-4" in model_name or "gpt-3.5-turbo" in model_name):
             openai_params["response_format"] = {"type": "text"}
 
         try:
             if not self.openai_client:
                 raise TranslationError("OpenAI 客戶端未初始化")
-            logger.debug(f"發送 OpenAI API 請求: {model_name}")
+            logger.debug(f"發送 {'llama.cpp' if is_llamacpp else 'OpenAI'} API 請求: {model_name}")
             response = await self.openai_client.chat.completions.create(**openai_params)  # type: ignore[call-overload]
             content = response.choices[0].message.content
             translation: str = content.strip() if content else ""
 
+            # llama.cpp 思考模型處理：若 content 為空，嘗試從原始回應取得
+            if is_llamacpp and not translation:
+                # llama-server 的思考模型可能將結果放在 reasoning_content
+                # 或者 content 包含 <think> 標籤
+                raw_msg = response.choices[0].message
+                # 嘗試取得 model_extra 中的 reasoning_content（OpenAI SDK 未定義此欄位）
+                reasoning = getattr(raw_msg, "reasoning_content", None)
+                if not reasoning and hasattr(raw_msg, "model_extra") and raw_msg.model_extra:
+                    reasoning = raw_msg.model_extra.get("reasoning_content", "")
+                if reasoning and isinstance(reasoning, str):
+                    logger.debug("llama.cpp 思考模型：content 為空，從 reasoning_content 提取翻譯")
+                    # 思考模型的回答可能全在 reasoning 中，嘗試提取最後的翻譯結果
+                    translation = self._sanitize_ollama_translation(reasoning)
+
+            # llama.cpp 回應清理（處理 <think> 標籤等）
+            if is_llamacpp and translation:
+                translation = self._sanitize_ollama_translation(translation)
+
             # 記錄實際 token 使用量
-            input_tokens = response.usage.prompt_tokens
-            output_tokens = response.usage.completion_tokens
-            total_tokens = input_tokens + output_tokens
-            self.token_usage.append((current_time, total_tokens))
+            if response.usage:
+                input_tokens = response.usage.prompt_tokens
+                output_tokens = response.usage.completion_tokens
+                total_tokens = input_tokens + output_tokens
+                self.token_usage.append((current_time, total_tokens))
 
-            # 更新指標
-            self.metrics.total_tokens += total_tokens
+                # 更新指標
+                self.metrics.total_tokens += total_tokens
 
-            # 計算費用
-            # 注意：self.pricing 中儲存的是「每 token」的價格（已經從「每千 token」轉換）
-            # 因此計算時不需要再除以 1000
-            if model_name in self.pricing:
-                price = self.pricing[model_name]
-                cost = (input_tokens * price["input"]) + (output_tokens * price["output"])
-                self.metrics.total_cost += cost
-                logger.debug(f"OpenAI API 翻譯費用: ${cost:.6f} ({input_tokens} 輸入 + {output_tokens} 輸出 tokens)")
+                # 計算費用（llama.cpp 本地模型免費）
+                if not is_llamacpp and model_name in self.pricing:
+                    price = self.pricing[model_name]
+                    cost = (input_tokens * price["input"]) + (output_tokens * price["output"])
+                    self.metrics.total_cost += cost
+                    logger.debug(f"OpenAI API 翻譯費用: ${cost:.6f} ({input_tokens} 輸入 + {output_tokens} 輸出 tokens)")
 
-            logger.debug(f"OpenAI API 回應翻譯: {translation} (使用 {total_tokens} tokens)")
+                provider_label = "llama.cpp" if is_llamacpp else "OpenAI"
+                logger.debug(f"{provider_label} API 回應翻譯: {translation} (使用 {total_tokens} tokens)")
+
             return translation
 
         except Exception as e:
-            logger.error(f"OpenAI API 請求失敗: {e!s}")
+            provider_label = "llama.cpp" if is_llamacpp else "OpenAI"
+            logger.error(f"{provider_label} API 請求失敗: {e!s}")
             raise
 
     async def _translate_with_ollama(self, messages: list[dict[str, str]], model_name: str) -> str:
