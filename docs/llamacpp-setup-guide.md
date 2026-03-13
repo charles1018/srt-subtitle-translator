@@ -102,19 +102,34 @@ llama-server 會自動偵測 GPU 並決定最佳的層分配。
 LD_LIBRARY_PATH=~/dev/llama-bin ~/dev/llama-bin/llama-server \
     -m ~/dev/model/Qwen3.5-9B-UD-Q8_K_XL.gguf \
     --port 8080 \
+    --jinja \
     -c 4096 \
-    --parallel 2 \
+    --parallel 1 \
+    --reasoning off \
+    --reasoning-format none \
     --reasoning-budget 0
+```
+
+若你優先追求「字幕翻譯輸出穩定」而不是「單機最大吞吐」，建議再加上：
+
+```bash
+    --no-cont-batching \
+    --threads-http 2
 ```
 
 | 參數 | 說明 | 建議值 |
 |------|------|--------|
 | `-m` | GGUF 模型檔案路徑 | 必填 |
 | `--port` | HTTP 服務埠號 | `8080`（預設） |
+| `--jinja` | 啟用 GGUF 內嵌 chat template | 建議開啟 |
 | `-c` | Context 長度（token 數） | `2048`~`4096`（字幕翻譯不需要太長） |
 | `-ngl` | 放到 GPU 的層數 | 省略讓 llama-server 自動決定 |
-| `--parallel` | 同時處理的請求數 | `1`~`4`（依 VRAM 餘量） |
-| `--reasoning-budget 0` | 關閉思考模式 | 翻譯任務建議關閉 |
+| `--parallel` | 同時處理的 request slot 數 | 穩定優先建議 `1` |
+| `--reasoning off` | 關閉 template thinking | 翻譯任務建議關閉 |
+| `--reasoning-format none` | 不解析 reasoning 欄位 | 翻譯任務建議關閉 |
+| `--reasoning-budget 0` | 即使模型想思考也立刻結束 thinking | 建議與上面兩個參數一起使用 |
+| `--no-cont-batching` | 關閉 continuous batching，降低延遲抖動 | 穩定優先時建議開啟 |
+| `--threads-http` | HTTP 處理執行緒數 | `2` |
 | `--flash-attn on` | 啟用 Flash Attention | 可降低記憶體使用 |
 | `--host 0.0.0.0` | 監聽所有網路介面 | 僅在需要遠端存取時使用 |
 
@@ -140,8 +155,12 @@ curl -s http://localhost:8080/v1/chat/completions \
             {"role": "system", "content": "Translate to Traditional Chinese (Taiwan). Output only the translation."},
             {"role": "user", "content": "Hello, how are you?"}
         ],
-        "temperature": 0.4,
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.0,
         "max_tokens": 96,
+        "reasoning_format": "none",
         "chat_template_kwargs": {"enable_thinking": false}
     }'
 ```
@@ -207,11 +226,31 @@ llama-server -m model.gguf -ngl 0
 
 ### 思考模式與翻譯速度
 
-Qwen3.5 等模型預設啟用思考模式（`<think>` 標籤），會大幅增加 token 消耗和延遲。本專案已在程式碼中自動關閉思考模式，但建議在啟動 llama-server 時也加上 `--reasoning-budget 0` 做雙重保險：
+Qwen3.5 等模型在思考模式下會大幅增加 token 消耗和延遲。本專案目前會在 request 端送出 `chat_template_kwargs.enable_thinking=false`，但仍建議在 server 啟動時同步使用 `--reasoning off --reasoning-format none --reasoning-budget 0`，做成 request 與 server 雙重保險：
 
 ```bash
-llama-server -m model.gguf --reasoning-budget 0
+llama-server -m model.gguf --reasoning off --reasoning-format none --reasoning-budget 0
 ```
+
+如果你改用思考模式做一般問答或推理任務，再另外切回 thinking 相關參數；字幕翻譯預設不建議啟用。
+
+### Qwen3.5 與量化模型採樣建議
+
+依 Qwen 官方對非思考文字任務與量化模型的建議，字幕翻譯可優先從以下組合開始：
+
+- `temperature=0.7`
+- `top_p=0.8`
+- `top_k=20`
+- `min_p=0.0`
+
+另外，Qwen 官方也建議對量化模型提高 `presence_penalty` 抑制重複輸出；本專案後續會在 `llamacpp` runtime 端補上這項控制，但你若使用其他 OpenAI 相容客戶端，也可以手動加上。
+
+### 穩定模式與吞吐模式
+
+- 穩定模式：`--parallel 1 --no-cont-batching`
+- 吞吐模式：`--parallel 2` 或更高，並保留 continuous batching
+
+前者更適合字幕翻譯這種短句、高頻、需要可預期輸出的工作流；後者則適合多人共用或大量背景處理。
 
 ### 量化格式選擇
 

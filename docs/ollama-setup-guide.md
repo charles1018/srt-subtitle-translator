@@ -54,7 +54,7 @@ FROM /home/user/models/Qwen3.5-9B-Q8_0.gguf
 
 如果匯入後模型的翻譯結果混亂（例如重複輸出、無法理解指令），很可能是缺少正確的 Chat Template。不同模型家族需要對應的 template 格式：
 
-**Qwen3.5 系列（本專案推薦設定）：**
+**Qwen3.5 系列（本專案推薦的非思考翻譯設定）：**
 
 ```dockerfile
 FROM /path/to/qwen3.5-model.gguf
@@ -79,9 +79,11 @@ PARAMETER min_p 0.0
 PARAMETER num_predict 256
 ```
 
-這個 template 會預先填入空的 `<think>...</think>` 區塊，讓自訂匯入的 Qwen3.5 GGUF 模型更穩定地直接輸出翻譯內容，而不是先吐出推理過程。
+這個 template 會預先填入空的 `<think>...</think>` 區塊，讓自訂匯入的 Qwen3.5 GGUF 模型更穩定地直接輸出翻譯內容，而不是先吐出推理過程。採樣參數也對齊 Qwen 非思考文字任務的安全範圍：`temperature=0.7`、`top_p=0.8`、`top_k=20`、`min_p=0.0`。
 
-> 補充：本專案 runtime 也會傳送 `think: false`，並清理殘留的 `<think>` 與 ChatML assistant 標記；但對自訂 GGUF 匯入模型來說，仍建議在 `Modelfile` 端就先處理好。
+> 補充：
+> - 本專案 runtime 也會傳送 `think: false`，並清理殘留的 `<think>` 與 ChatML assistant 標記；但對自訂 GGUF 匯入模型來說，仍建議在 `Modelfile` 端就先處理好。
+> - Qwen 官方對量化模型另外建議提高 `presence_penalty` 以抑制重複輸出；但目前 Ollama 的 penalty sampling 仍有已知問題，本專案暫時不把它當成可靠依賴，仍以 template 與安全並發數為主。
 
 **Qwen / Qwen3 系列（一般 ChatML 格式）：**
 
@@ -202,6 +204,7 @@ uv run srt-translator
 - 若 Ollama 回傳殘留的 `<think>` 或 `<|im_start|>assistant` 標記，程式會在翻譯結果寫回字幕前自動清理
 - 由於目前 Ollama 對 Qwen3.5 仍有已知並行限制，批次翻譯時本專案會自動將該模型的並發數限制為 `1`
 - 模型列表偵測會讀取 Ollama `/api/tags` 的 `details` 欄位，因此像 `HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive` 這類自訂名稱也能被辨識為 Qwen3.5 家族
+- 若你看到官方建議的 `presence_penalty=1.5` 或 `2.0`，請注意目前 Ollama 對這類 penalty 參數仍不夠可靠；在本專案中，真正有效的穩定性來源仍是正確 template、關閉 thinking、以及將並發數控制在 `1`
 
 ---
 
