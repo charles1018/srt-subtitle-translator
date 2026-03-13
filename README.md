@@ -22,7 +22,7 @@
 - 🖥️ **CLI 命令列模式**：支援命令列翻譯、批次處理、術語表管理
 - 📚 **術語表管理**：確保專有名詞翻譯一致性（支援 JSON/CSV/TXT 匯入匯出）
 - ⚡ **批量處理**：同時處理多個字幕檔案
-- 🔄 **並發翻譯**：可調整並發數，優化翻譯效率；部分 Ollama 模型（如 Qwen3.5）會依模型特性自動降至安全並發數
+- 🔄 **並發翻譯**：可調整並發數，優化翻譯效率；部分 Ollama 模型（如 Qwen3.5）會依模型特性自動降至安全並發數，llama.cpp 則會依 `llama-server --parallel` 實際 slots 自動收斂
 - 🆕 **結構-文本分離翻譯模式**：實驗性批次翻譯，將字幕結構（timestamp/index）與文本分離，僅翻譯純文字後重組，消除 LLM 損壞結構的風險
 - 💾 **翻譯快取**：自動快取翻譯結果，減少重複 API 呼叫
   - 🆕 **GUI 快取管理**：完整的快取管理界面，支援查看統計資訊和一鍵清除快取
@@ -66,7 +66,7 @@
 | CLI `translate` / `models` 參數 | `ollama`、`openai`、`anthropic`、`llamacpp` |
 | GUI provider 下拉 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
 | 模型 metadata / 可用模型發現 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
-| `ConfigManager` 對 `user.llm_type` 驗證 | `ollama`、`openai`、`llamacpp` |
+| `ConfigManager` 對 `user.llm_type` 驗證 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
 | OpenRouter | 僅規劃中，尚未落地 |
 
 > 文件若與程式碼衝突，請以 `src/` 內實作為準。
@@ -153,7 +153,7 @@ echo "your-google-api-key" > google_api_key.txt
 >
 > **安全提示**：`.env` 檔案已加入 `.gitignore`，不會被提交到版本控制。
 >
-> **補充**：程式碼目前可讀取 `OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`，但端到端翻譯流程仍以 `ollama` / `openai` 最穩定。
+> **補充**：程式碼目前可讀取 `OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`，但端到端翻譯流程目前仍以 `ollama` / `openai` / `llamacpp` 最穩定。
 
 #### Ollama（本地模型）
 確保 Ollama 服務正在運行：
@@ -175,7 +175,7 @@ ollama pull llama3.2
 
 ```bash
 # 啟動 llama-server（詳細設定請參考 docs/llamacpp-setup-guide.md）
-llama-server -m ~/dev/model/your-model.gguf --port 8080 --reasoning-budget 0
+llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja --parallel 1 --reasoning off --reasoning-format none --reasoning-budget 0
 ```
 
 詳細安裝與設定說明請參閱 [docs/llamacpp-setup-guide.md](docs/llamacpp-setup-guide.md)。
@@ -193,7 +193,7 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --reasoning-budget 0
    - 選擇字幕檔案（可拖放）
    - 設定源語言和目標語言
    - 選擇 AI 引擎和模型
-   - 調整並發數和顯示模式（使用 Ollama Qwen3.5 時，程式會自動限制為 1）
+   - 調整並發數和顯示模式（使用 Ollama Qwen3.5 時，程式會自動限制為 1；使用 llama.cpp 時，實際並發會受 server slots 限制）
    - 點擊「開始翻譯」
 
 3. 翻譯完成後，檔案會自動儲存在原檔案目錄
