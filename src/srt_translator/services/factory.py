@@ -852,8 +852,11 @@ class ModelService:
             模型名稱列表
         """
         api_key = self.api_keys.get(llm_type)
-        models = await self.model_manager.get_model_list_async(llm_type, api_key)
-        return [model.id for model in models]
+        try:
+            models = await self.model_manager.get_model_list_async(llm_type, api_key)
+            return [model.id for model in models]
+        finally:
+            await self.model_manager._close_async_session()
 
     def get_model_info(self, model_name: str, provider: str | None = None) -> dict[str, Any]:
         """獲取模型的詳細資訊

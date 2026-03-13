@@ -838,6 +838,8 @@ class TestModelManagerAsync:
     async def test_test_model_connection_timeout_returns_readable_message(self, manager):
         """測試 Ollama 連線逾時時回傳可讀訊息。"""
         manager.session = MagicMock()
+        manager.session.closed = False
+        manager.session._loop = None
         manager.session.post.side_effect = asyncio.TimeoutError()
 
         result = await manager.test_model_connection("qwen3.5-ud:latest", "ollama")
@@ -857,6 +859,32 @@ class TestModelManagerAsync:
 
         assert result["success"] is True
         manager._close_async_session.assert_awaited_once()
+
+    def test_test_model_connection_recreates_session_when_previous_loop_closed(self, manager):
+        """測試前一個 event loop 關閉後，會重建 HTTP session。"""
+        closed_loop = asyncio.new_event_loop()
+        closed_loop.close()
+
+        stale_session = MagicMock()
+        stale_session._loop = closed_loop
+        stale_session.closed = False
+        manager.session = stale_session
+
+        response = MagicMock()
+        response.status = 200
+        post_context = AsyncMock()
+        post_context.__aenter__.return_value = response
+        post_context.__aexit__.return_value = False
+
+        fresh_session = MagicMock()
+        fresh_session.post.return_value = post_context
+        fresh_session.closed = False
+
+        with patch("srt_translator.core.models.aiohttp.ClientSession", return_value=fresh_session):
+            result = asyncio.run(manager.test_model_connection("qwen3.5-ud:latest", "ollama"))
+
+        assert result["success"] is True
+        assert manager.session is fresh_session
 
     @pytest.mark.asyncio
     async def test_get_model_list_async_with_cache(self, manager):

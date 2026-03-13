@@ -429,6 +429,23 @@ class TestModelService:
     @pytest.mark.asyncio
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.ConfigManager")
+    async def test_get_available_models_closes_manager_session(self, mock_config, mock_model):
+        """Test model list loading closes ModelManager session after use."""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_model_instance = MagicMock()
+        mock_model_instance.get_model_list_async = AsyncMock(return_value=[SimpleNamespace(id="qwen3.5-ud:latest")])
+        mock_model_instance._close_async_session = AsyncMock()
+        mock_model.return_value = mock_model_instance
+
+        service = ModelService()
+        result = await service.get_available_models("ollama")
+
+        assert result == ["qwen3.5-ud:latest"]
+        mock_model_instance._close_async_session.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.ConfigManager")
     async def test_test_model_connection_closes_manager_session(self, mock_config, mock_model):
         """Test model connection check closes ModelManager session after use."""
         mock_config.get_instance.return_value = MagicMock()

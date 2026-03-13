@@ -177,7 +177,7 @@ class ModelManager:
 
         # 非同步 HTTP 客戶端
         self.session: aiohttp.ClientSession | None = None
-        self._session_lock = asyncio.Lock()
+        self._session_lock: asyncio.Lock | None = None
 
         # API 金鑰集合
         self.api_keys: dict[str, str] = {}
@@ -550,15 +550,35 @@ class ModelManager:
         for model in google_models.values():
             self.model_database[f"google:{model.id}"] = model
 
+    def _get_session_lock(self) -> asyncio.Lock:
+        """取得當前 event loop 可安全使用的 session lock。"""
+        current_loop = asyncio.get_running_loop()
+        lock = self._session_lock
+        lock_loop = getattr(lock, "_loop", None) if lock is not None else None
+
+        if lock is None or (lock_loop is not None and lock_loop is not current_loop):
+            lock = asyncio.Lock()
+            self._session_lock = lock
+
+        return lock
+
     async def _init_async_session(self) -> None:
         """初始化非同步 HTTP 客戶端"""
-        async with self._session_lock:
+        session_lock = self._get_session_lock()
+        async with session_lock:
+            current_loop = asyncio.get_running_loop()
             # 若 session 綁定的 event loop 已關閉，先清除舊 session
             if self.session is not None:
                 session_loop = getattr(self.session, "_loop", None)
-                if session_loop is not None and session_loop.is_closed():
+                if getattr(self.session, "closed", False):
+                    self.session = None
+                    logger.debug("偵測到已關閉的 HTTP 客戶端 session，將重新建立")
+                elif session_loop is not None and session_loop.is_closed():
                     self.session = None
                     logger.debug("偵測到 HTTP 客戶端 session 的 event loop 已關閉，將重新建立")
+                elif session_loop is not None and session_loop is not current_loop:
+                    self.session = None
+                    logger.debug("偵測到 HTTP 客戶端 session 屬於不同 event loop，將重新建立")
             if self.session is None:
                 timeout = aiohttp.ClientTimeout(
                     total=self.request_timeout,
@@ -571,9 +591,13 @@ class ModelManager:
 
     async def _close_async_session(self) -> None:
         """關閉非同步 HTTP 客戶端"""
-        async with self._session_lock:
+        session_lock = self._get_session_lock()
+        async with session_lock:
             if self.session:
-                await self.session.close()
+                try:
+                    await self.session.close()
+                except RuntimeError as e:
+                    logger.debug(f"關閉跨 event loop 的 HTTP 客戶端 session 時略過例外: {e!s}")
                 self.session = None
                 logger.debug("已關閉非同步 HTTP 客戶端")
 
@@ -1278,8 +1302,7 @@ class ModelManager:
         if provider == "ollama":
             # 測試 Ollama 連線
             try:
-                if not self.session:
-                    await self._init_async_session()
+                await self._init_async_session()
                 assert self.session is not None
                 url = f"{self.base_url}/api/chat"
                 payload = {
@@ -1325,8 +1348,7 @@ class ModelManager:
 
         # 檢查 Ollama 連線
         try:
-            if not self.session:
-                await self._init_async_session()
+            await self._init_async_session()
 
             url = f"{self.base_url}/api/version"
             assert self.session is not None
@@ -1358,8 +1380,7 @@ class ModelManager:
             Ollama ModelInfo物件列表
         """
         try:
-            if not self.session:
-                await self._init_async_session()
+            await self._init_async_session()
 
             models: dict[str, dict[str, Any]] = {}
 
