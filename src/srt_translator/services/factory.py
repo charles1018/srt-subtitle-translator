@@ -79,7 +79,20 @@ class ServiceFactory:
         for service_name in list(cls._instances.keys()):
             if hasattr(cls._instances[service_name], "cleanup"):
                 try:
-                    cls._instances[service_name].cleanup()
+                    result = cls._instances[service_name].cleanup()
+                    # 若 cleanup 是 async method，需要在 event loop 中執行
+                    if asyncio.iscoroutine(result):
+                        try:
+                            loop = asyncio.get_running_loop()
+                            # 已在 event loop 中，排程執行但不阻塞
+                            loop.create_task(result)
+                        except RuntimeError:
+                            # 不在 event loop 中，建立新 loop 同步執行
+                            loop = asyncio.new_event_loop()
+                            try:
+                                loop.run_until_complete(result)
+                            finally:
+                                loop.close()
                 except Exception as e:
                     logger.error(f"清理服務 {service_name} 時發生錯誤: {e!s}")
         cls._instances.clear()

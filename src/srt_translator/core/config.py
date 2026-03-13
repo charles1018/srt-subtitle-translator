@@ -217,7 +217,8 @@ class ConfigManager:
         """
         config_path = self.config_paths.get(config_type)
         if not config_path:
-            logger.warning(f"未知的配置類型: {config_type}")
+            if config_type not in self.ALLOWED_CONFIG_TYPES:
+                logger.warning(f"未知的配置類型: {config_type}")
             return
 
         # 取得預設配置（深拷貝避免修改預設值）

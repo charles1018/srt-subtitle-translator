@@ -555,6 +555,12 @@ class ModelManager:
     async def _init_async_session(self) -> None:
         """初始化非同步 HTTP 客戶端"""
         async with self._session_lock:
+            # 若 session 綁定的 event loop 已關閉，先清除舊 session
+            if self.session is not None:
+                session_loop = getattr(self.session, "_loop", None)
+                if session_loop is not None and session_loop.is_closed():
+                    self.session = None
+                    logger.debug("偵測到 HTTP 客戶端 session 的 event loop 已關閉，將重新建立")
             if self.session is None:
                 timeout = aiohttp.ClientTimeout(
                     total=self.request_timeout,
