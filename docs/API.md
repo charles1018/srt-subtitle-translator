@@ -42,9 +42,10 @@
 
 - 文件若與 `src/` 內實作衝突，請以 `src/` 為準
 - provider 相關資訊需要區分「模型資訊 / 可用模型發現」與「真正可執行的翻譯 runtime」
-- 目前 `TranslationClient` 的翻譯執行路徑實作為 `ollama`、`openai`、`google`
+- 目前 `TranslationClient` 的翻譯執行路徑實作為 `ollama`、`openai`、`google`、`llamacpp`
+- `llamacpp` 透過 OpenAI 相容 API 連接本地 `llama-server`，不需要 API 金鑰
 - `anthropic` 目前主要接在模型資訊與金鑰層，尚未是第一級翻譯 runtime
-- provider 支援目前仍有分層差異：runtime 為 `ollama` / `openai` / `google`；CLI parser 為 `ollama` / `openai` / `anthropic`；GUI 下拉為 `ollama` / `openai` / `anthropic` / `google`
+- provider 支援目前仍有分層差異：runtime 為 `ollama` / `openai` / `google` / `llamacpp`；CLI parser 為 `ollama` / `openai` / `anthropic` / `llamacpp`；GUI 下拉為 `ollama` / `openai` / `anthropic` / `google` / `llamacpp`
 - OpenRouter 仍屬規劃中，不在目前 public API 範圍內
 
 ### 架構概覽
@@ -407,7 +408,7 @@ model_manager = ModelManager()
 獲取可用模型列表。
 
 **參數**：
-- `llm_type` (str): LLM 類型（`"ollama"`、`"openai"`、`"anthropic"`、`"google"`）
+- `llm_type` (str): LLM 類型（`"ollama"`、`"openai"`、`"anthropic"`、`"google"`、`"llamacpp"`）
 - `api_key` (str | None): 覆蓋預設金鑰的可選值
 
 **回傳**：`list[ModelInfo]` - 包含 provider、能力、可用性等資訊的模型列表
@@ -572,7 +573,7 @@ client = TranslationClient(
 )
 ```
 
-> `TranslationClient` 目前的翻譯執行路徑實作為 `ollama`、`openai`、`google`；`anthropic` 尚未是第一級 runtime。
+> `TranslationClient` 目前的翻譯執行路徑實作為 `ollama`、`openai`、`google`、`llamacpp`；`anthropic` 尚未是第一級 runtime。
 
 #### 主要方法
 
@@ -581,9 +582,9 @@ client = TranslationClient(
 初始化翻譯客戶端。
 
 **參數**：
-- `llm_type` (str): runtime 支援的 LLM 類型（`"ollama"`、`"openai"`、`"google"`）
-- `base_url` (str): API 基礎位址（Ollama 可覆蓋）
-- `api_key` (Optional[str]): API 金鑰（Ollama 不需要）
+- `llm_type` (str): runtime 支援的 LLM 類型（`"ollama"`、`"openai"`、`"google"`、`"llamacpp"`）
+- `base_url` (str): API 基礎位址（Ollama / llamacpp 可覆蓋）
+- `api_key` (Optional[str]): API 金鑰（Ollama / llamacpp 不需要）
 - `cache_db_path` (str): 翻譯快取資料庫路徑
 - `netflix_style_config` (dict | None): 後處理配置
 

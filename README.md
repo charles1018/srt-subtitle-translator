@@ -5,16 +5,16 @@
 [![Tests](https://img.shields.io/badge/tests-841%20collected-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-htmlcov-lightgrey.svg)](htmlcov/)
 
-基於 Python 的 SRT 字幕檔自動翻譯工具。本專案近期正在整理 provider 整合，各層支援範圍目前仍有差異：實際翻譯 runtime 已實作 `ollama`、`openai`、`google`；CLI `translate/models` 參數目前接受 `ollama`、`openai`、`anthropic`；GUI provider 下拉目前顯示 `ollama`、`openai`、`anthropic`、`google`；OpenRouter 仍是規劃中工作。
+基於 Python 的 SRT 字幕檔自動翻譯工具。本專案近期正在整理 provider 整合，各層支援範圍目前仍有差異：實際翻譯 runtime 已實作 `ollama`、`openai`、`google`、`llamacpp`；CLI `translate/models` 參數目前接受 `ollama`、`openai`、`anthropic`、`llamacpp`；GUI provider 下拉目前顯示 `ollama`、`openai`、`anthropic`、`google`、`llamacpp`；OpenRouter 仍是規劃中工作。
 
 ## ✨ 功能特點
 
 ### 核心功能
 - 🌍 **多語言支援**：支援日文、英文、韓文、法文、德文、西班牙文、俄文、繁體中文等語言
 - 🤖 **多引擎支援**：
-  - 實際翻譯 runtime：Ollama、OpenAI、Google
-  - CLI provider 參數：Ollama、OpenAI、Anthropic
-  - GUI provider 下拉 / 模型發現：Ollama、OpenAI、Anthropic、Google
+  - 實際翻譯 runtime：Ollama、OpenAI、Google、llama.cpp
+  - CLI provider 參數：Ollama、OpenAI、Anthropic、llama.cpp
+  - GUI provider 下拉 / 模型發現：Ollama、OpenAI、Anthropic、Google、llama.cpp
   - OpenRouter：尚未實作
 - 📝 **多格式支援**：SRT、VTT、ASS/SSA 字幕格式
 
@@ -56,16 +56,17 @@
   - Anthropic：`ANTHROPIC_API_KEY` 或 `anthropic_api_key.txt`
   - Google Gemini：`GOOGLE_API_KEY` / `GEMINI_API_KEY` 或 `google_api_key.txt`
   - Ollama 模式：需要在本機安裝 [Ollama](https://ollama.ai) 服務
+  - llama.cpp 模式：需要下載 [llama.cpp](https://github.com/ggml-org/llama.cpp) 並啟動 `llama-server`
 
 ## 🔎 目前 Provider 現況
 
 | 層級 | 目前狀態 |
 |------|----------|
-| 實際翻譯 runtime | `ollama`、`openai`、`google` |
-| CLI `translate` / `models` 參數 | `ollama`、`openai`、`anthropic` |
-| GUI provider 下拉 | `ollama`、`openai`、`anthropic`、`google` |
-| 模型 metadata / 可用模型發現 | `ollama`、`openai`、`anthropic`、`google` |
-| `ConfigManager` 對 `user.llm_type` 驗證 | `ollama`、`openai` |
+| 實際翻譯 runtime | `ollama`、`openai`、`google`、`llamacpp` |
+| CLI `translate` / `models` 參數 | `ollama`、`openai`、`anthropic`、`llamacpp` |
+| GUI provider 下拉 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
+| 模型 metadata / 可用模型發現 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
+| `ConfigManager` 對 `user.llm_type` 驗證 | `ollama`、`openai`、`llamacpp` |
 | OpenRouter | 僅規劃中，尚未落地 |
 
 > 文件若與程式碼衝突，請以 `src/` 內實作為準。
@@ -168,6 +169,17 @@ ollama pull llama3.2
 
 如果你使用本地匯入的 Qwen3.5 GGUF 模型，建議依照 [docs/ollama-setup-guide.md](docs/ollama-setup-guide.md) 建立專用 `Modelfile`，以正確處理 ChatML 與 `<think>` 輸出。
 
+#### llama.cpp（本地模型，直接推理）
+
+相較於 Ollama，llama.cpp 提供更直接的 GPU 控制和更低的包裝層開銷。需要預先啟動 `llama-server`：
+
+```bash
+# 啟動 llama-server（詳細設定請參考 docs/llamacpp-setup-guide.md）
+llama-server -m ~/dev/model/your-model.gguf --port 8080 --reasoning-budget 0
+```
+
+詳細安裝與設定說明請參閱 [docs/llamacpp-setup-guide.md](docs/llamacpp-setup-guide.md)。
+
 ### 基本使用
 
 #### GUI 模式
@@ -215,13 +227,15 @@ srt-translator models -p ollama
 srt-translator cache --stats
 ```
 
-> `translate` 目前實際建議使用 `ollama` 或 `openai`。`google` 執行路徑已存在，但尚未暴露於 CLI 參數；`anthropic` 目前可列模型與讀取金鑰，但尚無第一級翻譯 runtime。
+> `translate` 目前實際建議使用 `ollama`、`openai` 或 `llamacpp`。`google` 執行路徑已存在，但尚未暴露於 CLI 參數；`anthropic` 目前可列模型與讀取金鑰，但尚無第一級翻譯 runtime。
 
 ## 📚 文檔
 
 - [使用者指南](docs/USER_GUIDE.md) - 詳細使用說明
 - [API 文檔](docs/API.md) - 開發者 API 參考
 - [開發者指南](docs/DEVELOPMENT.md) - 開發環境設定與貢獻指南
+- [Ollama 設定指南](docs/ollama-setup-guide.md) - Ollama 本地模型設定
+- [llama.cpp 設定指南](docs/llamacpp-setup-guide.md) - llama.cpp 本地模型設定
 - [變更日誌](CHANGELOG.md) - 版本更新記錄
 - [貢獻指南](CONTRIBUTING.md) - 如何為專案做出貢獻
 
@@ -386,6 +400,7 @@ uv run mypy src/srt_translator
 - [Anthropic](https://www.anthropic.com/) - Claude 系列模型
 - [Google](https://ai.google.dev/) - Gemini 系列模型
 - [Ollama](https://ollama.ai/) - 本地 LLM 運行平台
+- [llama.cpp](https://github.com/ggml-org/llama.cpp) - 高效本地 LLM 推理引擎
 
 ## 📮 問題反饋
 
@@ -411,7 +426,7 @@ uv run mypy src/srt_translator
 - **開發開始**：2023
 - **當前版本**：1.1.0
 - **Python 需求**：3.10+
-- **目前最穩定的翻譯工作流**：Ollama / OpenAI
+- **目前最穩定的翻譯工作流**：Ollama / OpenAI / llama.cpp
 - **仍在整理中的 provider**：Anthropic / Google / OpenRouter（規劃）
 
 ---

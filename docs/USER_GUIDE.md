@@ -27,6 +27,7 @@
 2. **網路連接**：使用 API 模式時必須
 3. **AI 服務**（擇一）：
    - Ollama（本地）
+   - llama.cpp（本地，直接推理）
    - OpenAI API 金鑰
    - Google Gemini API 金鑰（GUI）
    - Anthropic API 金鑰（目前僅模型資訊 / 金鑰層）
@@ -64,16 +65,17 @@ srt-translator translate video.srt -s 日文 -t 繁體中文
 
 | 層級 | 目前狀態 |
 |------|----------|
-| 實際翻譯 runtime | `ollama`、`openai`、`google` |
-| CLI `translate` / `models` 參數 | `ollama`、`openai`、`anthropic` |
-| GUI provider 下拉 | `ollama`、`openai`、`anthropic`、`google` |
-| 模型 metadata / 金鑰載入 | `ollama`、`openai`、`anthropic`、`google` |
-| `ConfigManager` 驗證 `user.llm_type` | `ollama`、`openai` |
+| 實際翻譯 runtime | `ollama`、`openai`、`google`、`llamacpp` |
+| CLI `translate` / `models` 參數 | `ollama`、`openai`、`anthropic`、`llamacpp` |
+| GUI provider 下拉 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
+| 模型 metadata / 金鑰載入 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
+| `ConfigManager` 驗證 `user.llm_type` | `ollama`、`openai`、`llamacpp` |
 | OpenRouter | 規劃中，尚未實作 |
 
 > 實務上：
-> - CLI `translate` 目前建議只使用 `ollama` 或 `openai`
-> - GUI provider 下拉目前會顯示 `google`，但一般使用者工作流仍以 `ollama`、`openai` 最穩定
+> - CLI `translate` 目前建議使用 `ollama`、`openai` 或 `llamacpp`
+> - `llamacpp` 透過 llama-server 的 OpenAI 相容 API 運作，不需要 API 金鑰，詳見 [llama.cpp 設定指南](llamacpp-setup-guide.md)
+> - GUI provider 下拉目前會顯示 `google`，但一般使用者工作流仍以 `ollama`、`openai`、`llamacpp` 最穩定
 > - `anthropic` 目前已接到金鑰與模型資訊層，但尚無第一級翻譯 runtime
 
 ---
@@ -223,8 +225,9 @@ echo "your-google-api-key" > google_api_key.txt
 除了 GUI 圖形介面外，本工具也提供完整的命令列介面（CLI），適合自動化工作流程和批次處理。
 
 > **目前狀態說明**
-> - CLI parser 目前接受 `ollama`、`openai`、`anthropic`
-> - CLI 實際翻譯目前建議只使用 `ollama`、`openai`
+> - CLI parser 目前接受 `ollama`、`openai`、`anthropic`、`llamacpp`
+> - CLI 實際翻譯目前建議使用 `ollama`、`openai` 或 `llamacpp`
+> - `llamacpp` 需要預先啟動 `llama-server`，詳見 [llama.cpp 設定指南](llamacpp-setup-guide.md)
 > - `anthropic` 目前較適合用於 `models -p anthropic` 檢視模型資訊，尚無第一級翻譯 runtime
 > - `google` 執行路徑已存在，但尚未暴露在 CLI `--provider`
 
@@ -256,7 +259,7 @@ srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
 |------|------|------|--------|
 | `--source` | `-s` | 來源語言 | 英文 |
 | `--target` | `-t` | 目標語言 | 繁體中文 |
-| `--provider` | `-p` | CLI 參數可選值：`ollama` / `openai` / `anthropic`。其中實際翻譯目前建議使用 `ollama` / `openai` | ollama |
+| `--provider` | `-p` | CLI 參數可選值：`ollama` / `openai` / `anthropic` / `llamacpp`。其中實際翻譯目前建議使用 `ollama` / `openai` / `llamacpp` | ollama |
 | `--model` | `-m` | 模型名稱 | 各引擎推薦模型 |
 | `--display-mode` | `-d` | 顯示模式（僅譯文/雙語對照/僅原文）| 僅譯文 |
 | `--glossary` | `-g` | 套用的術語表名稱（可多次指定）| - |
@@ -528,6 +531,23 @@ ollama serve
 ollama pull llama3.2
 ```
 
+詳細設定請參閱 [Ollama 設定指南](ollama-setup-guide.md)。
+
+#### llama.cpp（本地模型，直接推理）
+
+llama.cpp 提供更直接的 GPU 控制和更低的包裝層開銷，適合追求最大推理速度或需要精確控制 GPU 記憶體的使用者。
+
+1. 從 [llama.cpp Releases](https://github.com/ggml-org/llama.cpp/releases) 下載預建二進位檔
+2. 啟動 llama-server：
+
+```bash
+llama-server -m ~/dev/model/your-model.gguf --port 8080 --reasoning-budget 0
+```
+
+3. 在翻譯工具中選擇 `llamacpp` 作為 provider
+
+詳細設定請參閱 [llama.cpp 設定指南](llamacpp-setup-guide.md)。
+
 ---
 
 ## 介面說明
@@ -567,7 +587,7 @@ ollama pull llama3.2
 | **清除全部** | 清空檔案清單 |
 | **源語言** | 選擇字幕原始語言 |
 | **目標語言** | 選擇翻譯目標語言 |
-| **LLM 類型** | GUI 下拉目前顯示 `ollama` / `openai` / `anthropic` / `google`；其中實際翻譯 runtime 目前為 `ollama` / `openai` / `google` |
+| **LLM 類型** | GUI 下拉目前顯示 `ollama` / `openai` / `anthropic` / `google` / `llamacpp`；其中實際翻譯 runtime 目前為 `ollama` / `openai` / `google` / `llamacpp` |
 | **模型** | 選擇要使用的 AI 模型 |
 | **並發數** | 設定同時翻譯的字幕數量 |
 | **顯示模式** | 選擇輸出字幕的顯示方式 |
@@ -751,6 +771,7 @@ rm data/translation_cache.db
 | AI 引擎 | 建議並發數 | 理由 |
 |---------|-----------|------|
 | **Ollama** | 1-3 | 受限於本地 GPU/CPU 資源 |
+| **llama.cpp** | 1-2 | 受限於本地 GPU/CPU 資源；可透過 `--parallel` 控制伺服器端併發 |
 | **OpenAI** | 3-6 | 速率限制較嚴格，建議保守 |
 | **Google（GUI）** | 3-8 | 速率限制適中 |
 
@@ -997,7 +1018,7 @@ cat logs/translation.log
 
 ### Q2：可以離線使用嗎？
 
-**A**：使用 Ollama 本地模型可以完全離線使用，但首次需要連網下載模型。
+**A**：使用 Ollama 或 llama.cpp 本地模型可以完全離線使用，但首次需要連網下載模型。llama.cpp 直接使用 GGUF 格式模型檔案，無需額外轉換。
 
 ### Q3：翻譯速度有多快？
 
