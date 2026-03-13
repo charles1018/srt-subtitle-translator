@@ -241,7 +241,7 @@ class TranslationClient:
                 "num_predict": 256,
             },
         },
-        "qwen3.5": {
+        "qwen3": {
             "keep_alive": "15m",
             "batch_concurrency_limit": 1,
             "options": {
@@ -252,12 +252,23 @@ class TranslationClient:
                 "num_predict": 256,
             },
         },
+        "qwen3.5": {
+            "keep_alive": "15m",
+            "batch_concurrency_limit": 1,
+            "options": {
+                "temperature": 1.0,
+                "top_p": 1.0,
+                "top_k": 20,
+                "min_p": 0.0,
+                "num_predict": 256,
+            },
+        },
         "qwen3.5-ud": {
             "keep_alive": "15m",
             "batch_concurrency_limit": 1,
             "options": {
-                "temperature": 0.4,
-                "top_p": 0.8,
+                "temperature": 0.85,
+                "top_p": 1.0,
                 "top_k": 20,
                 "min_p": 0.0,
                 "num_predict": 96,
@@ -273,12 +284,12 @@ class TranslationClient:
             },
             "extra_body": {
                 "cache_prompt": True,
-                "reasoning_format": "none",
+                "reasoning_format": "deepseek",
                 "seed": 42,
                 "chat_template_kwargs": {"enable_thinking": False},
             },
         },
-        "qwen3.5": {
+        "qwen3": {
             "batch_concurrency_limit": 1,
             "options": {
                 "temperature": 0.7,
@@ -291,15 +302,28 @@ class TranslationClient:
                 "min_p": 0.0,
             },
         },
+        "qwen3.5": {
+            "batch_concurrency_limit": 1,
+            "options": {
+                "temperature": 1.0,
+                "top_p": 1.0,
+                "max_tokens": 256,
+            },
+            "extra_body": {
+                "presence_penalty": 2.0,
+                "top_k": 20,
+                "min_p": 0.0,
+            },
+        },
         "qwen3.5-ud": {
             "batch_concurrency_limit": 1,
             "options": {
-                "temperature": 0.4,
-                "top_p": 0.8,
+                "temperature": 0.85,
+                "top_p": 1.0,
                 "max_tokens": 96,
             },
             "extra_body": {
-                "presence_penalty": 1.5,
+                "presence_penalty": 2.0,
                 "top_k": 20,
                 "min_p": 0.0,
             },
@@ -662,7 +686,11 @@ class TranslationClient:
                         if isinstance(slots_payload, list):
                             if diagnostics["total_slots"] is None and slots_payload:
                                 diagnostics["total_slots"] = len(slots_payload)
-                            if diagnostics["slot_n_ctx"] is None and slots_payload and isinstance(slots_payload[0], dict):
+                            if (
+                                diagnostics["slot_n_ctx"] is None
+                                and slots_payload
+                                and isinstance(slots_payload[0], dict)
+                            ):
                                 slot_n_ctx = slots_payload[0].get("n_ctx")
                                 if isinstance(slot_n_ctx, int) and slot_n_ctx > 0:
                                     diagnostics["slot_n_ctx"] = slot_n_ctx
@@ -761,6 +789,15 @@ class TranslationClient:
         if not cleaned:
             return ""
 
+        # 移除可能洩漏的 <think> 區塊（Qwen3.5 已知問題）
+        cleaned = re.sub(r"(?is)<think>[\s\S]*?</think>\s*", "", cleaned).strip()
+
+        # 若 JSON 前面有非 JSON 文字（reasoning 洩漏），跳到第一個 {
+        json_start = cleaned.find("{")
+        if json_start > 0:
+            logger.debug(f"llama.cpp 結構化輸出前有 {json_start} 個多餘字元，已跳過")
+            cleaned = cleaned[json_start:]
+
         cleaned = re.sub(r"(?is)^```json\s*", "", cleaned).strip()
         cleaned = re.sub(r"(?is)^```\s*", "", cleaned).strip()
         cleaned = re.sub(r"(?is)\s*```$", "", cleaned).strip()
@@ -777,7 +814,9 @@ class TranslationClient:
 
         return cleaned
 
-    def _get_ollama_batch_size(self, model_name: str, concurrent_limit: int, adaptive_concurrency: int, pending: int) -> int:
+    def _get_ollama_batch_size(
+        self, model_name: str, concurrent_limit: int, adaptive_concurrency: int, pending: int
+    ) -> int:
         """根據模型家族調整 Ollama 批次並發數"""
         batch_size = min(concurrent_limit, adaptive_concurrency, pending)
         profile = self._get_ollama_model_profile(model_name)
@@ -841,7 +880,9 @@ class TranslationClient:
         if self.llm_type == "ollama" and self._is_qwen35_ud_model(model_name):
             family = self._detect_ollama_model_family(model_name)
             qwen35_ud_fallbacks = self._get_qwen35_ud_fallback_candidates(model_name)
-            return self._dedupe_preserve_order(qwen35_ud_fallbacks + fallback_options + provider_fallbacks.get(family, []))
+            return self._dedupe_preserve_order(
+                qwen35_ud_fallbacks + fallback_options + provider_fallbacks.get(family, [])
+            )
 
         if fallback_options or self.llm_type != "ollama":
             return fallback_options
@@ -1395,8 +1436,9 @@ class TranslationClient:
                     reasoning = raw_msg.model_extra.get("reasoning_content", "")
                 if reasoning and isinstance(reasoning, str):
                     logger.debug("llama.cpp 思考模型：content 為空，從 reasoning_content 提取翻譯")
-                    # 思考模型的回答可能全在 reasoning 中，嘗試提取最後的翻譯結果
-                    translation = self._sanitize_ollama_translation(reasoning)
+                    # 先嘗試從 reasoning 中提取結構化 JSON，再退回純文字清理
+                    extracted = self._extract_llamacpp_structured_translation(reasoning)
+                    translation = extracted or self._sanitize_ollama_translation(reasoning)
 
             # llama.cpp 回應清理（處理 <think> 標籤等）
             if is_llamacpp and translation:
@@ -1417,7 +1459,9 @@ class TranslationClient:
                     price = self.pricing[model_name]
                     cost = (input_tokens * price["input"]) + (output_tokens * price["output"])
                     self.metrics.total_cost += cost
-                    logger.debug(f"OpenAI API 翻譯費用: ${cost:.6f} ({input_tokens} 輸入 + {output_tokens} 輸出 tokens)")
+                    logger.debug(
+                        f"OpenAI API 翻譯費用: ${cost:.6f} ({input_tokens} 輸入 + {output_tokens} 輸出 tokens)"
+                    )
 
                 provider_label = "llama.cpp" if is_llamacpp else "OpenAI"
                 logger.debug(f"{provider_label} API 回應翻譯: {translation} (使用 {total_tokens} tokens)")
@@ -1591,9 +1635,7 @@ class TranslationClient:
             async with semaphore:
                 try:
                     # 使用帶重試功能的翻譯
-                    translation = await self.translate_with_retry(
-                        txt, ctx, model_name, current_index=current_index
-                    )
+                    translation = await self.translate_with_retry(txt, ctx, model_name, current_index=current_index)
                     return idx, translation, None
                 except Exception as e:
                     logger.error(f"批量翻譯中的項目 {idx} 失敗: {e!s}")

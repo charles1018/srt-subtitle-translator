@@ -105,8 +105,7 @@ LD_LIBRARY_PATH=~/dev/llama-bin ~/dev/llama-bin/llama-server \
     --jinja \
     -c 4096 \
     --parallel 1 \
-    --reasoning off \
-    --reasoning-format none \
+    --reasoning-format deepseek \
     --reasoning-budget 0
 ```
 
@@ -125,9 +124,8 @@ LD_LIBRARY_PATH=~/dev/llama-bin ~/dev/llama-bin/llama-server \
 | `-c` | Context 長度（token 數） | `2048`~`4096`（字幕翻譯不需要太長） |
 | `-ngl` | 放到 GPU 的層數 | 省略讓 llama-server 自動決定 |
 | `--parallel` | 同時處理的 request slot 數 | 穩定優先建議 `1` |
-| `--reasoning off` | 關閉 template thinking | 翻譯任務建議關閉 |
-| `--reasoning-format none` | 不解析 reasoning 欄位 | 翻譯任務建議關閉 |
-| `--reasoning-budget 0` | 即使模型想思考也立刻結束 thinking | 建議與上面兩個參數一起使用 |
+| `--reasoning-format deepseek` | 將思考內容分離到 `reasoning_content` 欄位 | 本專案 client 端預設送出此設定，server 端同步設定可做雙重保險 |
+| `--reasoning-budget 0` | 即使模型想思考也立刻結束 thinking | 翻譯任務建議搭配使用 |
 | `--no-cont-batching` | 關閉 continuous batching，降低延遲抖動 | 穩定優先時建議開啟 |
 | `--threads-http` | HTTP 處理執行緒數 | `2` |
 | `--flash-attn on` | 啟用 Flash Attention | 可降低記憶體使用 |
@@ -155,12 +153,13 @@ curl -s http://localhost:8080/v1/chat/completions \
             {"role": "system", "content": "Translate to Traditional Chinese (Taiwan). Output only the translation."},
             {"role": "user", "content": "Hello, how are you?"}
         ],
-        "temperature": 0.7,
-        "top_p": 0.8,
+        "temperature": 1.0,
+        "top_p": 1.0,
         "top_k": 20,
         "min_p": 0.0,
-        "max_tokens": 96,
-        "reasoning_format": "none",
+        "max_tokens": 256,
+        "presence_penalty": 2.0,
+        "reasoning_format": "deepseek",
         "chat_template_kwargs": {"enable_thinking": false}
     }'
 ```
@@ -226,24 +225,27 @@ llama-server -m model.gguf -ngl 0
 
 ### 思考模式與翻譯速度
 
-Qwen3.5 等模型在思考模式下會大幅增加 token 消耗和延遲。本專案目前會在 request 端送出 `chat_template_kwargs.enable_thinking=false`，但仍建議在 server 啟動時同步使用 `--reasoning off --reasoning-format none --reasoning-budget 0`，做成 request 與 server 雙重保險：
+Qwen3.5 等模型在思考模式下會大幅增加 token 消耗和延遲。本專案在 request 端會送出 `chat_template_kwargs.enable_thinking=false` 和 `reasoning_format=deepseek`，後者會將意外產生的思考內容乾淨地分離到 `reasoning_content` 欄位，不會混在翻譯結果中。建議在 server 啟動時同步設定，做成雙重保險：
 
 ```bash
-llama-server -m model.gguf --reasoning off --reasoning-format none --reasoning-budget 0
+llama-server -m model.gguf --reasoning-format deepseek --reasoning-budget 0
 ```
 
 如果你改用思考模式做一般問答或推理任務，再另外切回 thinking 相關參數；字幕翻譯預設不建議啟用。
 
 ### Qwen3.5 與量化模型採樣建議
 
-依 Qwen 官方對非思考文字任務與量化模型的建議，字幕翻譯可優先從以下組合開始：
+依 Qwen3.5 官方對非思考文字任務的建議，本專案 Qwen3.5 profile 使用以下參數：
 
-- `temperature=0.7`
-- `top_p=0.8`
+- `temperature=1.0`（Qwen3.5 官方推薦；Qwen3 為 0.7）
+- `top_p=1.0`（Qwen3.5 官方推薦，等於停用 nucleus sampling；Qwen3 為 0.8）
 - `top_k=20`
 - `min_p=0.0`
+- `presence_penalty=2.0`（Qwen3.5 官方推薦；Qwen3 為 1.5）
 
-另外，Qwen 官方也建議對量化模型提高 `presence_penalty` 抑制重複輸出；本專案目前在 `llamacpp` runtime 已預設送出 `presence_penalty=1.5`，並同時固定 `cache_prompt=true`、`seed=42`，且用 `response_format=json_schema` 將輸出鎖成單一 `translation` 欄位。若你使用其他 OpenAI 相容客戶端，也建議比照加入。
+> **注意**：Qwen3.5 的架構（Gated DeltaNet 混合注意力）與 Qwen3（標準 Transformer）完全不同，因此官方推薦的採樣參數差異很大。本專案會根據模型名稱自動偵測 Qwen3 或 Qwen3.5 並套用對應的 profile。
+
+本專案在 `llamacpp` runtime 還會同時固定 `cache_prompt=true`、`seed=42`，且用 `response_format=json_schema` 將輸出鎖成單一 `translation` 欄位。若你使用其他 OpenAI 相容客戶端，也建議比照加入。
 
 ### 穩定模式與吞吐模式
 
@@ -351,8 +353,10 @@ export LD_LIBRARY_PATH=~/dev/llama-bin
 ~/dev/llama-bin/llama-server \
     -m ~/dev/model/Qwen3.5-9B-UD-Q8_K_XL.gguf \
     --port 8080 \
+    --jinja \
     -c 4096 \
     --parallel 2 \
+    --reasoning-format deepseek \
     --reasoning-budget 0
 ```
 
@@ -379,7 +383,7 @@ CUDA_VISIBLE_DEVICES=1 llama-server -m model.gguf -ngl 999
 | 啟動伺服器 | `llama-server -m model.gguf --port 8080` |
 | 檢查伺服器狀態 | `curl http://localhost:8080/health` |
 | 查看載入的模型 | `curl http://localhost:8080/v1/models` |
-| 關閉思考模式啟動 | `llama-server -m model.gguf --reasoning-budget 0` |
+| 關閉思考模式啟動 | `llama-server -m model.gguf --reasoning-format deepseek --reasoning-budget 0` |
 | 自動 GPU fit | 不指定 `-ngl`，llama-server 自動決定 |
 | 手動指定 GPU 層數 | `llama-server -m model.gguf -ngl 20` |
 | 完全 CPU 模式 | `llama-server -m model.gguf -ngl 0` |
