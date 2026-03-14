@@ -367,6 +367,20 @@ class TestTranslationClientHelpers:
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    def test_restore_japanese_names_with_placeholder_variants(self, mock_prompt, mock_cache):
+        """Test placeholder restoration tolerates common bracket and bare-token variants."""
+        client = TranslationClient(llm_type="ollama")
+        restore_map = {"[[JN0]]": "イチロー君"}
+
+        assert client._restore_protected_japanese_names("最喜歡 JN0 了", restore_map) == "最喜歡 イチロー君 了"
+        assert client._restore_protected_japanese_names("[JN0] 很厲害呢", restore_map) == "イチロー君 很厲害呢"
+        assert (
+            client._restore_protected_japanese_names("好可怕，[[JN0]]，啊，該死了", restore_map)
+            == "好可怕，イチロー君，啊，該死了"
+        )
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     def test_detect_ollama_model_family_qwen35_custom_name(self, mock_prompt, mock_cache):
         """Test Qwen3.5 family detection for custom Ollama model names."""
         client = TranslationClient(llm_type="ollama")

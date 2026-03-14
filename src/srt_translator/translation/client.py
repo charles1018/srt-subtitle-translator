@@ -763,10 +763,10 @@ class TranslationClient:
         restored = translation
 
         for placeholder, original in restore_map.items():
-            restored = restored.replace(placeholder, original)
-
             inner_token = placeholder[2:-2]
-            tolerant_pattern = re.compile(rf"\[\[\s*{re.escape(inner_token)}\s*\]\]")
+            tolerant_pattern = re.compile(
+                rf"(?<![A-Z0-9_])(?:\[\[\s*{re.escape(inner_token)}\s*\]\]|\[\s*{re.escape(inner_token)}\s*\]|{re.escape(inner_token)})(?![A-Z0-9_])"
+            )
             restored = tolerant_pattern.sub(original, restored)
 
         return restored
