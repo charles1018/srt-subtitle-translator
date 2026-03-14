@@ -320,6 +320,20 @@ class TestTranslationClientHelpers:
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    def test_should_retry_untranslated_japanese_for_hiragana_output(self, mock_prompt, mock_cache):
+        """Test untranslated Japanese detector catches hiragana-heavy outputs."""
+        client = TranslationClient(llm_type="ollama")
+        assert client._should_retry_untranslated_japanese("つけて", "つけて") is True
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    def test_should_not_retry_when_only_japanese_name_is_preserved(self, mock_prompt, mock_cache):
+        """Test untranslated Japanese detector ignores preserved Japanese names."""
+        client = TranslationClient(llm_type="ollama")
+        assert client._should_retry_untranslated_japanese("イチロー君が来た", "我喜歡イチロー君") is False
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     def test_extract_japanese_name_candidates_for_suffix_name(self, mock_prompt, mock_cache):
         """Test extracting Japanese names/nicknames with suffixes for protection."""
         client = TranslationClient(llm_type="ollama")
@@ -1060,6 +1074,46 @@ class TestTranslationClientAsync:
         assert request_payload["extra_body"]["top_k"] == 20
         assert request_payload["extra_body"]["min_p"] == 0.0
         assert result == "翻譯結果"
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    async def test_translate_text_retries_once_when_output_still_contains_japanese(self, mock_prompt, mock_cache):
+        """Test translate_text performs one reinforced retry for untranslated Japanese output."""
+        mock_cache_instance = MagicMock()
+        mock_cache_instance.get_cached_translation.return_value = None
+        mock_cache.return_value = mock_cache_instance
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.current_content_type = "general"
+        mock_prompt_instance.get_prompt_version.return_value = "retryv1"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CURRENT_INDEX]1", "つけて"]
+        mock_prompt_instance.get_optimized_message.return_value = [
+            {"role": "system", "content": "Base prompt"},
+            {"role": "user", "content": "[CURRENT]\nつけて"},
+        ]
+        mock_prompt.return_value = mock_prompt_instance
+
+        client = TranslationClient(llm_type="ollama")
+        client._translate_with_ollama = AsyncMock(side_effect=["つけて", "戴上"])
+
+        result = await client.translate_text("つけて", ["前文", "つけて", "後文"], "llama3")
+
+        assert result == "戴上"
+        assert client._translate_with_ollama.await_count == 2
+        second_call_messages = client._translate_with_ollama.await_args_list[1].args[0]
+        assert "CRITICAL RETRY INSTRUCTION" in second_call_messages[0]["content"]
+        mock_cache_instance.store_translation.assert_called_once_with(
+            "つけて",
+            "戴上",
+            ["[CURRENT_INDEX]1", "つけて"],
+            "llama3",
+            "standard",
+            "retryv1",
+            current_index=None,
+            lookup_source="translation_client_store",
+        )
 
     @pytest.mark.asyncio
     @patch("srt_translator.translation.client.CacheManager")

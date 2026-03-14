@@ -218,6 +218,16 @@ class TranslationClient:
         r"(([ァ-ヶー]{2,10}|[ぁ-ゖーっ]{2,10})(?:ちゃん|くん|君|さん|さま|様|先輩|先生|氏))"
         r"(?=$|[、，。！？!?」』\s]|の|が|を|に|へ|と|も|は)"
     )
+    JAPANESE_KANA_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[ぁ-ゖァ-ヺー]")
+    JAPANESE_HIRAGANA_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[ぁ-ゖ]")
+    JAPANESE_PLACEHOLDER_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"\[\[[A-Z0-9]+\]\]")
+    UNTRANSLATED_JAPANESE_RETRY_INSTRUCTION: ClassVar[str] = (
+        "CRITICAL RETRY INSTRUCTION:\n"
+        "The previous output still contained untranslated Japanese.\n"
+        "You MUST translate the CURRENT subtitle into Traditional Chinese (Taiwan).\n"
+        "Do not leave hiragana or katakana in the final answer unless it is a protected placeholder like [[JN0]].\n"
+        "Return only the translated subtitle text."
+    )
     LLAMACPP_TRANSLATION_RESPONSE_FORMAT: ClassVar[dict[str, Any]] = {
         "type": "json_schema",
         "schema": {
@@ -761,6 +771,69 @@ class TranslationClient:
 
         return restored
 
+    def _remove_japanese_retry_exempt_tokens(self, text: str, source_text: str) -> str:
+        """移除日文未翻譯檢測中允許保留的占位符與人名。"""
+        cleaned = self.JAPANESE_PLACEHOLDER_PATTERN.sub("", text)
+
+        for candidate in self._extract_japanese_name_candidates(source_text):
+            cleaned = cleaned.replace(candidate, "")
+
+        return cleaned
+
+    def _normalize_text_for_translation_comparison(self, text: str) -> str:
+        """正規化文字，便於比對是否幾乎原樣回傳。"""
+        return re.sub(r"[\s、，。．！？!?…・「」『』（）()【】［］\[\]<>《》〈〉〜～\-—_\"'`]+", "", text)
+
+    def _should_retry_untranslated_japanese(self, source_text: str, translated_text: str) -> bool:
+        """判斷翻譯結果是否仍包含明顯未翻譯的日文。"""
+        cleaned_source = self._remove_japanese_retry_exempt_tokens(source_text, source_text)
+        cleaned_translation = self._remove_japanese_retry_exempt_tokens(translated_text, source_text)
+
+        source_kana = len(self.JAPANESE_KANA_PATTERN.findall(cleaned_source))
+        translation_kana = len(self.JAPANESE_KANA_PATTERN.findall(cleaned_translation))
+        translation_hiragana = len(self.JAPANESE_HIRAGANA_PATTERN.findall(cleaned_translation))
+
+        if source_kana < 2 or translation_kana < 2:
+            return False
+
+        if translation_hiragana >= 2:
+            return True
+
+        normalized_source = self._normalize_text_for_translation_comparison(cleaned_source)
+        normalized_translation = self._normalize_text_for_translation_comparison(cleaned_translation)
+        return bool(normalized_source and normalized_translation == normalized_source)
+
+    def _build_untranslated_japanese_retry_messages(
+        self, messages: list[dict[str, str]]
+    ) -> list[dict[str, str]]:
+        """建立日文未翻譯時的單次強化重試訊息。"""
+        retry_messages = [dict(message) for message in messages]
+
+        for message in retry_messages:
+            if message.get("role") == "system":
+                base_content = message.get("content", "").rstrip()
+                message["content"] = f"{base_content}\n\n{self.UNTRANSLATED_JAPANESE_RETRY_INSTRUCTION}"
+                return retry_messages
+
+        retry_messages.insert(
+            0,
+            {
+                "role": "system",
+                "content": self.UNTRANSLATED_JAPANESE_RETRY_INSTRUCTION,
+            },
+        )
+        return retry_messages
+
+    async def _execute_translation_request(self, messages: list[dict[str, str]], model_name: str) -> str:
+        """根據 provider 執行單次翻譯請求。"""
+        if self.llm_type in ("openai", "llamacpp"):
+            return await self._translate_with_openai(messages, model_name)
+        if self.llm_type == "ollama":
+            return await self._translate_with_ollama(messages, model_name)
+        if self.llm_type == "google":
+            return await self._translate_with_google(messages, model_name)
+        raise ValidationError(f"不支援的 LLM 類型: {self.llm_type}")
+
     def _build_ollama_payload(self, messages: list[dict[str, str]], model_name: str) -> dict[str, Any]:
         """建立 Ollama chat API 請求內容"""
         profile = self._get_ollama_model_profile(model_name)
@@ -1279,14 +1352,14 @@ class TranslationClient:
         )
 
         try:
-            if self.llm_type in ("openai", "llamacpp"):
-                result = await self._translate_with_openai(messages, model_name)
-            elif self.llm_type == "ollama":
-                result = await self._translate_with_ollama(messages, model_name)
-            elif self.llm_type == "google":
-                result = await self._translate_with_google(messages, model_name)
-            else:
-                raise ValidationError(f"不支援的 LLM 類型: {self.llm_type}")
+            result = await self._execute_translation_request(messages, model_name)
+
+            if self._should_retry_untranslated_japanese(text, result):
+                logger.info("偵測到未翻譯日文輸出，使用強化指令重試一次")
+                retry_messages = self._build_untranslated_japanese_retry_messages(messages)
+                retry_result = await self._execute_translation_request(retry_messages, model_name)
+                if retry_result:
+                    result = retry_result
 
             if protected_name_restore_map:
                 result = self._restore_protected_japanese_names(result, protected_name_restore_map)
