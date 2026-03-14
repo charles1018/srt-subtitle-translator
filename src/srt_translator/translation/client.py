@@ -222,6 +222,9 @@ class TranslationClient:
     JAPANESE_HIRAGANA_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[ぁ-ゖ]")
     CJK_IDEOGRAPH_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[一-龯々〆ヵヶ]")
     JAPANESE_PLACEHOLDER_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"\[\[[A-Z0-9]+\]\]")
+    LEAKED_JAPANESE_PLACEHOLDER_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
+        r"(?:\[\[\s*JN\d+\s*\]\]|\[\s*JN\d+\s*\]|(?<![A-Z0-9_])JN\d+(?![A-Z0-9_]))"
+    )
     UNTRANSLATED_JAPANESE_RETRY_INSTRUCTION: ClassVar[str] = (
         "CRITICAL RETRY INSTRUCTION:\n"
         "The previous output still contained untranslated Japanese.\n"
@@ -536,7 +539,8 @@ class TranslationClient:
         tokens = [token for token in re.split(r"[^a-z0-9]+", normalized) if token]
         return "ud" in tokens
 
-    def _dedupe_preserve_order(self, values: list[str]) -> list[str]:
+    @staticmethod
+    def _dedupe_preserve_order(values: list[str]) -> list[str]:
         """去除重複項目並保留原始順序"""
         deduped: list[str] = []
         seen = set()
@@ -729,14 +733,15 @@ class TranslationClient:
             and getattr(self.prompt_manager, "current_content_type", "") == "adult"
         )
 
-    def _extract_japanese_name_candidates(self, text: str) -> list[str]:
+    @classmethod
+    def _extract_japanese_name_candidates(cls, text: str) -> list[str]:
         """提取需要保護的日文人名或暱稱。"""
-        candidates = [match.group(1) for match in self.JAPANESE_NAME_PATTERN.finditer(text)]
+        candidates = [match.group(1) for match in cls.JAPANESE_NAME_PATTERN.finditer(text)]
         if not candidates:
             return []
 
         # 先保留較長的完整稱呼，避免部分名稱先被替換。
-        return sorted(self._dedupe_preserve_order(candidates), key=len, reverse=True)
+        return sorted(cls._dedupe_preserve_order(candidates), key=len, reverse=True)
 
     def _protect_japanese_names_in_inputs(
         self, text: str, context_texts: list[str]
@@ -759,7 +764,8 @@ class TranslationClient:
         logger.debug("qwen3.5-ud 啟用日文名字保護: %s", restore_map)
         return protected_text, protected_contexts, restore_map
 
-    def _restore_protected_japanese_names(self, translation: str, restore_map: dict[str, str]) -> str:
+    @classmethod
+    def _restore_protected_japanese_names(cls, translation: str, restore_map: dict[str, str]) -> str:
         """還原模型輸出中的日文名字占位符。"""
         restored = translation
 
@@ -772,28 +778,31 @@ class TranslationClient:
 
         return restored
 
-    def _remove_japanese_retry_exempt_tokens(self, text: str, source_text: str) -> str:
+    @classmethod
+    def _remove_japanese_retry_exempt_tokens(cls, text: str, source_text: str) -> str:
         """移除日文未翻譯檢測中允許保留的占位符與人名。"""
-        cleaned = self.JAPANESE_PLACEHOLDER_PATTERN.sub("", text)
+        cleaned = cls.JAPANESE_PLACEHOLDER_PATTERN.sub("", text)
 
-        for candidate in self._extract_japanese_name_candidates(source_text):
+        for candidate in cls._extract_japanese_name_candidates(source_text):
             cleaned = cleaned.replace(candidate, "")
 
         return cleaned
 
-    def _normalize_text_for_translation_comparison(self, text: str) -> str:
+    @staticmethod
+    def _normalize_text_for_translation_comparison(text: str) -> str:
         """正規化文字，便於比對是否幾乎原樣回傳。"""
         return re.sub(r"[\s、，。．！？!?…・「」『』（）()【】［］\[\]<>《》〈〉〜～\-—_\"'`]+", "", text)
 
-    def _should_retry_untranslated_japanese(self, source_text: str, translated_text: str) -> bool:
+    @classmethod
+    def _should_retry_untranslated_japanese(cls, source_text: str, translated_text: str) -> bool:
         """判斷翻譯結果是否仍包含明顯未翻譯的日文。"""
-        cleaned_source = self._remove_japanese_retry_exempt_tokens(source_text, source_text)
-        cleaned_translation = self._remove_japanese_retry_exempt_tokens(translated_text, source_text)
+        cleaned_source = cls._remove_japanese_retry_exempt_tokens(source_text, source_text)
+        cleaned_translation = cls._remove_japanese_retry_exempt_tokens(translated_text, source_text)
 
-        source_has_cjk = bool(self.CJK_IDEOGRAPH_PATTERN.search(cleaned_source))
-        source_kana = len(self.JAPANESE_KANA_PATTERN.findall(cleaned_source))
-        translation_kana = len(self.JAPANESE_KANA_PATTERN.findall(cleaned_translation))
-        translation_hiragana = len(self.JAPANESE_HIRAGANA_PATTERN.findall(cleaned_translation))
+        source_has_cjk = bool(cls.CJK_IDEOGRAPH_PATTERN.search(cleaned_source))
+        source_kana = len(cls.JAPANESE_KANA_PATTERN.findall(cleaned_source))
+        translation_kana = len(cls.JAPANESE_KANA_PATTERN.findall(cleaned_translation))
+        translation_hiragana = len(cls.JAPANESE_HIRAGANA_PATTERN.findall(cleaned_translation))
 
         if not cleaned_translation.strip():
             return False
@@ -808,8 +817,8 @@ class TranslationClient:
         if source_kana >= 1 and translation_kana >= 1:
             return True
 
-        normalized_source = self._normalize_text_for_translation_comparison(cleaned_source)
-        normalized_translation = self._normalize_text_for_translation_comparison(cleaned_translation)
+        normalized_source = cls._normalize_text_for_translation_comparison(cleaned_source)
+        normalized_translation = cls._normalize_text_for_translation_comparison(cleaned_translation)
         if not normalized_source:
             return False
 
@@ -817,6 +826,25 @@ class TranslationClient:
             return True
 
         return bool(translation_kana >= 1 and normalized_source in normalized_translation)
+
+    @classmethod
+    def get_cache_rejection_reason(cls, source_text: str, translated_text: str) -> str | None:
+        """判斷翻譯結果是否不適合直接信任或存入快取。"""
+        if not translated_text.strip():
+            return "empty_translation"
+
+        if cls.LEAKED_JAPANESE_PLACEHOLDER_PATTERN.search(translated_text):
+            return "leaked_name_placeholder"
+
+        if cls._should_retry_untranslated_japanese(source_text, translated_text):
+            return "untranslated_japanese"
+
+        return None
+
+    @classmethod
+    def is_cacheable_translation_result(cls, source_text: str, translated_text: str) -> bool:
+        """判斷翻譯結果是否適合寫入或直接讀取快取。"""
+        return cls.get_cache_rejection_reason(source_text, translated_text) is None
 
     def _build_untranslated_japanese_retry_messages(
         self, messages: list[dict[str, str]]
@@ -1348,9 +1376,13 @@ class TranslationClient:
             lookup_source="translation_client",
         )
         if cached_result:
-            logger.debug(f"從快取獲取翻譯結果: {cached_result}")
-            self.metrics.cache_hits += 1
-            return cached_result
+            cache_rejection_reason = self.get_cache_rejection_reason(text, cached_result)
+            if cache_rejection_reason is not None:
+                logger.info("忽略不合格快取結果 (%s)，改為重新翻譯: %s", cache_rejection_reason, text)
+            else:
+                logger.debug(f"從快取獲取翻譯結果: {cached_result}")
+                self.metrics.cache_hits += 1
+                return cached_result
 
         protected_text = text
         protected_contexts = context_texts
@@ -1412,16 +1444,20 @@ class TranslationClient:
             logger.debug(f"翻譯成功，耗時: {elapsed_time:.2f} 秒")
 
             # 存入快取（使用與查詢相同的有效上下文）
-            self.cache_manager.store_translation(
-                text,
-                result,
-                effective_context,
-                model_name,
-                current_style,
-                prompt_version,
-                current_index=current_index,
-                lookup_source="translation_client_store",
-            )
+            cache_rejection_reason = self.get_cache_rejection_reason(text, result)
+            if cache_rejection_reason is None:
+                self.cache_manager.store_translation(
+                    text,
+                    result,
+                    effective_context,
+                    model_name,
+                    current_style,
+                    prompt_version,
+                    current_index=current_index,
+                    lookup_source="translation_client_store",
+                )
+            else:
+                logger.info("略過儲存不合格翻譯至快取 (%s): %s", cache_rejection_reason, text)
             return result
 
         except Exception as e:
@@ -1690,8 +1726,13 @@ class TranslationClient:
                 lookup_source="translation_client_batch_precheck",
             )
             if cached:
-                cache_hits.append((i, cached))
-                self.metrics.cache_hits += 1
+                cache_rejection_reason = self.get_cache_rejection_reason(text, cached)
+                if cache_rejection_reason is None:
+                    cache_hits.append((i, cached))
+                    self.metrics.cache_hits += 1
+                else:
+                    logger.info("批量預檢忽略不合格快取結果 (%s): %s", cache_rejection_reason, text)
+                    api_requests.append((i, text, context, current_index))
             else:
                 api_requests.append((i, text, context, current_index))
 

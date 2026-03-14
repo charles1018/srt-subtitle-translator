@@ -615,6 +615,55 @@ class TestTranslationService:
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.CacheManager")
     @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_text_ignores_invalid_cached_translation(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
+    ):
+        """Service precheck should ignore cached Japanese leakage and re-run translation."""
+        mock_config.get_instance.return_value = MagicMock()
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.get_prompt_version.return_value = "promptv3"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CURRENT_INDEX]1", "最近"]
+        mock_prompt.return_value = mock_prompt_instance
+
+        mock_client = AsyncMock()
+        mock_client.translate_with_retry = AsyncMock(return_value="最近怎麼樣？")
+
+        service = TranslationService()
+        service.prompt_manager = mock_prompt_instance
+        service.cache_service = MagicMock()
+        service.cache_service.get_translation.return_value = "最近どう？"
+        service.model_service = MagicMock()
+        service.model_service.get_translation_client = AsyncMock(return_value=mock_client)
+
+        result = await service.translate_text("最近", ["前文", "最近", "後文"], "ollama", "llama3")
+
+        assert result == "最近怎麼樣？"
+        assert service.stats["cached_translations"] == 0
+        mock_client.translate_with_retry.assert_awaited_once_with(
+            "最近",
+            ["前文", "最近", "後文"],
+            "llama3",
+            current_index=None,
+        )
+        service.cache_service.store_translation.assert_called_once_with(
+            "最近",
+            "最近怎麼樣？",
+            ["[CURRENT_INDEX]1", "最近"],
+            "llama3",
+            "standard",
+            "promptv3",
+            current_index=None,
+            lookup_source="translation_service_store",
+        )
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
     async def test_translate_text_passes_current_index_to_client_and_cache(
         self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
     ):
@@ -678,6 +727,39 @@ class TestTranslationService:
             current_index=2,
             lookup_source="translation_service_store",
         )
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_text_does_not_store_invalid_translation_in_service_cache(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
+    ):
+        """Service should not write unresolved Japanese leakage back into cache."""
+        mock_config.get_instance.return_value = MagicMock()
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.get_prompt_version.return_value = "promptv4"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CURRENT_INDEX]1", "最近"]
+        mock_prompt.return_value = mock_prompt_instance
+
+        mock_client = AsyncMock()
+        mock_client.translate_with_retry = AsyncMock(return_value="最近どう？")
+
+        service = TranslationService()
+        service.prompt_manager = mock_prompt_instance
+        service.cache_service = MagicMock()
+        service.cache_service.get_translation.return_value = None
+        service.model_service = MagicMock()
+        service.model_service.get_translation_client = AsyncMock(return_value=mock_client)
+
+        result = await service.translate_text("最近", ["前文", "最近", "後文"], "ollama", "llama3")
+
+        assert result == "最近どう？"
+        service.cache_service.store_translation.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("srt_translator.services.factory.pysrt.open")

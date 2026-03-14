@@ -247,8 +247,12 @@ class TranslationService:
             lookup_source="translation_service_precheck",
         )
         if cached_result:
-            self._incr_stat("cached_translations")
-            return cached_result
+            cache_rejection_reason = TranslationClient.get_cache_rejection_reason(text, cached_result)
+            if cache_rejection_reason is None:
+                self._incr_stat("cached_translations")
+                return cached_result
+
+            logger.info("翻譯服務忽略不合格快取結果 (%s): %s", cache_rejection_reason, text)
 
         start_time = time.time()
 
@@ -278,16 +282,20 @@ class TranslationService:
             translation = self._post_process_translation(text, translation)
 
             # 儲存到快取（包含風格和提示詞版本）
-            self.cache_service.store_translation(
-                text,
-                translation,
-                effective_context,
-                model_name,
-                current_style,
-                prompt_version,
-                current_index=current_index,
-                lookup_source="translation_service_store",
-            )
+            cache_rejection_reason = TranslationClient.get_cache_rejection_reason(text, translation)
+            if cache_rejection_reason is None:
+                self.cache_service.store_translation(
+                    text,
+                    translation,
+                    effective_context,
+                    model_name,
+                    current_style,
+                    prompt_version,
+                    current_index=current_index,
+                    lookup_source="translation_service_store",
+                )
+            else:
+                logger.info("翻譯服務略過儲存不合格翻譯至快取 (%s): %s", cache_rejection_reason, text)
 
             # 更新統計資料
             end_time = time.time()

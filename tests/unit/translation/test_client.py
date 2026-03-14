@@ -829,6 +829,45 @@ class TestTranslationClientAsync:
     @pytest.mark.asyncio
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    async def test_translate_text_ignores_invalid_cached_translation(self, mock_prompt, mock_cache):
+        """Test invalid cached Japanese leakage is ignored and refreshed."""
+        mock_cache_instance = MagicMock()
+        mock_cache_instance.get_cached_translation.return_value = "最近どう？"
+        mock_cache.return_value = mock_cache_instance
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.current_content_type = "general"
+        mock_prompt_instance.get_prompt_version.return_value = "retryv2"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CURRENT_INDEX]1", "最近"]
+        mock_prompt_instance.get_optimized_message.return_value = [
+            {"role": "system", "content": "Base prompt"},
+            {"role": "user", "content": "[CURRENT]\n最近"},
+        ]
+        mock_prompt.return_value = mock_prompt_instance
+
+        client = TranslationClient(llm_type="ollama")
+        client._translate_with_ollama = AsyncMock(return_value="最近怎麼樣？")
+
+        result = await client.translate_text("最近", ["前文", "最近", "後文"], "llama3")
+
+        assert result == "最近怎麼樣？"
+        assert client.metrics.cache_hits == 0
+        assert client._translate_with_ollama.await_count == 1
+        mock_cache_instance.store_translation.assert_called_once_with(
+            "最近",
+            "最近怎麼樣？",
+            ["[CURRENT_INDEX]1", "最近"],
+            "llama3",
+            "standard",
+            "retryv2",
+            current_index=None,
+            lookup_source="translation_client_store",
+        )
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     async def test_translate_text_from_cache_uses_prompt_version(self, mock_prompt, mock_cache):
         """Test translating text from cache includes style and prompt version in cache lookup."""
         mock_cache_instance = MagicMock()
@@ -1162,6 +1201,35 @@ class TestTranslationClientAsync:
     @pytest.mark.asyncio
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    async def test_translate_text_does_not_store_invalid_translation_in_cache(self, mock_prompt, mock_cache):
+        """Test final output with unresolved Japanese leakage is not cached."""
+        mock_cache_instance = MagicMock()
+        mock_cache_instance.get_cached_translation.return_value = None
+        mock_cache.return_value = mock_cache_instance
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.current_content_type = "general"
+        mock_prompt_instance.get_prompt_version.return_value = "retryv3"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CURRENT_INDEX]1", "最近"]
+        mock_prompt_instance.get_optimized_message.return_value = [
+            {"role": "system", "content": "Base prompt"},
+            {"role": "user", "content": "[CURRENT]\n最近"},
+        ]
+        mock_prompt.return_value = mock_prompt_instance
+
+        client = TranslationClient(llm_type="ollama")
+        client._translate_with_ollama = AsyncMock(side_effect=["最近どう？", "最近どう？"])
+
+        result = await client.translate_text("最近", ["前文", "最近", "後文"], "llama3")
+
+        assert result == "最近どう？"
+        assert client._translate_with_ollama.await_count == 2
+        mock_cache_instance.store_translation.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     async def test_translate_batch_empty(self, mock_prompt, mock_cache):
         """Test batch translation with empty list."""
         mock_cache_instance = MagicMock()
@@ -1189,6 +1257,31 @@ class TestTranslationClientAsync:
 
         assert result == ["cached1", "cached2"]
         assert client.metrics.cache_hits == 2
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    async def test_translate_batch_ignores_invalid_cached_precheck_result(self, mock_prompt, mock_cache):
+        """Test batch precheck ignores cached Japanese leakage and re-requests that item."""
+        mock_cache_instance = MagicMock()
+        mock_cache_instance.get_cached_translation.side_effect = ["最近どう？", "cached translation"]
+        mock_cache.return_value = mock_cache_instance
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.get_prompt_version.return_value = "batchv1"
+        mock_prompt_instance.get_effective_cache_context_texts.side_effect = [["ctx-recent"], ["ctx-hello"]]
+        mock_prompt.return_value = mock_prompt_instance
+
+        client = TranslationClient(llm_type="ollama")
+        client.translate_with_retry = AsyncMock(return_value="最近怎麼樣？")
+        client._get_effective_batch_size = AsyncMock(return_value=1)
+
+        result = await client.translate_batch([("最近", []), ("Hello", [])], "llama3")
+
+        assert result == ["最近怎麼樣？", "cached translation"]
+        assert client.metrics.cache_hits == 1
+        client.translate_with_retry.assert_awaited_once_with("最近", [], "llama3", current_index=None)
 
     @pytest.mark.asyncio
     @patch("srt_translator.translation.client.CacheManager")
