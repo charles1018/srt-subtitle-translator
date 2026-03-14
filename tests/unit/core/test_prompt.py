@@ -122,6 +122,30 @@ class TestPromptManagerInit:
         assert hasattr(manager, "current_style")
         assert hasattr(manager, "current_language_pair")
 
+    def test_current_settings_loaded_from_config_file(self, temp_config_file):
+        """測試初始化時會正確讀取既有的 prompt 設定值。"""
+        config_path = Path(temp_config_file)
+        config_path.write_text(
+            json.dumps(
+                {
+                    "current_content_type": "adult",
+                    "current_style": "localized",
+                    "current_language_pair": "英文→繁體中文",
+                    "custom_prompts": {},
+                    "version_history": {},
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
+        manager = PromptManager(temp_config_file)
+
+        assert manager.current_content_type == "adult"
+        assert manager.current_style == "localized"
+        assert manager.current_language_pair == "英文→繁體中文"
+
     def test_templates_directory_created(self, temp_config_file, temp_dir):
         """測試模板目錄自動創建"""
         manager = PromptManager(temp_config_file)

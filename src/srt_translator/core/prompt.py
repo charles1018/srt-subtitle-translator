@@ -95,9 +95,9 @@ class PromptManager:
         self._load_config()
 
         # 設定當前使用的內容類型和風格
-        self.current_content_type = self.config_manager.get_value("current_content_type", "general")
-        self.current_style = self.config_manager.get_value("current_style", "standard")
-        self.current_language_pair = self.config_manager.get_value("current_language_pair", "日文→繁體中文")
+        self.current_content_type = self.config_manager.get_value("current_content_type", default="general")
+        self.current_style = self.config_manager.get_value("current_style", default="standard")
+        self.current_language_pair = self.config_manager.get_value("current_language_pair", default="日文→繁體中文")
 
         # 載入版本歷史
         self.version_history: dict[str, Any] = self.config_manager.get_value("version_history", default={}) or {}
