@@ -327,10 +327,40 @@ class TestTranslationClientHelpers:
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    def test_should_retry_untranslated_japanese_for_mixed_short_output(self, mock_prompt, mock_cache):
+        """Test detector catches short outputs that only leak one hiragana character."""
+        client = TranslationClient(llm_type="ollama")
+        assert client._should_retry_untranslated_japanese("待ってる", "等て") is True
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    def test_should_retry_untranslated_japanese_for_kanji_only_source_with_added_hiragana(
+        self, mock_prompt, mock_cache
+    ):
+        """Test detector catches kanji-only source lines when output appends Japanese kana."""
+        client = TranslationClient(llm_type="ollama")
+        assert client._should_retry_untranslated_japanese("最近", "最近どう？") is True
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     def test_should_not_retry_when_only_japanese_name_is_preserved(self, mock_prompt, mock_cache):
         """Test untranslated Japanese detector ignores preserved Japanese names."""
         client = TranslationClient(llm_type="ollama")
         assert client._should_retry_untranslated_japanese("イチロー君が来た", "我喜歡イチロー君") is False
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    def test_should_not_retry_clean_chinese_for_kanji_only_source(self, mock_prompt, mock_cache):
+        """Test detector does not retry clean Chinese output for kanji-only source lines."""
+        client = TranslationClient(llm_type="ollama")
+        assert client._should_retry_untranslated_japanese("最近", "最近怎麼樣？") is False
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    def test_should_not_retry_identical_kanji_cognate_output(self, mock_prompt, mock_cache):
+        """Test detector avoids retrying kanji-only cognates that are also valid Chinese."""
+        client = TranslationClient(llm_type="ollama")
+        assert client._should_retry_untranslated_japanese("乾杯!", "乾杯！") is False
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")

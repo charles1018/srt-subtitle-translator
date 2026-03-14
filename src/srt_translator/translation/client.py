@@ -220,6 +220,7 @@ class TranslationClient:
     )
     JAPANESE_KANA_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[ぁ-ゖァ-ヺー]")
     JAPANESE_HIRAGANA_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[ぁ-ゖ]")
+    CJK_IDEOGRAPH_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[一-龯々〆ヵヶ]")
     JAPANESE_PLACEHOLDER_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"\[\[[A-Z0-9]+\]\]")
     UNTRANSLATED_JAPANESE_RETRY_INSTRUCTION: ClassVar[str] = (
         "CRITICAL RETRY INSTRUCTION:\n"
@@ -789,19 +790,33 @@ class TranslationClient:
         cleaned_source = self._remove_japanese_retry_exempt_tokens(source_text, source_text)
         cleaned_translation = self._remove_japanese_retry_exempt_tokens(translated_text, source_text)
 
+        source_has_cjk = bool(self.CJK_IDEOGRAPH_PATTERN.search(cleaned_source))
         source_kana = len(self.JAPANESE_KANA_PATTERN.findall(cleaned_source))
         translation_kana = len(self.JAPANESE_KANA_PATTERN.findall(cleaned_translation))
         translation_hiragana = len(self.JAPANESE_HIRAGANA_PATTERN.findall(cleaned_translation))
 
-        if source_kana < 2 or translation_kana < 2:
+        if not cleaned_translation.strip():
             return False
 
-        if translation_hiragana >= 2:
+        if source_kana == 0 and not source_has_cjk:
+            return False
+
+        # 正常的繁中輸出不應殘留任何平假名；這裡先用最穩定的訊號攔截。
+        if translation_hiragana >= 1:
+            return True
+
+        if source_kana >= 1 and translation_kana >= 1:
             return True
 
         normalized_source = self._normalize_text_for_translation_comparison(cleaned_source)
         normalized_translation = self._normalize_text_for_translation_comparison(cleaned_translation)
-        return bool(normalized_source and normalized_translation == normalized_source)
+        if not normalized_source:
+            return False
+
+        if source_kana >= 1 and normalized_translation == normalized_source:
+            return True
+
+        return bool(translation_kana >= 1 and normalized_source in normalized_translation)
 
     def _build_untranslated_japanese_retry_messages(
         self, messages: list[dict[str, str]]
