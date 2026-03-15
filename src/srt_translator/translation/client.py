@@ -289,6 +289,8 @@ class TranslationClient:
             },
         },
     }
+    _LLAMACPP_FALLBACK_SLOTS: ClassVar[int] = 2
+
     LLAMACPP_MODEL_PROFILES: ClassVar[dict[str, dict[str, Any]]] = {
         "default": {
             "batch_concurrency_limit": None,
@@ -330,7 +332,7 @@ class TranslationClient:
             },
         },
         "qwen3.5-ud": {
-            "batch_concurrency_limit": 1,
+            "batch_concurrency_limit": None,
             "options": {
                 "temperature": 0.85,
                 "top_p": 1.0,
@@ -983,6 +985,15 @@ class TranslationClient:
                 logger.info(
                     f"llama.cpp server slots 限制並發數為 {limited_batch_size}，"
                     f"原始計算值: {batch_size}，總 slots: {total_slots}"
+                )
+            batch_size = limited_batch_size
+        elif model_limit is None:
+            fallback = self._LLAMACPP_FALLBACK_SLOTS
+            limited_batch_size = min(batch_size, fallback)
+            if limited_batch_size != batch_size:
+                logger.warning(
+                    f"llama.cpp server 診斷未取得 total_slots，"
+                    f"使用安全預設值 {fallback}，原始計算值: {batch_size}"
                 )
             batch_size = limited_batch_size
 

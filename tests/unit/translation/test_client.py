@@ -602,6 +602,52 @@ class TestTranslationClientHelpers:
 
         assert batch_size == 2
 
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    async def test_get_effective_batch_size_qwen35_ud_respects_server_slots(
+        self, mock_openai, mock_prompt, mock_cache
+    ):
+        """Test qwen3.5-ud llamacpp concurrency is capped by server slots, not hard-coded to 1."""
+        client = TranslationClient(llm_type="llamacpp", base_url="http://localhost:8080")
+        client._get_llamacpp_server_diagnostics = AsyncMock(  # type: ignore[method-assign]
+            return_value={"available": True, "total_slots": 2}
+        )
+
+        batch_size = await client._get_effective_batch_size(
+            "Qwen3.5-9B-UD-Q8_K_XL",
+            concurrent_limit=4,
+            adaptive_concurrency=3,
+            pending=8,
+        )
+
+        assert batch_size == 2
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    async def test_get_effective_batch_size_fallback_when_diagnostics_fail(
+        self, mock_openai, mock_prompt, mock_cache
+    ):
+        """Test conservative fallback when server diagnostics cannot determine total_slots."""
+        client = TranslationClient(llm_type="llamacpp", base_url="http://localhost:8080")
+        client._get_llamacpp_server_diagnostics = AsyncMock(  # type: ignore[method-assign]
+            return_value={"available": False, "total_slots": None}
+        )
+
+        batch_size = await client._get_effective_batch_size(
+            "Qwen3.5-9B-UD-Q8_K_XL",
+            concurrent_limit=6,
+            adaptive_concurrency=5,
+            pending=8,
+        )
+
+        assert batch_size == client._LLAMACPP_FALLBACK_SLOTS
+
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
     def test_get_fallback_models_uses_qwen35_family(self, mock_prompt, mock_cache):
