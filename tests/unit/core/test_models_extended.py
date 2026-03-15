@@ -652,11 +652,11 @@ class TestModelManagerLlamaCppModelsAsync:
         """測試 llama.cpp fallback 提示改為最佳化後的建議參數"""
         fallback_model = manager._get_llamacpp_fallback_models()[0]
 
-        assert "--parallel 2" in fallback_model.description
+        assert "--parallel 1" in fallback_model.description
         assert "-c 1024" in fallback_model.description
         assert "-ctk" not in fallback_model.description
         assert fallback_model.context_length == 1024
-        assert fallback_model.parallel == 2
+        assert fallback_model.parallel == 1
 
 
 class TestModelManagerOpenAIModelsAsync:

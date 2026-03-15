@@ -1602,12 +1602,12 @@ class ModelManager:
                     "請先啟動 llama-server："
                     "llama-server -m <model.gguf> --jinja "
                     "--reasoning-format deepseek --reasoning-budget 0 "
-                    "--parallel 2 -c 1024"
+                    "--parallel 1 -c 1024"
                 ),
                 context_length=1024,
                 pricing="免費(本機執行)",
                 recommended_for="本地高速推理翻譯",
-                parallel=2,
+                parallel=1,
                 tags=["free", "local", "llamacpp"],
                 capabilities={"translation": 0.0, "multilingual": 0.0, "context_handling": 0.0},
                 available=False,
