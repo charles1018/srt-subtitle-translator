@@ -103,7 +103,7 @@ LD_LIBRARY_PATH=~/dev/llama-bin ~/dev/llama-bin/llama-server \
     -m ~/dev/model/Qwen3.5-9B-UD-Q8_K_XL.gguf \
     --port 8080 \
     --jinja \
-    -c 4096 \
+    -c 1024 \
     --parallel 1 \
     --reasoning-format deepseek \
     --reasoning-budget 0
@@ -121,7 +121,7 @@ LD_LIBRARY_PATH=~/dev/llama-bin ~/dev/llama-bin/llama-server \
 | `-m` | GGUF 模型檔案路徑 | 必填 |
 | `--port` | HTTP 服務埠號 | `8080`（預設） |
 | `--jinja` | 啟用 GGUF 內嵌 chat template | 建議開啟 |
-| `-c` | Context 長度（token 數） | `2048`~`4096`（字幕翻譯不需要太長） |
+| `-c` | Context 長度（token 數） | `1024`（字幕翻譯實際 token 使用量約 264，不需要太長） |
 | `-ngl` | 放到 GPU 的層數 | 省略讓 llama-server 自動決定 |
 | `--parallel` | 同時處理的 request slot 數 | 穩定優先建議 `1` |
 | `--reasoning-format deepseek` | 將思考內容分離到 `reasoning_content` 欄位 | 本專案 client 端預設送出此設定，server 端同步設定可做雙重保險 |
@@ -249,10 +249,12 @@ llama-server -m model.gguf --reasoning-format deepseek --reasoning-budget 0
 
 ### 穩定模式與吞吐模式
 
-- 穩定模式：`--parallel 1 --no-cont-batching`
+- 穩定模式（推薦）：`--parallel 1 --no-cont-batching`
 - 吞吐模式：`--parallel 2` 或更高，並保留 continuous batching
 
 前者更適合字幕翻譯這種短句、高頻、需要可預期輸出的工作流；後者則適合多人共用或大量背景處理。
+
+> **注意：** 使用 `--parallel 2` 以上時，每個 slot 都需要獨立的 KV cache 記憶體。在 VRAM 有限（≤ 8 GB）的消費型顯卡上，多 slot 會導致 per-request 延遲大幅上升，吞吐提升有限甚至品質退化。建議搭配 `-ctk q8_0 -ctv q8_0`（KV cache 量化）使用，但此功能僅 CUDA build 支援，Vulkan build 不可用。
 
 ### 量化格式選擇
 
@@ -290,7 +292,7 @@ ggml_vulkan: vk::Device::allocateMemory: ErrorOutOfDeviceMemory
 **解決方法：**
 
 - 減少 GPU 層數：加上 `-ngl 15`（或更少）讓更多層在 CPU 上執行
-- 減少 context 長度：`-c 2048` 或 `-c 1024`
+- 減少 context 長度：`-c 1024`（字幕翻譯足夠使用）
 - 減少並行數：`--parallel 1`
 - 使用更小的量化格式（Q4_K_M 或 IQ4_NL）
 - 不指定 `-ngl`，讓 llama-server 自動 fit
@@ -354,8 +356,8 @@ export LD_LIBRARY_PATH=~/dev/llama-bin
     -m ~/dev/model/Qwen3.5-9B-UD-Q8_K_XL.gguf \
     --port 8080 \
     --jinja \
-    -c 4096 \
-    --parallel 2 \
+    -c 1024 \
+    --parallel 1 \
     --reasoning-format deepseek \
     --reasoning-budget 0
 ```
