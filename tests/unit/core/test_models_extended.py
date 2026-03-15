@@ -649,11 +649,14 @@ class TestModelManagerLlamaCppModelsAsync:
             assert model.available is True
 
     def test_get_llamacpp_fallback_models_uses_updated_startup_hint(self, manager):
-        """測試 llama.cpp fallback 提示改為非思考翻譯建議參數"""
+        """測試 llama.cpp fallback 提示改為最佳化後的建議參數"""
         fallback_model = manager._get_llamacpp_fallback_models()[0]
 
-        assert "--reasoning off" in fallback_model.description
-        assert "--parallel 1" in fallback_model.description
+        assert "--parallel 2" in fallback_model.description
+        assert "-c 1024" in fallback_model.description
+        assert "-ctk q8_0" in fallback_model.description
+        assert fallback_model.context_length == 1024
+        assert fallback_model.parallel == 2
 
 
 class TestModelManagerOpenAIModelsAsync:
