@@ -1602,7 +1602,7 @@ class ModelManager:
                     "請先啟動 llama-server："
                     "llama-server -m <model.gguf> --jinja "
                     "--reasoning-format deepseek --reasoning-budget 0 "
-                    "--parallel 2 -c 1024 -ctk q8_0 -ctv q8_0"
+                    "--parallel 2 -c 1024"
                 ),
                 context_length=1024,
                 pricing="免費(本機執行)",

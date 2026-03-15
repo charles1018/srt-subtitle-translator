@@ -654,7 +654,7 @@ class TestModelManagerLlamaCppModelsAsync:
 
         assert "--parallel 2" in fallback_model.description
         assert "-c 1024" in fallback_model.description
-        assert "-ctk q8_0" in fallback_model.description
+        assert "-ctk" not in fallback_model.description
         assert fallback_model.context_length == 1024
         assert fallback_model.parallel == 2
 
