@@ -5,7 +5,7 @@
 [![Tests](https://img.shields.io/badge/tests-841%20collected-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-htmlcov-lightgrey.svg)](htmlcov/)
 
-基於 Python 的 SRT 字幕檔自動翻譯工具。本專案近期正在整理 provider 整合，各層支援範圍目前仍有差異：實際翻譯 runtime 已實作 `ollama`、`openai`、`google`、`llamacpp`；CLI `translate/models` 參數目前接受 `ollama`、`openai`、`anthropic`、`llamacpp`；GUI provider 下拉目前顯示 `ollama`、`openai`、`anthropic`、`google`、`llamacpp`；OpenRouter 仍是規劃中工作。
+基於 Python 的 SRT 字幕檔自動翻譯工具。本專案近期正在整理 provider 整合，各層支援範圍目前仍有差異：實際翻譯 runtime 已實作 `ollama`、`openai`、`google`、`llamacpp`；CLI `translate/models/prompt` 參數目前接受 `ollama`、`openai`、`anthropic`、`google`、`llamacpp`；GUI provider 下拉目前顯示 `ollama`、`openai`、`anthropic`、`google`、`llamacpp`；OpenRouter 仍是規劃中工作。
 
 ## ✨ 功能特點
 
@@ -13,13 +13,13 @@
 - 🌍 **多語言支援**：支援日文、英文、韓文、法文、德文、西班牙文、俄文、繁體中文等語言
 - 🤖 **多引擎支援**：
   - 實際翻譯 runtime：Ollama、OpenAI、Google、llama.cpp
-  - CLI provider 參數：Ollama、OpenAI、Anthropic、llama.cpp
+  - CLI provider 參數：Ollama、OpenAI、Anthropic、Google、llama.cpp
   - GUI provider 下拉 / 模型發現：Ollama、OpenAI、Anthropic、Google、llama.cpp
   - OpenRouter：尚未實作
 - 📝 **多格式支援**：SRT、VTT、ASS/SSA 字幕格式
 
 ### 進階功能
-- 🖥️ **CLI 命令列模式**：支援命令列翻譯、批次處理、術語表管理
+- 🖥️ **CLI 命令列模式**：支援命令列翻譯、批次處理、術語表管理、提示詞管理
 - 📚 **術語表管理**：確保專有名詞翻譯一致性（支援 JSON/CSV/TXT 匯入匯出）
 - ⚡ **批量處理**：同時處理多個字幕檔案
 - 🔄 **並發翻譯**：可調整並發數，優化翻譯效率；部分 Ollama 模型（如 Qwen3.5）會依模型特性自動降至安全並發數，llama.cpp 則會依 `llama-server --parallel` 實際 slots 自動收斂
@@ -28,15 +28,16 @@
   - 🆕 **GUI 快取管理**：完整的快取管理界面，支援查看統計資訊和一鍵清除快取
 - 🎨 **多種顯示模式**：
   - GUI：僅顯示翻譯、雙語對照、翻譯在上、原文在上
-  - CLI：僅譯文、雙語對照、僅原文
+  - CLI：僅顯示翻譯、雙語對照、翻譯在上、原文在上（相容舊別名 `僅譯文`）
 - 🎬 **Netflix 繁體中文字幕風格**：
   - 自動套用 Netflix 繁體中文字幕規範
   - 智慧修正標點符號、引號、數字格式
   - 檢查字符限制（每行最多 16 字符，最多 2 行）
   - 🆕 **智慧自動斷行**：過長字幕自動在標點符號、連接詞或空格處斷行
   - 提供詳細的格式警告和修正統計
-  - 可透過 GUI 一鍵啟用/停用
+  - 可透過 GUI 或 CLI `--netflix-style` / `--no-netflix-style` 啟用或停用
 - 🎯 **自訂提示詞**：支援五種內容類型（一般、成人、動畫、電影、英語劇集）和四種翻譯風格
+  - GUI 提示詞編輯器與 CLI `prompt show/set/reset/export/import`
   - 🆕 **英語劇集模式**：專為英語影視作品優化，包含人名保留規則和專業術語映射
 - 🖱️ **拖放操作**：支援拖放檔案到介面
 - 🔧 **智慧衝突處理**：自動處理檔案名稱衝突（覆蓋/重新命名/跳過）
@@ -63,7 +64,7 @@
 | 層級 | 目前狀態 |
 |------|----------|
 | 實際翻譯 runtime | `ollama`、`openai`、`google`、`llamacpp` |
-| CLI `translate` / `models` 參數 | `ollama`、`openai`、`anthropic`、`llamacpp` |
+| CLI `translate` / `models` / `prompt` 參數 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
 | GUI provider 下拉 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
 | 模型 metadata / 可用模型發現 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
 | `ConfigManager` 對 `user.llm_type` 驗證 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
@@ -153,7 +154,7 @@ echo "your-google-api-key" > google_api_key.txt
 >
 > **安全提示**：`.env` 檔案已加入 `.gitignore`，不會被提交到版本控制。
 >
-> **補充**：程式碼目前可讀取 `OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`，但端到端翻譯流程目前仍以 `ollama` / `openai` / `llamacpp` 最穩定。
+> **補充**：程式碼目前可讀取 `OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`。目前端到端翻譯 runtime 為 `ollama` / `openai` / `google` / `llamacpp`；`anthropic` 仍以模型資訊與金鑰層為主。
 
 #### Ollama（本地模型）
 確保 Ollama 服務正在運行：
@@ -210,24 +211,35 @@ srt-translator translate video.srt -s 英文 -t 繁體中文 --structure-text
 # 批次翻譯資料夾
 srt-translator translate ./subtitles/ -s 英文 -t 繁體中文 -g anime
 
-# SRT 工具箱（目前建議直接呼叫 CLI 模組）
-uv run python -m srt_translator.cli extract video.srt
-uv run python -m srt_translator.cli assemble video
-uv run python -m srt_translator.cli qa source.srt translated.srt
-uv run python -m srt_translator.cli cps-audit translated.srt
+# 使用 Google 與 GUI 對齊的翻譯設定
+srt-translator translate video.srt -s 日文 -t 繁體中文 -p google --content-type anime --style localized --netflix-style
+
+# 調整顯示模式、輸出目錄與快取
+srt-translator translate video.srt -s 英文 -t 繁體中文 --display-mode 翻譯在上 --output-dir ./out --no-cache
+
+# SRT 工具箱
+srt-translator extract video.srt
+srt-translator assemble video
+srt-translator qa source.srt translated.srt
+srt-translator cps-audit translated.srt
 
 # 術語表管理
 srt-translator glossary create anime -s 日文 -t 繁體中文
 srt-translator glossary add anime "進撃の巨人" "進擊的巨人"
 
+# 提示詞管理
+srt-translator prompt show -p google --content-type anime
+srt-translator prompt export --content-type anime -o ./anime-prompts.json
+
 # 查看可用模型
 srt-translator models -p ollama
+srt-translator models -p google
 
 # 快取管理
 srt-translator cache --stats
 ```
 
-> `translate` 目前實際建議使用 `ollama`、`openai` 或 `llamacpp`。`google` 執行路徑已存在，但尚未暴露於 CLI 參數；`anthropic` 目前可列模型與讀取金鑰，但尚無第一級翻譯 runtime。
+> `translate` 目前可直接使用 `ollama`、`openai`、`google`、`llamacpp`；`anthropic` 目前仍以 `models -p anthropic` 與金鑰讀取層為主，尚無第一級翻譯 runtime。
 
 ## 📚 文檔
 
@@ -426,8 +438,8 @@ uv run mypy src/srt_translator
 - **開發開始**：2023
 - **當前版本**：1.1.0
 - **Python 需求**：3.10+
-- **目前最穩定的翻譯工作流**：Ollama / OpenAI / llama.cpp
-- **仍在整理中的 provider**：Anthropic / Google / OpenRouter（規劃）
+- **第一級翻譯 runtime**：Ollama / OpenAI / Google / llama.cpp
+- **仍在整理中的 provider**：Anthropic / OpenRouter（規劃）
 
 ---
 

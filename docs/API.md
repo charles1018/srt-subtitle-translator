@@ -47,7 +47,7 @@
 - `llamacpp` 目前會額外探測 `llama-server` 的 `/health`、`/props`、`/slots`，用於健康檢查、模型 metadata 與實際並發對齊
 - `llamacpp` 目前預設會送出 non-thinking 控制、Qwen3.5 專屬採樣參數，並使用 `response_format=json_schema` 將翻譯輸出鎖定為單一 `translation` 欄位
 - `anthropic` 目前主要接在模型資訊與金鑰層，尚未是第一級翻譯 runtime
-- provider 支援目前仍有分層差異：runtime 為 `ollama` / `openai` / `google` / `llamacpp`；CLI parser 為 `ollama` / `openai` / `anthropic` / `llamacpp`；GUI 下拉為 `ollama` / `openai` / `anthropic` / `google` / `llamacpp`
+- provider 支援目前仍有分層差異：runtime 為 `ollama` / `openai` / `google` / `llamacpp`；CLI parser 為 `ollama` / `openai` / `anthropic` / `google` / `llamacpp`；GUI 下拉為 `ollama` / `openai` / `anthropic` / `google` / `llamacpp`
 - OpenRouter 仍屬規劃中，不在目前 public API 範圍內
 
 ### 架構概覽
@@ -465,7 +465,7 @@ print(result["success"], result["message"])
 
 ### PromptManager
 
-提示詞管理器，管理翻譯提示詞模板。
+提示詞管理器，管理翻譯提示詞模板、內容類型/風格狀態，以及 prompt 的 reset / export / import。
 
 #### 類別簽名
 
@@ -489,7 +489,7 @@ prompt_manager = PromptManager()
 獲取翻譯提示詞。
 
 **參數**：
-- `llm_type` (str): LLM 類型
+- `llm_type` (str): LLM 類型。可傳入 `ollama` / `openai` / `anthropic` / `google` / `llamacpp`；若未設定 custom prompt，`anthropic` / `google` 會沿用 OpenAI 家族預設，`llamacpp` 會沿用 Ollama 家族預設
 - `content_type` (str): 內容類型 ("general", "anime", "movie", "adult", "english_drama")
 - `style` (str): 翻譯風格 ("standard", "literal", "localized", "specialized")
 - `model_name` (str | None): 模型名稱；部分模型特化 prompt 會使用此值
@@ -523,6 +523,36 @@ Focus on natural expression and cultural adaptation."""
 
 prompt_manager.set_prompt(custom_prompt, "openai", "movie")
 ```
+
+##### `reset_to_default(llm_type: str | None = None, content_type: str | None = None) -> bool`
+
+將指定 provider / 內容類型的提示詞重置為預設值。
+
+**參數**：
+- `llm_type` (str | None): 指定 provider；未指定時重置該內容類型的所有支援 provider
+- `content_type` (str | None): 內容類型；未指定時沿用目前設定
+
+**回傳**：`bool` - 是否成功
+
+##### `export_prompt(content_type: str | None = None, llm_type: str | None = None, file_path: str | None = None) -> str | None`
+
+匯出提示詞為 JSON 檔案。
+
+**參數**：
+- `content_type` (str | None): 內容類型；未指定時沿用目前設定
+- `llm_type` (str | None): 指定 provider；未指定時匯出所有支援 provider
+- `file_path` (str | None): 輸出檔案路徑
+
+**回傳**：`str | None` - 匯出檔案路徑；失敗時回傳 `None`
+
+##### `import_prompt(input_path: str) -> bool`
+
+從 JSON 檔案匯入提示詞。
+
+**參數**：
+- `input_path` (str): 匯入檔案路徑
+
+**回傳**：`bool` - 是否成功
 
 ##### `get_available_content_types() -> list[str]`
 
@@ -595,7 +625,7 @@ client = TranslationClient(
 - `cache_db_path` (str): 翻譯快取資料庫路徑
 - `netflix_style_config` (dict | None): 後處理配置
 
-##### `translate_text(text: str, context_texts: list[str], model_name: str) -> str`
+##### `translate_text(text: str, context_texts: list[str], model_name: str, current_index: int | None = None, use_cache: bool = True) -> str`
 
 翻譯文本。
 
@@ -603,6 +633,8 @@ client = TranslationClient(
 - `text` (str): 要翻譯的文本
 - `context_texts` (list[str]): 上下文列表
 - `model_name` (str): 模型名稱
+- `current_index` (int | None): 當前句在上下文中的索引，避免重複句快取碰撞
+- `use_cache` (bool): 是否使用翻譯快取
 
 **回傳**：`str` - 翻譯結果
 
@@ -616,11 +648,11 @@ translation = await client.translate_text(
 # '你好，世界！'
 ```
 
-##### `translate_with_retry(text: str, context_texts: list[str], model_name: str, max_retries: int = 3, use_fallback: bool = True) -> str`
+##### `translate_with_retry(text: str, context_texts: list[str], model_name: str, max_tries: int = 3, use_fallback: bool = True, current_index: int | None = None, use_cache: bool = True) -> str`
 
 帶有重試與 fallback 的單句翻譯入口，通常是上層服務真正呼叫的方法。
 
-##### `translate_batch(texts: list[tuple[str, list[str]]], model_name: str, concurrent_limit: int = 5) -> list[str]`
+##### `translate_batch(texts: list[tuple[str, list[str]]], model_name: str, concurrent_limit: int = 5, current_indices: list[int | None] | None = None, use_cache: bool = True) -> list[str]`
 
 批量翻譯。
 
@@ -628,6 +660,8 @@ translation = await client.translate_text(
 - `texts` (list[tuple[str, list[str]]]): `(text, context_texts)` 組成的列表
 - `model_name` (str): 模型名稱
 - `concurrent_limit` (int): 並發限制
+- `current_indices` (list[int | None] | None): 每句在上下文中的索引
+- `use_cache` (bool): 是否使用翻譯快取
 
 **回傳**：`list[str]` - 翻譯結果列表
 

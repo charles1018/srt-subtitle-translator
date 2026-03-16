@@ -29,7 +29,7 @@
    - Ollama（本地）
    - llama.cpp（本地，直接推理）
    - OpenAI API 金鑰
-   - Google Gemini API 金鑰（GUI）
+   - Google Gemini API 金鑰（GUI / CLI）
    - Anthropic API 金鑰（目前僅模型資訊 / 金鑰層）
 
 ### 5 分鐘快速上手
@@ -66,16 +66,16 @@ srt-translator translate video.srt -s 日文 -t 繁體中文
 | 層級 | 目前狀態 |
 |------|----------|
 | 實際翻譯 runtime | `ollama`、`openai`、`google`、`llamacpp` |
-| CLI `translate` / `models` 參數 | `ollama`、`openai`、`anthropic`、`llamacpp` |
+| CLI `translate` / `models` / `prompt` 參數 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
 | GUI provider 下拉 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
 | 模型 metadata / 金鑰載入 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
 | `ConfigManager` 驗證 `user.llm_type` | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
 | OpenRouter | 規劃中，尚未實作 |
 
 > 實務上：
-> - CLI `translate` 目前建議使用 `ollama`、`openai` 或 `llamacpp`
+> - CLI `translate` 目前可直接使用 `ollama`、`openai`、`google`、`llamacpp`
 > - `llamacpp` 透過 llama-server 的 OpenAI 相容 API 運作，不需要 API 金鑰，詳見 [llama.cpp 設定指南](llamacpp-setup-guide.md)
-> - GUI provider 下拉目前會顯示 `google`，但一般使用者工作流仍以 `ollama`、`openai`、`llamacpp` 最穩定
+> - `google` 已暴露於 GUI 與 CLI；使用前請先確認 `GOOGLE_API_KEY` 或 `GEMINI_API_KEY` 與模型名稱可用
 > - `anthropic` 目前已接到金鑰與模型資訊層，但尚無第一級翻譯 runtime
 
 ---
@@ -225,11 +225,11 @@ echo "your-google-api-key" > google_api_key.txt
 除了 GUI 圖形介面外，本工具也提供完整的命令列介面（CLI），適合自動化工作流程和批次處理。
 
 > **目前狀態說明**
-> - CLI parser 目前接受 `ollama`、`openai`、`anthropic`、`llamacpp`
-> - CLI 實際翻譯目前建議使用 `ollama`、`openai` 或 `llamacpp`
+> - CLI parser 目前接受 `ollama`、`openai`、`anthropic`、`google`、`llamacpp`
+> - CLI 第一級翻譯 runtime 目前為 `ollama`、`openai`、`google`、`llamacpp`
 > - `llamacpp` 需要預先啟動 `llama-server`，詳見 [llama.cpp 設定指南](llamacpp-setup-guide.md)
 > - `anthropic` 目前較適合用於 `models -p anthropic` 檢視模型資訊，尚無第一級翻譯 runtime
-> - `google` 執行路徑已存在，但尚未暴露在 CLI `--provider`
+> - `google` 已可直接用於 CLI `translate` / `models`
 
 ### 基本指令
 
@@ -249,6 +249,12 @@ srt-translator translate ./subtitles/ -s 英文 -t 繁體中文
 # 使用特定模型
 srt-translator translate video.srt -s 日文 -t 繁體中文 -p openai -m gpt-4
 
+# 使用 Google 與 GUI 對齊的翻譯設定
+srt-translator translate video.srt -s 日文 -t 繁體中文 -p google --content-type anime --style localized --netflix-style
+
+# 調整顯示模式、輸出目錄與快取
+srt-translator translate video.srt -s 英文 -t 繁體中文 --display-mode 翻譯在上 --output-dir ./out --no-cache
+
 # 套用術語表
 srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
 ```
@@ -257,15 +263,19 @@ srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
 
 | 參數 | 簡寫 | 說明 | 預設值 |
 |------|------|------|--------|
-| `--source` | `-s` | 來源語言 | 英文 |
-| `--target` | `-t` | 目標語言 | 繁體中文 |
-| `--provider` | `-p` | CLI 參數可選值：`ollama` / `openai` / `anthropic` / `llamacpp`。其中實際翻譯目前建議使用 `ollama` / `openai` / `llamacpp` | ollama |
+| `--source` | `-s` | 來源語言 | 必填 |
+| `--target` | `-t` | 目標語言 | 必填 |
+| `--provider` | `-p` | CLI 參數可選值：`ollama` / `openai` / `anthropic` / `google` / `llamacpp`。其中第一級翻譯 runtime 為 `ollama` / `openai` / `google` / `llamacpp` | ollama |
 | `--model` | `-m` | 模型名稱 | 各引擎推薦模型 |
-| `--display-mode` | `-d` | 顯示模式（僅譯文/雙語對照/僅原文）| 僅譯文 |
+| `--content-type` | - | 內容類型：`general` / `adult` / `anime` / `movie` / `english_drama` | 目前 prompt 設定 |
+| `--style` | - | 翻譯風格：`standard` / `literal` / `localized` / `specialized` | 目前 prompt 設定 |
+| `--display-mode` | `-d` | 顯示模式：`僅顯示翻譯` / `雙語對照` / `翻譯在上` / `原文在上`（相容舊別名：`僅譯文`） | 僅顯示翻譯 |
 | `--glossary` | `-g` | 套用的術語表名稱（可多次指定）| - |
 | `--output-dir` | `-o` | 輸出目錄 | 原檔案目錄 |
 | `--concurrency` | `-c` | 並發數 | 3 |
-| `--no-cache` | - | 不使用翻譯快取 | 關閉 |
+| `--no-cache` | - | 不使用翻譯快取（僅本次執行） | 關閉 |
+| `--netflix-style` | - | 啟用 Netflix 風格後處理 | 依使用者設定 |
+| `--no-netflix-style` | - | 停用 Netflix 風格後處理 | 依使用者設定 |
 | `--structure-text` | - | 使用結構-文本分離翻譯模式（實驗性）| 關閉 |
 
 ### 結構-文本分離翻譯模式
@@ -296,6 +306,7 @@ srt-translator models
 srt-translator models -p ollama
 srt-translator models -p openai
 srt-translator models -p anthropic
+srt-translator models -p google
 ```
 
 ### 快取管理
@@ -319,24 +330,44 @@ srt-translator config --set source_lang 日文
 srt-translator config --set target_lang 繁體中文
 ```
 
+### 提示詞管理
+
+```bash
+# 顯示目前提示詞
+srt-translator prompt show -p google --content-type anime
+
+# 直接設定提示詞
+srt-translator prompt set -p openai --content-type movie --text "Translate naturally."
+
+# 從 UTF-8 檔案載入提示詞
+srt-translator prompt set -p llamacpp --content-type adult --file ./prompt.txt
+
+# 重置為預設值
+srt-translator prompt reset -p google --content-type anime
+
+# 匯出 / 匯入提示詞
+srt-translator prompt export --content-type anime -o ./anime-prompts.json
+srt-translator prompt import ./anime-prompts.json
+```
+
 ---
 
 ## SRT 工具箱
 
 SRT 工具箱提供字幕檔案的結構-文本分離、品質檢驗等獨立工具，可在不翻譯的情況下使用。
 
-> **目前狀態說明**：`extract` / `assemble` / `qa` / `cps-audit` 已在 `src/srt_translator/cli.py` 定義，但目前建議直接以 `uv run python -m srt_translator.cli ...` 呼叫，避免入口點 dispatch 差異。
+> **目前狀態說明**：`extract` / `assemble` / `qa` / `cps-audit` 已可直接透過 `srt-translator` 入口點使用。
 
 ### Extract（拆分）
 
 將 SRT 檔案拆分為結構檔（`_structure.json`）和純文字檔（`_text.txt`）：
 
 ```bash
-uv run python -m srt_translator.cli extract video.srt
+srt-translator extract video.srt
 # 輸出：video_structure.json + video_text.txt
 
 # 自訂輸出前綴
-uv run python -m srt_translator.cli extract video.srt -o my_prefix
+srt-translator extract video.srt -o my_prefix
 # 輸出：my_prefix_structure.json + my_prefix_text.txt
 ```
 
@@ -346,13 +377,13 @@ uv run python -m srt_translator.cli extract video.srt -o my_prefix
 
 ```bash
 # 預設尋找 video_translated_text.txt
-uv run python -m srt_translator.cli assemble video
+srt-translator assemble video
 
 # 指定翻譯文字檔
-uv run python -m srt_translator.cli assemble video -t custom_translated.txt
+srt-translator assemble video -t custom_translated.txt
 
 # 指定輸出檔名
-uv run python -m srt_translator.cli assemble video -o output.srt
+srt-translator assemble video -o output.srt
 ```
 
 ### QA（品質檢驗）
@@ -360,10 +391,10 @@ uv run python -m srt_translator.cli assemble video -o output.srt
 比對源檔與翻譯檔的結構完整性：
 
 ```bash
-uv run python -m srt_translator.cli qa source.srt translated.srt
+srt-translator qa source.srt translated.srt
 
 # 嚴格模式（任何不匹配即失敗）
-uv run python -m srt_translator.cli qa source.srt translated.srt --strict
+srt-translator qa source.srt translated.srt --strict
 ```
 
 檢查項目：字幕數量、timestamp 一致性、index 連續性。
@@ -373,10 +404,10 @@ uv run python -m srt_translator.cli qa source.srt translated.srt --strict
 分析字幕的 CPS（Characters Per Second）可讀性：
 
 ```bash
-uv run python -m srt_translator.cli cps-audit translated.srt
+srt-translator cps-audit translated.srt
 
 # 自訂閾值
-uv run python -m srt_translator.cli cps-audit translated.srt --max-cps 15 --max-line-length 20 --min-duration 1200
+srt-translator cps-audit translated.srt --max-cps 15 --max-line-length 20 --min-duration 1200
 ```
 
 預設閾值：
@@ -391,19 +422,19 @@ uv run python -m srt_translator.cli cps-audit translated.srt --max-cps 15 --max-
 
 ```bash
 # 1. 拆分字幕
-uv run python -m srt_translator.cli extract episode_01.srt
+srt-translator extract episode_01.srt
 
 # 2. 手動翻譯或用外部工具翻譯 episode_01_text.txt
 #    儲存為 episode_01_translated_text.txt
 
 # 3. 重組 SRT
-uv run python -m srt_translator.cli assemble episode_01
+srt-translator assemble episode_01
 
 # 4. 品質檢驗
-uv run python -m srt_translator.cli qa episode_01.srt episode_01_translated.srt
+srt-translator qa episode_01.srt episode_01_translated.srt
 
 # 5. 可讀性審計
-uv run python -m srt_translator.cli cps-audit episode_01_translated.srt
+srt-translator cps-audit episode_01_translated.srt
 ```
 
 ---
@@ -665,8 +696,9 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja --parallel 1 --r
 
 ### 範例 4：自訂提示詞
 
-1. **開啟提示詞編輯器**
-   - GUI 選單：`設定` → `提示詞編輯`
+1. **選擇管理方式**
+   - GUI：`設定` → `提示詞編輯`
+   - CLI：`srt-translator prompt show/set/reset/export/import`
 2. **選擇內容類型**：
    - general：一般內容
    - anime：動畫內容
@@ -678,8 +710,10 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja --parallel 1 --r
    - literal：直譯
    - localized：本地化
    - specialized：專業術語保留
-4. **編輯提示詞**：根據需求調整提示詞內容
-5. **儲存並使用**：提示詞會立即生效
+4. **編輯提示詞**：
+   - GUI：直接修改編輯器內容
+   - CLI：例如 `srt-translator prompt set -p google --content-type anime --file ./anime_prompt.txt`
+5. **儲存並使用**：提示詞會立即生效，可再用 `prompt export` 備份
 
 ---
 
@@ -688,9 +722,8 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja --parallel 1 --r
 ### 顯示模式詳解
 
 > **介面差異**：
-> - GUI 提供四種模式：`雙語對照`、`僅顯示翻譯`、`翻譯在上`、`原文在上`
-> - CLI 目前提供三種模式：`雙語對照`、`僅譯文`、`僅原文`
-> - CLI 與 GUI 的顯示模式命名目前尚未完全對齊；若你需要四種模式的精確控制，請優先使用 GUI
+> - GUI 與 CLI 目前都支援四種模式：`雙語對照`、`僅顯示翻譯`、`翻譯在上`、`原文在上`
+> - CLI 額外接受舊別名 `僅譯文`，會自動正規化為 `僅顯示翻譯`
 
 #### 1. 僅顯示翻譯
 

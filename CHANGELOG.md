@@ -22,6 +22,14 @@
   - 提供 `.env.example` 範例檔案
   - 更安全的 API 金鑰管理方式
 
+#### CLI / Prompt 對齊
+- 🖥️ **CLI `translate` / `models` 現在暴露 `google` provider**
+  - CLI parser 可選值更新為 `ollama` / `openai` / `anthropic` / `google` / `llamacpp`
+  - 新增 `--content-type`、`--style`、`--netflix-style`、`--no-netflix-style`
+- 📝 **新增 CLI `prompt` 子命令**
+  - `prompt show` / `set` / `reset` / `export` / `import`
+  - 對應 GUI prompt editor 的核心管理流程
+
 #### SRT 工具箱（結構-文本分離工作流）
 - 🔧 **新增 `tools/srt_tools.py` 模組**
   - `extract`：將 SRT 拆分為 `_structure.json`（timestamp/index）+ `_text.txt`（純文字）
@@ -58,6 +66,21 @@
 
 ### 🐛 修復
 
+#### CLI 旗標與 prompt provider 對齊
+- 🔧 **修正 CLI 與 runtime 的翻譯旗標接線**
+  - `--display-mode` 對齊 runtime 四種模式，並相容舊別名 `僅譯文`
+  - 修正 `--output-dir` 未正確寫入 batch settings 的問題
+  - 修正 `--no-cache` 未實際停用快取的問題
+- 🔧 **補齊 PromptManager 的 provider fallback**
+  - `google` / `anthropic` 會沿用 OpenAI 家族預設 prompt
+  - `llamacpp` 會沿用 Ollama 家族預設 prompt
+  - `reset` / `export` / `import` 現在可涵蓋 `ollama`、`openai`、`anthropic`、`google`、`llamacpp`
+
+### 📝 文件
+
+- 同步更新 `README.md`、`docs/USER_GUIDE.md`、`docs/API.md`、`docs/DEVELOPMENT.md`、`.env.example`
+  - 反映 CLI `google` provider、翻譯旗標、prompt 管理子命令、環境變數與 provider 現況
+
 #### GUI tkinterdnd2 相容性
 - 🔧 **改用 subprocess 方式偵測 tkinterdnd2 可用性**（`utils/tkdnd_check.py`）
   - 原先直接 import 會在無 tkinterdnd2 環境下拋出未預期錯誤
@@ -72,7 +95,7 @@
 
 ### ⚠️ 重大變更
 
-- **Python 版本要求提升至 3.9+**（因 google-genai 依賴）
+- **Python 版本要求為 3.10+**
 
 ---
 

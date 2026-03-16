@@ -30,7 +30,7 @@
 目前專案正處於 provider 整理階段，開發時請先區分各層支援範圍：
 
 - 實際翻譯 runtime：`ollama`、`openai`、`google`、`llamacpp`
-- CLI `translate` / `models` 參數：`ollama`、`openai`、`anthropic`、`llamacpp`
+- CLI `translate` / `models` / `prompt` 參數：`ollama`、`openai`、`anthropic`、`google`、`llamacpp`
 - GUI provider 下拉：`ollama`、`openai`、`anthropic`、`google`、`llamacpp`
 - `ConfigManager` 對 `user.llm_type` 驗證：`ollama`、`openai`、`anthropic`、`google`、`llamacpp`
 - `ModelManager` / 模型 metadata / 金鑰載入：`ollama`、`openai`、`anthropic`、`google`、`llamacpp`
@@ -99,16 +99,19 @@ pytest -v
 export OPENAI_API_KEY="sk-test-key"
 export ANTHROPIC_API_KEY="sk-ant-test-key"
 export GOOGLE_API_KEY="test-google-key"
+# 或使用 GEMINI_API_KEY="test-google-key"
 
 # Windows PowerShell
 $env:OPENAI_API_KEY="sk-test-key"
 $env:ANTHROPIC_API_KEY="sk-ant-test-key"
 $env:GOOGLE_API_KEY="test-google-key"
+# 或使用 $env:GEMINI_API_KEY="test-google-key"
 
 # Windows CMD
 set OPENAI_API_KEY=sk-test-key
 set ANTHROPIC_API_KEY=sk-ant-test-key
 set GOOGLE_API_KEY=test-google-key
+REM 或使用 set GEMINI_API_KEY=test-google-key
 ```
 
 **方法 2：金鑰檔案**
@@ -126,7 +129,7 @@ echo "test-google-key" > google_api_key.txt
 
 > **注意**：環境變數優先於金鑰檔案。使用環境變數更安全，避免將金鑰意外提交到版本控制。
 >
-> **補充**：`anthropic` 目前已接到模型資訊與金鑰層，但尚無第一級翻譯 runtime；`google` 則已有 runtime 路徑，但尚未暴露到 CLI `--provider`。
+> **補充**：`anthropic` 目前已接到模型資訊與金鑰層，但尚無第一級翻譯 runtime；`google` 已可直接用於 CLI `translate` / `models` 與 GUI。
 
 ### VS Code 設定
 
