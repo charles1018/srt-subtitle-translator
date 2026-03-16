@@ -401,6 +401,18 @@ class TestModelService:
         service = ModelService()
         assert service.model_manager is not None
 
+    @patch.dict("os.environ", {"GOOGLE_API_KEY": "test-google-key"}, clear=True)
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.ConfigManager")
+    def test_initialization_loads_google_api_key_from_env(self, mock_config, mock_model):
+        """Test ModelService loads Google API key from environment variables."""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_model.return_value = MagicMock()
+
+        service = ModelService()
+
+        assert service.api_keys.get("google") == "test-google-key"
+
     @pytest.mark.skip(reason="ModelService.get_available_models is async")
     def test_get_available_models(self):
         """Test getting available models - skipped (async method)."""

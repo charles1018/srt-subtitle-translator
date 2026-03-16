@@ -905,27 +905,50 @@ class ModelService:
 
     def _load_api_keys(self) -> None:
         """載入各種服務的 API 金鑰"""
-        # 載入 OpenAI API 金鑰
-        try:
-            openai_key_path = get_config("app", "openai_key_path", "openapi_api_key.txt")
-            if os.path.exists(openai_key_path):
-                with open(openai_key_path, encoding="utf-8") as f:
-                    self.api_keys["openai"] = f.read().strip()
-                logger.info("已載入 OpenAI API 金鑰")
-            else:
-                logger.warning(f"OpenAI API 金鑰檔案不存在: {openai_key_path}")
-        except Exception as e:
-            logger.error(f"載入 OpenAI API 金鑰時發生錯誤: {e!s}")
+        key_configs = {
+            "openai": {
+                "env_vars": ["OPENAI_API_KEY"],
+                "config_key": "openai_key_path",
+                "default_path": "openapi_api_key.txt",
+                "warn_if_missing": True,
+            },
+            "anthropic": {
+                "env_vars": ["ANTHROPIC_API_KEY"],
+                "config_key": "anthropic_key_path",
+                "default_path": "anthropic_api_key.txt",
+                "warn_if_missing": False,
+            },
+            "google": {
+                "env_vars": ["GOOGLE_API_KEY", "GEMINI_API_KEY"],
+                "config_key": "google_key_path",
+                "default_path": "google_api_key.txt",
+                "warn_if_missing": False,
+            },
+        }
 
-        # 載入 Anthropic API 金鑰 (如果配置了)
-        try:
-            anthropic_key_path = get_config("app", "anthropic_key_path", "anthropic_api_key.txt")
-            if os.path.exists(anthropic_key_path):
-                with open(anthropic_key_path, encoding="utf-8") as f:
-                    self.api_keys["anthropic"] = f.read().strip()
-                logger.info("已載入 Anthropic API 金鑰")
-        except Exception as e:
-            logger.error(f"載入 Anthropic API 金鑰時發生錯誤: {e!s}")
+        for provider, config in key_configs.items():
+            try:
+                api_key = ""
+                for env_var in config["env_vars"]:
+                    candidate = os.environ.get(env_var, "").strip()
+                    if candidate:
+                        api_key = candidate
+                        break
+
+                if api_key:
+                    self.api_keys[provider] = api_key
+                    logger.info(f"已從環境變數載入 {provider} API 金鑰")
+                    continue
+
+                key_path = get_config("app", config["config_key"], config["default_path"])
+                if os.path.exists(key_path):
+                    with open(key_path, encoding="utf-8") as f:
+                        self.api_keys[provider] = f.read().strip()
+                    logger.info(f"已載入 {provider} API 金鑰")
+                elif config["warn_if_missing"]:
+                    logger.warning(f"{provider.capitalize()} API 金鑰檔案不存在: {key_path}")
+            except Exception as e:
+                logger.error(f"載入 {provider} API 金鑰時發生錯誤: {e!s}")
 
     async def get_translation_client(self, llm_type: str) -> TranslationClient:
         """獲取翻譯客戶端實例

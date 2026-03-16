@@ -30,6 +30,11 @@ CLI_DISPLAY_MODE_CHOICES = [
     *DISPLAY_MODE_ALIASES.keys(),
 ]
 
+CLI_TRANSLATE_PROVIDERS = ["ollama", "openai", "anthropic", "google", "llamacpp"]
+CLI_MODEL_PROVIDERS = ["ollama", "openai", "anthropic", "google", "llamacpp"]
+CLI_CONTENT_TYPES = ["general", "adult", "anime", "movie", "english_drama"]
+CLI_STYLES = ["standard", "literal", "localized", "specialized"]
+
 
 def normalize_display_mode(display_mode: str) -> str:
     """將 CLI 顯示模式別名轉換為 runtime 實際使用值。"""
@@ -40,7 +45,7 @@ def create_parser() -> argparse.ArgumentParser:
     """建立命令列參數解析器"""
     parser = argparse.ArgumentParser(
         prog="srt-translator",
-        description=("SRT 字幕翻譯工具 - CLI provider 支援 Ollama、OpenAI、Anthropic、llama.cpp"),
+        description=("SRT 字幕翻譯工具 - CLI provider 支援 Ollama、OpenAI、Anthropic、Google、llama.cpp"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 範例:
@@ -52,6 +57,9 @@ def create_parser() -> argparse.ArgumentParser:
 
   # 使用 OpenAI 翻譯
   srt-translator translate video.srt -s 日文 -t 繁體中文 --provider openai --model gpt-4o
+
+  # 使用 Google Gemini 翻譯
+  srt-translator translate video.srt -s 日文 -t 繁體中文 --provider google
 
   # 使用 llama.cpp（需先啟動 llama-server）
   srt-translator translate video.srt -s 日文 -t 繁體中文 --provider llamacpp
@@ -83,8 +91,8 @@ def create_parser() -> argparse.ArgumentParser:
   srt-translator cps-audit video.zh-TW.srt
 
 說明:
-  - CLI parser 目前接受: ollama / openai / anthropic / llamacpp
-  - translate 實際建議優先使用: ollama / openai / llamacpp
+  - CLI parser 目前接受: ollama / openai / anthropic / google / llamacpp
+  - translate 實際建議優先使用: ollama / openai / google / llamacpp
   - anthropic 目前較適合搭配 models 子命令檢視模型資訊
 """,
     )
@@ -100,10 +108,20 @@ def create_parser() -> argparse.ArgumentParser:
         "-p",
         "--provider",
         default="ollama",
-        choices=["ollama", "openai", "anthropic", "llamacpp"],
-        help="LLM 提供者（CLI 可選: ollama/openai/anthropic/llamacpp；預設: ollama）",
+        choices=CLI_TRANSLATE_PROVIDERS,
+        help="LLM 提供者（CLI 可選: ollama/openai/anthropic/google/llamacpp；預設: ollama）",
     )
     translate_parser.add_argument("-m", "--model", help="模型名稱 (未指定則使用推薦模型)")
+    translate_parser.add_argument(
+        "--content-type",
+        choices=CLI_CONTENT_TYPES,
+        help="內容類型 (如: general, anime, english_drama)",
+    )
+    translate_parser.add_argument(
+        "--style",
+        choices=CLI_STYLES,
+        help="翻譯風格 (如: standard, literal, localized, specialized)",
+    )
     translate_parser.add_argument(
         "-d",
         "--display-mode",
@@ -114,6 +132,22 @@ def create_parser() -> argparse.ArgumentParser:
     translate_parser.add_argument("-c", "--concurrency", type=int, default=3, help="並行請求數 (預設: 3)")
     translate_parser.add_argument("-o", "--output-dir", help="輸出目錄 (預設: 與輸入檔案同目錄)")
     translate_parser.add_argument("--no-cache", action="store_true", help="不使用翻譯快取")
+    netflix_group = translate_parser.add_mutually_exclusive_group()
+    netflix_group.add_argument(
+        "--netflix-style",
+        dest="netflix_style",
+        action="store_const",
+        const=True,
+        default=None,
+        help="啟用 Netflix 風格後處理",
+    )
+    netflix_group.add_argument(
+        "--no-netflix-style",
+        dest="netflix_style",
+        action="store_const",
+        const=False,
+        help="停用 Netflix 風格後處理",
+    )
     translate_parser.add_argument("-g", "--glossary", action="append", help="使用指定術語表 (可多次指定)")
     translate_parser.add_argument("-q", "--quiet", action="store_true", help="安靜模式，僅顯示錯誤")
     translate_parser.add_argument("-v", "--verbose", action="store_true", help="詳細輸出模式")
@@ -129,8 +163,8 @@ def create_parser() -> argparse.ArgumentParser:
         "-p",
         "--provider",
         default="ollama",
-        choices=["ollama", "openai", "anthropic", "llamacpp"],
-        help="LLM 提供者（列模型支援: ollama/openai/anthropic/llamacpp）",
+        choices=CLI_MODEL_PROVIDERS,
+        help="LLM 提供者（列模型支援: ollama/openai/anthropic/google/llamacpp）",
     )
 
     # cache 子命令
@@ -291,6 +325,27 @@ def print_progress(current: int, total: int, extra_data: dict | None = None) -> 
         sys.stdout.flush()
 
 
+def apply_translation_runtime_overrides(
+    translation_service,
+    content_type: str | None,
+    style: str | None,
+    netflix_style: bool | None,
+) -> None:
+    """套用僅限本次 CLI 執行的翻譯選項覆寫。"""
+    prompt_manager = getattr(translation_service, "prompt_manager", None)
+    if prompt_manager is not None:
+        if content_type:
+            prompt_manager.current_content_type = content_type
+            prompt_manager.config_manager.set_value("current_content_type", content_type, auto_save=False)
+        if style:
+            prompt_manager.current_style = style
+            prompt_manager.config_manager.set_value("current_style", style, auto_save=False)
+
+    if netflix_style is not None:
+        user_config = ConfigManager.get_instance("user")
+        user_config.set_value("netflix_style_enabled", netflix_style, auto_save=False)
+
+
 async def cmd_translate(args: argparse.Namespace) -> int:
     """執行翻譯命令"""
     # 設定日誌級別
@@ -310,6 +365,12 @@ async def cmd_translate(args: argparse.Namespace) -> int:
     # 取得服務
     translation_service = ServiceFactory.get_translation_service()
     model_service = ServiceFactory.get_model_service()
+    apply_translation_runtime_overrides(
+        translation_service,
+        args.content_type,
+        args.style,
+        args.netflix_style,
+    )
 
     # 決定模型
     model_name = args.model
