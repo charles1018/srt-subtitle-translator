@@ -7,6 +7,7 @@ import os
 import sys
 
 from srt_translator.core.config import ConfigManager
+from srt_translator.core.prompt import PromptManager
 from srt_translator.services.factory import ServiceFactory
 from srt_translator.utils import format_exception
 
@@ -32,6 +33,7 @@ CLI_DISPLAY_MODE_CHOICES = [
 
 CLI_TRANSLATE_PROVIDERS = ["ollama", "openai", "anthropic", "google", "llamacpp"]
 CLI_MODEL_PROVIDERS = ["ollama", "openai", "anthropic", "google", "llamacpp"]
+CLI_PROMPT_PROVIDERS = ["ollama", "openai", "anthropic", "google", "llamacpp"]
 CLI_CONTENT_TYPES = ["general", "adult", "anime", "movie", "english_drama"]
 CLI_STYLES = ["standard", "literal", "localized", "specialized"]
 
@@ -233,6 +235,72 @@ def create_parser() -> argparse.ArgumentParser:
 
     glossary_deactivate = glossary_subparsers.add_parser("deactivate", help="停用術語表")
     glossary_deactivate.add_argument("name", help="術語表名稱")
+
+    # prompt 子命令
+    prompt_parser = subparsers.add_parser("prompt", help="管理翻譯提示詞")
+    prompt_subparsers = prompt_parser.add_subparsers(dest="prompt_command", help="提示詞操作")
+
+    prompt_show = prompt_subparsers.add_parser("show", help="顯示指定 provider/content type 的提示詞")
+    prompt_show.add_argument(
+        "-p",
+        "--provider",
+        default="ollama",
+        choices=CLI_PROMPT_PROVIDERS,
+        help="提示詞 provider（預設: ollama）",
+    )
+    prompt_show.add_argument(
+        "--content-type",
+        choices=CLI_CONTENT_TYPES,
+        help="內容類型（未指定則使用目前 prompt 設定）",
+    )
+
+    prompt_set = prompt_subparsers.add_parser("set", help="設定指定 provider/content type 的提示詞")
+    prompt_set.add_argument(
+        "-p",
+        "--provider",
+        default="ollama",
+        choices=CLI_PROMPT_PROVIDERS,
+        help="提示詞 provider（預設: ollama）",
+    )
+    prompt_set.add_argument(
+        "--content-type",
+        choices=CLI_CONTENT_TYPES,
+        help="內容類型（未指定則使用目前 prompt 設定）",
+    )
+    prompt_set_source_group = prompt_set.add_mutually_exclusive_group(required=True)
+    prompt_set_source_group.add_argument("--text", help="直接指定提示詞文字")
+    prompt_set_source_group.add_argument("--file", help="從 UTF-8 文字檔讀取提示詞")
+
+    prompt_reset = prompt_subparsers.add_parser("reset", help="將提示詞重置為預設值")
+    prompt_reset.add_argument(
+        "-p",
+        "--provider",
+        default="ollama",
+        choices=CLI_PROMPT_PROVIDERS,
+        help="提示詞 provider（預設: ollama）",
+    )
+    prompt_reset.add_argument(
+        "--content-type",
+        choices=CLI_CONTENT_TYPES,
+        help="內容類型（未指定則使用目前 prompt 設定）",
+    )
+
+    prompt_export = prompt_subparsers.add_parser("export", help="匯出提示詞到 JSON")
+    prompt_export.add_argument(
+        "-p",
+        "--provider",
+        choices=CLI_PROMPT_PROVIDERS,
+        help="只匯出指定 provider；未指定則匯出所有支援 provider",
+    )
+    prompt_export.add_argument(
+        "--content-type",
+        choices=CLI_CONTENT_TYPES,
+        help="內容類型（未指定則使用目前 prompt 設定）",
+    )
+    prompt_export.add_argument("-o", "--output", required=True, help="輸出 JSON 路徑")
+
+    prompt_import = prompt_subparsers.add_parser("import", help="從 JSON 匯入提示詞")
+    prompt_import.add_argument("file", help="提示詞 JSON 路徑")
 
     # version 子命令
     subparsers.add_parser("version", help="顯示版本資訊")
@@ -660,6 +728,68 @@ def cmd_glossary(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_prompt(args: argparse.Namespace) -> int:
+    """管理提示詞。"""
+    prompt_manager = PromptManager.get_instance()
+
+    if args.prompt_command is None:
+        print("請指定提示詞操作，使用 --help 查看可用選項")
+        return 1
+
+    try:
+        if args.prompt_command == "show":
+            print(prompt_manager.get_prompt(args.provider, args.content_type))
+            return 0
+
+        if args.prompt_command == "set":
+            prompt_text = args.text
+            if args.file:
+                with open(args.file, encoding="utf-8") as prompt_file:
+                    prompt_text = prompt_file.read()
+
+            if prompt_text is None:
+                logger.error("未提供提示詞內容")
+                return 1
+
+            prompt_manager.set_prompt(prompt_text, args.provider, args.content_type)
+            resolved_content_type = args.content_type or prompt_manager.current_content_type
+            print(f"已更新 {resolved_content_type}/{args.provider} 提示詞")
+            return 0
+
+        if args.prompt_command == "reset":
+            if prompt_manager.reset_to_default(args.provider, args.content_type):
+                resolved_content_type = args.content_type or prompt_manager.current_content_type
+                print(f"已重置 {resolved_content_type}/{args.provider} 提示詞為預設值")
+                return 0
+            logger.error("提示詞重置失敗")
+            return 1
+
+        if args.prompt_command == "export":
+            result = prompt_manager.export_prompt(args.content_type, args.provider, file_path=args.output)
+            if result:
+                print(f"提示詞已匯出到: {result}")
+                return 0
+            logger.error("提示詞匯出失敗")
+            return 1
+
+        if args.prompt_command == "import":
+            if prompt_manager.import_prompt(args.file):
+                print(f"已匯入提示詞: {args.file}")
+                return 0
+            logger.error("提示詞匯入失敗")
+            return 1
+
+    except OSError as e:
+        logger.error(f"提示詞檔案操作失敗: {format_exception(e)}")
+        return 1
+    except Exception as e:
+        logger.error(f"提示詞操作失敗: {format_exception(e)}")
+        return 1
+
+    print("請指定有效的提示詞操作，使用 --help 查看可用選項")
+    return 1
+
+
 def cmd_version() -> int:
     """顯示版本資訊"""
     try:
@@ -816,6 +946,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_config(args)
     elif args.command == "glossary":
         return cmd_glossary(args)
+    elif args.command == "prompt":
+        return cmd_prompt(args)
     elif args.command == "version":
         return cmd_version()
     elif args.command == "extract":

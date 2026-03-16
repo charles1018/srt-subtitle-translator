@@ -224,6 +224,26 @@ class TestPromptManagerGetPrompt:
         prompt = manager.get_prompt("unknown_llm", "general")
         assert prompt is not None
 
+    def test_get_prompt_maps_google_to_openai_family_default(self, manager):
+        """測試 google 會沿用 openai 家族的預設 prompt。"""
+        google_prompt = manager.get_prompt("google", "general")
+        openai_prompt = manager.get_prompt("openai", "general")
+
+        assert google_prompt == openai_prompt
+
+    def test_get_prompt_maps_llamacpp_to_ollama_family_default(self, manager):
+        """測試 llamacpp 會沿用 ollama 家族的預設 prompt。"""
+        llamacpp_prompt = manager.get_prompt("llamacpp", "general")
+        ollama_prompt = manager.get_prompt("ollama", "general")
+
+        assert llamacpp_prompt == ollama_prompt
+
+    def test_get_prompt_applies_style_modifier_to_google(self, manager):
+        """測試 google 也會套用 openai 家族的風格修飾。"""
+        prompt = manager.get_prompt("google", "general", "localized")
+
+        assert "Taiwan expressions and references" in prompt
+
 
 class TestPromptManagerSetPrompt:
     """測試提示詞設置功能"""
@@ -768,6 +788,15 @@ class TestPromptManagerReset:
         assert "Custom Ollama" not in ollama_prompt
         assert "Custom OpenAI" not in openai_prompt
 
+    def test_reset_to_default_google_uses_openai_family_prompt(self, manager):
+        """測試 google reset 會回到與 openai 對齊的預設 prompt。"""
+        manager.set_prompt("Custom Google", "google", "general")
+
+        result = manager.reset_to_default("google", "general")
+
+        assert result is True
+        assert manager.get_prompt("google", "general") == manager.get_prompt("openai", "general")
+
 
 class TestPromptManagerConfigListener:
     """測試配置監聽器"""
@@ -899,6 +928,44 @@ class TestPromptManagerFileOperations:
 
         # 恢復原始路徑
         manager.templates_dir = original_dir
+
+    def test_export_prompt_includes_gui_visible_providers(self, manager, temp_dir):
+        """測試匯出會包含 GUI/CLI 可見的所有 provider。"""
+        export_path = temp_dir / "prompt_export.json"
+
+        result = manager.export_prompt("general", file_path=str(export_path))
+
+        assert result == str(export_path)
+        export_data = json.loads(export_path.read_text(encoding="utf-8"))
+        assert {"ollama", "openai", "anthropic", "google", "llamacpp"} <= set(export_data["prompts"])
+
+    def test_import_prompt_accepts_google_and_llamacpp(self, manager, temp_dir):
+        """測試匯入會接受 google 與 llamacpp provider。"""
+        import_path = temp_dir / "prompt_import.json"
+        import_path.write_text(
+            json.dumps(
+                {
+                    "metadata": {
+                        "exported_at": datetime.now().isoformat(),
+                        "content_type": "anime",
+                        "version": "1.0",
+                    },
+                    "prompts": {
+                        "google": "Custom Google prompt",
+                        "llamacpp": "Custom llama.cpp prompt",
+                    },
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
+        result = manager.import_prompt(str(import_path))
+
+        assert result is True
+        assert manager.custom_prompts["anime"]["google"] == "Custom Google prompt"
+        assert manager.custom_prompts["anime"]["llamacpp"] == "Custom llama.cpp prompt"
 
 
 class TestPromptManagerEdgeCases:
@@ -1050,12 +1117,8 @@ class TestPromptWorkbenchEnhancements:
         for content_type in ["general", "adult", "anime", "movie", "english_drama"]:
             for llm_type in ["ollama", "openai"]:
                 prompt = manager.get_prompt(llm_type, content_type)
-                assert "Filler Word" in prompt, (
-                    f"Missing filler word instruction in {content_type}/{llm_type}"
-                )
-                assert "Dynamic Equivalency" in prompt, (
-                    f"Missing dynamic equivalency in {content_type}/{llm_type}"
-                )
+                assert "Filler Word" in prompt, f"Missing filler word instruction in {content_type}/{llm_type}"
+                assert "Dynamic Equivalency" in prompt, f"Missing dynamic equivalency in {content_type}/{llm_type}"
 
     def test_netflix_rules_still_present(self, manager):
         """既有 Netflix 規則未被破壞"""

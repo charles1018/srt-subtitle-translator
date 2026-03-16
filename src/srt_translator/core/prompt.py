@@ -15,6 +15,13 @@ from srt_translator.utils import format_exception
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+PROMPT_PROVIDER_FALLBACKS = {
+    "anthropic": "openai",
+    "google": "openai",
+    "llamacpp": "ollama",
+}
+SUPPORTED_PROMPT_LLM_TYPES = ["ollama", "openai", "anthropic", "google", "llamacpp"]
+
 # 確保日誌目錄存在
 os.makedirs("logs", exist_ok=True)
 
@@ -655,9 +662,7 @@ Each input line maps to exactly one output line — no exceptions.
         tokens = [token for token in re.split(r"[^a-z0-9]+", normalized) if token]
         return "ud" in tokens
 
-    def _should_use_qwen35_ud_adult_prompt(
-        self, llm_type: str, content_type: str, model_name: str | None
-    ) -> bool:
+    def _should_use_qwen35_ud_adult_prompt(self, llm_type: str, content_type: str, model_name: str | None) -> bool:
         """判斷是否應使用 qwen3.5-ud 的成人字幕特化 prompt"""
         return llm_type in {"ollama", "llamacpp"} and content_type == "adult" and self._is_qwen35_ud_model(model_name)
 
@@ -677,6 +682,20 @@ Rules:
 9. Keep Japanese personal names and nicknames in their original Japanese form. Do not translate or romanize names into Chinese characters.
 10. Use concise Taiwan Traditional Chinese suitable for spoken subtitles.
 """.strip()
+
+    def _resolve_default_prompt_llm_type(self, llm_type: str) -> str:
+        """將 runtime/provider 名稱對齊到 prompt 模板實際維護的 key。"""
+        return PROMPT_PROVIDER_FALLBACKS.get(llm_type, llm_type)
+
+    def _get_default_prompt_text(self, content_type: str, llm_type: str) -> str:
+        """取得 provider 對應的預設 prompt，必要時回退到相近家族。"""
+        resolved_content_type = content_type if content_type in self.default_prompts else "general"
+        prompt_group = self.default_prompts.get(resolved_content_type, self.default_prompts["general"])
+        resolved_llm_type = self._resolve_default_prompt_llm_type(llm_type)
+
+        return prompt_group.get(resolved_llm_type) or self.default_prompts["general"].get(
+            resolved_llm_type, self.default_prompts["general"]["ollama"]
+        )
 
     def _get_message_strategy_signature(
         self,
@@ -736,9 +755,7 @@ Rules:
         if not self._should_use_qwen35_ud_adult_prompt(llm_type, content_type, model_name):
             return context_texts
 
-        context_before, context_after, resolved_index = self._split_context_texts(
-            text, context_texts, current_index
-        )
+        context_before, context_after, resolved_index = self._split_context_texts(text, context_texts, current_index)
         if resolved_index is None:
             return context_texts
 
@@ -850,9 +867,7 @@ Rules:
 
         compact_text = re.sub(r"\s+", "", text)
         should_drop_context = (
-            "\n" not in text
-            and len(compact_text) <= 24
-            and self._contains_qwen35_ud_adult_action_markers(compact_text)
+            "\n" not in text and len(compact_text) <= 24 and self._contains_qwen35_ud_adult_action_markers(compact_text)
         )
 
         if should_drop_context:
@@ -902,12 +917,7 @@ Rules:
         elif self._should_use_qwen35_ud_adult_prompt(llm_type, content_type, model_name):
             prompt = self._get_qwen35_ud_adult_prompt()
         else:
-            # 使用預設提示詞
-            if content_type in self.default_prompts and llm_type in self.default_prompts[content_type]:
-                prompt = self.default_prompts[content_type][llm_type]
-            else:
-                # 回退到通用提示詞
-                prompt = self.default_prompts["general"].get(llm_type, self.default_prompts["general"]["ollama"])
+            prompt = self._get_default_prompt_text(content_type, llm_type)
 
         # 套用風格修飾符（如果不是標準風格）
         if style != "standard":
@@ -972,9 +982,7 @@ Rules:
         context_before = []
         context_after = []
 
-        context_before, context_after, resolved_index = self._split_context_texts(
-            text, context_texts, current_index
-        )
+        context_before, context_after, resolved_index = self._split_context_texts(text, context_texts, current_index)
         if resolved_index is None:
             # 如果找不到當前文本（極少數情況），使用原有方式
             logger.warning("無法在上下文中找到當前文本，使用舊格式")
@@ -1078,8 +1086,10 @@ Rules:
             },
         }
 
-        if style in style_modifiers and llm_type in style_modifiers[style]:
-            modifier = style_modifiers[style][llm_type]
+        resolved_llm_type = self._resolve_default_prompt_llm_type(llm_type)
+
+        if style in style_modifiers and resolved_llm_type in style_modifiers[style]:
+            modifier = style_modifiers[style][resolved_llm_type]
             # 在提示詞結尾添加風格修飾符
             return f"{prompt}\n\nAdditional instruction: {modifier}"
 
@@ -1272,20 +1282,20 @@ Rules:
             是否重置成功
         """
         content_type = content_type or self.current_content_type
+        if content_type not in self.default_prompts:
+            return False
 
         if llm_type:
-            # 重置特定 LLM 類型的提示詞
-            if content_type in self.default_prompts and llm_type in self.default_prompts[content_type]:
-                self.set_prompt(self.default_prompts[content_type][llm_type], llm_type, content_type)
-                logger.info(f"已重置 '{content_type}' 類型的 '{llm_type}' 提示詞為預設值")
-                return True
+            default_prompt = self._get_default_prompt_text(content_type, llm_type)
+            self.set_prompt(default_prompt, llm_type, content_type)
+            logger.info(f"已重置 '{content_type}' 類型的 '{llm_type}' 提示詞為預設值")
+            return True
         else:
             # 重置所有 LLM 類型的提示詞
             success = True
-            for llm in ["ollama", "openai"]:
-                if content_type in self.default_prompts and llm in self.default_prompts[content_type]:
-                    result = self.set_prompt(self.default_prompts[content_type][llm], llm, content_type)
-                    success = success and result
+            for llm in SUPPORTED_PROMPT_LLM_TYPES:
+                result = self.set_prompt(self._get_default_prompt_text(content_type, llm), llm, content_type)
+                success = success and result
             logger.info(f"已重置 '{content_type}' 類型的所有提示詞為預設值")
             return success
 
@@ -1363,7 +1373,9 @@ Rules:
         """
         return list(self.language_pairs.keys())
 
-    def export_prompt(self, content_type: str | None = None, llm_type: str | None = None, file_path: str | None = None) -> str | None:
+    def export_prompt(
+        self, content_type: str | None = None, llm_type: str | None = None, file_path: str | None = None
+    ) -> str | None:
         """匯出提示詞至檔案
 
                 參數:
@@ -1387,16 +1399,14 @@ Rules:
             if content_type in self.custom_prompts and llm_type in self.custom_prompts[content_type]:
                 export_data["prompts"][llm_type] = self.custom_prompts[content_type][llm_type]
             else:
-                # 使用預設提示詞
-                export_data["prompts"][llm_type] = self.default_prompts[content_type].get(llm_type, "")
+                export_data["prompts"][llm_type] = self._get_default_prompt_text(content_type, llm_type)
         else:
             # 匯出所有 LLM 的提示詞
-            for llm in ["ollama", "openai"]:
+            for llm in SUPPORTED_PROMPT_LLM_TYPES:
                 if content_type in self.custom_prompts and llm in self.custom_prompts[content_type]:
                     export_data["prompts"][llm] = self.custom_prompts[content_type][llm]
                 else:
-                    # 使用預設提示詞
-                    export_data["prompts"][llm] = self.default_prompts[content_type].get(llm, "")
+                    export_data["prompts"][llm] = self._get_default_prompt_text(content_type, llm)
 
         # 生成輸出檔案路徑
         if not file_path:
@@ -1442,7 +1452,7 @@ Rules:
 
             # 匯入提示詞
             for llm_type, prompt in import_data["prompts"].items():
-                if llm_type not in ["ollama", "openai"]:
+                if llm_type not in SUPPORTED_PROMPT_LLM_TYPES:
                     logger.warning(f"跳過不支援的LLM類型: {llm_type}")
                     continue
                 self.set_prompt(prompt, llm_type, content_type)
