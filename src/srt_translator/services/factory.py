@@ -207,6 +207,7 @@ class TranslationService:
         llm_type: str,
         model_name: str,
         current_index: int | None = None,
+        use_cache: bool = True,
     ) -> str:
         """翻譯單一文本
 
@@ -237,22 +238,23 @@ class TranslationService:
         )
 
         # 檢查快取
-        cached_result = self.cache_service.get_translation(
-            text,
-            effective_context,
-            model_name,
-            current_style,
-            prompt_version,
-            current_index=current_index,
-            lookup_source="translation_service_precheck",
-        )
-        if cached_result:
-            cache_rejection_reason = TranslationClient.get_cache_rejection_reason(text, cached_result)
-            if cache_rejection_reason is None:
-                self._incr_stat("cached_translations")
-                return cached_result
+        if use_cache:
+            cached_result = self.cache_service.get_translation(
+                text,
+                effective_context,
+                model_name,
+                current_style,
+                prompt_version,
+                current_index=current_index,
+                lookup_source="translation_service_precheck",
+            )
+            if cached_result:
+                cache_rejection_reason = TranslationClient.get_cache_rejection_reason(text, cached_result)
+                if cache_rejection_reason is None:
+                    self._incr_stat("cached_translations")
+                    return cached_result
 
-            logger.info("翻譯服務忽略不合格快取結果 (%s): %s", cache_rejection_reason, text)
+                logger.info("翻譯服務忽略不合格快取結果 (%s): %s", cache_rejection_reason, text)
 
         start_time = time.time()
 
@@ -267,13 +269,23 @@ class TranslationService:
 
             # 使用客戶端執行翻譯
             if hasattr(client, "translate_with_retry"):
-                translation = await client.translate_with_retry(
-                    text, context_texts, model_name, current_index=current_index
-                )
+                if use_cache:
+                    translation = await client.translate_with_retry(
+                        text, context_texts, model_name, current_index=current_index
+                    )
+                else:
+                    translation = await client.translate_with_retry(
+                        text, context_texts, model_name, current_index=current_index, use_cache=False
+                    )
             else:
-                translation = await client.translate_text(
-                    text, context_texts, model_name, current_index=current_index
-                )
+                if use_cache:
+                    translation = await client.translate_text(
+                        text, context_texts, model_name, current_index=current_index
+                    )
+                else:
+                    translation = await client.translate_text(
+                        text, context_texts, model_name, current_index=current_index, use_cache=False
+                    )
 
             if translation and translation.startswith("[翻譯錯誤"):
                 return translation
@@ -283,7 +295,7 @@ class TranslationService:
 
             # 儲存到快取（包含風格和提示詞版本）
             cache_rejection_reason = TranslationClient.get_cache_rejection_reason(text, translation)
-            if cache_rejection_reason is None:
+            if use_cache and cache_rejection_reason is None:
                 self.cache_service.store_translation(
                     text,
                     translation,
@@ -294,7 +306,7 @@ class TranslationService:
                     current_index=current_index,
                     lookup_source="translation_service_store",
                 )
-            else:
+            elif cache_rejection_reason is not None:
                 logger.info("翻譯服務略過儲存不合格翻譯至快取 (%s): %s", cache_rejection_reason, text)
 
             # 更新統計資料
@@ -315,6 +327,7 @@ class TranslationService:
         model_name: str,
         concurrent_limit: int = 5,
         current_indices: list[int | None] | None = None,
+        use_cache: bool = True,
     ) -> list[str]:
         """批量翻譯多個文本
 
@@ -342,12 +355,21 @@ class TranslationService:
         # 檢查客戶端是否支持批量翻譯
         if hasattr(client, "translate_batch"):
             # 使用原生批量翻譯功能
-            batch_results = await client.translate_batch(
-                texts_with_context,
-                model_name,
-                concurrent_limit=concurrent_limit,
-                current_indices=current_indices,
-            )
+            if use_cache:
+                batch_results = await client.translate_batch(
+                    texts_with_context,
+                    model_name,
+                    concurrent_limit=concurrent_limit,
+                    current_indices=current_indices,
+                )
+            else:
+                batch_results = await client.translate_batch(
+                    texts_with_context,
+                    model_name,
+                    concurrent_limit=concurrent_limit,
+                    current_indices=current_indices,
+                    use_cache=False,
+                )
 
             # 對每個結果進行後處理
             for i, (text, _) in enumerate(texts_with_context):
@@ -366,7 +388,7 @@ class TranslationService:
             async def process_item(idx, text, context, current_index):
                 async with semaphore:
                     translation = await self.translate_text(
-                        text, context, llm_type, model_name, current_index=current_index
+                        text, context, llm_type, model_name, current_index=current_index, use_cache=use_cache
                     )
                     return idx, translation
 
@@ -408,6 +430,7 @@ class TranslationService:
         progress_callback: Callable | None = None,
         complete_callback: Callable | None = None,
         use_structure_text: bool = False,
+        use_cache: bool = True,
     ) -> tuple[bool, str]:
         """翻譯字幕檔案
 
@@ -501,6 +524,7 @@ class TranslationService:
                         model_name,
                         parallel_requests,
                         current_indices=current_indices,
+                        use_cache=use_cache,
                     )
 
                 # 應用翻譯結果
@@ -628,14 +652,13 @@ class TranslationService:
                     f"[BATCH: {expected_count} lines — translate each line, "
                     f"output exactly {expected_count} lines]\n{batch_string}"
                 )
-                translation = await self.translate_text(
-                    prefixed_text, [batch_instruction], llm_type, model_name
-                )
+                translation = await self.translate_text(prefixed_text, [batch_instruction], llm_type, model_name)
 
                 if not translation or "[翻譯錯誤" in translation:
                     logger.warning(
                         "結構-文本分離: 批次翻譯回傳錯誤 (attempt %d/%d)",
-                        attempt + 1, max_retries,
+                        attempt + 1,
+                        max_retries,
                     )
                     continue
 
@@ -651,7 +674,9 @@ class TranslationService:
             except Exception as e:
                 logger.warning(
                     "結構-文本分離: attempt %d/%d 失敗: %s",
-                    attempt + 1, max_retries, e,
+                    attempt + 1,
+                    max_retries,
+                    e,
                 )
 
         # 退回到標準逐條翻譯

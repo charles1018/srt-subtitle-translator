@@ -1,7 +1,7 @@
 """Tests for translation/client.py module."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
@@ -94,9 +94,7 @@ class TestAdaptiveConcurrencyController:
 
     def test_initialization(self):
         """Test controller initialization."""
-        controller = AdaptiveConcurrencyController(
-            initial=5, min_concurrent=2, max_concurrent=15
-        )
+        controller = AdaptiveConcurrencyController(initial=5, min_concurrent=2, max_concurrent=15)
         assert controller.current == 5
         assert controller.min == 2
         assert controller.max == 15
@@ -110,9 +108,7 @@ class TestAdaptiveConcurrencyController:
     @pytest.mark.asyncio
     async def test_update_increases_concurrency_for_fast_response(self):
         """Test concurrency increases for fast API response."""
-        controller = AdaptiveConcurrencyController(
-            initial=3, min_concurrent=2, max_concurrent=10
-        )
+        controller = AdaptiveConcurrencyController(initial=3, min_concurrent=2, max_concurrent=10)
         # Set a very low average response time to trigger increase
         controller.avg_response_time = 0.1
 
@@ -125,9 +121,7 @@ class TestAdaptiveConcurrencyController:
     @pytest.mark.asyncio
     async def test_update_decreases_concurrency_for_slow_response(self):
         """Test concurrency decreases for slow API response."""
-        controller = AdaptiveConcurrencyController(
-            initial=5, min_concurrent=2, max_concurrent=10
-        )
+        controller = AdaptiveConcurrencyController(initial=5, min_concurrent=2, max_concurrent=10)
         # Set a high average response time
         controller.avg_response_time = 2.0
 
@@ -140,9 +134,7 @@ class TestAdaptiveConcurrencyController:
     @pytest.mark.asyncio
     async def test_update_respects_max_limit(self):
         """Test concurrency doesn't exceed max limit."""
-        controller = AdaptiveConcurrencyController(
-            initial=10, min_concurrent=2, max_concurrent=10
-        )
+        controller = AdaptiveConcurrencyController(initial=10, min_concurrent=2, max_concurrent=10)
         controller.avg_response_time = 0.1
 
         await controller.update(0.1)
@@ -151,9 +143,7 @@ class TestAdaptiveConcurrencyController:
     @pytest.mark.asyncio
     async def test_update_respects_min_limit(self):
         """Test concurrency doesn't go below min limit."""
-        controller = AdaptiveConcurrencyController(
-            initial=2, min_concurrent=2, max_concurrent=10
-        )
+        controller = AdaptiveConcurrencyController(initial=2, min_concurrent=2, max_concurrent=10)
         controller.avg_response_time = 3.0
 
         await controller.update(3.0)
@@ -162,9 +152,7 @@ class TestAdaptiveConcurrencyController:
     @pytest.mark.asyncio
     async def test_get_stats(self):
         """Test get_stats returns correct statistics."""
-        controller = AdaptiveConcurrencyController(
-            initial=5, min_concurrent=2, max_concurrent=10
-        )
+        controller = AdaptiveConcurrencyController(initial=5, min_concurrent=2, max_concurrent=10)
         await controller.update(0.8)
 
         stats = await controller.get_stats()
@@ -414,9 +402,7 @@ class TestTranslationClientHelpers:
     def test_detect_ollama_model_family_qwen35_custom_name(self, mock_prompt, mock_cache):
         """Test Qwen3.5 family detection for custom Ollama model names."""
         client = TranslationClient(llm_type="ollama")
-        family = client._detect_ollama_model_family(
-            "HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0"
-        )
+        family = client._detect_ollama_model_family("HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0")
         assert family == "qwen3.5"
 
     @patch("srt_translator.translation.client.CacheManager")
@@ -462,9 +448,7 @@ class TestTranslationClientHelpers:
         """Test Qwen3.5 uses the specialized llama.cpp profile."""
         client = TranslationClient(llm_type="ollama")
 
-        profile = client._get_llamacpp_model_profile(
-            "HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0"
-        )
+        profile = client._get_llamacpp_model_profile("HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0")
 
         assert profile["family"] == "qwen3.5"
         assert profile["options"]["temperature"] == 1.0
@@ -546,9 +530,7 @@ class TestTranslationClientHelpers:
         """Test extracting translation when reasoning text leaks before JSON."""
         client = TranslationClient(llm_type="ollama")
 
-        result = client._extract_llamacpp_structured_translation(
-            '一些推理文字\n{"translation":"翻譯結果"}'
-        )
+        result = client._extract_llamacpp_structured_translation('一些推理文字\n{"translation":"翻譯結果"}')
 
         assert result == "翻譯結果"
 
@@ -558,9 +540,7 @@ class TestTranslationClientHelpers:
         """Test extracting translation when think tags appear before JSON."""
         client = TranslationClient(llm_type="ollama")
 
-        result = client._extract_llamacpp_structured_translation(
-            '<think>思考中...</think>\n{"translation":"翻譯結果"}'
-        )
+        result = client._extract_llamacpp_structured_translation('<think>思考中...</think>\n{"translation":"翻譯結果"}')
 
         assert result == "翻譯結果"
 
@@ -584,9 +564,7 @@ class TestTranslationClientHelpers:
     @patch("srt_translator.translation.client.PromptManager")
     @patch("srt_translator.translation.client.AsyncOpenAI")
     @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
-    async def test_get_effective_batch_size_limits_llamacpp_to_server_slots(
-        self, mock_openai, mock_prompt, mock_cache
-    ):
+    async def test_get_effective_batch_size_limits_llamacpp_to_server_slots(self, mock_openai, mock_prompt, mock_cache):
         """Test llama.cpp batch concurrency respects detected server slot count."""
         client = TranslationClient(llm_type="llamacpp", base_url="http://localhost:8080")
         client._get_llamacpp_server_diagnostics = AsyncMock(  # type: ignore[method-assign]
@@ -607,9 +585,7 @@ class TestTranslationClientHelpers:
     @patch("srt_translator.translation.client.PromptManager")
     @patch("srt_translator.translation.client.AsyncOpenAI")
     @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
-    async def test_get_effective_batch_size_qwen35_ud_respects_server_slots(
-        self, mock_openai, mock_prompt, mock_cache
-    ):
+    async def test_get_effective_batch_size_qwen35_ud_respects_server_slots(self, mock_openai, mock_prompt, mock_cache):
         """Test qwen3.5-ud llamacpp concurrency is capped by server slots, not hard-coded to 1."""
         client = TranslationClient(llm_type="llamacpp", base_url="http://localhost:8080")
         client._get_llamacpp_server_diagnostics = AsyncMock(  # type: ignore[method-assign]
@@ -630,9 +606,7 @@ class TestTranslationClientHelpers:
     @patch("srt_translator.translation.client.PromptManager")
     @patch("srt_translator.translation.client.AsyncOpenAI")
     @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
-    async def test_get_effective_batch_size_fallback_when_diagnostics_fail(
-        self, mock_openai, mock_prompt, mock_cache
-    ):
+    async def test_get_effective_batch_size_fallback_when_diagnostics_fail(self, mock_openai, mock_prompt, mock_cache):
         """Test conservative fallback when server diagnostics cannot determine total_slots."""
         client = TranslationClient(llm_type="llamacpp", base_url="http://localhost:8080")
         client._get_llamacpp_server_diagnostics = AsyncMock(  # type: ignore[method-assign]
@@ -654,9 +628,7 @@ class TestTranslationClientHelpers:
         """Test custom Qwen3.5 model names can reuse family-based fallback config."""
         client = TranslationClient(llm_type="ollama")
 
-        fallback_models = client._get_fallback_models(
-            "HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0"
-        )
+        fallback_models = client._get_fallback_models("HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0")
 
         assert fallback_models == ["qwen3", "llama3.2", "gemma3"]
 
@@ -786,9 +758,7 @@ class TestTranslationClientApiKeyValidation:
     @patch("srt_translator.translation.client.PromptManager")
     @patch("srt_translator.translation.client.AsyncOpenAI")
     @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
-    def test_validate_openai_api_key_valid_legacy(
-        self, mock_openai, mock_prompt, mock_cache
-    ):
+    def test_validate_openai_api_key_valid_legacy(self, mock_openai, mock_prompt, mock_cache):
         """Test validation of valid legacy API key."""
         client = TranslationClient(llm_type="openai", api_key="sk-test")
         # Legacy key format: sk-... with ~51 characters
@@ -799,9 +769,7 @@ class TestTranslationClientApiKeyValidation:
     @patch("srt_translator.translation.client.PromptManager")
     @patch("srt_translator.translation.client.AsyncOpenAI")
     @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
-    def test_validate_openai_api_key_valid_project(
-        self, mock_openai, mock_prompt, mock_cache
-    ):
+    def test_validate_openai_api_key_valid_project(self, mock_openai, mock_prompt, mock_cache):
         """Test validation of valid project API key."""
         client = TranslationClient(llm_type="openai", api_key="sk-test")
         # Project key format: sk-proj-...
@@ -812,9 +780,7 @@ class TestTranslationClientApiKeyValidation:
     @patch("srt_translator.translation.client.PromptManager")
     @patch("srt_translator.translation.client.AsyncOpenAI")
     @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
-    def test_validate_openai_api_key_invalid_empty(
-        self, mock_openai, mock_prompt, mock_cache
-    ):
+    def test_validate_openai_api_key_invalid_empty(self, mock_openai, mock_prompt, mock_cache):
         """Test validation of empty API key."""
         client = TranslationClient(llm_type="openai", api_key="sk-test")
         assert client._validate_openai_api_key("") is False
@@ -824,9 +790,7 @@ class TestTranslationClientApiKeyValidation:
     @patch("srt_translator.translation.client.PromptManager")
     @patch("srt_translator.translation.client.AsyncOpenAI")
     @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
-    def test_validate_openai_api_key_invalid_prefix(
-        self, mock_openai, mock_prompt, mock_cache
-    ):
+    def test_validate_openai_api_key_invalid_prefix(self, mock_openai, mock_prompt, mock_cache):
         """Test validation of key with wrong prefix."""
         client = TranslationClient(llm_type="openai", api_key="sk-test")
         assert client._validate_openai_api_key("invalid-key") is False
@@ -835,9 +799,7 @@ class TestTranslationClientApiKeyValidation:
     @patch("srt_translator.translation.client.PromptManager")
     @patch("srt_translator.translation.client.AsyncOpenAI")
     @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
-    def test_validate_openai_api_key_invalid_characters(
-        self, mock_openai, mock_prompt, mock_cache
-    ):
+    def test_validate_openai_api_key_invalid_characters(self, mock_openai, mock_prompt, mock_cache):
         """Test validation of key with invalid characters."""
         client = TranslationClient(llm_type="openai", api_key="sk-test")
         assert client._validate_openai_api_key("sk-test key with spaces") is False
@@ -994,7 +956,9 @@ class TestTranslationClientAsync:
         mock_prompt_instance.current_style = "standard"
         mock_prompt_instance.current_content_type = "adult"
         mock_prompt_instance.get_prompt_version.return_value = "qwen35udv3"
-        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CACHE_MODE]qwen35_ud_short_utterance_v1"]
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = [
+            "[CACHE_MODE]qwen35_ud_short_utterance_v1"
+        ]
         mock_prompt_instance.get_optimized_message.return_value = [{"role": "user", "content": "protected"}]
         mock_prompt.return_value = mock_prompt_instance
 
@@ -1047,7 +1011,9 @@ class TestTranslationClientAsync:
         mock_prompt_instance.current_style = "standard"
         mock_prompt_instance.current_content_type = "adult"
         mock_prompt_instance.get_prompt_version.return_value = "qwen35udv3"
-        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CACHE_MODE]qwen35_ud_short_utterance_v1"]
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = [
+            "[CACHE_MODE]qwen35_ud_short_utterance_v1"
+        ]
         mock_prompt_instance.get_optimized_message.return_value = [{"role": "user", "content": "protected"}]
         mock_prompt.return_value = mock_prompt_instance
 
@@ -1168,9 +1134,7 @@ class TestTranslationClientAsync:
     @patch("srt_translator.translation.client.PromptManager")
     @patch("srt_translator.translation.client.AsyncOpenAI")
     @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
-    async def test_translate_with_llamacpp_qwen35_payload(
-        self, mock_openai_cls, mock_prompt, mock_cache
-    ):
+    async def test_translate_with_llamacpp_qwen35_payload(self, mock_openai_cls, mock_prompt, mock_cache):
         """Test Qwen3.5 llama.cpp request payload disables thinking explicitly."""
         mock_cache_instance = MagicMock()
         mock_cache.return_value = mock_cache_instance
@@ -1276,6 +1240,32 @@ class TestTranslationClientAsync:
     @pytest.mark.asyncio
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    async def test_translate_text_skips_cache_when_disabled(self, mock_prompt, mock_cache):
+        """Test use_cache=False bypasses client-level cache lookup and storage."""
+        mock_cache_instance = MagicMock()
+        mock_cache.return_value = mock_cache_instance
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.current_content_type = "general"
+        mock_prompt_instance.get_prompt_version.return_value = "nocachev1"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CURRENT_INDEX]0", "Hello"]
+        mock_prompt_instance.get_optimized_message.return_value = [{"role": "user", "content": "Hello"}]
+        mock_prompt.return_value = mock_prompt_instance
+
+        client = TranslationClient(llm_type="ollama")
+        client._translate_with_ollama = AsyncMock(return_value="新翻譯")
+
+        result = await client.translate_text("Hello", [], "llama3", use_cache=False)
+
+        assert result == "新翻譯"
+        mock_cache_instance.get_cached_translation.assert_not_called()
+        mock_cache_instance.store_translation.assert_not_called()
+        client._translate_with_ollama.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     async def test_translate_batch_empty(self, mock_prompt, mock_cache):
         """Test batch translation with empty list."""
         mock_cache_instance = MagicMock()
@@ -1360,6 +1350,34 @@ class TestTranslationClientAsync:
             "qwen35udv3",
             current_index=3,
             lookup_source="translation_client_batch_precheck",
+        )
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    async def test_translate_batch_skips_cache_when_disabled(self, mock_prompt, mock_cache):
+        """Test batch translation bypasses cache precheck when use_cache=False."""
+        mock_cache_instance = MagicMock()
+        mock_cache.return_value = mock_cache_instance
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.get_prompt_version.return_value = "nocache-batch-v1"
+        mock_prompt.return_value = mock_prompt_instance
+
+        client = TranslationClient(llm_type="ollama")
+        client.translate_with_retry = AsyncMock(side_effect=["甲", "乙"])
+        client._get_effective_batch_size = AsyncMock(return_value=2)
+
+        result = await client.translate_batch([("Hello", []), ("World", [])], "llama3", use_cache=False)
+
+        assert result == ["甲", "乙"]
+        mock_cache_instance.get_cached_translation.assert_not_called()
+        client.translate_with_retry.assert_has_awaits(
+            [
+                call("Hello", [], "llama3", current_index=None, use_cache=False),
+                call("World", [], "llama3", current_index=None, use_cache=False),
+            ]
         )
 
     @pytest.mark.asyncio
@@ -1452,9 +1470,7 @@ class TestTranslationClientApiAvailability:
     @patch("srt_translator.translation.client.PromptManager")
     @patch("srt_translator.translation.client.AsyncOpenAI")
     @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
-    async def test_is_api_available_openai_no_key(
-        self, mock_openai, mock_prompt, mock_cache
-    ):
+    async def test_is_api_available_openai_no_key(self, mock_openai, mock_prompt, mock_cache):
         """Test OpenAI API availability with no API key."""
         mock_cache_instance = MagicMock()
         mock_cache.return_value = mock_cache_instance
@@ -1468,9 +1484,7 @@ class TestTranslationClientApiAvailability:
     @patch("srt_translator.translation.client.PromptManager")
     @patch("srt_translator.translation.client.AsyncOpenAI")
     @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
-    async def test_is_api_available_llamacpp_success(
-        self, mock_openai, mock_prompt, mock_cache
-    ):
+    async def test_is_api_available_llamacpp_success(self, mock_openai, mock_prompt, mock_cache):
         """Test llama.cpp availability check delegates to server diagnostics."""
         client = TranslationClient(llm_type="llamacpp", base_url="http://localhost:8080")
         client._get_llamacpp_server_diagnostics = AsyncMock(  # type: ignore[method-assign]

@@ -848,9 +848,7 @@ class TranslationClient:
         """判斷翻譯結果是否適合寫入或直接讀取快取。"""
         return cls.get_cache_rejection_reason(source_text, translated_text) is None
 
-    def _build_untranslated_japanese_retry_messages(
-        self, messages: list[dict[str, str]]
-    ) -> list[dict[str, str]]:
+    def _build_untranslated_japanese_retry_messages(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
         """建立日文未翻譯時的單次強化重試訊息。"""
         retry_messages = [dict(message) for message in messages]
 
@@ -992,8 +990,7 @@ class TranslationClient:
             limited_batch_size = min(batch_size, fallback)
             if limited_batch_size != batch_size:
                 logger.warning(
-                    f"llama.cpp server 診斷未取得 total_slots，"
-                    f"使用安全預設值 {fallback}，原始計算值: {batch_size}"
+                    f"llama.cpp server 診斷未取得 total_slots，使用安全預設值 {fallback}，原始計算值: {batch_size}"
                 )
             batch_size = limited_batch_size
 
@@ -1302,6 +1299,7 @@ class TranslationClient:
         max_tries: int = 3,
         use_fallback: bool = True,
         current_index: int | None = None,
+        use_cache: bool = True,
     ) -> str:
         """使用自定義重試和回退策略翻譯文字"""
         original_model = model_name
@@ -1311,7 +1309,16 @@ class TranslationClient:
         while tries < max_tries:
             tries += 1
             try:
-                result = await self.translate_text(text, context_texts, model_name, current_index=current_index)
+                if use_cache:
+                    result = await self.translate_text(text, context_texts, model_name, current_index=current_index)
+                else:
+                    result = await self.translate_text(
+                        text,
+                        context_texts,
+                        model_name,
+                        current_index=current_index,
+                        use_cache=False,
+                    )
 
                 # 成功後，如果使用了回退模型，記錄
                 if model_name != original_model:
@@ -1359,7 +1366,12 @@ class TranslationClient:
         return f"[翻譯錯誤: {error_summary}]"
 
     async def translate_text(
-        self, text: str, context_texts: list[str], model_name: str, current_index: int | None = None
+        self,
+        text: str,
+        context_texts: list[str],
+        model_name: str,
+        current_index: int | None = None,
+        use_cache: bool = True,
     ) -> str:
         """翻譯文字，根據 LLM 類型選擇不同的處理方式"""
         if not text.strip():
@@ -1377,23 +1389,24 @@ class TranslationClient:
         )
 
         # 首先嘗試從快取獲取，這步很快不需要非同步
-        cached_result = self.cache_manager.get_cached_translation(
-            text,
-            effective_context,
-            model_name,
-            current_style,
-            prompt_version,
-            current_index=current_index,
-            lookup_source="translation_client",
-        )
-        if cached_result:
-            cache_rejection_reason = self.get_cache_rejection_reason(text, cached_result)
-            if cache_rejection_reason is not None:
-                logger.info("忽略不合格快取結果 (%s)，改為重新翻譯: %s", cache_rejection_reason, text)
-            else:
-                logger.debug(f"從快取獲取翻譯結果: {cached_result}")
-                self.metrics.cache_hits += 1
-                return cached_result
+        if use_cache:
+            cached_result = self.cache_manager.get_cached_translation(
+                text,
+                effective_context,
+                model_name,
+                current_style,
+                prompt_version,
+                current_index=current_index,
+                lookup_source="translation_client",
+            )
+            if cached_result:
+                cache_rejection_reason = self.get_cache_rejection_reason(text, cached_result)
+                if cache_rejection_reason is not None:
+                    logger.info("忽略不合格快取結果 (%s)，改為重新翻譯: %s", cache_rejection_reason, text)
+                else:
+                    logger.debug(f"從快取獲取翻譯結果: {cached_result}")
+                    self.metrics.cache_hits += 1
+                    return cached_result
 
         protected_text = text
         protected_contexts = context_texts
@@ -1456,7 +1469,7 @@ class TranslationClient:
 
             # 存入快取（使用與查詢相同的有效上下文）
             cache_rejection_reason = self.get_cache_rejection_reason(text, result)
-            if cache_rejection_reason is None:
+            if use_cache and cache_rejection_reason is None:
                 self.cache_manager.store_translation(
                     text,
                     result,
@@ -1467,7 +1480,7 @@ class TranslationClient:
                     current_index=current_index,
                     lookup_source="translation_client_store",
                 )
-            else:
+            elif cache_rejection_reason is not None:
                 logger.info("略過儲存不合格翻譯至快取 (%s): %s", cache_rejection_reason, text)
             return result
 
@@ -1710,6 +1723,7 @@ class TranslationClient:
         model_name: str,
         concurrent_limit: int = 5,
         current_indices: list[int | None] | None = None,
+        use_cache: bool = True,
     ) -> list[str]:
         """批量翻譯多個字幕，帶有並發控制"""
         if not texts:
@@ -1724,25 +1738,28 @@ class TranslationClient:
         # 首先檢查快取（使用有效上下文確保與 translate_text 的快取鍵一致）
         for i, (text, context) in enumerate(texts):
             current_index = current_indices[i] if current_indices and i < len(current_indices) else None
-            effective_ctx = self.prompt_manager.get_effective_cache_context_texts(
-                text, context, self.llm_type, model_name, current_index=current_index
-            )
-            cached = self.cache_manager.get_cached_translation(
-                text,
-                effective_ctx,
-                model_name,
-                current_style,
-                prompt_version,
-                current_index=current_index,
-                lookup_source="translation_client_batch_precheck",
-            )
-            if cached:
-                cache_rejection_reason = self.get_cache_rejection_reason(text, cached)
-                if cache_rejection_reason is None:
-                    cache_hits.append((i, cached))
-                    self.metrics.cache_hits += 1
+            if use_cache:
+                effective_ctx = self.prompt_manager.get_effective_cache_context_texts(
+                    text, context, self.llm_type, model_name, current_index=current_index
+                )
+                cached = self.cache_manager.get_cached_translation(
+                    text,
+                    effective_ctx,
+                    model_name,
+                    current_style,
+                    prompt_version,
+                    current_index=current_index,
+                    lookup_source="translation_client_batch_precheck",
+                )
+                if cached:
+                    cache_rejection_reason = self.get_cache_rejection_reason(text, cached)
+                    if cache_rejection_reason is None:
+                        cache_hits.append((i, cached))
+                        self.metrics.cache_hits += 1
+                    else:
+                        logger.info("批量預檢忽略不合格快取結果 (%s): %s", cache_rejection_reason, text)
+                        api_requests.append((i, text, context, current_index))
                 else:
-                    logger.info("批量預檢忽略不合格快取結果 (%s): %s", cache_rejection_reason, text)
                     api_requests.append((i, text, context, current_index))
             else:
                 api_requests.append((i, text, context, current_index))
@@ -1775,7 +1792,16 @@ class TranslationClient:
             async with semaphore:
                 try:
                     # 使用帶重試功能的翻譯
-                    translation = await self.translate_with_retry(txt, ctx, model_name, current_index=current_index)
+                    if use_cache:
+                        translation = await self.translate_with_retry(txt, ctx, model_name, current_index=current_index)
+                    else:
+                        translation = await self.translate_with_retry(
+                            txt,
+                            ctx,
+                            model_name,
+                            current_index=current_index,
+                            use_cache=False,
+                        )
                     return idx, translation, None
                 except Exception as e:
                     logger.error(f"批量翻譯中的項目 {idx} 失敗: {e!s}")

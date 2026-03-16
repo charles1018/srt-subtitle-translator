@@ -18,15 +18,29 @@ logging.basicConfig(
 )
 logger = logging.getLogger("SRTTranslator.CLI")
 
+DISPLAY_MODE_ALIASES = {
+    "僅譯文": "僅顯示翻譯",
+}
+
+CLI_DISPLAY_MODE_CHOICES = [
+    "僅顯示翻譯",
+    "雙語對照",
+    "翻譯在上",
+    "原文在上",
+    *DISPLAY_MODE_ALIASES.keys(),
+]
+
+
+def normalize_display_mode(display_mode: str) -> str:
+    """將 CLI 顯示模式別名轉換為 runtime 實際使用值。"""
+    return DISPLAY_MODE_ALIASES.get(display_mode, display_mode)
+
 
 def create_parser() -> argparse.ArgumentParser:
     """建立命令列參數解析器"""
     parser = argparse.ArgumentParser(
         prog="srt-translator",
-        description=(
-            "SRT 字幕翻譯工具 - CLI provider 支援 "
-            "Ollama、OpenAI、Anthropic、llama.cpp"
-        ),
+        description=("SRT 字幕翻譯工具 - CLI provider 支援 Ollama、OpenAI、Anthropic、llama.cpp"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 範例:
@@ -83,16 +97,19 @@ def create_parser() -> argparse.ArgumentParser:
     translate_parser.add_argument("-s", "--source", required=True, help="來源語言 (如: 日文, 英文)")
     translate_parser.add_argument("-t", "--target", required=True, help="目標語言 (如: 繁體中文)")
     translate_parser.add_argument(
-        "-p", "--provider", default="ollama", choices=["ollama", "openai", "anthropic", "llamacpp"],
-        help="LLM 提供者（CLI 可選: ollama/openai/anthropic/llamacpp；預設: ollama）"
+        "-p",
+        "--provider",
+        default="ollama",
+        choices=["ollama", "openai", "anthropic", "llamacpp"],
+        help="LLM 提供者（CLI 可選: ollama/openai/anthropic/llamacpp；預設: ollama）",
     )
     translate_parser.add_argument("-m", "--model", help="模型名稱 (未指定則使用推薦模型)")
     translate_parser.add_argument(
         "-d",
         "--display-mode",
-        default="僅譯文",
-        choices=["僅譯文", "雙語對照", "僅原文"],
-        help="顯示模式 (預設: 僅譯文)",
+        default="僅顯示翻譯",
+        choices=CLI_DISPLAY_MODE_CHOICES,
+        help="顯示模式 (預設: 僅顯示翻譯；相容別名: 僅譯文)",
     )
     translate_parser.add_argument("-c", "--concurrency", type=int, default=3, help="並行請求數 (預設: 3)")
     translate_parser.add_argument("-o", "--output-dir", help="輸出目錄 (預設: 與輸入檔案同目錄)")
@@ -101,15 +118,19 @@ def create_parser() -> argparse.ArgumentParser:
     translate_parser.add_argument("-q", "--quiet", action="store_true", help="安靜模式，僅顯示錯誤")
     translate_parser.add_argument("-v", "--verbose", action="store_true", help="詳細輸出模式")
     translate_parser.add_argument(
-        "--structure-text", action="store_true",
+        "--structure-text",
+        action="store_true",
         help="使用結構-文本分離翻譯模式（實驗性：將多個字幕合併為單一批次，減少 API 呼叫）",
     )
 
     # models 子命令
     models_parser = subparsers.add_parser("models", help="列出可用模型")
     models_parser.add_argument(
-        "-p", "--provider", default="ollama", choices=["ollama", "openai", "anthropic", "llamacpp"],
-        help="LLM 提供者（列模型支援: ollama/openai/anthropic/llamacpp）"
+        "-p",
+        "--provider",
+        default="ollama",
+        choices=["ollama", "openai", "anthropic", "llamacpp"],
+        help="LLM 提供者（列模型支援: ollama/openai/anthropic/llamacpp）",
     )
 
     # cache 子命令
@@ -299,7 +320,9 @@ async def cmd_translate(args: argparse.Namespace) -> int:
     # 設定輸出目錄
     if args.output_dir:
         file_service = ServiceFactory.get_file_service()
-        file_service.set_batch_settings({"output_dir": args.output_dir})
+        file_service.set_batch_settings({"output_directory": args.output_dir})
+
+    display_mode = normalize_display_mode(args.display_mode)
 
     # 啟用指定的術語表
     if args.glossary:
@@ -330,10 +353,11 @@ async def cmd_translate(args: argparse.Namespace) -> int:
                 target_lang=args.target,
                 model_name=model_name,
                 parallel_requests=args.concurrency,
-                display_mode=args.display_mode,
+                display_mode=display_mode,
                 llm_type=args.provider,
                 progress_callback=progress_callback,
                 use_structure_text=args.structure_text,
+                use_cache=not args.no_cache,
             )
 
             if success:
@@ -446,7 +470,6 @@ def cmd_config(args: argparse.Namespace) -> int:
         print(f"已設定 {key} = {value}")
 
     return 0
-
 
 
 def cmd_glossary(args: argparse.Namespace) -> int:
@@ -574,6 +597,7 @@ def cmd_glossary(args: argparse.Namespace) -> int:
             return 1
 
     return 0
+
 
 def cmd_version() -> int:
     """顯示版本資訊"""

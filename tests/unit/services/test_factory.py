@@ -37,9 +37,7 @@ class TestServiceFactory:
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.CacheManager")
     @patch("srt_translator.services.factory.FileHandler")
-    def test_get_translation_service_singleton(
-        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
-    ):
+    def test_get_translation_service_singleton(self, mock_file, mock_cache, mock_model, mock_prompt, mock_config):
         """Test that get_translation_service returns singleton."""
         mock_config.get_instance.return_value = MagicMock()
 
@@ -483,9 +481,7 @@ class TestTranslationService:
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.CacheManager")
     @patch("srt_translator.services.factory.FileHandler")
-    def test_initialization(
-        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
-    ):
+    def test_initialization(self, mock_file, mock_cache, mock_model, mock_prompt, mock_config):
         """Test TranslationService initialization."""
         mock_config.get_instance.return_value = MagicMock()
 
@@ -499,9 +495,7 @@ class TestTranslationService:
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.CacheManager")
     @patch("srt_translator.services.factory.FileHandler")
-    def test_get_stat_int(
-        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
-    ):
+    def test_get_stat_int(self, mock_file, mock_cache, mock_model, mock_prompt, mock_config):
         """Test _get_stat_int method."""
         mock_config.get_instance.return_value = MagicMock()
 
@@ -516,9 +510,7 @@ class TestTranslationService:
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.CacheManager")
     @patch("srt_translator.services.factory.FileHandler")
-    def test_get_stat_float(
-        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
-    ):
+    def test_get_stat_float(self, mock_file, mock_cache, mock_model, mock_prompt, mock_config):
         """Test _get_stat_float method."""
         mock_config.get_instance.return_value = MagicMock()
 
@@ -533,9 +525,7 @@ class TestTranslationService:
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.CacheManager")
     @patch("srt_translator.services.factory.FileHandler")
-    def test_incr_stat(
-        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
-    ):
+    def test_incr_stat(self, mock_file, mock_cache, mock_model, mock_prompt, mock_config):
         """Test _incr_stat method."""
         mock_config.get_instance.return_value = MagicMock()
 
@@ -553,9 +543,7 @@ class TestTranslationService:
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.CacheManager")
     @patch("srt_translator.services.factory.FileHandler")
-    def test_get_stats(
-        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
-    ):
+    def test_get_stats(self, mock_file, mock_cache, mock_model, mock_prompt, mock_config):
         """Test get_stats method."""
         mock_config.get_instance.return_value = MagicMock()
 
@@ -574,9 +562,7 @@ class TestTranslationService:
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.CacheManager")
     @patch("srt_translator.services.factory.FileHandler")
-    async def test_translate_text_empty(
-        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
-    ):
+    async def test_translate_text_empty(self, mock_file, mock_cache, mock_model, mock_prompt, mock_config):
         """Test translating empty text."""
         mock_config.get_instance.return_value = MagicMock()
 
@@ -591,9 +577,7 @@ class TestTranslationService:
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.CacheManager")
     @patch("srt_translator.services.factory.FileHandler")
-    async def test_translate_text_cached(
-        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
-    ):
+    async def test_translate_text_cached(self, mock_file, mock_cache, mock_model, mock_prompt, mock_config):
         """Test translating text with cache hit."""
         mock_config.get_instance.return_value = MagicMock()
         mock_cache_instance = MagicMock()
@@ -762,6 +746,46 @@ class TestTranslationService:
         service.cache_service.store_translation.assert_not_called()
 
     @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_text_skips_cache_when_disabled(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
+    ):
+        """Test use_cache=False bypasses service-level cache operations."""
+        mock_config.get_instance.return_value = MagicMock()
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.get_prompt_version.return_value = "promptv5"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CURRENT_INDEX]0", "Hello"]
+        mock_prompt.return_value = mock_prompt_instance
+
+        mock_client = AsyncMock()
+        mock_client.translate_with_retry = AsyncMock(return_value="你好")
+
+        service = TranslationService()
+        service.prompt_manager = mock_prompt_instance
+        service.cache_service = MagicMock()
+        service.model_service = MagicMock()
+        service.model_service.get_translation_client = AsyncMock(return_value=mock_client)
+
+        result = await service.translate_text("Hello", ["Hello"], "ollama", "llama3", use_cache=False)
+
+        assert result == "你好"
+        service.cache_service.get_translation.assert_not_called()
+        service.cache_service.store_translation.assert_not_called()
+        mock_client.translate_with_retry.assert_awaited_once_with(
+            "Hello",
+            ["Hello"],
+            "llama3",
+            current_index=None,
+            use_cache=False,
+        )
+
+    @pytest.mark.asyncio
     @patch("srt_translator.services.factory.pysrt.open")
     @patch("srt_translator.services.factory.ConfigManager")
     @patch("srt_translator.services.factory.PromptManager")
@@ -791,9 +815,7 @@ class TestTranslationService:
         service.file_service = MagicMock()
         service.file_service.get_subtitle_info.return_value = {}
         service.file_service.get_output_path.return_value = "/tmp/output.srt"
-        service.translate_batch = AsyncMock(
-            return_value=["[翻譯錯誤: connection fail]", "[翻譯錯誤: connection fail]"]
-        )
+        service.translate_batch = AsyncMock(return_value=["[翻譯錯誤: connection fail]", "[翻譯錯誤: connection fail]"])
 
         success, result = await service.translate_subtitle_file(
             "input.srt",
@@ -896,7 +918,12 @@ class TestTranslationService:
         captured_calls = []
 
         async def fake_translate_batch(
-            texts_with_context, llm_type, model_name, concurrent_limit, current_indices=None
+            texts_with_context,
+            llm_type,
+            model_name,
+            concurrent_limit,
+            current_indices=None,
+            use_cache=True,
         ):
             captured_calls.append((texts_with_context, current_indices))
             if len(captured_calls) == 1:
@@ -922,9 +949,7 @@ class TestTranslationService:
         assert success is True
         assert result == "/tmp/output.srt"
         assert len(captured_calls) == 2
-        assert captured_calls[1][0] == [
-            ("さようなら", ["こんにちは", "ありがとう", "さようなら"])
-        ]
+        assert captured_calls[1][0] == [("さようなら", ["こんにちは", "ありがとう", "さようなら"])]
         assert captured_calls[1][1] == [2]
 
 
