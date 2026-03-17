@@ -654,6 +654,8 @@ class TestModelManagerLlamaCppModelsAsync:
 
         assert "--parallel 1" in fallback_model.description
         assert "-c 1024" in fallback_model.description
+        assert "--cache-ram 4096" in fallback_model.description
+        assert "--reasoning-budget 0" not in fallback_model.description
         assert "-ctk" not in fallback_model.description
         assert fallback_model.context_length == 1024
         assert fallback_model.parallel == 1

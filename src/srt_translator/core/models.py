@@ -1531,6 +1531,10 @@ class ModelManager:
             if not isinstance(slot_n_ctx, int) or slot_n_ctx <= 0:
                 slot_n_ctx = 4096
 
+            build_info = props_data.get("build_info", "")
+            if isinstance(build_info, str) and build_info:
+                logger.info(f"llama.cpp server 版本: {build_info}")
+
             model_path = props_data.get("model_path", "")
             if not models and model_path:
                 models = [{"id": Path(model_path).name, "meta": {}}]
@@ -1601,8 +1605,8 @@ class ModelManager:
                 description=(
                     "請先啟動 llama-server："
                     "llama-server -m <model.gguf> --jinja "
-                    "--reasoning-format deepseek --reasoning-budget 0 "
-                    "--parallel 1 -c 1024"
+                    "--reasoning-format deepseek "
+                    "--parallel 1 -c 1024 --cache-ram 4096"
                 ),
                 context_length=1024,
                 pricing="免費(本機執行)",
