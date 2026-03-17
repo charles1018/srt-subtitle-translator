@@ -9,6 +9,7 @@
 - [前置需求](#前置需求)
 - [取得 llama.cpp](#取得-llamacpp)
 - [啟動 llama-server](#啟動-llama-server)
+- [CUDA 版本最佳化](#cuda-版本最佳化)
 - [設定翻譯工具](#設定翻譯工具)
 - [效能調校建議](#效能調校建議)
 - [常見問題與解決方案](#常見問題與解決方案)
@@ -163,6 +164,112 @@ curl -s http://localhost:8080/v1/chat/completions \
 
 ---
 
+## CUDA 版本最佳化
+
+本節說明使用 NVIDIA GPU 搭配 CUDA build 時的專屬最佳化參數與注意事項。
+
+### 關鍵環境變數：`GGML_CUDA_NO_VMM=1`
+
+**這是 Linux + CUDA build 最重要的設定，直接影響是否能有效利用 GPU。**
+
+CUDA build 在初始化時預設使用 VMM（Virtual Memory Management）預分配記憶體池，此行為會在模型載入前就佔用大量 VRAM（實測約 6.4 GB），導致 `-ngl auto` 計算可用空間時幾乎什麼層都放不進 GPU（回報 0 GPU 層），模型實際跑在 CPU 上。
+
+設定 `GGML_CUDA_NO_VMM=1` 可禁用此預分配，讓 VRAM 真正用於模型推理。
+
+```bash
+# 必須加在啟動指令前
+GGML_CUDA_NO_VMM=1 LD_LIBRARY_PATH=~/dev/llama-bin-ubuntu-cuda \
+    ~/dev/llama-bin-ubuntu-cuda/llama-server ...
+```
+
+**未設定 vs 設定後的差異（RTX 3070 Laptop 8GB，Qwen3.5-9B Q8_K_XL）：**
+
+| | 未設定 GGML_CUDA_NO_VMM | 設定後 |
+|--|--|--|
+| GPU 可用 VRAM（啟動時） | ~958 MiB | ~7534 MiB |
+| 實際 GPU 層數 | 0/33（全 CPU） | 14/33 |
+| 實用性 | 等同 CPU 模式 | 正常 GPU 加速 |
+
+### KV Cache 量化（CUDA 專屬）
+
+CUDA build 支援量化 KV cache（`-ctk`、`-ctv`），可將每個 slot 的 KV cache VRAM 使用量減半，讓有限 VRAM 能容納更多 GPU 層或更多並行 slot。**Vulkan build 不支援此功能。**
+
+```bash
+-ctk q8_0 -ctv q8_0   # q8_0：使用量減半，品質幾乎無損（推薦）
+-ctk q4_0 -ctv q4_0   # q4_0：使用量降至 1/4，但可能影響品質
+```
+
+實測 KV cache VRAM 比較（Qwen3.5-9B，3 slots，4096 ctx，8 transformer 層）：
+
+| KV cache 精度 | 大小 |
+|---|---|
+| f16（Vulkan 預設） | 144 MiB |
+| q8_0（CUDA 最佳化） | 76.5 MiB（節省 47%） |
+
+### CUDA 版 推薦啟動指令
+
+```bash
+GGML_CUDA_NO_VMM=1 \
+LD_LIBRARY_PATH=~/dev/llama-bin-ubuntu-cuda \
+~/dev/llama-bin-ubuntu-cuda/llama-server \
+    -m ~/dev/model/Qwen3.5-9B-UD-Q8_K_XL.gguf \
+    -ngl auto \
+    -fa on \
+    -ctk q8_0 \
+    -ctv q8_0 \
+    --jinja \
+    -c 4096 \
+    -np 3 \
+    --no-context-shift \
+    --chat-template-kwargs '{"enable_thinking":false}' \
+    --host 127.0.0.1 \
+    --port 8080
+```
+
+| 參數 | 說明 |
+|------|------|
+| `GGML_CUDA_NO_VMM=1` | 禁用 CUDA VMM 預分配，讓 VRAM 可實際用於模型層（**必設**） |
+| `-ngl auto` | 自動最大化 GPU 層數（依剩餘 VRAM 決定） |
+| `-fa on` | Flash Attention，CUDA 上效率優於 Vulkan 實作 |
+| `-ctk q8_0 -ctv q8_0` | KV cache 量化，節省 47% KV cache VRAM（**CUDA 專屬**） |
+| `-np 3` | 3 個並行 slot，對應 CLI 預設並行數 |
+| `--no-context-shift` | 禁止上下文滑動，確保翻譯品質 |
+
+### CUDA vs Vulkan 實測比較
+
+**測試環境：** RTX 3070 Laptop（8GB VRAM），Qwen3.5-9B-UD-Q8_K_XL.gguf（13GB），30 條日文成人字幕，並行 3，2026-03-17
+
+| 指標 | CUDA（最佳化） | Vulkan | 差距 |
+|------|------|--------|------|
+| 總耗時 | **81 秒** | **123 秒** | CUDA 快 **1.52x** |
+| 平均每請求 | 5.62 秒 | 8.51 秒 | CUDA 快 1.51x |
+| 最快請求 | 2.88 秒 | 3.78 秒 | |
+| 最慢請求 | 12.88 秒 | 17.51 秒 | |
+| KV cache VRAM | 76.5 MiB（q8_0） | 144 MiB（f16） | CUDA 省 47% |
+| GPU 層數 | 14/33 | 14/33 | 相同 |
+
+兩者 GPU 層數相同，速度差異主因：CUDA 的 Flash Attention kernel 效率更高，加上 KV cache 量化降低記憶體頻寬壓力。
+
+### 注意：Qwen3.5 Hybrid SSM 架構
+
+Qwen3.5 採用 **Hybrid SSM + Transformer 架構**（Gated Delta Net 遞迴層），並非純 Transformer，架構組成如下：
+
+- 32 個 SSM（Gated Delta Net）遞迴層
+- 8 個 Transformer 注意力層
+- KV cache 僅服務 8 個 Transformer 層（因此 KV cache 很小）
+
+啟動 log 中會出現以下訊息，屬正常現象：
+
+```
+sched_reserve: layer 0 is assigned to device CPU but the fused Gated Delta Net tensor
+               is assigned to device CUDA0 (usually due to missing support)
+```
+
+此訊息表示 SSM 層的計算後端分配，不代表模型跑在 CPU；GPU 層數請以
+`load_tensors: offloaded 14/33 layers to GPU` 為準。
+
+---
+
 ## 設定翻譯工具
 
 ### 方式一：使用 GUI
@@ -286,7 +393,22 @@ llama-server -m model.gguf --reasoning-format deepseek
 
 ## 常見問題與解決方案
 
-### 1. llama-server 啟動時 VRAM 不足
+### 1. CUDA build：模型全跑在 CPU，GPU 層數為 0
+
+**現象：** 使用 CUDA build 啟動 llama-server，但 log 顯示 `offloaded 0/N layers to GPU`，nvidia-smi 顯示 VRAM 幾乎全被佔用（~6-7 GB），且翻譯速度與純 CPU 相當。
+
+**原因：** CUDA VMM（Virtual Memory Management）預分配機制在模型載入前就佔用大量 VRAM，使 `-ngl auto` 算出沒有空間可用。
+
+**解決方法：** 啟動時設定環境變數 `GGML_CUDA_NO_VMM=1`：
+
+```bash
+GGML_CUDA_NO_VMM=1 LD_LIBRARY_PATH=~/dev/llama-bin-ubuntu-cuda \
+    ~/dev/llama-bin-ubuntu-cuda/llama-server -m model.gguf -ngl auto ...
+```
+
+**確認方法：** 啟動後查看 log，應看到 `offloaded N/M layers to GPU`（N > 0）。
+
+### 2. llama-server 啟動時 VRAM 不足
 
 **錯誤訊息：**
 ```
@@ -307,7 +429,7 @@ ggml_vulkan: vk::Device::allocateMemory: ErrorOutOfDeviceMemory
 llama-server -m model.gguf -c 2048 --parallel 1 --reasoning-format deepseek
 ```
 
-### 2. 翻譯超時
+### 3. 翻譯超時
 
 **現象：** 翻譯請求在等待很久後失敗。
 
@@ -319,7 +441,7 @@ llama-server -m model.gguf -c 2048 --parallel 1 --reasoning-format deepseek
 - 確認有足夠的 GPU layers 被使用（檢查 llama-server 啟動日誌中的 `offloaded X/Y layers to GPU`）
 - 嘗試使用更小的量化模型
 
-### 3. 翻譯結果包含 `</think>` 或其他標籤殘留
+### 4. 翻譯結果包含 `</think>` 或其他標籤殘留
 
 **現象：** 翻譯結果中出現 `</think>`、`<|im_start|>` 等標記。
 
@@ -328,7 +450,7 @@ llama-server -m model.gguf -c 2048 --parallel 1 --reasoning-format deepseek
 - 確認使用最新版本的本專案（client 端已自動送出 `reasoning_budget_tokens: 0`）
 - 啟動 llama-server 時加上 `--reasoning-format deepseek`
 
-### 4. 模型列表顯示「llama-server (未連線)」
+### 5. 模型列表顯示「llama-server (未連線)」
 
 **原因：** llama-server 未在運行，或連線位址不正確。
 
@@ -338,7 +460,7 @@ llama-server -m model.gguf -c 2048 --parallel 1 --reasoning-format deepseek
 2. 確認埠號正確：預設是 `8080`
 3. 如果使用非預設埠號，修改 `config/model_config.json` 中的 `llamacpp_url`
 
-### 5. llama-server 在 Linux 上找不到共享函式庫
+### 6. llama-server 在 Linux 上找不到共享函式庫
 
 **錯誤訊息：**
 ```
@@ -367,7 +489,7 @@ export LD_LIBRARY_PATH=~/dev/llama-bin
     --cache-ram 4096
 ```
 
-### 6. 多 GPU 系統指定使用哪張顯卡
+### 7. 多 GPU 系統指定使用哪張顯卡
 
 **Vulkan 後端：**
 ```bash
@@ -387,10 +509,11 @@ CUDA_VISIBLE_DEVICES=1 llama-server -m model.gguf -ngl 999
 
 | 用途 | 指令 |
 |------|------|
-| 字幕翻譯推薦啟動 | `llama-server -m model.gguf --jinja -c 2048 --parallel 1 --reasoning-format deepseek --cache-ram 4096` |
+| Vulkan 推薦啟動 | `llama-server -m model.gguf --jinja -c 4096 -np 3 -ngl auto -fa on --no-context-shift` |
+| CUDA 推薦啟動 | `GGML_CUDA_NO_VMM=1 llama-server -m model.gguf --jinja -c 4096 -np 3 -ngl auto -fa on -ctk q8_0 -ctv q8_0 --no-context-shift` |
 | 檢查伺服器狀態 | `curl http://localhost:8080/health` |
 | 查看載入的模型 | `curl http://localhost:8080/v1/models` |
-| 自動 GPU fit | 不指定 `-ngl`，llama-server 自動決定 |
+| 確認 GPU 層數 | 看啟動 log：`offloaded N/M layers to GPU` |
 | 手動指定 GPU 層數 | `llama-server -m model.gguf -ngl 20` |
 | 完全 CPU 模式 | `llama-server -m model.gguf -ngl 0` |
 | 停止伺服器 | `Ctrl+C` 或 `pkill -f llama-server` |
