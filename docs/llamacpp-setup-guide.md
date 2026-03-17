@@ -106,8 +106,11 @@ LD_LIBRARY_PATH=~/dev/llama-bin ~/dev/llama-bin/llama-server \
     -c 1024 \
     --parallel 1 \
     --reasoning-format deepseek \
-    --reasoning-budget 0
+    --cache-ram 4096
 ```
+
+> **注意：** `--reasoning-budget 0` 已不需要在 server 啟動時指定。本專案 client 端現在透過
+> per-request `reasoning_budget_tokens: 0` 參數控制，與較新版 llama-server 相容。
 
 若你優先追求「字幕翻譯輸出穩定」而不是「單機最大吞吐」，建議再加上：
 
@@ -125,7 +128,7 @@ LD_LIBRARY_PATH=~/dev/llama-bin ~/dev/llama-bin/llama-server \
 | `-ngl` | 放到 GPU 的層數 | 省略讓 llama-server 自動決定 |
 | `--parallel` | 同時處理的 request slot 數 | 穩定優先建議 `1` |
 | `--reasoning-format deepseek` | 將思考內容分離到 `reasoning_content` 欄位 | 本專案 client 端預設送出此設定，server 端同步設定可做雙重保險 |
-| `--reasoning-budget 0` | 即使模型想思考也立刻結束 thinking | 翻譯任務建議搭配使用 |
+| `--cache-ram N` | Prompt cache 大小上限（MiB） | `4096`（8 GB VRAM 機器建議值；預設 8192） |
 | `--no-cont-batching` | 關閉 continuous batching，降低延遲抖動 | 穩定優先時建議開啟 |
 | `--threads-http` | HTTP 處理執行緒數 | `2` |
 | `--flash-attn on` | 啟用 Flash Attention | 可降低記憶體使用 |
@@ -225,11 +228,13 @@ llama-server -m model.gguf -ngl 0
 
 ### 思考模式與翻譯速度
 
-Qwen3.5 等模型在思考模式下會大幅增加 token 消耗和延遲。本專案在 request 端會送出 `chat_template_kwargs.enable_thinking=false` 和 `reasoning_format=deepseek`，後者會將意外產生的思考內容乾淨地分離到 `reasoning_content` 欄位，不會混在翻譯結果中。建議在 server 啟動時同步設定，做成雙重保險：
+Qwen3.5 等模型在思考模式下會大幅增加 token 消耗和延遲。本專案在 request 端會送出 `chat_template_kwargs.enable_thinking=false`、`reasoning_format=deepseek` 和 `reasoning_budget_tokens=0`，後者會將意外產生的思考內容乾淨地分離到 `reasoning_content` 欄位，不會混在翻譯結果中。建議在 server 啟動時同步設定 reasoning-format，做成雙重保險：
 
 ```bash
-llama-server -m model.gguf --reasoning-format deepseek --reasoning-budget 0
+llama-server -m model.gguf --reasoning-format deepseek
 ```
+
+> `--reasoning-budget 0` 已由 client 端 per-request 控制，server 啟動時不再需要。
 
 如果你改用思考模式做一般問答或推理任務，再另外切回 thinking 相關參數；字幕翻譯預設不建議啟用。
 
@@ -320,8 +325,8 @@ llama-server -m model.gguf -c 2048 --parallel 1
 
 **解決方法：** 本專案已內建自動清理機制，會移除這些殘留標籤。如果問題持續：
 
-- 啟動 llama-server 時加上 `--reasoning-budget 0`
-- 確認使用最新版本的本專案
+- 確認使用最新版本的本專案（client 端已自動送出 `reasoning_budget_tokens: 0`）
+- 啟動 llama-server 時加上 `--reasoning-format deepseek`
 
 ### 4. 模型列表顯示「llama-server (未連線)」
 
@@ -359,7 +364,7 @@ export LD_LIBRARY_PATH=~/dev/llama-bin
     -c 1024 \
     --parallel 1 \
     --reasoning-format deepseek \
-    --reasoning-budget 0
+    --cache-ram 4096
 ```
 
 ### 6. 多 GPU 系統指定使用哪張顯卡
@@ -385,7 +390,7 @@ CUDA_VISIBLE_DEVICES=1 llama-server -m model.gguf -ngl 999
 | 啟動伺服器 | `llama-server -m model.gguf --port 8080` |
 | 檢查伺服器狀態 | `curl http://localhost:8080/health` |
 | 查看載入的模型 | `curl http://localhost:8080/v1/models` |
-| 關閉思考模式啟動 | `llama-server -m model.gguf --reasoning-format deepseek --reasoning-budget 0` |
+| 關閉思考模式啟動 | `llama-server -m model.gguf --reasoning-format deepseek` |
 | 自動 GPU fit | 不指定 `-ngl`，llama-server 自動決定 |
 | 手動指定 GPU 層數 | `llama-server -m model.gguf -ngl 20` |
 | 完全 CPU 模式 | `llama-server -m model.gguf -ngl 0` |

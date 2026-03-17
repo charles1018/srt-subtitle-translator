@@ -176,7 +176,7 @@ ollama pull llama3.2
 
 ```bash
 # 啟動 llama-server（詳細設定請參考 docs/llamacpp-setup-guide.md）
-llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja --parallel 1 --reasoning-format deepseek --reasoning-budget 0
+llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja --parallel 1 --reasoning-format deepseek --cache-ram 4096
 ```
 
 詳細安裝與設定說明請參閱 [docs/llamacpp-setup-guide.md](docs/llamacpp-setup-guide.md)。
