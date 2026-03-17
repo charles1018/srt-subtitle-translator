@@ -456,6 +456,7 @@ class TestTranslationClientHelpers:
         assert profile["options"]["max_tokens"] == 256
         assert profile["extra_body"]["cache_prompt"] is True
         assert profile["extra_body"]["reasoning_format"] == "deepseek"
+        assert profile["extra_body"]["reasoning_budget_tokens"] == 0
         assert profile["extra_body"]["seed"] == 42
         assert profile["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
         assert profile["extra_body"]["presence_penalty"] == 2.0
@@ -477,6 +478,7 @@ class TestTranslationClientHelpers:
         assert profile["options"]["max_tokens"] == 96
         assert profile["extra_body"]["cache_prompt"] is True
         assert profile["extra_body"]["reasoning_format"] == "deepseek"
+        assert profile["extra_body"]["reasoning_budget_tokens"] == 0
         assert profile["extra_body"]["seed"] == 42
         assert profile["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
         assert profile["extra_body"]["presence_penalty"] == 2.0
@@ -497,6 +499,7 @@ class TestTranslationClientHelpers:
         assert profile["options"]["max_tokens"] == 256
         assert profile["extra_body"]["cache_prompt"] is True
         assert profile["extra_body"]["reasoning_format"] == "deepseek"
+        assert profile["extra_body"]["reasoning_budget_tokens"] == 0
         assert profile["extra_body"]["seed"] == 42
         assert profile["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
         assert profile["extra_body"]["presence_penalty"] == 1.5

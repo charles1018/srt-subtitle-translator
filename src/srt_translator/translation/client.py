@@ -301,6 +301,7 @@ class TranslationClient:
             "extra_body": {
                 "cache_prompt": True,
                 "reasoning_format": "deepseek",
+                "reasoning_budget_tokens": 0,
                 "seed": 42,
                 "chat_template_kwargs": {"enable_thinking": False},
             },
