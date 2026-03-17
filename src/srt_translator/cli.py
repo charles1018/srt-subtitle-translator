@@ -64,7 +64,8 @@ def create_parser() -> argparse.ArgumentParser:
   srt-translator translate video.srt -s 日文 -t 繁體中文 --provider google
 
   # 使用 llama.cpp（需先啟動 llama-server）
-  srt-translator translate video.srt -s 日文 -t 繁體中文 --provider llamacpp
+  # -m 須包含模型家族關鍵字（如 Qwen3.5），否則無法觸發專用功能
+  srt-translator translate video.srt -s 日文 -t 繁體中文 --provider llamacpp -m Qwen3.5-9B-UD
 
   # 顯示可用模型
   srt-translator models --provider ollama
