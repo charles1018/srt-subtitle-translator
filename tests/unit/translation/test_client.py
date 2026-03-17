@@ -1160,7 +1160,7 @@ class TestTranslationClientAsync:
         assert request_payload["temperature"] == 1.0
         assert request_payload["top_p"] == 1.0
         assert request_payload["max_tokens"] == 256
-        assert request_payload["response_format"]["type"] == "json_schema"
+        assert request_payload["response_format"]["type"] == "json_object"
         assert request_payload["response_format"]["schema"]["required"] == ["translation"]
         assert request_payload["extra_body"]["cache_prompt"] is True
         assert request_payload["extra_body"]["reasoning_format"] == "deepseek"

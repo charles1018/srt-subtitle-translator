@@ -233,7 +233,7 @@ class TranslationClient:
         "Return only the translated subtitle text."
     )
     LLAMACPP_TRANSLATION_RESPONSE_FORMAT: ClassVar[dict[str, Any]] = {
-        "type": "json_schema",
+        "type": "json_object",
         "schema": {
             "type": "object",
             "properties": {
