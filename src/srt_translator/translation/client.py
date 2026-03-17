@@ -653,6 +653,8 @@ class TranslationClient:
             "model_path": "",
             "is_sleeping": False,
             "slots_endpoint_available": None,
+            "build_info": "",
+            "speculative_decoding": False,
         }
 
         session = self.session
@@ -692,6 +694,11 @@ class TranslationClient:
                                 diagnostics["model_path"] = model_path
 
                             diagnostics["is_sleeping"] = bool(props.get("is_sleeping", False))
+
+                            build_info = props.get("build_info", "")
+                            if isinstance(build_info, str) and build_info:
+                                diagnostics["build_info"] = build_info
+                                logger.info(f"llama.cpp server 版本: {build_info}")
             except Exception as e:
                 logger.debug(f"讀取 llama.cpp /props 失敗，將改用其他端點補足資訊: {e!s}")
 
@@ -704,14 +711,14 @@ class TranslationClient:
                         if isinstance(slots_payload, list):
                             if diagnostics["total_slots"] is None and slots_payload:
                                 diagnostics["total_slots"] = len(slots_payload)
-                            if (
-                                diagnostics["slot_n_ctx"] is None
-                                and slots_payload
-                                and isinstance(slots_payload[0], dict)
-                            ):
-                                slot_n_ctx = slots_payload[0].get("n_ctx")
-                                if isinstance(slot_n_ctx, int) and slot_n_ctx > 0:
-                                    diagnostics["slot_n_ctx"] = slot_n_ctx
+                            if slots_payload and isinstance(slots_payload[0], dict):
+                                if diagnostics["slot_n_ctx"] is None:
+                                    slot_n_ctx = slots_payload[0].get("n_ctx")
+                                    if isinstance(slot_n_ctx, int) and slot_n_ctx > 0:
+                                        diagnostics["slot_n_ctx"] = slot_n_ctx
+                                if slots_payload[0].get("speculative"):
+                                    diagnostics["speculative_decoding"] = True
+                                    logger.info("llama.cpp server 已啟用 speculative decoding")
                     elif response.status == 501:
                         diagnostics["slots_endpoint_available"] = False
                     else:
