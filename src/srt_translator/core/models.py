@@ -754,6 +754,8 @@ class ModelManager:
             return "qwen"
         if "llama" in normalized:
             return "llama"
+        if re.search(r"gemma[-_/\s]?4\b", normalized):
+            return "gemma4"
         if "gemma" in normalized:
             return "gemma"
         if "mistral" in normalized:
@@ -801,6 +803,26 @@ class ModelManager:
                 parallel=2,
                 tags=["free", "local", "chinese"],
                 capabilities={"translation": 0.82, "multilingual": 0.78, "context_handling": 0.8, "chinese": 0.9},
+            )
+
+        if family == "gemma4":
+            description = "Google Gemma 4 系列模型（交替局部/全域注意力，128K context），支援 140+ 語言翻譯"
+            if parameter_size:
+                description += f"（{parameter_size}）"
+            tags = ["free", "local", "multilingual"]
+            if quantization_level:
+                tags.append(quantization_level.lower())
+            return ModelInfo(
+                id=model_id,
+                provider="ollama",
+                name=self._format_model_name(model_id),
+                description=description,
+                context_length=131072,
+                pricing="免費(本機執行)",
+                recommended_for="多語字幕翻譯",
+                parallel=2,
+                tags=tags,
+                capabilities={"translation": 0.85, "multilingual": 0.85, "context_handling": 0.85, "chinese": 0.83},
             )
 
         return ModelInfo(

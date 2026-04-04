@@ -288,6 +288,16 @@ class TranslationClient:
                 "num_predict": 96,
             },
         },
+        "gemma4": {
+            "keep_alive": "15m",
+            "batch_concurrency_limit": None,
+            "options": {
+                "temperature": 1.0,
+                "top_p": 0.95,
+                "top_k": 64,
+                "num_predict": 256,
+            },
+        },
     }
     _LLAMACPP_FALLBACK_SLOTS: ClassVar[int] = 2
 
@@ -343,6 +353,21 @@ class TranslationClient:
                 "presence_penalty": 2.0,
                 "top_k": 20,
                 "min_p": 0.0,
+            },
+        },
+        "gemma4": {
+            "batch_concurrency_limit": None,
+            "options": {
+                "temperature": 1.0,
+                "top_p": 0.95,
+                "max_tokens": 256,
+            },
+            "extra_body": {
+                "top_k": 64,
+                # Gemma 4 的 thinking 格式不是 deepseek，覆蓋 default 的設定
+                "reasoning_format": "none",
+                # enable_thinking=false 對應 Gemma 4 的 <|think|> token 控制
+                "chat_template_kwargs": {"enable_thinking": False},
             },
         },
     }
@@ -522,6 +547,8 @@ class TranslationClient:
             return "qwen"
         if "llama" in normalized:
             return "llama"
+        if re.search(r"gemma[-_/\s]?4\b", normalized):
+            return "gemma4"
         if "gemma" in normalized:
             return "gemma"
         if "mistral" in normalized:
