@@ -141,6 +141,13 @@ class ConfigManager:
                 "play_sound": True,
                 "auto_save": True,
                 "last_directory": "",
+                "translation": {
+                    "batch_size": 10,
+                    "max_context_items": 2,
+                    "smart_context_enabled": True,
+                    "compact_prompt_enabled": True,
+                    "terminology_enabled": True,
+                },
             },
             "model": {
                 "ollama_url": "http://localhost:11434",

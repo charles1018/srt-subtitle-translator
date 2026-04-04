@@ -961,8 +961,172 @@ class TestTranslationService:
         assert success is True
         assert result == "/tmp/output.srt"
         assert len(captured_calls) == 2
-        assert captured_calls[1][0] == [("さようなら", ["こんにちは", "ありがとう", "さようなら"])]
-        assert captured_calls[1][1] == [2]
+        assert captured_calls[1][0] == [("さようなら", ["さようなら"])]
+        assert captured_calls[1][1] == [0]
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.pysrt.open")
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_subtitle_file_auto_batches_context_free_openai_lines(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config, mock_pysrt_open
+    ):
+        """OpenAI 會將連續的低風險短句自動合併為小批次。"""
+        mock_config.get_instance.return_value = MagicMock()
+
+        class FakeSubs(list):
+            def __init__(self, items):
+                super().__init__(items)
+                self.save = MagicMock()
+
+        subs = FakeSubs(
+            [
+                SimpleNamespace(text="8.30 a.m."),
+                SimpleNamespace(text="The oil shock."),
+                SimpleNamespace(text="But the big number comes tomorrow."),
+            ]
+        )
+        mock_pysrt_open.return_value = subs
+
+        service = TranslationService()
+        service.file_service = MagicMock()
+        service.file_service.get_subtitle_info.return_value = {}
+        service.file_service.get_output_path.return_value = "/tmp/output.srt"
+        service._translate_batch_structure_text = AsyncMock(return_value=["上午8:30", "油價衝擊"])
+        service.translate_batch = AsyncMock(return_value=["但大數字明天會出爐"])
+
+        success, result = await service.translate_subtitle_file(
+            "input.srt",
+            "英文",
+            "繁體中文",
+            "gpt-4o-mini",
+            1,
+            "僅顯示翻譯",
+            "openai",
+        )
+
+        assert success is True
+        assert result == "/tmp/output.srt"
+        assert service._translate_batch_structure_text.await_count == 1
+        assert service._translate_batch_structure_text.await_args.args[1] == [0, 1]
+        service.translate_batch.assert_awaited_once()
+        assert service.translate_batch.await_args.args[0] == [
+            (
+                "But the big number comes tomorrow.",
+                ["8.30 a.m.", "The oil shock.", "But the big number comes tomorrow."],
+            )
+        ]
+        assert subs[0].text == "上午8:30"
+        assert subs[1].text == "油價衝擊"
+        assert subs[2].text == "但大數字明天會出爐"
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.pysrt.open")
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_subtitle_file_uses_smart_context_windows_for_openai(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config, mock_pysrt_open
+    ):
+        """智慧上下文會讓獨立短句保持最小上下文，承接句才帶更多上下文。"""
+        mock_config.get_instance.return_value = MagicMock()
+
+        class FakeSubs(list):
+            def __init__(self, items):
+                super().__init__(items)
+                self.save = MagicMock()
+
+        subs = FakeSubs(
+            [
+                SimpleNamespace(text="8.30 a.m."),
+                SimpleNamespace(text="But the big number comes tomorrow."),
+            ]
+        )
+        mock_pysrt_open.return_value = subs
+
+        service = TranslationService()
+        service.file_service = MagicMock()
+        service.file_service.get_subtitle_info.return_value = {}
+        service.file_service.get_output_path.return_value = "/tmp/output.srt"
+        service.translate_batch = AsyncMock(side_effect=[["上午8:30"], ["但大數字明天會出爐"]])
+
+        success, result = await service.translate_subtitle_file(
+            "input.srt",
+            "英文",
+            "繁體中文",
+            "gpt-4o-mini",
+            1,
+            "僅顯示翻譯",
+            "openai",
+        )
+
+        assert success is True
+        assert result == "/tmp/output.srt"
+        assert service.translate_batch.await_count == 2
+        assert service.translate_batch.await_args_list[0].args[0] == [("8.30 a.m.", ["8.30 a.m."])]
+        assert service.translate_batch.await_args_list[1].args[0] == [
+            ("But the big number comes tomorrow.", ["8.30 a.m.", "But the big number comes tomorrow."])
+        ]
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_batch_structure_text_reuses_cache_and_stores_new_lines(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
+    ):
+        """結構批次翻譯應保留可命中的逐行快取，未命中部分才送 API。"""
+        mock_config.get_instance.return_value = MagicMock()
+
+        service = TranslationService()
+        service.prompt_manager = MagicMock()
+        service.prompt_manager.current_style = "standard"
+        service.prompt_manager.get_prompt_version.return_value = "batch1234"
+        service.cache_service = MagicMock()
+        service.cache_service.get_translation.side_effect = ["上午8:30", None]
+        service.translate_text = AsyncMock(return_value="油價衝擊")
+        service._post_process_translation = MagicMock(side_effect=lambda _source, text: text)
+
+        subs = [SimpleNamespace(text="8.30 a.m."), SimpleNamespace(text="The oil shock.")]
+
+        result = await service._translate_batch_structure_text(
+            subs,
+            [0, 1],
+            "openai",
+            "gpt-4o-mini",
+            1,
+            source_text_snapshot=["8.30 a.m.", "The oil shock."],
+            runtime_settings={
+                "batch_size": 10,
+                "max_context_items": 2,
+                "smart_context_enabled": True,
+                "compact_prompt_enabled": True,
+                "terminology_enabled": True,
+            },
+            use_cache=True,
+        )
+
+        assert result == ["上午8:30", "油價衝擊"]
+        service.translate_text.assert_awaited_once()
+        assert "[BATCH: 1 lines" in service.translate_text.await_args.args[0]
+        assert "The oil shock." in service.translate_text.await_args.args[0]
+        assert "8.30 a.m." not in service.translate_text.await_args.args[0]
+        service.cache_service.store_translation.assert_called_once_with(
+            "The oil shock.",
+            "油價衝擊",
+            [],
+            "gpt-4o-mini",
+            "standard",
+            "batch1234",
+            lookup_source="translation_service_batch_store",
+        )
 
 
 # ============================================================

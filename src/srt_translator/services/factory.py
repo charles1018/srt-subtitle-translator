@@ -186,6 +186,157 @@ class TranslationService:
             context_texts = [str(s.text) for s in subs[ctx_start:ctx_end]]
         return context_texts, index - ctx_start
 
+    def _get_bool_config_option(self, key: str, default: bool) -> bool:
+        """安全地讀取布林設定，測試中的 MagicMock 也會回退到預設值。"""
+        value = self.config_manager.get_value(key, default=default)
+        return value if isinstance(value, bool) else default
+
+    def _get_int_config_option(self, key: str, default: int, minimum: int = 0, maximum: int | None = None) -> int:
+        """安全地讀取整數設定並限制範圍。"""
+        value = self.config_manager.get_value(key, default=default)
+        if type(value) is not int:
+            return default
+
+        clamped = max(minimum, value)
+        if maximum is not None:
+            clamped = min(clamped, maximum)
+        return clamped
+
+    def _get_translation_runtime_settings(self) -> dict[str, bool | int]:
+        """讀取本次翻譯流程使用的可配置優化參數。"""
+        return {
+            "batch_size": self._get_int_config_option("translation.batch_size", 10, minimum=1, maximum=30),
+            "max_context_items": self._get_int_config_option("translation.max_context_items", 2, minimum=0, maximum=7),
+            "smart_context_enabled": self._get_bool_config_option("translation.smart_context_enabled", True),
+            "compact_prompt_enabled": self._get_bool_config_option("translation.compact_prompt_enabled", True),
+            "terminology_enabled": self._get_bool_config_option("translation.terminology_enabled", True),
+        }
+
+    def _text_needs_context(self, text: str) -> bool:
+        """用保守啟發式判斷句子是否依賴前後文。"""
+        stripped = text.strip()
+        if not stripped:
+            return False
+        if "\n" in stripped:
+            return True
+        if stripped and stripped[0].islower():
+            return True
+
+        normalized = stripped.lower()
+        leading_linkers = (
+            "and",
+            "but",
+            "so",
+            "then",
+            "because",
+            "if",
+            "when",
+            "while",
+            "before",
+            "after",
+            "unless",
+            "though",
+            "since",
+            "until",
+            "as",
+            "also",
+            "still",
+            "meanwhile",
+            "besides",
+            "plus",
+            "or",
+            "nor",
+            "yet",
+        )
+        trailing_linkers = (
+            "when",
+            "if",
+            "because",
+            "although",
+            "while",
+            "before",
+            "after",
+            "unless",
+            "though",
+            "since",
+            "until",
+            "as",
+            "where",
+            "whereas",
+        )
+        ambiguous_pronouns = {
+            "he",
+            "she",
+            "it",
+            "they",
+            "them",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "hers",
+            "their",
+            "theirs",
+            "its",
+            "him",
+            "himself",
+            "herself",
+            "themselves",
+            "there",
+            "here",
+        }
+
+        if re.match(rf"^({'|'.join(leading_linkers)})\b", normalized):
+            return True
+        if any(normalized.endswith(f" {linker}") for linker in trailing_linkers):
+            return True
+        if stripped.endswith((",", ";", ":", "-", "—", "–", "...", "…")):
+            return True
+
+        word_tokens = re.findall(r"[A-Za-z']+", normalized)
+        return 0 < len(word_tokens) <= 6 and any(token in ambiguous_pronouns for token in word_tokens)
+
+    def _is_context_free_short_text(self, text: str) -> bool:
+        """判斷是否為可安全獨立翻譯的短句。"""
+        stripped = text.strip()
+        if not stripped:
+            return False
+
+        if re.fullmatch(r"[\d\s:./,\-APMapm]+", stripped):
+            return True
+
+        compact = re.sub(r"\s+", "", stripped)
+        return len(compact) <= 24 and not self._text_needs_context(stripped)
+
+    def _get_context_window_for_text(self, text: str, runtime_settings: dict[str, bool | int]) -> int:
+        """依句子特徵決定上下文視窗大小。"""
+        max_context_items = int(runtime_settings["max_context_items"])
+        if max_context_items <= 0 or not text.strip():
+            return 0
+        if not bool(runtime_settings["smart_context_enabled"]):
+            return max_context_items
+        if self._text_needs_context(text):
+            return max_context_items
+        if self._is_context_free_short_text(text):
+            return 0
+        return min(1, max_context_items)
+
+    def _count_consecutive_batchable(
+        self,
+        start_index: int,
+        batchable_flags: list[bool],
+        max_batch_size: int,
+    ) -> int:
+        """計算從指定位置開始、可合併為智慧批次的連續字幕數。"""
+        length = 0
+        cursor = start_index
+        while cursor < len(batchable_flags) and batchable_flags[cursor] and length < max_batch_size:
+            length += 1
+            cursor += 1
+        return length
+
     def _initialize_members(self) -> None:
         """初始化服務成員"""
         try:
@@ -480,21 +631,28 @@ class TranslationService:
                 progress_service.register_complete_callback(complete_callback)
             progress_service.set_total(total_subtitles)
 
-            # 設定上下文窗口大小
-            context_window = 3  # 上下文窗口大小 (每側，從 5 改為 3 以減少 AI 混淆)
-
-            # 計算批次大小
-            batch_size = min(20, parallel_requests * 2)
+            runtime_settings = self._get_translation_runtime_settings()
+            structured_batch_size = int(runtime_settings["batch_size"])
+            standard_chunk_size = min(20, max(1, parallel_requests) * 2)
             if llm_type == "openai":
-                # OpenAI有速率限制，使用較小批次
-                batch_size = min(5, parallel_requests)
+                standard_chunk_size = min(5, max(1, parallel_requests))
 
-            # 分批翻譯
-            for i in range(0, total_subtitles, batch_size):
-                batch_indices = list(range(i, min(i + batch_size, total_subtitles)))
+            context_windows = [
+                self._get_context_window_for_text(source_text, runtime_settings) for source_text in source_text_snapshot
+            ]
+            batchable_flags = [
+                bool(source_text_snapshot[idx].strip())
+                and llm_type == "openai"
+                and structured_batch_size > 1
+                and context_windows[idx] == 0
+                for idx in range(total_subtitles)
+            ]
 
+            cursor = 0
+            while cursor < total_subtitles:
                 if use_structure_text:
-                    # 結構-文本分離模式：合併為單一批次字串翻譯
+                    batch_indices = list(range(cursor, min(cursor + structured_batch_size, total_subtitles)))
+                    cursor += len(batch_indices)
                     translations = await self._translate_batch_structure_text(
                         subs,
                         batch_indices,
@@ -502,30 +660,58 @@ class TranslationService:
                         model_name,
                         parallel_requests,
                         source_text_snapshot=source_text_snapshot,
-                    )
-                else:
-                    # 標準模式：逐條翻譯（帶上下文）
-                    texts_with_context = []
-                    current_indices = []
-                    for idx in batch_indices:
-                        context_texts, current_index = self._get_context_from_snapshot(
-                            source_text_snapshot,
-                            subs,
-                            idx,
-                            context_window,
-                        )
-                        source_text = self._get_source_text_from_snapshot(source_text_snapshot, subs, idx)
-                        texts_with_context.append((source_text, context_texts))
-                        current_indices.append(current_index)
-
-                    translations = await self.translate_batch(
-                        texts_with_context,
-                        llm_type,
-                        model_name,
-                        parallel_requests,
-                        current_indices=current_indices,
+                        runtime_settings=runtime_settings,
                         use_cache=use_cache,
                     )
+                else:
+                    batchable_run = self._count_consecutive_batchable(cursor, batchable_flags, structured_batch_size)
+                    if batchable_run >= 2:
+                        batch_indices = list(range(cursor, cursor + batchable_run))
+                        cursor += batchable_run
+                        translations = await self._translate_batch_structure_text(
+                            subs,
+                            batch_indices,
+                            llm_type,
+                            model_name,
+                            parallel_requests,
+                            source_text_snapshot=source_text_snapshot,
+                            runtime_settings=runtime_settings,
+                            use_cache=use_cache,
+                        )
+                    else:
+                        batch_indices = []
+                        while cursor < total_subtitles and len(batch_indices) < standard_chunk_size:
+                            upcoming_batchable = self._count_consecutive_batchable(
+                                cursor,
+                                batchable_flags,
+                                structured_batch_size,
+                            )
+                            if batch_indices and upcoming_batchable >= 2:
+                                break
+                            batch_indices.append(cursor)
+                            cursor += 1
+
+                        texts_with_context = []
+                        current_indices = []
+                        for idx in batch_indices:
+                            source_text = self._get_source_text_from_snapshot(source_text_snapshot, subs, idx)
+                            context_texts, current_index = self._get_context_from_snapshot(
+                                source_text_snapshot,
+                                subs,
+                                idx,
+                                context_windows[idx],
+                            )
+                            texts_with_context.append((source_text, context_texts))
+                            current_indices.append(current_index)
+
+                        translations = await self.translate_batch(
+                            texts_with_context,
+                            llm_type,
+                            model_name,
+                            parallel_requests,
+                            current_indices=current_indices,
+                            use_cache=use_cache,
+                        )
 
                 # 應用翻譯結果
                 for batch_idx, idx in enumerate(batch_indices):
@@ -628,6 +814,8 @@ class TranslationService:
         model_name: str,
         parallel_requests: int,
         source_text_snapshot: list[str] | None = None,
+        runtime_settings: dict[str, bool | int] | None = None,
+        use_cache: bool = True,
     ) -> list[str]:
         """結構-文本分離模式的批次翻譯
 
@@ -638,21 +826,62 @@ class TranslationService:
 
         snapshot = source_text_snapshot or []
         source_texts = [self._get_source_text_from_snapshot(snapshot, subs, idx) for idx in batch_indices]
-        batch_string = texts_to_batch_string(source_texts)
         expected_count = len(source_texts)
+        settings = runtime_settings or self._get_translation_runtime_settings()
+        current_style = self.prompt_manager.current_style if self.prompt_manager else "standard"
+        batch_prompt_version = (
+            self.prompt_manager.get_prompt_version(llm_type, model_name=model_name, batch_request=True)
+            if self.prompt_manager
+            else ""
+        )
 
-        # 取得批次行映射指令
-        batch_instruction = self.prompt_manager.get_batch_line_mapping_instruction()
+        cached_results: list[str | None] = [None] * expected_count
+        pending_positions = list(range(expected_count))
+        pending_source_texts = source_texts
+
+        if use_cache and self.cache_service and self.prompt_manager:
+            pending_positions = []
+            pending_source_texts = []
+            for position, source_text in enumerate(source_texts):
+                cached_result = self.cache_service.get_translation(
+                    source_text,
+                    [],
+                    model_name,
+                    current_style,
+                    batch_prompt_version,
+                    lookup_source="translation_service_batch_precheck",
+                )
+                if cached_result:
+                    cache_rejection_reason = TranslationClient.get_cache_rejection_reason(source_text, cached_result)
+                    if cache_rejection_reason is None:
+                        cached_results[position] = cached_result
+                        self._incr_stat("cached_translations")
+                        continue
+
+                    logger.info("批次翻譯忽略不合格快取結果 (%s): %s", cache_rejection_reason, source_text)
+
+                pending_positions.append(position)
+                pending_source_texts.append(source_text)
+
+            if not pending_positions:
+                return [result or "" for result in cached_results]
 
         # 嘗試以單一 API 呼叫翻譯
         max_retries = 2
         for attempt in range(max_retries):
             try:
                 prefixed_text = (
-                    f"[BATCH: {expected_count} lines — translate each line, "
-                    f"output exactly {expected_count} lines]\n{batch_string}"
+                    f"[BATCH: {len(pending_source_texts)} lines — translate each line, "
+                    f"output exactly {len(pending_source_texts)} lines]\n{texts_to_batch_string(pending_source_texts)}"
                 )
-                translation = await self.translate_text(prefixed_text, [batch_instruction], llm_type, model_name)
+                logger.info(
+                    "智慧批次翻譯 %d 個字幕%s",
+                    len(pending_source_texts),
+                    f"（快取命中 {expected_count - len(pending_source_texts)}）"
+                    if len(pending_source_texts) != expected_count
+                    else "",
+                )
+                translation = await self.translate_text(prefixed_text, [], llm_type, model_name, use_cache=False)
 
                 if not translation or "[翻譯錯誤" in translation:
                     logger.warning(
@@ -662,14 +891,23 @@ class TranslationService:
                     )
                     continue
 
-                translated_texts = batch_string_to_texts(translation, expected_count)
+                translated_texts = batch_string_to_texts(translation, len(pending_source_texts))
 
-                # 後處理每個翻譯結果
-                results = []
-                for i, trans in enumerate(translated_texts):
-                    processed = self._post_process_translation(source_texts[i], trans)
-                    results.append(processed)
-                return results
+                for position, trans in zip(pending_positions, translated_texts, strict=False):
+                    processed = self._post_process_translation(source_texts[position], trans)
+                    cached_results[position] = processed
+                    if use_cache and self.cache_service and self.prompt_manager:
+                        self.cache_service.store_translation(
+                            source_texts[position],
+                            processed,
+                            [],
+                            model_name,
+                            current_style,
+                            batch_prompt_version,
+                            lookup_source="translation_service_batch_store",
+                        )
+
+                return [result or "" for result in cached_results]
 
             except Exception as e:
                 logger.warning(
@@ -681,22 +919,27 @@ class TranslationService:
 
         # 退回到標準逐條翻譯
         logger.warning("結構-文本分離: 退回到標準逐條翻譯模式")
-        context_window = 3
         texts_with_context = []
         current_indices = []
-        for idx in batch_indices:
-            context_texts, current_index = self._get_context_from_snapshot(snapshot, subs, idx, context_window)
+        pending_batch_indices = [batch_indices[position] for position in pending_positions]
+        for idx in pending_batch_indices:
             source_text = self._get_source_text_from_snapshot(snapshot, subs, idx)
+            context_window = self._get_context_window_for_text(source_text, settings)
+            context_texts, current_index = self._get_context_from_snapshot(snapshot, subs, idx, context_window)
             texts_with_context.append((source_text, context_texts))
             current_indices.append(current_index)
 
-        return await self.translate_batch(
+        fallback_results = await self.translate_batch(
             texts_with_context,
             llm_type,
             model_name,
             parallel_requests,
             current_indices=current_indices,
+            use_cache=use_cache,
         )
+        for position, trans in zip(pending_positions, fallback_results, strict=False):
+            cached_results[position] = trans
+        return [result or "" for result in cached_results]
 
     def _post_process_translation(self, original_text: str, translated_text: str) -> str:
         """對翻譯結果進行後處理，包括術語表應用、專有名詞統一和移除標點符號
@@ -711,15 +954,16 @@ class TranslationService:
         if not translated_text:
             return translated_text
 
-        # 0. 應用術語表（如果有啟用的術語表）
-        try:
-            from srt_translator.core.glossary import get_glossary_manager
+        # 0. 應用術語表（如果有啟用且未被停用）
+        if self._get_bool_config_option("translation.terminology_enabled", True):
+            try:
+                from srt_translator.core.glossary import get_glossary_manager
 
-            glossary_manager = get_glossary_manager()
-            if glossary_manager.get_active_glossaries():
-                translated_text = glossary_manager.apply_glossaries(translated_text)
-        except Exception as e:
-            logger.debug(f"應用術語表時發生錯誤: {e}")
+                glossary_manager = get_glossary_manager()
+                if glossary_manager.get_active_glossaries():
+                    translated_text = glossary_manager.apply_glossaries(translated_text)
+            except Exception as e:
+                logger.debug(f"應用術語表時發生錯誤: {e}")
 
         # 檢查是否需要保留原始標點符號
         preserve_punctuation = get_config("user", "preserve_punctuation", True)

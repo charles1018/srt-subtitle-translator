@@ -564,6 +564,35 @@ class TestPromptManagerOptimizedMessage:
         assert messages[1]["role"] == "user"
         assert text in messages[1]["content"]
 
+    def test_get_prompt_openai_uses_compact_prompt_by_default(self, manager):
+        """測試 OpenAI 預設使用精簡 prompt，避免重複排版規則耗費 token。"""
+        prompt = manager.get_prompt("openai", "general")
+
+        assert "Formatting, punctuation, line wrapping" in prompt
+        assert "Netflix Traditional Chinese Subtitle Standards" not in prompt
+
+    def test_get_optimized_message_openai_uses_compact_user_message(self, manager):
+        """測試 OpenAI user message 使用較精簡的 CURRENT/BEFORE/AFTER 結構。"""
+        text = "But the big number comes tomorrow."
+        context = ["Earlier context", text, "Later context"]
+
+        messages = manager.get_optimized_message(text, context, "openai", "gpt-4o-mini", current_index=1)
+
+        user_message = messages[1]["content"]
+        assert "CURRENT:" in user_message
+        assert "BEFORE (reference only):" in user_message
+        assert "AFTER (reference only):" in user_message
+        assert "[CURRENT]" not in user_message
+
+    def test_get_optimized_message_batch_request_uses_batch_prompt(self, manager):
+        """測試批次翻譯請求走專用批次 prompt。"""
+        batch_text = "[BATCH: 2 lines — translate each line, output exactly 2 lines]\nHello\nWorld"
+
+        messages = manager.get_optimized_message(batch_text, [], "openai", "gpt-4o-mini")
+
+        assert "Strict Line Mapping" in messages[0]["content"]
+        assert messages[1]["content"] == batch_text
+
     def test_get_optimized_message_includes_context(self, manager):
         """測試優化訊息包含上下文"""
         text = "Main text"

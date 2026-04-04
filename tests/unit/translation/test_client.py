@@ -1261,6 +1261,41 @@ class TestTranslationClientAsync:
     @pytest.mark.asyncio
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    async def test_translate_with_openai_batch_request_expands_max_tokens(
+        self, mock_openai_cls, mock_prompt, mock_cache
+    ):
+        """Test structured batch requests raise max_tokens and lower temperature."""
+        mock_cache_instance = MagicMock()
+        mock_cache.return_value = mock_cache_instance
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content="第一行\n第二行\n第三行\n第四行\n第五行"))]
+        mock_response.usage = MagicMock(prompt_tokens=10, completion_tokens=12)
+
+        mock_openai_client = MagicMock()
+        mock_openai_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_openai_cls.return_value = mock_openai_client
+
+        client = TranslationClient(llm_type="openai", api_key="sk-test-key")
+        await client._translate_with_openai(
+            [
+                {
+                    "role": "user",
+                    "content": "[BATCH: 5 lines — translate each line, output exactly 5 lines]\nA\nB\nC\nD\nE",
+                }
+            ],
+            "gpt-4o-mini",
+        )
+
+        request_payload = mock_openai_client.chat.completions.create.call_args.kwargs
+        assert request_payload["max_tokens"] > 150
+        assert request_payload["temperature"] == 0.0
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     async def test_translate_text_retries_once_when_output_still_contains_japanese(self, mock_prompt, mock_cache):
         """Test translate_text performs one reinforced retry for untranslated Japanese output."""
         mock_cache_instance = MagicMock()

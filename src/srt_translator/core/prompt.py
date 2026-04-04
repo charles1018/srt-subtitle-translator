@@ -70,6 +70,7 @@ class PromptManager:
         )
         self.config_file = config_file or self.config_manager.get_config_path()
         self.config_dir = os.path.dirname(self.config_file) or "."
+        self.user_config_manager = ConfigManager.get_instance("user", config_dir=self.config_dir)
         self.templates_dir = os.path.join(self.config_dir, "prompt_templates")
 
         # 確保模板目錄存在
@@ -638,9 +639,83 @@ Each input line maps to exactly one output line — no exceptions.
 - If input has N lines, output MUST have exactly N lines
 - Do NOT merge lines, skip lines, or add extra lines
 - Do NOT add blank lines or explanatory text between translations
-- Preserve literal \\n (two characters: backslash + n) when present in a line
-- Count your output lines carefully before submitting
-"""
+        - Preserve literal \\n (two characters: backslash + n) when present in a line
+        - Count your output lines carefully before submitting
+        """
+
+    def _get_user_bool_option(self, key: str, default: bool) -> bool:
+        """安全地從 user config 讀取布林值。"""
+        value = self.user_config_manager.get_value(key, default=default)
+        return value if isinstance(value, bool) else default
+
+    def _should_use_compact_prompt(self, llm_type: str) -> bool:
+        """判斷目前 provider 是否應使用精簡 prompt。"""
+        resolved_llm_type = self._resolve_default_prompt_llm_type(llm_type)
+        return resolved_llm_type == "openai" and self._get_user_bool_option("translation.compact_prompt_enabled", True)
+
+    @staticmethod
+    def _is_batch_translation_request(text: str) -> bool:
+        """判斷文字是否為結構化批次翻譯請求。"""
+        return text.lstrip().startswith("[BATCH:")
+
+    def _get_compact_prompt_text(self, content_type: str) -> str:
+        """建立 OpenAI 家族的精簡 prompt，保留品質必要規則。"""
+        base_rules = [
+            "You translate subtitles into natural Taiwan Traditional Chinese.",
+            "Translate ONLY the CURRENT text.",
+            "Use reference context only to resolve ambiguity. Never copy or translate the reference text.",
+            "Output ONLY the translated subtitle text.",
+            "Prioritize meaning, tone, natural spoken flow, and consistency of names/terms.",
+            "Filler Word Filtering: omit filler words unless they carry emotion, hesitation, or characterization.",
+            "Dynamic Equivalency: translate idioms and slang by function and meaning, not literally.",
+            "CPS Compression: prefer concise wording that still preserves intent and tone.",
+            "Formatting, punctuation, line wrapping, and line-count normalization are handled after translation.",
+        ]
+
+        content_specific_rules = {
+            "general": [],
+            "adult": [
+                "Use direct and accurate adult terminology when the source is explicit.",
+                "Do not censor, soften, or moralize explicit content.",
+            ],
+            "anime": [
+                "Preserve character names, honorifics, and iconic anime terminology when appropriate.",
+                "Use wording that feels natural to Taiwan anime audiences.",
+            ],
+            "movie": [
+                "Keep English personal names in English.",
+                "Preserve character voice, emotion, slang, and culturally natural dialogue.",
+            ],
+            "english_drama": [
+                "Keep English personal names in English.",
+                "If CURRENT is incomplete or ends with a conjunction, preserve that incompleteness. Do not complete the sentence.",
+                "Preserve TV-drama dialogue rhythm, tone, and subtext.",
+            ],
+        }
+
+        rules = base_rules + content_specific_rules.get(content_type, [])
+        return "\n".join(f"{index}. {rule}" for index, rule in enumerate(rules, start=1))
+
+    def get_batch_translation_prompt(
+        self,
+        llm_type: str = "openai",
+        content_type: str | None = None,
+        style: str | None = None,
+        model_name: str | None = None,
+    ) -> str:
+        """取得批次翻譯專用 prompt。"""
+        resolved_content_type = content_type or self.current_content_type
+        resolved_style = style or self.current_style
+
+        if self._should_use_compact_prompt(llm_type):
+            prompt = self._get_compact_prompt_text(resolved_content_type)
+            if resolved_style != "standard":
+                prompt = self._apply_style_modifier(prompt, resolved_style, llm_type)
+            prompt = self._apply_language_pair_modifier(prompt, self.current_language_pair)
+        else:
+            prompt = self.get_prompt(llm_type, resolved_content_type, resolved_style, model_name=model_name)
+
+        return f"{prompt}\n\n{self.get_batch_line_mapping_instruction().strip()}".strip()
 
     def _normalize_model_name(self, model_name: str | None) -> str:
         """標準化模型名稱，便於做模型特化判斷"""
@@ -916,6 +991,8 @@ Rules:
             prompt = self.custom_prompts[content_type][llm_type]
         elif self._should_use_qwen35_ud_adult_prompt(llm_type, content_type, model_name):
             prompt = self._get_qwen35_ud_adult_prompt()
+        elif self._should_use_compact_prompt(llm_type):
+            prompt = self._get_compact_prompt_text(content_type)
         else:
             prompt = self._get_default_prompt_text(content_type, llm_type)
 
@@ -934,6 +1011,8 @@ Rules:
         content_type: str | None = None,
         style: str | None = None,
         model_name: str | None = None,
+        *,
+        batch_request: bool = False,
     ) -> str:
         """取得提示詞版本雜湊（用於快取 key）
 
@@ -949,8 +1028,13 @@ Rules:
         import hashlib
 
         resolved_content_type = content_type or self.current_content_type
-        prompt = self.get_prompt(llm_type, resolved_content_type, style, model_name=model_name)
+        if batch_request:
+            prompt = self.get_batch_translation_prompt(llm_type, resolved_content_type, model_name=model_name)
+        else:
+            prompt = self.get_prompt(llm_type, resolved_content_type, style, model_name=model_name)
         strategy = self._get_message_strategy_signature(llm_type, resolved_content_type, model_name)
+        if batch_request:
+            strategy = f"{strategy}|batch"
         fingerprint = f"{prompt}\n\n[MESSAGE_STRATEGY]{strategy}"
         return hashlib.md5(fingerprint.encode()).hexdigest()[:8]
 
@@ -973,8 +1057,12 @@ Rules:
         回傳:
             適合API請求的訊息列表
         """
-        # 獲取基本提示詞
         content_type = self.current_content_type
+        if self._is_batch_translation_request(text):
+            prompt = self.get_batch_translation_prompt(llm_type, content_type, model_name=model_name)
+            return [{"role": "system", "content": prompt}, {"role": "user", "content": text}]
+
+        # 獲取基本提示詞
         prompt = self.get_prompt(llm_type, model_name=model_name)
 
         # 構建結構化的上下文訊息
@@ -1016,6 +1104,22 @@ Rules:
         # 構建新格式的 user message
         if use_qwen35_ud_strategy:
             user_message = self._build_qwen35_ud_user_message(text, context_before, context_after)
+        elif self._should_use_compact_prompt(llm_type):
+            user_content_parts = ["CURRENT:", text]
+
+            if ends_with_conjunction:
+                detected_conj = next(conj for conj in conjunctions if text_lower.endswith(f" {conj}"))
+                user_content_parts.extend(["", f"NOTE: preserve the trailing conjunction '{detected_conj}' in translation."])
+
+            if context_before:
+                user_content_parts.extend(["", "BEFORE (reference only):"])
+                user_content_parts.extend(context_before)
+
+            if context_after:
+                user_content_parts.extend(["", "AFTER (reference only):"])
+                user_content_parts.extend(context_after)
+
+            user_message = "\n".join(user_content_parts)
         else:
             user_content_parts = []
 
@@ -1286,16 +1390,18 @@ Rules:
             return False
 
         if llm_type:
-            default_prompt = self._get_default_prompt_text(content_type, llm_type)
-            self.set_prompt(default_prompt, llm_type, content_type)
+            if content_type not in self.custom_prompts:
+                self.custom_prompts[content_type] = {}
+            self.custom_prompts[content_type].pop(llm_type, None)
+            self.config_manager.set_value("custom_prompts", self.custom_prompts)
+            self._save_prompt_template(content_type)
             logger.info(f"已重置 '{content_type}' 類型的 '{llm_type}' 提示詞為預設值")
             return True
         else:
             # 重置所有 LLM 類型的提示詞
-            success = True
-            for llm in SUPPORTED_PROMPT_LLM_TYPES:
-                result = self.set_prompt(self._get_default_prompt_text(content_type, llm), llm, content_type)
-                success = success and result
+            self.custom_prompts[content_type] = {}
+            self.config_manager.set_value("custom_prompts", self.custom_prompts)
+            success = self._save_prompt_template(content_type)
             logger.info(f"已重置 '{content_type}' 類型的所有提示詞為預設值")
             return success
 

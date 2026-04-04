@@ -1583,6 +1583,16 @@ class TranslationClient:
         # 原文是多行，保持原樣
         return translated_text
 
+    @staticmethod
+    def _extract_batch_line_count(messages: list[dict[str, str]]) -> int | None:
+        """從訊息內容中提取批次行數。"""
+        for message in messages:
+            content = message.get("content", "")
+            match = re.search(r"\[BATCH:\s*(\d+)\s+lines", content, re.IGNORECASE)
+            if match:
+                return int(match.group(1))
+        return None
+
     async def _translate_with_openai(self, messages: list[dict[str, str]], model_name: str) -> str:
         """使用 OpenAI API 翻譯"""
         # llama.cpp 本地模型不需要速率限制和 token 估算
@@ -1594,6 +1604,7 @@ class TranslationClient:
 
         # 準備 OpenAI 參數
         is_llamacpp = self.llm_type == "llamacpp"
+        batch_line_count = self._extract_batch_line_count(messages)
 
         if is_llamacpp:
             # llama.cpp 本地模型：使用 provider 專屬的本地推理設定
@@ -1620,6 +1631,12 @@ class TranslationClient:
                 "max_tokens": min(150, 4096),
                 "timeout": 30,
             }
+
+        if batch_line_count and batch_line_count > 1:
+            dynamic_max_tokens = min(1200, max(200, 60 + (batch_line_count * 40)))
+            openai_params["max_tokens"] = max(int(openai_params["max_tokens"]), dynamic_max_tokens)
+            openai_params["temperature"] = 0.0
+            logger.debug("偵測到批次翻譯請求: %d 行，調整 max_tokens=%d", batch_line_count, openai_params["max_tokens"])
 
         # 添加 response_format 參數（適用於較新的模型）
         if not is_llamacpp and ("gpt-4" in model_name or "gpt-3.5-turbo" in model_name):
