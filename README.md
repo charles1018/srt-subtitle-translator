@@ -176,8 +176,13 @@ ollama pull llama3.2
 
 ```bash
 # 啟動 llama-server（詳細設定請參考 docs/llamacpp-setup-guide.md）
-llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja -c 2048 --parallel 1 --reasoning-format deepseek --cache-ram 4096
+llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja -c 2048 --parallel 1 --cache-ram 4096
 ```
+
+如果你使用：
+
+- `Qwen3.5`：建議再加上 `--reasoning-format deepseek`
+- `Gemma 4`：建議改用 `--reasoning off --reasoning-format none`
 
 詳細安裝與設定說明請參閱 [docs/llamacpp-setup-guide.md](docs/llamacpp-setup-guide.md)。
 

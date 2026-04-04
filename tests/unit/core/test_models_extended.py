@@ -317,6 +317,19 @@ class TestModelManagerOllamaModelsAsync:
         assert "q8_0" in model.tags
         assert model.capabilities["chinese"] >= 0.9
 
+    def test_build_dynamic_ollama_model_info_gemma4(self, manager):
+        """測試 Gemma 4 動態模型資訊會套用 128K context 與多語標籤"""
+        model = manager._build_dynamic_ollama_model_info(
+            "gemma-4-E4B-it-UD-Q8_K_XL.gguf",
+            {"family": "gemma4", "parameter_size": "7.5B", "quantization_level": "Q8_0"},
+        )
+
+        assert model.provider == "ollama"
+        assert model.context_length == 131072
+        assert "multilingual" in model.tags
+        assert "q8_0" in model.tags
+        assert "128K context" in model.description
+
     @pytest.mark.asyncio
     async def test_get_ollama_models_api_tags_format(self, manager):
         """測試從 /api/tags 端點獲取模型（標準格式）"""

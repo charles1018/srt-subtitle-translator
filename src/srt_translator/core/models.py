@@ -1626,9 +1626,9 @@ class ModelManager:
                 name="llama-server (未連線)",
                 description=(
                     "請先啟動 llama-server："
-                    "llama-server -m <model.gguf> --jinja "
-                    "--reasoning-format deepseek "
-                    "--parallel 1 -c 1024 --cache-ram 4096"
+                    "llama-server -m <model.gguf> --jinja --parallel 1 -c 1024 --cache-ram 4096"
+                    "；Qwen3.5 建議加 --reasoning-format deepseek，"
+                    "Gemma 4 建議改用 --reasoning off --reasoning-format none"
                 ),
                 context_length=1024,
                 pricing="免費(本機執行)",

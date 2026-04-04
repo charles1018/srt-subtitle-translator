@@ -366,8 +366,10 @@ class TranslationClient:
                 "top_k": 64,
                 # Gemma 4 的 thinking 格式不是 deepseek，覆蓋 default 的設定
                 "reasoning_format": "none",
-                # enable_thinking=false 對應 Gemma 4 的 <|think|> token 控制
-                "chat_template_kwargs": {"enable_thinking": False},
+                # 目前新版 llama.cpp 已建議改用 reasoning=off，而非 template kwargs
+                "reasoning": "off",
+                "reasoning_budget_tokens": None,
+                "chat_template_kwargs": None,
             },
         },
     }
@@ -626,16 +628,25 @@ class TranslationClient:
         default_profile = self.LLAMACPP_MODEL_PROFILES["default"]
         family_profile = self.LLAMACPP_MODEL_PROFILES.get(profile_key, {})
 
-        extra_body = {
-            **default_profile.get("extra_body", {}),
-            **family_profile.get("extra_body", {}),
-        }
-        default_chat_template_kwargs = default_profile.get("extra_body", {}).get("chat_template_kwargs", {})
-        family_chat_template_kwargs = family_profile.get("extra_body", {}).get("chat_template_kwargs", {})
-        if default_chat_template_kwargs or family_chat_template_kwargs:
+        default_extra_body = default_profile.get("extra_body", {})
+        family_extra_body = family_profile.get("extra_body", {})
+
+        extra_body = dict(default_extra_body)
+        for key, value in family_extra_body.items():
+            if value is None:
+                extra_body.pop(key, None)
+            else:
+                extra_body[key] = value
+
+        default_chat_template_kwargs = default_extra_body.get("chat_template_kwargs")
+        family_has_chat_template_kwargs = "chat_template_kwargs" in family_extra_body
+        family_chat_template_kwargs = family_extra_body.get("chat_template_kwargs")
+        if family_has_chat_template_kwargs and family_chat_template_kwargs is None:
+            extra_body.pop("chat_template_kwargs", None)
+        elif isinstance(default_chat_template_kwargs, dict) or isinstance(family_chat_template_kwargs, dict):
             extra_body["chat_template_kwargs"] = {
-                **default_chat_template_kwargs,
-                **family_chat_template_kwargs,
+                **(default_chat_template_kwargs if isinstance(default_chat_template_kwargs, dict) else {}),
+                **(family_chat_template_kwargs if isinstance(family_chat_template_kwargs, dict) else {}),
             }
 
         return {

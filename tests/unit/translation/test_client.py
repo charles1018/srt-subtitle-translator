@@ -407,6 +407,14 @@ class TestTranslationClientHelpers:
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    def test_detect_ollama_model_family_gemma4_custom_name(self, mock_prompt, mock_cache):
+        """Test Gemma 4 family detection for local GGUF file names."""
+        client = TranslationClient(llm_type="ollama")
+        family = client._detect_ollama_model_family("gemma-4-E4B-it-UD-Q8_K_XL.gguf")
+        assert family == "gemma4"
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     def test_build_ollama_payload_qwen35_profile(self, mock_prompt, mock_cache):
         """Test Qwen3.5 uses the specialized Ollama payload profile."""
         client = TranslationClient(llm_type="ollama")
@@ -505,6 +513,26 @@ class TestTranslationClientHelpers:
         assert profile["extra_body"]["presence_penalty"] == 1.5
         assert profile["extra_body"]["top_k"] == 20
         assert profile["extra_body"]["min_p"] == 0.0
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    def test_get_llamacpp_model_profile_gemma4(self, mock_prompt, mock_cache):
+        """Test Gemma 4 uses official sampling params and reasoning=off."""
+        client = TranslationClient(llm_type="ollama")
+
+        profile = client._get_llamacpp_model_profile("gemma-4-E4B-it-UD-Q8_K_XL.gguf")
+
+        assert profile["family"] == "gemma4"
+        assert profile["options"]["temperature"] == 1.0
+        assert profile["options"]["top_p"] == 0.95
+        assert profile["options"]["max_tokens"] == 256
+        assert profile["extra_body"]["cache_prompt"] is True
+        assert profile["extra_body"]["reasoning_format"] == "none"
+        assert profile["extra_body"]["reasoning"] == "off"
+        assert profile["extra_body"]["seed"] == 42
+        assert profile["extra_body"]["top_k"] == 64
+        assert "reasoning_budget_tokens" not in profile["extra_body"]
+        assert "chat_template_kwargs" not in profile["extra_body"]
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
@@ -1169,6 +1197,45 @@ class TestTranslationClientAsync:
         assert request_payload["extra_body"]["presence_penalty"] == 2.0
         assert request_payload["extra_body"]["top_k"] == 20
         assert request_payload["extra_body"]["min_p"] == 0.0
+        assert result == "翻譯結果"
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    async def test_translate_with_llamacpp_gemma4_payload(self, mock_openai_cls, mock_prompt, mock_cache):
+        """Test Gemma 4 llama.cpp request payload uses reasoning=off without template kwargs."""
+        mock_cache_instance = MagicMock()
+        mock_cache.return_value = mock_cache_instance
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content='{"translation":"翻譯結果"}'))]
+        mock_response.usage = MagicMock(prompt_tokens=10, completion_tokens=6)
+
+        mock_openai_client = MagicMock()
+        mock_openai_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_openai_cls.return_value = mock_openai_client
+
+        client = TranslationClient(llm_type="llamacpp", base_url="http://localhost:8080")
+        result = await client._translate_with_openai(
+            [{"role": "user", "content": "test"}],
+            "gemma-4-E4B-it-UD-Q8_K_XL.gguf",
+        )
+
+        request_payload = mock_openai_client.chat.completions.create.call_args.kwargs
+        assert request_payload["temperature"] == 1.0
+        assert request_payload["top_p"] == 0.95
+        assert request_payload["max_tokens"] == 256
+        assert request_payload["response_format"]["type"] == "json_object"
+        assert request_payload["response_format"]["schema"]["required"] == ["translation"]
+        assert request_payload["extra_body"]["cache_prompt"] is True
+        assert request_payload["extra_body"]["reasoning_format"] == "none"
+        assert request_payload["extra_body"]["reasoning"] == "off"
+        assert request_payload["extra_body"]["seed"] == 42
+        assert request_payload["extra_body"]["top_k"] == 64
+        assert "reasoning_budget_tokens" not in request_payload["extra_body"]
+        assert "chat_template_kwargs" not in request_payload["extra_body"]
         assert result == "翻譯結果"
 
     @pytest.mark.asyncio
