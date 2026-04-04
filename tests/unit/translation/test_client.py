@@ -516,6 +516,26 @@ class TestTranslationClientHelpers:
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    def test_get_llamacpp_model_profile_resolved_from_server(self, mock_prompt, mock_cache):
+        """Test llama.cpp profile resolves generic 'local-model' via server model_path."""
+        client = TranslationClient(llm_type="llamacpp", base_url="http://localhost:8080")
+
+        # 未解析前，generic name 回退到 default profile
+        profile_before = client._get_llamacpp_model_profile("local-model")
+        assert profile_before["family"] == "default"
+        assert profile_before["options"]["temperature"] == 0.1
+
+        # 模擬 server /props 回報了實際模型路徑
+        client._llamacpp_resolved_model_name = "Qwen3.5-27B-UD-Q4_K_XL.gguf"
+
+        # 解析後，應偵測為 qwen3.5 family
+        profile_after = client._get_llamacpp_model_profile("local-model")
+        assert profile_after["family"] == "qwen3.5"
+        assert profile_after["options"]["temperature"] == 0.7
+        assert profile_after["extra_body"]["presence_penalty"] == 1.5
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     def test_get_llamacpp_model_profile_gemma4(self, mock_prompt, mock_cache):
         """Test Gemma 4 uses official sampling params and reasoning=off."""
         client = TranslationClient(llm_type="ollama")

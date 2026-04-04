@@ -417,6 +417,7 @@ class TranslationClient:
         self._llamacpp_server_diagnostics: dict[str, Any] | None = None
         self._llamacpp_server_diagnostics_timestamp = 0.0
         self._llamacpp_server_diagnostics_ttl = 30.0
+        self._llamacpp_resolved_model_name: str | None = None
 
         # 連線池設定
         self.conn_limit = 10  # 最大連線數
@@ -623,8 +624,11 @@ class TranslationClient:
 
     def _get_llamacpp_model_profile(self, model_name: str) -> dict[str, Any]:
         """取得 llama.cpp 模型的請求設定"""
-        family = self._detect_ollama_model_family(model_name)
-        profile_key = "qwen3.5-ud" if self._is_qwen35_ud_model(model_name) else family
+        effective_name = self._resolve_llamacpp_model_name(model_name)
+        family = self._detect_ollama_model_family(effective_name)
+        if effective_name != model_name and family != "default":
+            logger.debug(f"llama.cpp 模型家族從 server model_path 偵測為: {family}")
+        profile_key = "qwen3.5-ud" if self._is_qwen35_ud_model(effective_name) else family
         default_profile = self.LLAMACPP_MODEL_PROFILES["default"]
         family_profile = self.LLAMACPP_MODEL_PROFILES.get(profile_key, {})
 
@@ -730,6 +734,10 @@ class TranslationClient:
                             model_path = props.get("model_path", "")
                             if isinstance(model_path, str):
                                 diagnostics["model_path"] = model_path
+                                if model_path:
+                                    resolved = model_path.rsplit("/", 1)[-1]
+                                    self._llamacpp_resolved_model_name = resolved
+                                    logger.info(f"llama.cpp 偵測到模型: {resolved}")
 
                             diagnostics["is_sleeping"] = bool(props.get("is_sleeping", False))
 
@@ -773,11 +781,20 @@ class TranslationClient:
         self._llamacpp_server_diagnostics_timestamp = time.time()
         return diagnostics
 
+    def _resolve_llamacpp_model_name(self, model_name: str) -> str:
+        """若為 llamacpp 且有從 server 解析的實際模型名稱，優先使用之。"""
+        if self.llm_type == "llamacpp" and self._llamacpp_resolved_model_name:
+            family = self._detect_ollama_model_family(model_name)
+            if family == "default":
+                return self._llamacpp_resolved_model_name
+        return model_name
+
     def _should_apply_qwen35_ud_runtime_guards(self, model_name: str) -> bool:
         """判斷是否應啟用 qwen3.5-ud 成人字幕的額外保護機制。"""
+        effective_name = self._resolve_llamacpp_model_name(model_name)
         return (
             self.llm_type in {"ollama", "llamacpp"}
-            and self._is_qwen35_ud_model(model_name)
+            and self._is_qwen35_ud_model(effective_name)
             and getattr(self.prompt_manager, "current_content_type", "") == "adult"
         )
 
