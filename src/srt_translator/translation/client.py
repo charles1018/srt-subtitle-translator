@@ -270,8 +270,8 @@ class TranslationClient:
             "keep_alive": "15m",
             "batch_concurrency_limit": 1,
             "options": {
-                "temperature": 1.0,
-                "top_p": 1.0,
+                "temperature": 0.7,
+                "top_p": 0.8,
                 "top_k": 20,
                 "min_p": 0.0,
                 "num_predict": 256,
@@ -281,8 +281,8 @@ class TranslationClient:
             "keep_alive": "15m",
             "batch_concurrency_limit": 1,
             "options": {
-                "temperature": 0.85,
-                "top_p": 1.0,
+                "temperature": 0.7,
+                "top_p": 0.8,
                 "top_k": 20,
                 "min_p": 0.0,
                 "num_predict": 96,
@@ -317,7 +317,7 @@ class TranslationClient:
             },
         },
         "qwen3": {
-            "batch_concurrency_limit": 1,
+            "batch_concurrency_limit": None,
             "options": {
                 "temperature": 0.7,
                 "top_p": 0.8,
@@ -330,14 +330,14 @@ class TranslationClient:
             },
         },
         "qwen3.5": {
-            "batch_concurrency_limit": 1,
+            "batch_concurrency_limit": None,
             "options": {
-                "temperature": 1.0,
-                "top_p": 1.0,
+                "temperature": 0.7,
+                "top_p": 0.8,
                 "max_tokens": 256,
             },
             "extra_body": {
-                "presence_penalty": 2.0,
+                "presence_penalty": 1.5,
                 "top_k": 20,
                 "min_p": 0.0,
             },
@@ -345,12 +345,12 @@ class TranslationClient:
         "qwen3.5-ud": {
             "batch_concurrency_limit": None,
             "options": {
-                "temperature": 0.85,
-                "top_p": 1.0,
+                "temperature": 0.7,
+                "top_p": 0.8,
                 "max_tokens": 96,
             },
             "extra_body": {
-                "presence_penalty": 2.0,
+                "presence_penalty": 1.5,
                 "top_k": 20,
                 "min_p": 0.0,
             },

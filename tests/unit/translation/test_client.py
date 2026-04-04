@@ -427,8 +427,8 @@ class TestTranslationClientHelpers:
 
         assert payload["think"] is False
         assert payload["keep_alive"] == "15m"
-        assert payload["options"]["temperature"] == 1.0
-        assert payload["options"]["top_p"] == 1.0
+        assert payload["options"]["temperature"] == 0.7
+        assert payload["options"]["top_p"] == 0.8
         assert payload["options"]["top_k"] == 20
         assert payload["options"]["min_p"] == 0.0
         assert payload["options"]["num_predict"] == 256
@@ -444,8 +444,8 @@ class TestTranslationClientHelpers:
 
         assert payload["think"] is False
         assert payload["keep_alive"] == "15m"
-        assert payload["options"]["temperature"] == 0.85
-        assert payload["options"]["top_p"] == 1.0
+        assert payload["options"]["temperature"] == 0.7
+        assert payload["options"]["top_p"] == 0.8
         assert payload["options"]["top_k"] == 20
         assert payload["options"]["min_p"] == 0.0
         assert payload["options"]["num_predict"] == 96
@@ -459,15 +459,15 @@ class TestTranslationClientHelpers:
         profile = client._get_llamacpp_model_profile("HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0")
 
         assert profile["family"] == "qwen3.5"
-        assert profile["options"]["temperature"] == 1.0
-        assert profile["options"]["top_p"] == 1.0
+        assert profile["options"]["temperature"] == 0.7
+        assert profile["options"]["top_p"] == 0.8
         assert profile["options"]["max_tokens"] == 256
         assert profile["extra_body"]["cache_prompt"] is True
         assert profile["extra_body"]["reasoning_format"] == "deepseek"
         assert profile["extra_body"]["reasoning_budget_tokens"] == 0
         assert profile["extra_body"]["seed"] == 42
         assert profile["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
-        assert profile["extra_body"]["presence_penalty"] == 2.0
+        assert profile["extra_body"]["presence_penalty"] == 1.5
         assert profile["extra_body"]["top_k"] == 20
         assert profile["extra_body"]["min_p"] == 0.0
 
@@ -481,15 +481,15 @@ class TestTranslationClientHelpers:
 
         assert profile["family"] == "qwen3.5"
         assert profile["profile"] == "qwen3.5-ud"
-        assert profile["options"]["temperature"] == 0.85
-        assert profile["options"]["top_p"] == 1.0
+        assert profile["options"]["temperature"] == 0.7
+        assert profile["options"]["top_p"] == 0.8
         assert profile["options"]["max_tokens"] == 96
         assert profile["extra_body"]["cache_prompt"] is True
         assert profile["extra_body"]["reasoning_format"] == "deepseek"
         assert profile["extra_body"]["reasoning_budget_tokens"] == 0
         assert profile["extra_body"]["seed"] == 42
         assert profile["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
-        assert profile["extra_body"]["presence_penalty"] == 2.0
+        assert profile["extra_body"]["presence_penalty"] == 1.5
         assert profile["extra_body"]["top_k"] == 20
         assert profile["extra_body"]["min_p"] == 0.0
 
@@ -1121,8 +1121,8 @@ class TestTranslationClientAsync:
         request_payload = mock_session.post.call_args.kwargs["json"]
         assert request_payload["think"] is False
         assert request_payload["keep_alive"] == "15m"
-        assert request_payload["options"]["temperature"] == 1.0
-        assert request_payload["options"]["top_p"] == 1.0
+        assert request_payload["options"]["temperature"] == 0.7
+        assert request_payload["options"]["top_p"] == 0.8
         assert request_payload["options"]["top_k"] == 20
         assert request_payload["options"]["min_p"] == 0.0
         assert result == "翻譯結果"
@@ -1156,7 +1156,7 @@ class TestTranslationClientAsync:
 
         request_payload = mock_session.post.call_args.kwargs["json"]
         assert request_payload["keep_alive"] == "15m"
-        assert request_payload["options"]["temperature"] == 0.85
+        assert request_payload["options"]["temperature"] == 0.7
         assert request_payload["options"]["num_predict"] == 96
         assert result == "翻譯結果"
 
@@ -1185,8 +1185,8 @@ class TestTranslationClientAsync:
         )
 
         request_payload = mock_openai_client.chat.completions.create.call_args.kwargs
-        assert request_payload["temperature"] == 1.0
-        assert request_payload["top_p"] == 1.0
+        assert request_payload["temperature"] == 0.7
+        assert request_payload["top_p"] == 0.8
         assert request_payload["max_tokens"] == 256
         assert request_payload["response_format"]["type"] == "json_object"
         assert request_payload["response_format"]["schema"]["required"] == ["translation"]
@@ -1194,7 +1194,7 @@ class TestTranslationClientAsync:
         assert request_payload["extra_body"]["reasoning_format"] == "deepseek"
         assert request_payload["extra_body"]["seed"] == 42
         assert request_payload["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
-        assert request_payload["extra_body"]["presence_penalty"] == 2.0
+        assert request_payload["extra_body"]["presence_penalty"] == 1.5
         assert request_payload["extra_body"]["top_k"] == 20
         assert request_payload["extra_body"]["min_p"] == 0.0
         assert result == "翻譯結果"
