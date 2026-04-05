@@ -1105,11 +1105,12 @@ class TranslationService:
         if normalized_source.startswith("much more with "):
             candidate = normalized_translation
             leading_patterns = (
+                r"^稍後請看",
+                r"^接下來(?:我們)?(?:將)?(?:會)?(?:來)?(?:繼續)?(?:深入)?(?:探討|看看|談談)",
                 r"^接下來是",
                 r"^更多內容將\s*[與跟]",
                 r"^更多內容將",
                 r"^更多(?:的是)?",
-                r"^稍後請看",
             )
             trailing_patterns = (
                 r"(?:的)?更多觀點[。！？]?$",

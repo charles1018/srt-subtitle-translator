@@ -1369,6 +1369,60 @@ class TestTranslationService:
 
         assert result == "稍後請看紐約聯邦儲備銀行行長約翰·威廉斯"
 
+    @patch("srt_translator.services.factory.get_config")
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    def test_post_process_translation_normalizes_fed_terms_without_touching_reserve_bank_name(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config, mock_get_config
+    ):
+        """聯邦儲備應收斂為聯準會，但聯邦儲備銀行名稱需保留。"""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_get_config.side_effect = (
+            lambda section, key, default=None: True
+            if (section, key) == ("user", "preserve_punctuation")
+            else default
+        )
+
+        service = TranslationService()
+        service._get_bool_config_option = MagicMock(return_value=False)
+
+        result = service._post_process_translation(
+            "The Federal Reserve is watching New York Fed President John Williams.",
+            "聯邦儲備正在關注紐約聯邦儲備銀行行長約翰 威廉姆斯",
+        )
+
+        assert result == "聯準會正在關注紐約聯邦儲備銀行行長約翰·威廉斯"
+
+    @patch("srt_translator.services.factory.get_config")
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    def test_post_process_translation_strips_deep_dive_lead_in_for_much_more_with_phrase(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config, mock_get_config
+    ):
+        """Much more with ... 應移除冗長的「接下來我們將深入探討」前綴。"""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_get_config.side_effect = (
+            lambda section, key, default=None: True
+            if (section, key) == ("user", "preserve_punctuation")
+            else default
+        )
+
+        service = TranslationService()
+        service._get_bool_config_option = MagicMock(return_value=False)
+
+        result = service._post_process_translation(
+            "Much more with New York Fed President John Williams.",
+            "稍後請看接下來我們將深入探討紐約聯邦儲備銀行行長約翰·威廉斯",
+        )
+
+        assert result == "稍後請看紐約聯邦儲備銀行行長約翰·威廉斯"
+
 
 # ============================================================
 # TranslationTaskManager Tests

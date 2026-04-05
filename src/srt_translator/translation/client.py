@@ -256,6 +256,14 @@ class TranslationClient:
         ("招聘", "招募"),
         ("威廉姆斯", "威廉斯"),
     )
+    TAIWAN_SUBTITLE_REGEX_REPLACEMENTS: ClassVar[tuple[tuple[re.Pattern[str], str], ...]] = (
+        (re.compile(r"美國聯邦儲備(?!銀行)"), "聯準會"),
+        (re.compile(r"美國聯準會"), "聯準會"),
+        (re.compile(r"聯邦儲備(?!銀行)"), "聯準會"),
+        (re.compile(r"美東時間"), "東部時間"),
+        (re.compile(r"約翰\s*[·•‧]?\s*威廉斯"), "約翰·威廉斯"),
+        (re.compile(r"([\u4e00-\u9fff])\s*[·•‧]\s*([\u4e00-\u9fff])"), r"\1·\2"),
+    )
     OLLAMA_MODEL_PROFILES: ClassVar[dict[str, dict[str, Any]]] = {
         "default": {
             "keep_alive": "10m",
@@ -1604,6 +1612,8 @@ class TranslationClient:
         normalized = text
         for source_term, target_term in cls.TAIWAN_SUBTITLE_TERM_REPLACEMENTS:
             normalized = normalized.replace(source_term, target_term)
+        for pattern, replacement in cls.TAIWAN_SUBTITLE_REGEX_REPLACEMENTS:
+            normalized = pattern.sub(replacement, normalized)
         return normalized
 
     @staticmethod

@@ -313,10 +313,11 @@ class TestTranslationClientHelpers:
         client = TranslationClient(llm_type="ollama")
 
         result = client.normalize_taiwan_subtitle_terminology(
-            "通脹、美聯儲、首席執行官、增長、威廉姆斯都提到通貨膨脹。"
+            "通脹、美聯儲、首席執行官、增長、威廉姆斯、美東時間、美國聯邦儲備、"
+            "紐約聯邦儲備銀行、約翰 威廉姆斯都提到通貨膨脹。"
         )
 
-        assert result == "通膨、聯準會、執行長、成長、威廉斯都提到通膨。"
+        assert result == "通膨、聯準會、執行長、成長、威廉斯、東部時間、聯準會、紐約聯邦儲備銀行、約翰·威廉斯都提到通膨。"
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
