@@ -308,6 +308,18 @@ class TestTranslationClientHelpers:
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    def test_normalize_taiwan_subtitle_terminology(self, mock_prompt, mock_cache):
+        """Test Mainland variants are normalized to Taiwan subtitle wording."""
+        client = TranslationClient(llm_type="ollama")
+
+        result = client.normalize_taiwan_subtitle_terminology(
+            "通脹、美聯儲、首席執行官、增長、威廉姆斯都提到通貨膨脹。"
+        )
+
+        assert result == "通膨、聯準會、執行長、成長、威廉斯都提到通膨。"
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     def test_should_retry_untranslated_japanese_for_hiragana_output(self, mock_prompt, mock_cache):
         """Test untranslated Japanese detector catches hiragana-heavy outputs."""
         client = TranslationClient(llm_type="ollama")

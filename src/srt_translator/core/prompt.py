@@ -639,9 +639,12 @@ Each input line maps to exactly one output line — no exceptions.
 - If input has N lines, output MUST have exactly N lines
 - Do NOT merge lines, skip lines, or add extra lines
 - Do NOT add blank lines or explanatory text between translations
-        - Preserve literal \\n (two characters: backslash + n) when present in a line
-        - Count your output lines carefully before submitting
-        """
+- Preserve literal \\n (two characters: backslash + n) when present in a line
+- Preserve each line's sentence mood and speech act.
+- A statement must stay a statement, a question must stay a question, and an imperative must stay an imperative on the same line.
+- Do NOT move a question or answer meaning onto a neighboring line.
+- Count your output lines carefully before submitting
+""".strip()
 
     def _get_user_bool_option(self, key: str, default: bool) -> bool:
         """安全地從 user config 讀取布林值。"""
@@ -666,6 +669,7 @@ Each input line maps to exactly one output line — no exceptions.
             "Use reference context only to resolve ambiguity. Never copy or translate the reference text.",
             "Output ONLY the translated subtitle text.",
             "Prioritize meaning, tone, natural spoken flow, and consistency of names/terms.",
+            "Prefer Taiwan subtitle wording. Avoid Mainland variants such as 通脹, 增長, 首席執行官, 美聯儲.",
             "Filler Word Filtering: omit filler words unless they carry emotion, hesitation, or characterization.",
             "Dynamic Equivalency: translate idioms and slang by function and meaning, not literally.",
             "CPS Compression: prefer concise wording that still preserves intent and tone.",

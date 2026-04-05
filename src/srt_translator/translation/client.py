@@ -246,6 +246,16 @@ class TranslationClient:
             "additionalProperties": False,
         },
     }
+    TAIWAN_SUBTITLE_TERM_REPLACEMENTS: ClassVar[tuple[tuple[str, str], ...]] = (
+        ("首席執行官", "執行長"),
+        ("聯邦儲備局", "聯準會"),
+        ("美聯儲", "聯準會"),
+        ("通貨膨脹", "通膨"),
+        ("通脹", "通膨"),
+        ("增長", "成長"),
+        ("招聘", "招募"),
+        ("威廉姆斯", "威廉斯"),
+    )
     OLLAMA_MODEL_PROFILES: ClassVar[dict[str, dict[str, Any]]] = {
         "default": {
             "keep_alive": "10m",
@@ -1498,6 +1508,11 @@ class TranslationClient:
             if protected_name_restore_map:
                 result = self._restore_protected_japanese_names(result, protected_name_restore_map)
 
+            normalized_result = self.normalize_taiwan_subtitle_terminology(result)
+            if normalized_result != result:
+                logger.debug("已套用台灣字幕詞彙正規化")
+                result = normalized_result
+
             # Netflix 風格後處理（如果啟用）
             if self.enable_netflix_style and self.post_processor:
                 try:
@@ -1582,6 +1597,14 @@ class TranslationClient:
 
         # 原文是多行，保持原樣
         return translated_text
+
+    @classmethod
+    def normalize_taiwan_subtitle_terminology(cls, text: str) -> str:
+        """將常見的陸式詞彙收斂為台灣字幕慣用用語。"""
+        normalized = text
+        for source_term, target_term in cls.TAIWAN_SUBTITLE_TERM_REPLACEMENTS:
+            normalized = normalized.replace(source_term, target_term)
+        return normalized
 
     @staticmethod
     def _extract_batch_line_count(messages: list[dict[str, str]]) -> int | None:

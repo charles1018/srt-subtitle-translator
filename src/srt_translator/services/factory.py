@@ -296,6 +296,27 @@ class TranslationService:
             return True
 
         word_tokens = re.findall(r"[A-Za-z']+", normalized)
+        if ("?" in stripped or "？" in stripped) and 0 < len(word_tokens) <= 4:
+            short_question_starters = {
+                "do",
+                "does",
+                "did",
+                "is",
+                "are",
+                "was",
+                "were",
+                "have",
+                "has",
+                "had",
+                "can",
+                "could",
+                "would",
+                "will",
+                "should",
+            }
+            if any(token in ambiguous_pronouns for token in word_tokens) or word_tokens[0] in short_question_starters:
+                return True
+
         return 0 < len(word_tokens) <= 6 and any(token in ambiguous_pronouns for token in word_tokens)
 
     def _is_context_free_short_text(self, text: str) -> bool:
@@ -309,6 +330,69 @@ class TranslationService:
 
         compact = re.sub(r"\s+", "", stripped)
         return len(compact) <= 24 and not self._text_needs_context(stripped)
+
+    def _is_batch_safe_short_text(self, text: str) -> bool:
+        """判斷短句是否適合進入智慧批次，避免短問答與碎片句錯配。"""
+        stripped = text.strip()
+        if not self._is_context_free_short_text(stripped):
+            return False
+
+        if any(mark in stripped for mark in ("?", "？", "!", "！")):
+            return False
+
+        if re.fullmatch(r"[\d\s:./,\-APMapm]+", stripped):
+            return True
+
+        word_tokens = re.findall(r"[A-Za-z']+", stripped.lower())
+        if not word_tokens:
+            return False
+
+        if len(word_tokens) <= 3:
+            if any("'" in token for token in word_tokens):
+                return False
+
+            safe_short_starters = {
+                "a",
+                "an",
+                "the",
+                "this",
+                "that",
+                "these",
+                "those",
+                "my",
+                "your",
+                "his",
+                "her",
+                "their",
+                "our",
+                "its",
+                "no",
+            }
+            return word_tokens[0] in safe_short_starters
+
+        return True
+
+    @staticmethod
+    def _uses_question_mood(text: str) -> bool:
+        """判斷句子是否為疑問句。"""
+        stripped = text.strip()
+        return "?" in stripped or "？" in stripped
+
+    def _batch_translation_preserves_sentence_mood(
+        self,
+        source_texts: list[str],
+        translated_texts: list[str],
+    ) -> bool:
+        """檢查批次翻譯是否保留每一行的基本句型。"""
+        mismatched_lines = [
+            index + 1
+            for index, (source_text, translated_text) in enumerate(zip(source_texts, translated_texts, strict=False))
+            if self._uses_question_mood(source_text) != self._uses_question_mood(translated_text)
+        ]
+        if mismatched_lines:
+            logger.warning("智慧批次翻譯句型對齊檢查失敗，問題行: %s", mismatched_lines)
+            return False
+        return True
 
     def _get_context_window_for_text(self, text: str, runtime_settings: dict[str, bool | int]) -> int:
         """依句子特徵決定上下文視窗大小。"""
@@ -645,6 +729,7 @@ class TranslationService:
                 and llm_type == "openai"
                 and structured_batch_size > 1
                 and context_windows[idx] == 0
+                and self._is_batch_safe_short_text(source_text_snapshot[idx])
                 for idx in range(total_subtitles)
             ]
 
@@ -892,6 +977,13 @@ class TranslationService:
                     continue
 
                 translated_texts = batch_string_to_texts(translation, len(pending_source_texts))
+                if not self._batch_translation_preserves_sentence_mood(pending_source_texts, translated_texts):
+                    logger.warning(
+                        "結構-文本分離: 批次翻譯句型檢查失敗 (attempt %d/%d)",
+                        attempt + 1,
+                        max_retries,
+                    )
+                    break
 
                 for position, trans in zip(pending_positions, translated_texts, strict=False):
                     processed = self._post_process_translation(source_texts[position], trans)
@@ -954,6 +1046,16 @@ class TranslationService:
         if not translated_text:
             return translated_text
 
+        source_aware_text = self._normalize_source_aware_subtitle_phrases(original_text, translated_text)
+        if source_aware_text != translated_text:
+            logger.debug("已套用原文感知字幕片語正規化")
+            translated_text = source_aware_text
+
+        normalized_text = TranslationClient.normalize_taiwan_subtitle_terminology(translated_text)
+        if normalized_text != translated_text:
+            logger.debug("批次後處理已套用台灣字幕詞彙正規化")
+            translated_text = normalized_text
+
         # 0. 應用術語表（如果有啟用且未被停用）
         if self._get_bool_config_option("translation.terminology_enabled", True):
             try:
@@ -986,6 +1088,44 @@ class TranslationService:
         translated_text = re.sub(r"\s+", " ", translated_text)
 
         return translated_text.strip()
+
+    @staticmethod
+    def _normalize_source_aware_subtitle_phrases(original_text: str, translated_text: str) -> str:
+        """根據原文片語修正少數高頻但容易失真的字幕譯法。"""
+        normalized_source = re.sub(r"\s+", " ", original_text).strip().lower()
+        normalized_translation = translated_text.strip()
+
+        if re.fullmatch(r"(the )?oil shock\.?", normalized_source):
+            normalized_translation = normalized_translation.replace("石油危機", "油價衝擊")
+            normalized_translation = normalized_translation.replace("石油衝擊", "油價衝擊")
+
+        if re.fullmatch(r"straight ahead\.?", normalized_source):
+            return "稍後回來"
+
+        if normalized_source.startswith("much more with "):
+            candidate = normalized_translation
+            leading_patterns = (
+                r"^接下來是",
+                r"^更多內容將\s*[與跟]",
+                r"^更多內容將",
+                r"^更多(?:的是)?",
+                r"^稍後請看",
+            )
+            trailing_patterns = (
+                r"(?:的)?更多觀點[。！？]?$",
+                r"(?:的)?更多內容[。！？]?$",
+                r"討論[。！？]?$",
+                r"的看法[。！？]?$",
+            )
+            for pattern in leading_patterns:
+                candidate = re.sub(pattern, "", candidate)
+            for pattern in trailing_patterns:
+                candidate = re.sub(pattern, "", candidate)
+            candidate = re.sub(r"\s+", "", candidate).strip("，。！？、")
+            if candidate:
+                return f"稍後請看{candidate}"
+
+        return normalized_translation
 
     def _apply_translation(self, subtitle: Any, translation: str, display_mode: str) -> None:
         """根據顯示模式套用翻譯結果

@@ -569,6 +569,7 @@ class TestPromptManagerOptimizedMessage:
         prompt = manager.get_prompt("openai", "general")
 
         assert "Formatting, punctuation, line wrapping" in prompt
+        assert "Prefer Taiwan subtitle wording" in prompt
         assert "Netflix Traditional Chinese Subtitle Standards" not in prompt
 
     def test_get_optimized_message_openai_uses_compact_user_message(self, manager):
@@ -591,6 +592,7 @@ class TestPromptManagerOptimizedMessage:
         messages = manager.get_optimized_message(batch_text, [], "openai", "gpt-4o-mini")
 
         assert "Strict Line Mapping" in messages[0]["content"]
+        assert "sentence mood" in messages[0]["content"]
         assert messages[1]["content"] == batch_text
 
     def test_get_optimized_message_includes_context(self, manager):
