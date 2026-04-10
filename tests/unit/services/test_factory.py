@@ -15,6 +15,7 @@ from srt_translator.services.factory import (
     TranslationService,
     TranslationTaskManager,
 )
+from srt_translator.translation.client import TranslationClient
 
 # ============================================================
 # ServiceFactory Tests
@@ -961,8 +962,8 @@ class TestTranslationService:
         assert success is True
         assert result == "/tmp/output.srt"
         assert len(captured_calls) == 2
-        assert captured_calls[1][0] == [("さようなら", ["さようなら"])]
-        assert captured_calls[1][1] == [0]
+        assert captured_calls[1][0] == [("さようなら", ["こんにちは", "ありがとう", "さようなら"])]
+        assert captured_calls[1][1] == [2]
 
     @pytest.mark.asyncio
     @patch("srt_translator.services.factory.pysrt.open")
@@ -1073,6 +1074,59 @@ class TestTranslationService:
             ("But the big number comes tomorrow.", ["8.30 a.m.", "But the big number comes tomorrow."])
         ]
 
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.pysrt.open")
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_subtitle_file_keeps_context_for_non_english_openai_source(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config, mock_pysrt_open
+    ):
+        """非英文來源短句不應被英文短句啟發式降成 0 context 或進 smart batch。"""
+        mock_config.get_instance.return_value = MagicMock()
+
+        class FakeSubs(list):
+            def __init__(self, items):
+                super().__init__(items)
+                self.save = MagicMock()
+
+        subs = FakeSubs(
+            [
+                SimpleNamespace(text="こんにちは"),
+                SimpleNamespace(text="ありがとう"),
+            ]
+        )
+        mock_pysrt_open.return_value = subs
+
+        service = TranslationService()
+        service.file_service = MagicMock()
+        service.file_service.get_subtitle_info.return_value = {}
+        service.file_service.get_output_path.return_value = "/tmp/output.srt"
+        service._translate_batch_structure_text = AsyncMock(return_value=["錯誤批次結果 1", "錯誤批次結果 2"])
+        service.translate_batch = AsyncMock(return_value=["你好", "謝謝"])
+
+        success, result = await service.translate_subtitle_file(
+            "input.srt",
+            "日文",
+            "繁體中文",
+            "gpt-4o-mini",
+            2,
+            "僅顯示翻譯",
+            "openai",
+        )
+
+        assert success is True
+        assert result == "/tmp/output.srt"
+        service._translate_batch_structure_text.assert_not_awaited()
+        service.translate_batch.assert_awaited_once()
+        assert service.translate_batch.await_args.args[0] == [
+            ("こんにちは", ["こんにちは", "ありがとう"]),
+            ("ありがとう", ["こんにちは", "ありがとう"]),
+        ]
+        assert service.translate_batch.await_args.kwargs["current_indices"] == [0, 1]
+
     @patch("srt_translator.services.factory.ConfigManager")
     @patch("srt_translator.services.factory.PromptManager")
     @patch("srt_translator.services.factory.ModelManager")
@@ -1090,6 +1144,52 @@ class TestTranslationService:
         assert service._is_batch_safe_short_text("The oil shock.") is True
         assert service._is_batch_safe_short_text("Do you?") is False
         assert service._is_batch_safe_short_text("Thinks it's outdated.") is False
+
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    def test_ascii_ratio_gate_keeps_mixed_cjk_text_out_of_english_short_text_path(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
+    ):
+        """含少量英文的 CJK 混排短句不應被誤判為英文 context-free 短句。"""
+        mock_config.get_instance.return_value = MagicMock()
+
+        service = TranslationService()
+        settings = {
+            "batch_size": 10,
+            "max_context_items": 3,
+            "smart_context_enabled": True,
+            "compact_prompt_enabled": True,
+            "terminology_enabled": True,
+        }
+
+        assert service._ascii_letter_ratio("你好 OK") < service.ASCII_ENGLISH_SOURCE_RATIO_MIN
+        assert service._get_context_window_for_text("你好 OK", settings, source_lang="英文") == 3
+        assert service._is_batch_safe_short_text("你好 OK", source_lang="英文") is False
+
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    def test_runtime_settings_restore_context_default_and_clamp_batch_size(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
+    ):
+        """預設上下文回到 3，batch clamp 與 OpenAI token 公式支援的行數保持對齊。"""
+        mock_config.get_instance.return_value = MagicMock()
+
+        service = TranslationService()
+        service.config_manager.get_value.side_effect = (
+            lambda key, default=None: 999 if key == "translation.batch_size" else default
+        )
+
+        settings = service._get_translation_runtime_settings()
+
+        assert settings["max_context_items"] == 3
+        assert settings["batch_size"] == TranslationService.MAX_STRUCTURED_BATCH_SIZE
+        assert TranslationService.MAX_STRUCTURED_BATCH_SIZE == TranslationClient.OPENAI_BATCH_TOKEN_FORMULA_MAX_LINES
 
     @patch("srt_translator.services.factory.ConfigManager")
     @patch("srt_translator.services.factory.PromptManager")
@@ -1229,10 +1329,115 @@ class TestTranslationService:
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.CacheManager")
     @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_batch_structure_text_retries_when_line_count_mismatches(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
+    ):
+        """批次輸出行數不符時應由 batch_string_to_texts 觸發 retry，而不是當成功。"""
+        mock_config.get_instance.return_value = MagicMock()
+
+        service = TranslationService()
+        service.prompt_manager = MagicMock()
+        service.prompt_manager.current_style = "standard"
+        service.prompt_manager.get_prompt_version.return_value = "batch-lines"
+        service.cache_service = MagicMock()
+        service.translate_text = AsyncMock(side_effect=["只有一行", "第一行\n第二行"])
+        service.translate_batch = AsyncMock(return_value=["fallback 1", "fallback 2"])
+        service._post_process_translation = MagicMock(side_effect=lambda _source, text: text)
+
+        subs = [SimpleNamespace(text="A line."), SimpleNamespace(text="Another line.")]
+
+        result = await service._translate_batch_structure_text(
+            subs,
+            [0, 1],
+            "openai",
+            "gpt-4o-mini",
+            1,
+            source_text_snapshot=["A line.", "Another line."],
+            runtime_settings={
+                "batch_size": 10,
+                "max_context_items": 3,
+                "smart_context_enabled": True,
+                "compact_prompt_enabled": True,
+                "terminology_enabled": True,
+            },
+            use_cache=False,
+        )
+
+        assert result == ["第一行", "第二行"]
+        assert service.translate_text.await_count == 2
+        service.translate_batch.assert_not_awaited()
+
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    def test_batch_translation_mood_helper_checks_length_and_exclamation(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
+    ):
+        """mood helper 自己防守行數不符，並檢查驚嘆句語氣。"""
+        mock_config.get_instance.return_value = MagicMock()
+
+        service = TranslationService()
+
+        assert service._batch_translation_preserves_sentence_mood(["Go!", "Now."], ["去吧！"]) is False
+        assert service._batch_translation_preserves_sentence_mood(["Go!"], ["去吧"]) is False
+        assert service._batch_translation_preserves_sentence_mood(["Go!"], ["去吧！"]) is True
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_batch_structure_text_retries_sentence_mood_mismatch_before_fallback(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
+    ):
+        """第一次 mood mismatch、第二次成功時不應退回逐句翻譯。"""
+        mock_config.get_instance.return_value = MagicMock()
+
+        service = TranslationService()
+        service.prompt_manager = MagicMock()
+        service.prompt_manager.current_style = "standard"
+        service.prompt_manager.get_prompt_version.return_value = "batch-retry"
+        service.cache_service = MagicMock()
+        service.translate_text = AsyncMock(side_effect=["覺得這過時了嗎？\n你覺得呢？", "覺得這已經過時了\n你覺得呢？"])
+        service.translate_batch = AsyncMock(return_value=["fallback 1", "fallback 2"])
+        service._post_process_translation = MagicMock(side_effect=lambda _source, text: text)
+
+        subs = [SimpleNamespace(text="Thinks it's outdated."), SimpleNamespace(text="Do you?")]
+
+        result = await service._translate_batch_structure_text(
+            subs,
+            [0, 1],
+            "openai",
+            "gpt-4o-mini",
+            1,
+            source_text_snapshot=["Thinks it's outdated.", "Do you?"],
+            runtime_settings={
+                "batch_size": 10,
+                "max_context_items": 3,
+                "smart_context_enabled": True,
+                "compact_prompt_enabled": True,
+                "terminology_enabled": True,
+            },
+            use_cache=False,
+        )
+
+        assert result == ["覺得這已經過時了", "你覺得呢？"]
+        assert service.translate_text.await_count == 2
+        service.translate_batch.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
     async def test_translate_batch_structure_text_falls_back_when_sentence_mood_mismatches(
         self, mock_file, mock_cache, mock_model, mock_prompt, mock_config
     ):
-        """若批次翻譯把問句語氣錯綁到鄰近行，應直接退回逐句翻譯。"""
+        """若批次翻譯重試後仍把問句語氣錯綁到鄰近行，才退回逐句翻譯。"""
         mock_config.get_instance.return_value = MagicMock()
 
         service = TranslationService()
@@ -1264,7 +1469,7 @@ class TestTranslationService:
         )
 
         assert result == ["覺得這已經過時了", "你覺得呢？"]
-        service.translate_text.assert_awaited_once()
+        assert service.translate_text.await_count == 2
         service.translate_batch.assert_awaited_once()
 
     @patch("srt_translator.services.factory.get_config")
@@ -1290,6 +1495,31 @@ class TestTranslationService:
         result = service._post_process_translation("The oil shock.", "石油危機")
 
         assert result == "油價衝擊"
+
+    @patch("srt_translator.services.factory.get_config")
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
+    def test_terminology_enabled_toggle_only_disables_glossary_not_subtitle_normalization(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config, mock_get_config
+    ):
+        """translation.terminology_enabled 目前命名代表 glossary 開關，不關閉字幕詞彙正規化。"""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_get_config.side_effect = (
+            lambda section, key, default=None: True
+            if (section, key) == ("user", "preserve_punctuation")
+            else default
+        )
+
+        service = TranslationService()
+        service._get_bool_config_option = MagicMock(return_value=False)
+
+        result = service._post_process_translation("Inflation rose.", "通脹增長")
+
+        assert result == "通膨成長"
+        service._get_bool_config_option.assert_called_with("translation.terminology_enabled", True)
 
     @patch("srt_translator.services.factory.get_config")
     @patch("srt_translator.services.factory.ConfigManager")

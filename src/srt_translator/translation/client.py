@@ -212,6 +212,11 @@ class AdaptiveConcurrencyController:
 
 
 class TranslationClient:
+    OPENAI_BATCH_TOKEN_FORMULA_MAX_LINES: ClassVar[int] = 30
+    OPENAI_BATCH_BASE_TOKENS: ClassVar[int] = 100
+    OPENAI_BATCH_TOKENS_PER_LINE: ClassVar[int] = 60
+    OPENAI_BATCH_MIN_TOKENS: ClassVar[int] = 200
+    OPENAI_BATCH_MAX_TOKENS: ClassVar[int] = 2000
     JAPANESE_NAME_PLACEHOLDER_PREFIX: ClassVar[str] = "JN"
     JAPANESE_NAME_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
         r"(?:(?<=^)|(?<=[、，。！？!?「」（）『』\s]))"
@@ -1626,6 +1631,12 @@ class TranslationClient:
                 return int(match.group(1))
         return None
 
+    @classmethod
+    def _get_openai_batch_max_tokens(cls, line_count: int) -> int:
+        """依批次行數估算 OpenAI 輸出 token 預算。"""
+        estimated_tokens = cls.OPENAI_BATCH_BASE_TOKENS + (line_count * cls.OPENAI_BATCH_TOKENS_PER_LINE)
+        return min(cls.OPENAI_BATCH_MAX_TOKENS, max(cls.OPENAI_BATCH_MIN_TOKENS, estimated_tokens))
+
     async def _translate_with_openai(self, messages: list[dict[str, str]], model_name: str) -> str:
         """使用 OpenAI API 翻譯"""
         # llama.cpp 本地模型不需要速率限制和 token 估算
@@ -1665,8 +1676,8 @@ class TranslationClient:
                 "timeout": 30,
             }
 
-        if batch_line_count and batch_line_count > 1:
-            dynamic_max_tokens = min(1200, max(200, 60 + (batch_line_count * 40)))
+        if not is_llamacpp and batch_line_count and batch_line_count > 1:
+            dynamic_max_tokens = self._get_openai_batch_max_tokens(batch_line_count)
             openai_params["max_tokens"] = max(int(openai_params["max_tokens"]), dynamic_max_tokens)
             openai_params["temperature"] = 0.0
             logger.debug("偵測到批次翻譯請求: %d 行，調整 max_tokens=%d", batch_line_count, openai_params["max_tokens"])
@@ -1680,7 +1691,14 @@ class TranslationClient:
                 raise TranslationError("OpenAI 客戶端未初始化")
             logger.debug(f"發送 {'llama.cpp' if is_llamacpp else 'OpenAI'} API 請求: {model_name}")
             response = await self.openai_client.chat.completions.create(**openai_params)  # type: ignore[call-overload]
-            content = response.choices[0].message.content
+            choice = response.choices[0]
+            finish_reason = getattr(choice, "finish_reason", None)
+            if finish_reason == "length":
+                provider_label = "llama.cpp" if is_llamacpp else "OpenAI"
+                logger.warning("%s API 回應因 max_tokens 截斷，將觸發重試或 fallback", provider_label)
+                raise TranslationError(f"{provider_label} response truncated by max_tokens")
+
+            content = choice.message.content
             translation: str = content.strip() if content else ""
 
             if is_llamacpp and translation:

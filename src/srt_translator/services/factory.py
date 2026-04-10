@@ -103,6 +103,10 @@ class ServiceFactory:
 class TranslationService:
     """翻譯服務，提供統一的翻譯介面"""
 
+    ASCII_ENGLISH_SOURCE_RATIO_MIN: ClassVar[float] = 0.6
+    DEFAULT_MAX_CONTEXT_ITEMS: ClassVar[int] = 3
+    MAX_STRUCTURED_BATCH_SIZE: ClassVar[int] = 30
+
     # 成員變數型別宣告
     prompt_manager: PromptManager | None
     model_service: Optional["ModelService"]
@@ -205,12 +209,44 @@ class TranslationService:
     def _get_translation_runtime_settings(self) -> dict[str, bool | int]:
         """讀取本次翻譯流程使用的可配置優化參數。"""
         return {
-            "batch_size": self._get_int_config_option("translation.batch_size", 10, minimum=1, maximum=30),
-            "max_context_items": self._get_int_config_option("translation.max_context_items", 2, minimum=0, maximum=7),
+            "batch_size": self._get_int_config_option(
+                "translation.batch_size",
+                10,
+                minimum=1,
+                maximum=self.MAX_STRUCTURED_BATCH_SIZE,
+            ),
+            "max_context_items": self._get_int_config_option(
+                "translation.max_context_items",
+                self.DEFAULT_MAX_CONTEXT_ITEMS,
+                minimum=0,
+                maximum=7,
+            ),
             "smart_context_enabled": self._get_bool_config_option("translation.smart_context_enabled", True),
             "compact_prompt_enabled": self._get_bool_config_option("translation.compact_prompt_enabled", True),
             "terminology_enabled": self._get_bool_config_option("translation.terminology_enabled", True),
         }
+
+    @staticmethod
+    def _ascii_letter_ratio(text: str) -> float:
+        """計算文字中 ASCII 英文字母占所有字母的比例。"""
+        letters = [char for char in text if char.isalpha()]
+        if not letters:
+            return 1.0
+
+        ascii_letters = sum(1 for char in letters if ("a" <= char <= "z") or ("A" <= char <= "Z"))
+        return ascii_letters / len(letters)
+
+    @staticmethod
+    def _is_english_source_lang(source_lang: str | None) -> bool:
+        """判斷來源語言設定是否明確為英文。"""
+        normalized = (source_lang or "").strip().lower()
+        return normalized in {"英文", "english", "en", "en-us", "en_us", "en-gb", "en_gb"}
+
+    def _allows_english_short_text_heuristics(self, text: str, source_lang: str | None = None) -> bool:
+        """判斷是否允許套用英文短句上下文/批次啟發式。"""
+        if source_lang and not self._is_english_source_lang(source_lang):
+            return False
+        return self._ascii_letter_ratio(text) >= self.ASCII_ENGLISH_SOURCE_RATIO_MIN
 
     def _text_needs_context(self, text: str) -> bool:
         """用保守啟發式判斷句子是否依賴前後文。"""
@@ -331,9 +367,12 @@ class TranslationService:
         compact = re.sub(r"\s+", "", stripped)
         return len(compact) <= 24 and not self._text_needs_context(stripped)
 
-    def _is_batch_safe_short_text(self, text: str) -> bool:
+    def _is_batch_safe_short_text(self, text: str, source_lang: str | None = None) -> bool:
         """判斷短句是否適合進入智慧批次，避免短問答與碎片句錯配。"""
         stripped = text.strip()
+        if not self._allows_english_short_text_heuristics(stripped, source_lang=source_lang):
+            return False
+
         if not self._is_context_free_short_text(stripped):
             return False
 
@@ -378,28 +417,55 @@ class TranslationService:
         stripped = text.strip()
         return "?" in stripped or "？" in stripped
 
+    @staticmethod
+    def _uses_exclamation_mood(text: str) -> bool:
+        """判斷句子是否帶驚嘆語氣。"""
+        stripped = text.strip()
+        return "!" in stripped or "！" in stripped
+
     def _batch_translation_preserves_sentence_mood(
         self,
         source_texts: list[str],
         translated_texts: list[str],
     ) -> bool:
         """檢查批次翻譯是否保留每一行的基本句型。"""
-        mismatched_lines = [
-            index + 1
-            for index, (source_text, translated_text) in enumerate(zip(source_texts, translated_texts, strict=False))
-            if self._uses_question_mood(source_text) != self._uses_question_mood(translated_text)
-        ]
+        if len(source_texts) != len(translated_texts):
+            logger.warning(
+                "智慧批次翻譯句型對齊檢查失敗，行數不符: expected=%d actual=%d",
+                len(source_texts),
+                len(translated_texts),
+            )
+            return False
+
+        mismatched_lines = []
+        for index, (source_text, translated_text) in enumerate(zip(source_texts, translated_texts, strict=True)):
+            question_mismatch = self._uses_question_mood(source_text) != self._uses_question_mood(translated_text)
+            exclamation_mismatch = self._uses_exclamation_mood(source_text) != self._uses_exclamation_mood(
+                translated_text
+            )
+            if question_mismatch or exclamation_mismatch:
+                mismatched_lines.append(
+                    f"{index + 1}: {source_text[:40]!r} -> {translated_text[:40]!r}"
+                )
+
         if mismatched_lines:
             logger.warning("智慧批次翻譯句型對齊檢查失敗，問題行: %s", mismatched_lines)
             return False
         return True
 
-    def _get_context_window_for_text(self, text: str, runtime_settings: dict[str, bool | int]) -> int:
+    def _get_context_window_for_text(
+        self,
+        text: str,
+        runtime_settings: dict[str, bool | int],
+        source_lang: str | None = None,
+    ) -> int:
         """依句子特徵決定上下文視窗大小。"""
         max_context_items = int(runtime_settings["max_context_items"])
         if max_context_items <= 0 or not text.strip():
             return 0
         if not bool(runtime_settings["smart_context_enabled"]):
+            return max_context_items
+        if not self._allows_english_short_text_heuristics(text, source_lang=source_lang):
             return max_context_items
         if self._text_needs_context(text):
             return max_context_items
@@ -722,14 +788,15 @@ class TranslationService:
                 standard_chunk_size = min(5, max(1, parallel_requests))
 
             context_windows = [
-                self._get_context_window_for_text(source_text, runtime_settings) for source_text in source_text_snapshot
+                self._get_context_window_for_text(source_text, runtime_settings, source_lang=source_lang)
+                for source_text in source_text_snapshot
             ]
             batchable_flags = [
                 bool(source_text_snapshot[idx].strip())
                 and llm_type == "openai"
                 and structured_batch_size > 1
                 and context_windows[idx] == 0
-                and self._is_batch_safe_short_text(source_text_snapshot[idx])
+                and self._is_batch_safe_short_text(source_text_snapshot[idx], source_lang=source_lang)
                 for idx in range(total_subtitles)
             ]
 
@@ -747,6 +814,7 @@ class TranslationService:
                         source_text_snapshot=source_text_snapshot,
                         runtime_settings=runtime_settings,
                         use_cache=use_cache,
+                        source_lang=source_lang,
                     )
                 else:
                     batchable_run = self._count_consecutive_batchable(cursor, batchable_flags, structured_batch_size)
@@ -762,6 +830,7 @@ class TranslationService:
                             source_text_snapshot=source_text_snapshot,
                             runtime_settings=runtime_settings,
                             use_cache=use_cache,
+                            source_lang=source_lang,
                         )
                     else:
                         batch_indices = []
@@ -901,6 +970,7 @@ class TranslationService:
         source_text_snapshot: list[str] | None = None,
         runtime_settings: dict[str, bool | int] | None = None,
         use_cache: bool = True,
+        source_lang: str | None = None,
     ) -> list[str]:
         """結構-文本分離模式的批次翻譯
 
@@ -983,6 +1053,8 @@ class TranslationService:
                         attempt + 1,
                         max_retries,
                     )
+                    if attempt + 1 < max_retries:
+                        continue
                     break
 
                 for position, trans in zip(pending_positions, translated_texts, strict=False):
@@ -1016,7 +1088,7 @@ class TranslationService:
         pending_batch_indices = [batch_indices[position] for position in pending_positions]
         for idx in pending_batch_indices:
             source_text = self._get_source_text_from_snapshot(snapshot, subs, idx)
-            context_window = self._get_context_window_for_text(source_text, settings)
+            context_window = self._get_context_window_for_text(source_text, settings, source_lang=source_lang)
             context_texts, current_index = self._get_context_from_snapshot(snapshot, subs, idx, context_window)
             texts_with_context.append((source_text, context_texts))
             current_indices.append(current_index)

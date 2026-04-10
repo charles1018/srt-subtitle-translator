@@ -653,8 +653,7 @@ Each input line maps to exactly one output line — no exceptions.
 
     def _should_use_compact_prompt(self, llm_type: str) -> bool:
         """判斷目前 provider 是否應使用精簡 prompt。"""
-        resolved_llm_type = self._resolve_default_prompt_llm_type(llm_type)
-        return resolved_llm_type == "openai" and self._get_user_bool_option("translation.compact_prompt_enabled", True)
+        return llm_type == "openai" and self._get_user_bool_option("translation.compact_prompt_enabled", True)
 
     @staticmethod
     def _is_batch_translation_request(text: str) -> bool:
@@ -673,7 +672,10 @@ Each input line maps to exactly one output line — no exceptions.
             "Filler Word Filtering: omit filler words unless they carry emotion, hesitation, or characterization.",
             "Dynamic Equivalency: translate idioms and slang by function and meaning, not literally.",
             "CPS Compression: prefer concise wording that still preserves intent and tone.",
-            "Formatting, punctuation, line wrapping, and line-count normalization are handled after translation.",
+            "Keep the output as one subtitle only. Do not add explanations, labels, quotes, or extra notes.",
+            "Do not arbitrarily add, remove, merge, or split line breaks.",
+            "Preserve necessary punctuation and sentence mood.",
+            "Avoid overly long subtitle lines while preserving meaning.",
         ]
 
         content_specific_rules = {
@@ -692,7 +694,6 @@ Each input line maps to exactly one output line — no exceptions.
             ],
             "english_drama": [
                 "Keep English personal names in English.",
-                "If CURRENT is incomplete or ends with a conjunction, preserve that incompleteness. Do not complete the sentence.",
                 "Preserve TV-drama dialogue rhythm, tone, and subtext.",
             ],
         }

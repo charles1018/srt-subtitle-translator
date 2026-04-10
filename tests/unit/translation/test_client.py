@@ -11,6 +11,7 @@ from srt_translator.translation.client import (
     ApiMetrics,
     TranslationClient,
 )
+from srt_translator.utils.errors import TranslationError
 
 # ============================================================
 # ApiMetrics Tests
@@ -1303,8 +1304,116 @@ class TestTranslationClientAsync:
         )
 
         request_payload = mock_openai_client.chat.completions.create.call_args.kwargs
-        assert request_payload["max_tokens"] > 150
+        assert request_payload["max_tokens"] == TranslationClient._get_openai_batch_max_tokens(5)
         assert request_payload["temperature"] == 0.0
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    async def test_translate_with_openai_batch_request_budget_matches_batch_clamp(
+        self, mock_openai_cls, mock_prompt, mock_cache
+    ):
+        """Test 30-line structured batch budget stays below the OpenAI batch cap."""
+        mock_cache_instance = MagicMock()
+        mock_cache.return_value = mock_cache_instance
+
+        translated_lines = "\n".join(f"第{i}行" for i in range(1, 31))
+        source_lines = "\n".join(f"Line {i}" for i in range(1, 31))
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content=translated_lines))]
+        mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=200)
+
+        mock_openai_client = MagicMock()
+        mock_openai_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_openai_cls.return_value = mock_openai_client
+
+        client = TranslationClient(llm_type="openai", api_key="sk-test-key")
+        await client._translate_with_openai(
+            [
+                {
+                    "role": "user",
+                    "content": f"[BATCH: 30 lines — translate each line, output exactly 30 lines]\n{source_lines}",
+                }
+            ],
+            "gpt-4o-mini",
+        )
+
+        request_payload = mock_openai_client.chat.completions.create.call_args.kwargs
+        assert TranslationClient.OPENAI_BATCH_TOKEN_FORMULA_MAX_LINES == 30
+        assert request_payload["max_tokens"] == 1900
+        assert request_payload["max_tokens"] < TranslationClient.OPENAI_BATCH_MAX_TOKENS
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    async def test_translate_with_openai_rejects_length_finish_reason(
+        self, mock_openai_cls, mock_prompt, mock_cache
+    ):
+        """Test truncated OpenAI output is not treated as a successful translation."""
+        mock_cache_instance = MagicMock()
+        mock_cache.return_value = mock_cache_instance
+
+        mock_response = MagicMock()
+        mock_response.choices = [
+            MagicMock(finish_reason="length", message=MagicMock(content="截斷的第一行\n截斷的第二"))
+        ]
+        mock_response.usage = MagicMock(prompt_tokens=10, completion_tokens=200)
+
+        mock_openai_client = MagicMock()
+        mock_openai_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_openai_cls.return_value = mock_openai_client
+
+        client = TranslationClient(llm_type="openai", api_key="sk-test-key")
+
+        with pytest.raises(TranslationError, match="truncated"):
+            await client._translate_with_openai(
+                [
+                    {
+                        "role": "user",
+                        "content": "[BATCH: 2 lines — translate each line, output exactly 2 lines]\nA\nB",
+                    }
+                ],
+                "gpt-4o-mini",
+            )
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    async def test_translate_with_llamacpp_batch_request_keeps_provider_specific_params(
+        self, mock_openai_cls, mock_prompt, mock_cache
+    ):
+        """Test OpenAI batch token-cost tuning does not change llama.cpp request params."""
+        mock_cache_instance = MagicMock()
+        mock_cache.return_value = mock_cache_instance
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content='{"translation":"第一行\\n第二行"}'))]
+        mock_response.usage = MagicMock(prompt_tokens=10, completion_tokens=12)
+
+        mock_openai_client = MagicMock()
+        mock_openai_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_openai_cls.return_value = mock_openai_client
+
+        client = TranslationClient(llm_type="llamacpp", base_url="http://localhost:8080")
+        await client._translate_with_openai(
+            [
+                {
+                    "role": "user",
+                    "content": "[BATCH: 5 lines — translate each line, output exactly 5 lines]\nA\nB\nC\nD\nE",
+                }
+            ],
+            "qwen3.5-ud-q8_0.gguf",
+        )
+
+        request_payload = mock_openai_client.chat.completions.create.call_args.kwargs
+        assert request_payload["max_tokens"] == 96
+        assert request_payload["temperature"] == 0.7
 
     @pytest.mark.asyncio
     @patch("srt_translator.translation.client.CacheManager")

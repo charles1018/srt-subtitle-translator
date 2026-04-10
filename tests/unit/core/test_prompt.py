@@ -225,11 +225,22 @@ class TestPromptManagerGetPrompt:
         assert prompt is not None
 
     def test_get_prompt_maps_google_to_openai_family_default(self, manager):
-        """測試 google 會沿用 openai 家族的預設 prompt。"""
+        """測試 google 會沿用 openai 家族的 full default prompt，但不吃 OpenAI compact prompt。"""
         google_prompt = manager.get_prompt("google", "general")
-        openai_prompt = manager.get_prompt("openai", "general")
 
-        assert google_prompt == openai_prompt
+        assert google_prompt == manager._get_default_prompt_text("general", "google").strip()
+        assert google_prompt != manager.get_prompt("openai", "general")
+        assert "Netflix Traditional Chinese Subtitle Standards" in google_prompt
+
+    def test_get_prompt_compact_prompt_scope_is_openai_only(self, manager):
+        """測試 compact prompt 只套用到原始 openai provider。"""
+        openai_prompt = manager.get_prompt("openai", "general")
+        anthropic_prompt = manager.get_prompt("anthropic", "general")
+        google_prompt = manager.get_prompt("google", "general")
+
+        assert "Keep the output as one subtitle only" in openai_prompt
+        assert "Keep the output as one subtitle only" not in anthropic_prompt
+        assert "Keep the output as one subtitle only" not in google_prompt
 
     def test_get_prompt_maps_llamacpp_to_ollama_family_default(self, manager):
         """測試 llamacpp 會沿用 ollama 家族的預設 prompt。"""
@@ -568,9 +579,21 @@ class TestPromptManagerOptimizedMessage:
         """測試 OpenAI 預設使用精簡 prompt，避免重複排版規則耗費 token。"""
         prompt = manager.get_prompt("openai", "general")
 
-        assert "Formatting, punctuation, line wrapping" in prompt
+        assert "Keep the output as one subtitle only" in prompt
+        assert "Do not arbitrarily add, remove, merge, or split line breaks" in prompt
         assert "Prefer Taiwan subtitle wording" in prompt
         assert "Netflix Traditional Chinese Subtitle Standards" not in prompt
+
+    def test_get_prompt_openai_compact_keeps_formatting_floor_when_netflix_disabled(self, manager):
+        """測試 Netflix 後處理未啟用時 OpenAI compact prompt 仍保留最低排版約束。"""
+        manager.user_config_manager.set_value("netflix_style_enabled", False, auto_save=False)
+
+        prompt = manager.get_prompt("openai", "general")
+
+        assert "Output ONLY the translated subtitle text" in prompt
+        assert "Keep the output as one subtitle only" in prompt
+        assert "Preserve necessary punctuation and sentence mood" in prompt
+        assert "handled after translation" not in prompt
 
     def test_get_optimized_message_openai_uses_compact_user_message(self, manager):
         """測試 OpenAI user message 使用較精簡的 CURRENT/BEFORE/AFTER 結構。"""
@@ -594,6 +617,21 @@ class TestPromptManagerOptimizedMessage:
         assert "Strict Line Mapping" in messages[0]["content"]
         assert "sentence mood" in messages[0]["content"]
         assert messages[1]["content"] == batch_text
+
+    def test_compact_english_drama_trailing_conjunction_rule_is_user_note_only(self, manager):
+        """測試 english_drama compact prompt 不重複放 trailing conjunction system rule。"""
+        manager.current_content_type = "english_drama"
+
+        messages = manager.get_optimized_message(
+            "This matters because",
+            ["Before line", "This matters because", "After line"],
+            "openai",
+            "gpt-4o-mini",
+            current_index=1,
+        )
+
+        assert "preserve the trailing conjunction" not in messages[0]["content"]
+        assert "NOTE: preserve the trailing conjunction 'because'" in messages[1]["content"]
 
     def test_get_optimized_message_includes_context(self, manager):
         """測試優化訊息包含上下文"""
@@ -820,13 +858,14 @@ class TestPromptManagerReset:
         assert "Custom OpenAI" not in openai_prompt
 
     def test_reset_to_default_google_uses_openai_family_prompt(self, manager):
-        """測試 google reset 會回到與 openai 對齊的預設 prompt。"""
+        """測試 google reset 會回到 OpenAI family full default prompt。"""
         manager.set_prompt("Custom Google", "google", "general")
 
         result = manager.reset_to_default("google", "general")
 
         assert result is True
-        assert manager.get_prompt("google", "general") == manager.get_prompt("openai", "general")
+        assert manager.get_prompt("google", "general") == manager._get_default_prompt_text("general", "google").strip()
+        assert manager.get_prompt("google", "general") != manager.get_prompt("openai", "general")
 
 
 class TestPromptManagerConfigListener:

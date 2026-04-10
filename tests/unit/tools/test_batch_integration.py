@@ -32,10 +32,13 @@ class TestTranslationServiceStructureText:
             from srt_translator.services.factory import TranslationService
 
             service = TranslationService()
+            service.config_manager = MagicMock()
+            service.config_manager.get_value.side_effect = lambda _key, default=None: default
             service.prompt_manager = MagicMock()
             service.prompt_manager.get_batch_line_mapping_instruction.return_value = (
                 "Translate each line 1:1."
             )
+            service.cache_service = None
             service._post_process_translation = MagicMock(
                 side_effect=lambda orig, trans: trans
             )
@@ -231,6 +234,7 @@ class TestTranslationManagerStructureText:
         manager.display_mode = "僅顯示翻譯"
         manager.llm_type = "ollama"
         manager.model_name = "test-model"
+        manager._source_text_snapshot = []
 
         # Mock services
         manager.translation_service = MagicMock()
@@ -249,6 +253,7 @@ class TestTranslationManagerStructureText:
         manager._process_batch_individual_fallback = (
             TranslationManager._process_batch_individual_fallback.__get__(manager)
         )
+        manager._get_source_text = TranslationManager._get_source_text.__get__(manager)
         manager._apply_translation = (
             TranslationManager._apply_translation.__get__(manager)
         )

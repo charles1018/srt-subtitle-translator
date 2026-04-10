@@ -56,6 +56,14 @@
 
 ### 🎨 改進
 
+#### OpenAI token efficiency
+- OpenAI compact prompt 現在只套用到原始 `openai` provider；`anthropic` / `google` 仍沿用 OpenAI family 的 full default prompt，不會因 fallback 靜默改變行為。
+- OpenAI compact prompt 補回最低排版約束；即使未啟用 Netflix 後處理，也會要求單一字幕輸出、不加註解、不任意增減換行、保留必要標點與句型。
+- `reset_to_default` 現在刪除自訂 prompt 後動態跟隨當前預設 prompt；升級後曾 reset 的 OpenAI prompt 可能改用 compact prompt，翻譯風格可能略有變化。
+- `translation.terminology_enabled` 目前代表 glossary 開關；台灣字幕詞彙正規化與少數 source-aware 片語修正仍會套用。
+- OpenAI 結構化批次翻譯改用新的 batch prompt/cache key；升級後既有 OpenAI cache 可能需要重建一次。
+- `translation.max_context_items` 預設回到 3，並以 ASCII letter ratio 與 `source_lang` gate 避免非英文字幕被英文短句啟發式降到 0 context 或進 smart batch。
+
 #### GUI 主題重設計
 - 🌙 **全新 Arctic Night 深色主題**
   - 深邃藍灰背景（#1A1B26），護眼舒適

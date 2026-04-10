@@ -143,7 +143,7 @@ class ConfigManager:
                 "last_directory": "",
                 "translation": {
                     "batch_size": 10,
-                    "max_context_items": 2,
+                    "max_context_items": 3,
                     "smart_context_enabled": True,
                     "compact_prompt_enabled": True,
                     "terminology_enabled": True,
