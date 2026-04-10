@@ -291,8 +291,8 @@ class NetflixStylePostProcessor:
 
         for line in lines:
             stripped = line.rstrip()
-            # 移除行尾的 。 或 ，
-            if stripped.endswith("。") or stripped.endswith("，"):
+            # 移除行尾的 。、，或 、
+            if stripped.endswith(("。", "，", "、")):
                 stripped = stripped[:-1]
                 # 保留原始的尾隨空白（如果有）
                 trailing_space = line[len(line.rstrip()) :]
@@ -358,8 +358,8 @@ class NetflixStylePostProcessor:
                         best_priority = distance
 
             if best_pos > 0:
-                # 在最佳位置斷行
-                result.append(remaining[:best_pos].strip())
+                # 在最佳位置斷行。若分割點包含逗號/句號，避免重新產生 Netflix 不允許的行尾標點。
+                result.append(remaining[:best_pos].strip().rstrip("。，、"))
                 remaining = remaining[best_pos:].lstrip()
             else:
                 # 沒有找到好的斷點,強制斷行

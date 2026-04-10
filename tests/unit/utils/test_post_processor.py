@@ -281,6 +281,12 @@ class TestNetflixStylePostProcessorLineEndPunctuation:
         result = processor.process("這是一句話，")
         assert not result.text.endswith("，")
 
+    def test_remove_line_end_ideographic_comma(self):
+        """Test removing ideographic comma at line end."""
+        processor = NetflixStylePostProcessor()
+        result = processor.process("70、")
+        assert not result.text.endswith("、")
+
     def test_keep_line_end_question(self):
         """Test keeping question mark at line end."""
         processor = NetflixStylePostProcessor()
@@ -341,6 +347,14 @@ class TestNetflixStylePostProcessorSmartSplit:
         processor = NetflixStylePostProcessor()
         lines = processor._smart_split_line("這是第一部分，這是第二部分", 10)
         assert len(lines) >= 2
+
+    def test_split_at_comma_does_not_leave_line_end_punctuation(self):
+        """Test smart split does not create line-ending comma punctuation."""
+        processor = NetflixStylePostProcessor(max_chars_per_line=8)
+        result = processor.process("這是第一部分，這是第二部分")
+        lines = result.text.split("\n")
+        assert len(lines) >= 2
+        assert all(not line.endswith(("，", "、")) for line in lines)
 
     def test_split_at_conjunction(self):
         """Test splitting at conjunction."""

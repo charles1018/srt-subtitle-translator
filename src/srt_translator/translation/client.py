@@ -1526,6 +1526,9 @@ class TranslationClient:
                 logger.debug("已套用台灣字幕詞彙正規化")
                 result = normalized_result
 
+            # Clean accidental model-inserted line breaks before Netflix auto-fixes so deliberate splits survive.
+            result = self._clean_single_line_translation(text, result)
+
             # Netflix 風格後處理（如果啟用）
             if self.enable_netflix_style and self.post_processor:
                 try:
@@ -1544,9 +1547,6 @@ class TranslationClient:
                 except Exception as e:
                     logger.warning(f"Netflix 風格後處理失敗，使用原始翻譯: {e}")
                     # result 保持不變，繼續使用原始翻譯結果
-
-            # 清理單行翻譯中的多餘換行符（防護措施）
-            result = self._clean_single_line_translation(text, result)
 
             # 記錄成功指標
             self.metrics.successful_requests += 1

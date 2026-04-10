@@ -595,6 +595,16 @@ class TestPromptManagerOptimizedMessage:
         assert "Preserve necessary punctuation and sentence mood" in prompt
         assert "handled after translation" not in prompt
 
+    def test_get_prompt_openai_compact_keeps_quality_guardrails(self, manager):
+        """測試 OpenAI compact prompt 保留低 token 成本的品質護欄。"""
+        prompt = manager.get_prompt("openai", "general")
+
+        assert "Translate every meaning in CURRENT" in prompt
+        assert "Do not complete it with reference context" in prompt
+        assert "Do not add 嗯/呃/啊 unless hesitation matters" in prompt
+        assert "Do not end lines with 。, ，, or 、" in prompt
+        assert "Use half-width Arabic digits" in prompt
+
     def test_get_optimized_message_openai_uses_compact_user_message(self, manager):
         """測試 OpenAI user message 使用較精簡的 CURRENT/BEFORE/AFTER 結構。"""
         text = "But the big number comes tomorrow."
@@ -607,6 +617,18 @@ class TestPromptManagerOptimizedMessage:
         assert "BEFORE (reference only):" in user_message
         assert "AFTER (reference only):" in user_message
         assert "[CURRENT]" not in user_message
+
+    def test_get_optimized_message_openai_marks_incomplete_fragment(self, manager):
+        """測試 OpenAI compact user message 對半句加上避免後文污染的提示。"""
+        text = "Keeping secrets, even if the intentions are good,"
+        context = ["Earlier context", text, "people can get hurt."]
+
+        messages = manager.get_optimized_message(text, context, "openai", "gpt-4o-mini", current_index=1)
+
+        user_message = messages[1]["content"]
+        assert "CURRENT is an incomplete subtitle fragment" in user_message
+        assert "do not complete it with AFTER" in user_message
+        assert "people can get hurt." in user_message
 
     def test_get_optimized_message_batch_request_uses_batch_prompt(self, manager):
         """測試批次翻譯請求走專用批次 prompt。"""

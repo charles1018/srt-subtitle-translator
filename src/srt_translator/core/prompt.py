@@ -668,13 +668,17 @@ Each input line maps to exactly one output line — no exceptions.
             "Use reference context only to resolve ambiguity. Never copy or translate the reference text.",
             "Output ONLY the translated subtitle text.",
             "Prioritize meaning, tone, natural spoken flow, and consistency of names/terms.",
+            "Translate every meaning in CURRENT; do not drop clauses or sentences.",
+            "If CURRENT is an incomplete clause, keep it incomplete. Do not complete it with reference context.",
             "Prefer Taiwan subtitle wording. Avoid Mainland variants such as 通脹, 增長, 首席執行官, 美聯儲.",
-            "Filler Word Filtering: omit filler words unless they carry emotion, hesitation, or characterization.",
+            "Filler Word Filtering: omit routine fillers (well, uh, um, you know, like, I mean). Do not add 嗯/呃/啊 unless hesitation matters.",
             "Dynamic Equivalency: translate idioms and slang by function and meaning, not literally.",
             "CPS Compression: prefer concise wording that still preserves intent and tone.",
             "Keep the output as one subtitle only. Do not add explanations, labels, quotes, or extra notes.",
             "Do not arbitrarily add, remove, merge, or split line breaks.",
             "Preserve necessary punctuation and sentence mood.",
+            "Do not end lines with 。, ，, or 、. Keep ？/！ when the source asks or exclaims.",
+            "Use half-width Arabic digits for numbers, ages, and counts (70, 80), not Chinese numerals or full-width digits.",
             "Avoid overly long subtitle lines while preserving meaning.",
         ]
 
@@ -1105,6 +1109,9 @@ Rules:
         ]
         text_lower = text.strip().lower()
         ends_with_conjunction = any(text_lower.endswith(f" {conj}") for conj in conjunctions)
+        ends_with_incomplete_punctuation = text.strip().endswith(
+            (",", "，", "、", ";", "；", ":", "：", "-", "—", "–", "...", "…")
+        )
 
         # 構建新格式的 user message
         if use_qwen35_ud_strategy:
@@ -1115,6 +1122,13 @@ Rules:
             if ends_with_conjunction:
                 detected_conj = next(conj for conj in conjunctions if text_lower.endswith(f" {conj}"))
                 user_content_parts.extend(["", f"NOTE: preserve the trailing conjunction '{detected_conj}' in translation."])
+            if ends_with_incomplete_punctuation:
+                user_content_parts.extend(
+                    [
+                        "",
+                        "NOTE: CURRENT is an incomplete subtitle fragment. Translate only CURRENT; do not complete it with AFTER.",
+                    ]
+                )
 
             if context_before:
                 user_content_parts.extend(["", "BEFORE (reference only):"])

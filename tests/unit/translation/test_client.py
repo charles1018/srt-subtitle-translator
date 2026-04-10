@@ -941,6 +941,33 @@ class TestTranslationClientAsync:
     @pytest.mark.asyncio
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    async def test_translate_text_preserves_netflix_auto_split_for_single_line_source(self, mock_prompt, mock_cache):
+        """Netflix auto-splits should survive the single-line cleanup guard."""
+        mock_cache_instance = MagicMock()
+        mock_cache_instance.get_cached_translation.return_value = None
+        mock_cache.return_value = mock_cache_instance
+
+        mock_prompt_instance = MagicMock()
+        mock_prompt_instance.current_style = "standard"
+        mock_prompt_instance.current_content_type = "general"
+        mock_prompt_instance.get_prompt_version.return_value = "netflixv1"
+        mock_prompt_instance.get_effective_cache_context_texts.return_value = ["[CURRENT_INDEX]0", "Hello"]
+        mock_prompt_instance.get_optimized_message.return_value = [{"role": "user", "content": "Hello"}]
+        mock_prompt.return_value = mock_prompt_instance
+
+        client = TranslationClient(
+            llm_type="ollama",
+            netflix_style_config={"enabled": True, "auto_fix": True, "max_chars_per_line": 8},
+        )
+        client._translate_with_ollama = AsyncMock(return_value="我今天讓卡普和東尼來了。")
+
+        result = await client.translate_text("Hello", [], "llama3")
+
+        assert result == "我今天讓卡普\n和東尼來了"
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     async def test_translate_text_from_cache_uses_prompt_version(self, mock_prompt, mock_cache):
         """Test translating text from cache includes style and prompt version in cache lookup."""
         mock_cache_instance = MagicMock()
