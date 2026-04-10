@@ -207,7 +207,7 @@ python_functions = ["test_*"]
 python_classes = ["Test*"]
 
 # 最小化輸出
-minversion = "7.0"
+minversion = "8.0"
 
 # 加入選項
 addopts = [
