@@ -17,7 +17,7 @@ from unittest.mock import patch
 
 import pytest
 
-from srt_translator.core.cache import CACHE_VERSION, CacheManager
+from srt_translator.core.cache import CACHE_VERSION, CacheManager, sqlite_connection
 
 # ============================================================
 # 資料庫初始化與復原測試
@@ -87,7 +87,7 @@ class TestCacheDatabase:
         cache_path = temp_dir / "version_cache.db"
 
         # 創建舊版本快取
-        with sqlite3.connect(str(cache_path)) as conn:
+        with sqlite_connection(str(cache_path)) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS translations (
                     source_text TEXT,
@@ -107,22 +107,33 @@ class TestCacheDatabase:
                 )
             """)
             conn.execute("INSERT INTO cache_metadata (key, value) VALUES (?, ?)", ("version", "0.9"))
+            now = datetime.now().isoformat()
             conn.execute(
                 """
                 INSERT INTO translations
                 (source_text, target_text, context_hash, model_name, created_at, usage_count, last_used)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-                ("old", "舊的", "hash", "model", datetime.now(), 1, datetime.now()),
+                ("old", "舊的", "hash", "model", now, 1, now),
             )
 
         # 創建管理器（應該清理舊數據）
         CacheManager(str(cache_path))
 
         # 檢查資料已清理
-        with sqlite3.connect(str(cache_path)) as conn:
+        with sqlite_connection(str(cache_path)) as conn:
             cursor = conn.execute("SELECT COUNT(*) FROM translations")
             assert cursor.fetchone()[0] == 0
+
+            cursor = conn.execute("SELECT value FROM cache_metadata WHERE key = 'version'")
+            assert cursor.fetchone()[0] == CACHE_VERSION
+
+            cursor = conn.execute("PRAGMA table_info(translations)")
+            columns = {row[1]: row for row in cursor.fetchall()}
+            assert {"style", "prompt_version"}.issubset(columns)
+
+            primary_key_columns = [row[1] for row in sorted(columns.values(), key=lambda row: row[5]) if row[5] > 0]
+            assert primary_key_columns == ["source_text", "context_hash", "model_name", "style", "prompt_version"]
 
         CacheManager._instance = None
 
@@ -247,20 +258,20 @@ class TestCacheCleanup:
     def test_auto_cleanup_skip_recent(self, cache_manager):
         """測試自動清理跳過最近清理過的"""
         # 設置上次清理時間為現在
-        with sqlite3.connect(cache_manager.db_path) as conn:
+        with sqlite_connection(cache_manager.db_path) as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO cache_metadata (key, value) VALUES (?, ?)",
                 ("last_cleanup", datetime.now().isoformat()),
             )
 
         # 再次嘗試清理（應該跳過）
-        with sqlite3.connect(cache_manager.db_path) as conn:
+        with sqlite_connection(cache_manager.db_path) as conn:
             cache_manager._auto_cleanup(conn)
 
     def test_auto_cleanup_invalid_date_format(self, cache_manager):
         """測試自動清理時處理無效日期格式"""
         # 設置無效的日期格式
-        with sqlite3.connect(cache_manager.db_path) as conn:
+        with sqlite_connection(cache_manager.db_path) as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO cache_metadata (key, value) VALUES (?, ?)", ("last_cleanup", "invalid_date")
             )
@@ -271,8 +282,8 @@ class TestCacheCleanup:
     def test_clear_old_cache_with_custom_threshold(self, cache_manager):
         """測試使用自定義閾值清理舊快取"""
         # 添加舊快取
-        old_date = datetime.now() - timedelta(days=60)
-        with sqlite3.connect(cache_manager.db_path) as conn:
+        old_date = (datetime.now() - timedelta(days=60)).isoformat()
+        with sqlite_connection(cache_manager.db_path) as conn:
             conn.execute(
                 """
                 INSERT INTO translations

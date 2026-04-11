@@ -128,39 +128,7 @@ class CacheManager:
                 conn.execute("PRAGMA journal_mode=WAL")
                 conn.execute("PRAGMA synchronous=NORMAL")
 
-                # 建立快取表格 (v1.2: 加入 style 和 prompt_version)
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS translations (
-                        source_text TEXT,
-                        target_text TEXT,
-                        context_hash TEXT,
-                        model_name TEXT,
-                        style TEXT DEFAULT 'standard',
-                        prompt_version TEXT DEFAULT '',
-                        created_at timestamp,
-                        usage_count INTEGER,
-                        last_used timestamp,
-                        PRIMARY KEY (source_text, context_hash, model_name, style, prompt_version)
-                    )
-                """)
-
-                # 建立快取元數據表格
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS cache_metadata (
-                        key TEXT PRIMARY KEY,
-                        value TEXT
-                    )
-                """)
-
-                # 添加索引提高查詢速度
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_context ON translations(context_hash)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_model ON translations(model_name)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_usage ON translations(usage_count)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_last_used ON translations(last_used)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_style ON translations(style)")
-
-                # 檢查快取版本
-                self._check_cache_version(conn)
+                self._ensure_cache_schema(conn)
 
                 # 清理過舊的紀錄
                 self._auto_cleanup(conn)
@@ -170,6 +138,91 @@ class CacheManager:
             logger.error(f"初始化資料庫時發生錯誤: {e!s}")
             # 如果資料庫損壞，嘗試復原
             self._recover_db_if_needed()
+
+    def _ensure_cache_schema(self, conn):
+        """確保快取資料表與目前版本相容，再建立依賴欄位的索引。"""
+        self._create_cache_metadata_table(conn)
+
+        cursor = conn.execute("SELECT value FROM cache_metadata WHERE key = 'version'")
+        result = cursor.fetchone()
+        current_version = result[0] if result else None
+
+        translations_exists = self._table_exists(conn, "translations")
+        if translations_exists and current_version is not None and current_version != CACHE_VERSION:
+            self._recreate_translations_table(conn)
+        else:
+            self._create_translations_table(conn)
+            if translations_exists and not self._translations_schema_is_current(conn):
+                logger.warning("快取資料表 schema 不相容，重新建立 translations 表")
+                self._recreate_translations_table(conn)
+
+        self._create_cache_indexes(conn)
+        self._check_cache_version(conn)
+
+    def _create_translations_table(self, conn):
+        """建立目前版本的 translations 表格。"""
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS translations (
+                source_text TEXT,
+                target_text TEXT,
+                context_hash TEXT,
+                model_name TEXT,
+                style TEXT DEFAULT 'standard',
+                prompt_version TEXT DEFAULT '',
+                created_at timestamp,
+                usage_count INTEGER,
+                last_used timestamp,
+                PRIMARY KEY (source_text, context_hash, model_name, style, prompt_version)
+            )
+        """)
+
+    def _recreate_translations_table(self, conn):
+        """清除不相容的舊 translations 表格並套用目前 schema。"""
+        conn.execute("DROP TABLE IF EXISTS translations")
+        self._create_translations_table(conn)
+
+    def _create_cache_metadata_table(self, conn):
+        """建立快取元數據表格。"""
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS cache_metadata (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        """)
+
+    def _create_cache_indexes(self, conn):
+        """建立快取查詢索引。"""
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_context ON translations(context_hash)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_model ON translations(model_name)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_usage ON translations(usage_count)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_last_used ON translations(last_used)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_style ON translations(style)")
+
+    def _table_exists(self, conn, table_name: str) -> bool:
+        """檢查資料表是否存在。"""
+        cursor = conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table_name,))
+        return cursor.fetchone() is not None
+
+    def _translations_schema_is_current(self, conn) -> bool:
+        """檢查 translations schema 是否符合目前快取 key。"""
+        cursor = conn.execute("PRAGMA table_info(translations)")
+        columns = {row[1]: row for row in cursor.fetchall()}
+        required_columns = {
+            "source_text",
+            "target_text",
+            "context_hash",
+            "model_name",
+            "style",
+            "prompt_version",
+            "created_at",
+            "usage_count",
+            "last_used",
+        }
+        if not required_columns.issubset(columns):
+            return False
+
+        primary_key_columns = [row[1] for row in sorted(columns.values(), key=lambda row: row[5]) if row[5] > 0]
+        return primary_key_columns == ["source_text", "context_hash", "model_name", "style", "prompt_version"]
 
     def _check_cache_version(self, conn):
         """檢查快取版本，確保相容性"""
@@ -572,7 +625,8 @@ class CacheManager:
 
             # 執行清理
             threshold_date = current_time - timedelta(days=days_threshold)
-            conn.execute("DELETE FROM translations WHERE last_used < ?", (threshold_date,))
+            cursor = conn.execute("DELETE FROM translations WHERE last_used < ?", (threshold_date,))
+            deleted_count = cursor.rowcount
 
             # 更新上次清理時間
             conn.execute(
@@ -581,7 +635,7 @@ class CacheManager:
             )
 
             self.stats["last_cleanup"] = current_time.isoformat()
-            logger.info(f"自動清理已完成，刪除了 {conn.total_changes} 條過期快取")
+            logger.info(f"自動清理已完成，刪除了 {deleted_count} 條過期快取")
         except sqlite3.Error as e:
             logger.error(f"自動清理時發生錯誤: {e!s}")
 
