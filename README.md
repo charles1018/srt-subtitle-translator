@@ -246,6 +246,42 @@ srt-translator cache --stats
 
 > `translate` 目前可直接使用 `ollama`、`openai`、`google`、`llamacpp`；`anthropic` 目前仍以 `models -p anthropic` 與金鑰讀取層為主，尚無第一級翻譯 runtime。
 
+## 🧯 疑難排解
+
+### `ModuleNotFoundError: No module named 'srt_translator'`
+
+如果執行 GUI 或 CLI 時出現下列錯誤：
+
+```text
+Traceback (most recent call last):
+  File ".../.venv/bin/srt-translator", line 4, in <module>
+    from srt_translator.__main__ import main
+ModuleNotFoundError: No module named 'srt_translator'
+```
+
+通常代表 `.venv` 內的本專案 editable 安裝狀態損壞，或 `src/` 沒有被正確加入 Python import path。先在專案根目錄執行：
+
+```bash
+uv run python -c "import importlib.util; print(importlib.util.find_spec('srt_translator'))"
+```
+
+如果輸出是 `None`，請強制重裝本專案套件：
+
+```bash
+uv sync --all-extras --dev --reinstall-package srt-subtitle-translator
+```
+
+重裝後再確認：
+
+```bash
+uv run python -c "import srt_translator; print(srt_translator.__file__)"
+uv run srt-translator --help
+```
+
+正常情況下，第一個命令應該指向 `src/srt_translator/__init__.py`，第二個命令會顯示 CLI help。若要驗證 GUI 啟動路徑，可執行 `uv run srt-translator`；GUI 進入主迴圈後終端機不會立即返回是正常行為。
+
+請避免手動修改 `.venv` 裡的 `.pth` 或 metadata 檔案；下次 `uv sync` 或重建環境時可能再次被覆蓋。若重裝後仍失敗，再刪除並重建 `.venv`。
+
 ## 📚 文檔
 
 - [使用者指南](docs/USER_GUIDE.md) - 詳細使用說明
