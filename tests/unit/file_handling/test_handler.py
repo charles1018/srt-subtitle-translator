@@ -82,6 +82,21 @@ class TestSubtitleInfoEncodingDetection:
         # Should default to utf-8 or handle gracefully
         assert info.encoding is not None
 
+    def test_detect_encoding_normalizes_ascii_to_utf8(self, temp_dir):
+        """ASCII 相容字幕應正規化為 utf-8。"""
+        srt_file = temp_dir / "ascii_like.srt"
+        srt_file.write_text("1\n00:00:01,000 --> 00:00:02,000\nPlain ASCII subtitle\n", encoding="utf-8")
+
+        info = SubtitleInfo(str(srt_file))
+        assert info.encoding.lower() == "utf-8"
+
+    def test_detect_encoding_normalizes_windows_1252_false_positive_for_utf8_fixture(self):
+        """含 CJK/emoji 的 UTF-8 字幕不應因 chardet 誤判而退化成 cp1252。"""
+        info = SubtitleInfo("tests/e2e/fixtures/special_chars.srt")
+
+        assert info.encoding.lower() == "utf-8"
+        assert info.subtitle_count == 5
+
 
 class TestSubtitleInfoLanguageDetection:
     """Tests for SubtitleInfo language detection."""

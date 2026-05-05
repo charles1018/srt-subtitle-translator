@@ -135,6 +135,11 @@ class SubtitleInfo:
                 encoding = result["encoding"] or "utf-8"
                 confidence = result["confidence"]
 
+                # ascii 與 windows-1252 常是對 UTF-8 字幕的保守或錯誤推測。
+                # 對本專案常見的 SRT 文字檔而言，utf-8 是更安全的超集。
+                if encoding.lower() in ("ascii", "windows-1252"):
+                    encoding = "utf-8"
+
                 # Warn if confidence is low
                 if confidence < 0.7:
                     logger.warning(f"Low encoding confidence ({confidence:.2f}) for {file_path}, using {encoding}")
