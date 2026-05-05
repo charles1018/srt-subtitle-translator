@@ -8,6 +8,7 @@
 - [開發環境設定](#開發環境設定)
 - [專案結構](#專案結構)
 - [開發工作流](#開發工作流)
+- [依賴維護](#依賴維護)
 - [測試](#測試)
 - [程式碼品質](#程式碼品質)
 - [建構與發布](#建構與發布)
@@ -216,6 +217,12 @@ srt-subtitle-translator/
 | **file_handling/handler.py** | 檔案處理 | FileHandler |
 | **tools/srt_tools.py** | SRT 工具箱 | extract/assemble/qa/cps_audit |
 | **services/factory.py** | 服務工廠 | ServiceFactory |
+
+---
+
+## 依賴維護
+
+- 依賴升級流程、風險分級與驗證命令請見 [DEPENDENCY_MAINTENANCE.md](/home/chares/dev/tools/claude/srt-subtitle-translator/docs/DEPENDENCY_MAINTENANCE.md)
 
 ---
 
