@@ -30,11 +30,11 @@
 目前專案正處於 provider 整理階段，開發時請先區分各層支援範圍：
 
 - 實際翻譯 runtime：`ollama`、`openai`、`google`、`llamacpp`
-- CLI `translate` / `models` / `prompt` 參數：`ollama`、`openai`、`anthropic`、`google`、`llamacpp`
-- GUI provider 下拉：`ollama`、`openai`、`anthropic`、`google`、`llamacpp`
-- `ConfigManager` 對 `user.llm_type` 驗證：`ollama`、`openai`、`anthropic`、`google`、`llamacpp`
-- `ModelManager` / 模型 metadata / 金鑰載入：`ollama`、`openai`、`anthropic`、`google`、`llamacpp`
-- OpenRouter：規劃中，尚未實作
+- CLI `translate` / `models` / `prompt` 參數：`ollama`、`openai`、`google`、`llamacpp`
+- GUI provider 下拉：`ollama`、`openai`、`google`、`llamacpp`
+- `ConfigManager` 對 `user.llm_type` 驗證：`ollama`、`openai`、`google`、`llamacpp`
+- `ModelManager` / 模型 metadata / 金鑰載入：`ollama`、`openai`、`google`、`llamacpp`
+- Anthropic / OpenRouter：已取消納入目前支援範圍
 
 ### 推薦工具
 
@@ -97,19 +97,16 @@ pytest -v
 ```bash
 # Linux/macOS
 export OPENAI_API_KEY="sk-test-key"
-export ANTHROPIC_API_KEY="sk-ant-test-key"
 export GOOGLE_API_KEY="test-google-key"
 # 或使用 GEMINI_API_KEY="test-google-key"
 
 # Windows PowerShell
 $env:OPENAI_API_KEY="sk-test-key"
-$env:ANTHROPIC_API_KEY="sk-ant-test-key"
 $env:GOOGLE_API_KEY="test-google-key"
 # 或使用 $env:GEMINI_API_KEY="test-google-key"
 
 # Windows CMD
 set OPENAI_API_KEY=sk-test-key
-set ANTHROPIC_API_KEY=sk-ant-test-key
 set GOOGLE_API_KEY=test-google-key
 REM 或使用 set GEMINI_API_KEY=test-google-key
 ```
@@ -120,16 +117,13 @@ REM 或使用 set GEMINI_API_KEY=test-google-key
 # OpenAI（如需測試 OpenAI 整合）
 echo "sk-test-key" > openapi_api_key.txt
 
-# Anthropic（如需測試模型資訊 / 金鑰讀取）
-echo "sk-ant-test-key" > anthropic_api_key.txt
-
 # Google（GUI / runtime 路徑）
 echo "test-google-key" > google_api_key.txt
 ```
 
 > **注意**：環境變數優先於金鑰檔案。使用環境變數更安全，避免將金鑰意外提交到版本控制。
 >
-> **補充**：`anthropic` 目前已接到模型資訊與金鑰層，但尚無第一級翻譯 runtime；`google` 已可直接用於 CLI `translate` / `models` 與 GUI。
+> **補充**：`google` 已可直接用於 CLI `translate` / `models` 與 GUI。
 
 ### VS Code 設定
 

@@ -63,11 +63,6 @@ def integration_env(temp_dir):
             "model": "gpt-3.5-turbo",
             "max_tokens": 150,
         },
-        "anthropic": {
-            "api_key": "test-anthropic-key",
-            "model": "claude-3-haiku-20240307",
-            "max_tokens": 1024,
-        },
     }
 
     app_config_path = config_dir / "app_config.json"
@@ -182,11 +177,6 @@ def mock_model_client():
     openai_response = MagicMock()
     openai_response.choices = [MagicMock(message=MagicMock(content="翻譯結果"))]
     client.chat.completions.create = AsyncMock(return_value=openai_response)
-
-    # 模擬 Anthropic 客戶端
-    anthropic_response = MagicMock()
-    anthropic_response.content = [MagicMock(text="翻譯結果")]
-    client.messages.create = AsyncMock(return_value=anthropic_response)
 
     return client
 

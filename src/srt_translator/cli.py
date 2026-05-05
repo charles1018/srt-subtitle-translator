@@ -31,9 +31,9 @@ CLI_DISPLAY_MODE_CHOICES = [
     *DISPLAY_MODE_ALIASES.keys(),
 ]
 
-CLI_TRANSLATE_PROVIDERS = ["ollama", "openai", "anthropic", "google", "llamacpp"]
-CLI_MODEL_PROVIDERS = ["ollama", "openai", "anthropic", "google", "llamacpp"]
-CLI_PROMPT_PROVIDERS = ["ollama", "openai", "anthropic", "google", "llamacpp"]
+CLI_TRANSLATE_PROVIDERS = ["ollama", "openai", "google", "llamacpp"]
+CLI_MODEL_PROVIDERS = ["ollama", "openai", "google", "llamacpp"]
+CLI_PROMPT_PROVIDERS = ["ollama", "openai", "google", "llamacpp"]
 CLI_CONTENT_TYPES = ["general", "adult", "anime", "movie", "english_drama"]
 CLI_STYLES = ["standard", "literal", "localized", "specialized"]
 
@@ -47,7 +47,7 @@ def create_parser() -> argparse.ArgumentParser:
     """建立命令列參數解析器"""
     parser = argparse.ArgumentParser(
         prog="srt-translator",
-        description=("SRT 字幕翻譯工具 - CLI provider 支援 Ollama、OpenAI、Anthropic、Google、llama.cpp"),
+        description=("SRT 字幕翻譯工具 - CLI provider 支援 Ollama、OpenAI、Google、llama.cpp"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 範例:
@@ -94,9 +94,8 @@ def create_parser() -> argparse.ArgumentParser:
   srt-translator cps-audit video.zh-TW.srt
 
 說明:
-  - CLI parser 目前接受: ollama / openai / anthropic / google / llamacpp
+  - CLI parser 目前接受: ollama / openai / google / llamacpp
   - translate 實際建議優先使用: ollama / openai / google / llamacpp
-  - anthropic 目前較適合搭配 models 子命令檢視模型資訊
 """,
     )
 
@@ -112,7 +111,7 @@ def create_parser() -> argparse.ArgumentParser:
         "--provider",
         default="ollama",
         choices=CLI_TRANSLATE_PROVIDERS,
-        help="LLM 提供者（CLI 可選: ollama/openai/anthropic/google/llamacpp；預設: ollama）",
+        help="LLM 提供者（CLI 可選: ollama/openai/google/llamacpp；預設: ollama）",
     )
     translate_parser.add_argument("-m", "--model", help="模型名稱 (未指定則使用推薦模型)")
     translate_parser.add_argument(
@@ -167,7 +166,7 @@ def create_parser() -> argparse.ArgumentParser:
         "--provider",
         default="ollama",
         choices=CLI_MODEL_PROVIDERS,
-        help="LLM 提供者（列模型支援: ollama/openai/anthropic/google/llamacpp）",
+        help="LLM 提供者（列模型支援: ollama/openai/google/llamacpp）",
     )
 
     # cache 子命令

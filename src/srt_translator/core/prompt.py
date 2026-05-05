@@ -16,11 +16,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 PROMPT_PROVIDER_FALLBACKS = {
-    "anthropic": "openai",
     "google": "openai",
     "llamacpp": "ollama",
 }
-SUPPORTED_PROMPT_LLM_TYPES = ["ollama", "openai", "anthropic", "google", "llamacpp"]
+SUPPORTED_PROMPT_LLM_TYPES = ["ollama", "openai", "google", "llamacpp"]
 
 # 確保日誌目錄存在
 os.makedirs("logs", exist_ok=True)
@@ -1174,8 +1173,8 @@ Rules:
             user_message = "\n".join(user_content_parts)
 
         # 為不同的LLM類型創建不同格式的訊息
-        if llm_type == "openai" or llm_type == "anthropic":
-            # OpenAI/Anthropic的訊息格式
+        if llm_type == "openai":
+            # OpenAI的訊息格式
             messages = [{"role": "system", "content": prompt}, {"role": "user", "content": user_message}]
         else:
             # Ollama等其他LLM的訊息格式

@@ -7,6 +7,15 @@
 
 ## [Unreleased]
 
+### ⚠️ 變更
+
+#### Provider 支援範圍收斂
+- 🧹 **取消 Anthropic 與 OpenRouter 支援範圍**
+  - 移除 Anthropic CLI / GUI / config / prompt / model metadata / 金鑰讀取入口
+  - 移除 `anthropic` Python 套件依賴
+  - 刪除 OpenRouter provider implementation plan；OpenRouter 不再列為待落地主要任務
+  - 原因：目前沒有明顯優於 OpenAI 的字幕翻譯性價比，且 Anthropic 成本較高
+
 ### ✨ 新增
 
 #### Google Gemini API 支援
@@ -24,7 +33,7 @@
 
 #### CLI / Prompt 對齊
 - 🖥️ **CLI `translate` / `models` 現在暴露 `google` provider**
-  - CLI parser 可選值更新為 `ollama` / `openai` / `anthropic` / `google` / `llamacpp`
+  - CLI parser 可選值更新為 `ollama` / `openai` / `google` / `llamacpp`
   - 新增 `--content-type`、`--style`、`--netflix-style`、`--no-netflix-style`
 - 📝 **新增 CLI `prompt` 子命令**
   - `prompt show` / `set` / `reset` / `export` / `import`
@@ -57,7 +66,7 @@
 ### 🎨 改進
 
 #### OpenAI token efficiency
-- OpenAI compact prompt 現在只套用到原始 `openai` provider；`anthropic` / `google` 仍沿用 OpenAI family 的 full default prompt，不會因 fallback 靜默改變行為。
+- OpenAI compact prompt 現在只套用到原始 `openai` provider；`google` 仍沿用 OpenAI family 的 full default prompt，不會因 fallback 靜默改變行為。
 - OpenAI compact prompt 補回最低排版約束；即使未啟用 Netflix 後處理，也會要求單一字幕輸出、不加註解、不任意增減換行、保留必要標點與句型。
 - `reset_to_default` 現在刪除自訂 prompt 後動態跟隨當前預設 prompt；升級後曾 reset 的 OpenAI prompt 可能改用 compact prompt，翻譯風格可能略有變化。
 - `translation.terminology_enabled` 目前代表 glossary 開關；台灣字幕詞彙正規化與少數 source-aware 片語修正仍會套用。
@@ -80,9 +89,9 @@
   - 修正 `--output-dir` 未正確寫入 batch settings 的問題
   - 修正 `--no-cache` 未實際停用快取的問題
 - 🔧 **補齊 PromptManager 的 provider fallback**
-  - `google` / `anthropic` 會沿用 OpenAI 家族預設 prompt
+  - `google` 會沿用 OpenAI 家族預設 prompt
   - `llamacpp` 會沿用 Ollama 家族預設 prompt
-  - `reset` / `export` / `import` 現在可涵蓋 `ollama`、`openai`、`anthropic`、`google`、`llamacpp`
+  - `reset` / `export` / `import` 現在可涵蓋 `ollama`、`openai`、`google`、`llamacpp`
 
 ### 📝 文件
 

@@ -411,7 +411,7 @@ class TranslationClient:
         參數:
             llm_type: LLM 類型 ('ollama', 'openai' 或 'google')
             base_url: API 基礎 URL
-            api_key: API 金鑰 (用於 OpenAI, Anthropic, Google)
+            api_key: API 金鑰 (用於 OpenAI, Google)
             cache_db_path: 快取資料庫路徑
             netflix_style_config: Netflix 風格配置（可選）
                 - enabled: 是否啟用 Netflix 風格後處理（預設: False）

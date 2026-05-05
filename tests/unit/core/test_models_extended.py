@@ -66,18 +66,6 @@ class TestModelManagerAPIKeyOperations:
                 # 應該返回 False
                 assert result is False
 
-    def test_save_api_key_anthropic(self, manager, temp_dir):
-        """測試儲存 Anthropic API 金鑰"""
-        test_key = "sk-ant-test-123456"
-        key_file = temp_dir / "anthropic_api_key.txt"
-
-        with patch("srt_translator.core.models.get_config", return_value=str(key_file)):
-            result = manager.save_api_key("anthropic", test_key)
-
-            assert result is True
-            assert manager.api_keys.get("anthropic") == test_key
-
-
 class TestModelManagerConfigOperations:
     """測試配置操作"""
 
@@ -204,7 +192,7 @@ class TestModelManagerFormatHelpers:
 
     def test_format_model_name_with_underscore(self, manager):
         """測試帶底線的模型名稱"""
-        result = manager._format_model_name("claude_3_opus")
+        result = manager._format_model_name("gemini_2_flash")
         # 應該轉換為空格
         assert isinstance(result, str)
         assert len(result) > 0

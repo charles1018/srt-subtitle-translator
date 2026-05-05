@@ -35,13 +35,6 @@ except ImportError:
     OPENAI_AVAILABLE = False
 
 try:
-    import anthropic
-
-    ANTHROPIC_AVAILABLE = True
-except ImportError:
-    ANTHROPIC_AVAILABLE = False
-
-try:
     from google import genai
 
     GOOGLE_AVAILABLE = True
@@ -212,7 +205,6 @@ class ModelManager:
 
         支援的環境變數：
         - OPENAI_API_KEY: OpenAI API 金鑰
-        - ANTHROPIC_API_KEY: Anthropic API 金鑰
         - GOOGLE_API_KEY 或 GEMINI_API_KEY: Google Gemini API 金鑰
 
         安全注意事項：
@@ -238,24 +230,6 @@ class ModelManager:
                     logger.debug("未設定 OpenAI API 金鑰")
         except Exception as e:
             logger.error(f"載入 OpenAI API 金鑰時發生錯誤: {e!s}")
-
-        # 載入 Anthropic API 金鑰
-        try:
-            # 優先從環境變數讀取
-            anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-
-            if anthropic_key:
-                self.api_keys["anthropic"] = anthropic_key
-                logger.info("已從環境變數載入 Anthropic API 金鑰")
-            else:
-                # 備選：從檔案讀取
-                anthropic_key_path = get_config("app", "anthropic_key_path", "anthropic_api_key.txt")
-                if os.path.exists(anthropic_key_path):
-                    with open(anthropic_key_path, encoding="utf-8") as f:
-                        self.api_keys["anthropic"] = f.read().strip()
-                    logger.info("已從檔案載入 Anthropic API 金鑰（建議改用 .env 檔案）")
-        except Exception as e:
-            logger.error(f"載入 Anthropic API 金鑰時發生錯誤: {e!s}")
 
         # 載入 Google Gemini API 金鑰
         try:
@@ -421,46 +395,6 @@ class ModelManager:
             ),
         }
 
-        # Anthropic 模型資訊
-        anthropic_models = {
-            "claude-3-opus-20240229": ModelInfo(
-                id="claude-3-opus-20240229",
-                provider="anthropic",
-                name="Claude 3 Opus",
-                description="Anthropic 最強大的模型，適合高品質翻譯",
-                context_length=200000,
-                pricing="高",
-                recommended_for="專業翻譯、文學翻譯",
-                parallel=10,
-                tags=["advanced", "accurate"],
-                capabilities={"translation": 0.98, "multilingual": 0.97, "context_handling": 0.99},
-            ),
-            "claude-3-sonnet-20240229": ModelInfo(
-                id="claude-3-sonnet-20240229",
-                provider="anthropic",
-                name="Claude 3 Sonnet",
-                description="Anthropic 平衡型模型，效能和速度的良好平衡",
-                context_length=200000,
-                pricing="中",
-                recommended_for="一般翻譯任務",
-                parallel=15,
-                tags=["balanced", "fast"],
-                capabilities={"translation": 0.93, "multilingual": 0.92, "context_handling": 0.94},
-            ),
-            "claude-3-haiku-20240307": ModelInfo(
-                id="claude-3-haiku-20240307",
-                provider="anthropic",
-                name="Claude 3 Haiku",
-                description="Anthropic 最快速的模型，適合大量翻譯任務",
-                context_length=200000,
-                pricing="低",
-                recommended_for="大批量翻譯任務",
-                parallel=25,
-                tags=["fast", "economic"],
-                capabilities={"translation": 0.88, "multilingual": 0.86, "context_handling": 0.87},
-            ),
-        }
-
         # Google Gemini 模型資訊
         google_models = {
             # Gemini 3 系列（最新，2025年11月發布）
@@ -547,9 +481,6 @@ class ModelManager:
         for model in ollama_models.values():
             self.model_database[f"ollama:{model.id}"] = model
 
-        for model in anthropic_models.values():
-            self.model_database[f"anthropic:{model.id}"] = model
-
         for model in google_models.values():
             self.model_database[f"google:{model.id}"] = model
 
@@ -632,8 +563,6 @@ class ModelManager:
                 models = await self._get_ollama_models_async()
             elif llm_type == "openai":
                 models = await self._get_openai_models_async(api_key or "")
-            elif llm_type == "anthropic" and ANTHROPIC_AVAILABLE:
-                models = await self._get_anthropic_models_async(api_key or "")
             elif llm_type == "llamacpp":
                 models = await self._get_llamacpp_models_async()
             elif llm_type == "google" and GOOGLE_AVAILABLE:
@@ -662,10 +591,6 @@ class ModelManager:
             elif llm_type == "openai":
                 default_model = self._create_default_openai_model()
                 return [default_model]
-            elif llm_type == "anthropic":
-                default_model = self._create_default_anthropic_model()
-                return [default_model]
-
             return []
 
     def get_model_list(self, llm_type: str, api_key: str | None = None) -> list[str]:
@@ -853,96 +778,6 @@ class ModelManager:
             )
         return model
 
-    def _create_default_anthropic_model(self) -> ModelInfo:
-        """建立預設 Anthropic 模型"""
-        key = "anthropic:claude-3-haiku-20240307"
-        if key in self.model_database:
-            model = self.model_database[key]
-        else:
-            model = ModelInfo(
-                id="claude-3-haiku-20240307",
-                provider="anthropic",
-                name="Claude 3 Haiku",
-                description="Anthropic 的快速模型",
-                pricing="低",
-                recommended_for="一般翻譯任務",
-            )
-        return model
-
-    async def _get_anthropic_models_async(self, api_key: str) -> list[ModelInfo]:
-        """非同步獲取 Anthropic 模型列表
-
-        參數:
-            api_key: Anthropic API金鑰
-
-        回傳:
-            Anthropic ModelInfo物件列表
-        """
-        if not ANTHROPIC_AVAILABLE or not api_key:
-            return []
-
-        try:
-            # Anthropic 沒有列出模型的 API，使用預定義模型
-            anthropic_models = [
-                ModelInfo(
-                    id="claude-3-opus-20240229",
-                    provider="anthropic",
-                    name="Claude 3 Opus",
-                    description="Anthropic 最強大的模型，適合高品質翻譯",
-                    context_length=200000,
-                    pricing="高",
-                    recommended_for="專業翻譯、文學翻譯",
-                    parallel=10,
-                    tags=["advanced", "accurate"],
-                    capabilities={"translation": 0.98, "multilingual": 0.97, "context_handling": 0.99},
-                ),
-                ModelInfo(
-                    id="claude-3-sonnet-20240229",
-                    provider="anthropic",
-                    name="Claude 3 Sonnet",
-                    description="Anthropic 平衡型模型，效能和速度的良好平衡",
-                    context_length=200000,
-                    pricing="中",
-                    recommended_for="一般翻譯任務",
-                    parallel=15,
-                    tags=["balanced", "fast"],
-                    capabilities={"translation": 0.93, "multilingual": 0.92, "context_handling": 0.94},
-                ),
-                ModelInfo(
-                    id="claude-3-haiku-20240307",
-                    provider="anthropic",
-                    name="Claude 3 Haiku",
-                    description="Anthropic 最快速的模型，適合大量翻譯任務",
-                    context_length=200000,
-                    pricing="低",
-                    recommended_for="大批量翻譯任務",
-                    parallel=25,
-                    tags=["fast", "economic"],
-                    capabilities={"translation": 0.88, "multilingual": 0.86, "context_handling": 0.87},
-                ),
-            ]
-
-            # 驗證 API 金鑰是否有效
-            client = anthropic.Anthropic(api_key=api_key)
-            try:
-                # 簡單呼叫以驗證 API 金鑰
-                client.messages.create(
-                    model="claude-3-haiku-20240307", max_tokens=10, messages=[{"role": "user", "content": "Hi"}]
-                )
-                # 呼叫成功，API 金鑰有效
-                for model in anthropic_models:
-                    model.available = True
-            except Exception as e:
-                logger.warning(f"Anthropic API 金鑰驗證失敗: {e!s}")
-                # 標記所有模型為不可用
-                for model in anthropic_models:
-                    model.available = False
-
-            return anthropic_models
-        except Exception as e:
-            logger.error(f"獲取 Anthropic 模型列表失敗: {e!s}")
-            return []
-
     async def _get_google_models_async(self, api_key: str) -> list[ModelInfo]:
         """非同步獲取 Google Gemini 模型列表
 
@@ -1060,14 +895,13 @@ class ModelManager:
         """返回預設模型，針對翻譯進行最佳化
 
         參數:
-            llm_type: LLM類型 (如 "ollama", "openai", "anthropic" 或 "google")
+            llm_type: LLM類型 (如 "ollama", "openai", "google" 或 "llamacpp")
 
         回傳:
             預設模型名稱
         """
         provider_defaults = {
             "openai": "gpt-3.5-turbo",  # 最經濟的選擇
-            "anthropic": "claude-3-haiku-20240307",  # 最快速的選擇
             "google": "gemini-2.0-flash",  # 最快速且經濟的選擇
             "llamacpp": "local-model",  # llama-server 載入的模型
         }
@@ -1138,13 +972,13 @@ class ModelManager:
 
         參數:
             task_type: 任務類型 (如 "translation", "literary", "technical", "subtitle")
-            provider: 提供者 (如 "ollama", "openai" 或 "anthropic")
+            provider: 提供者 (如 "ollama", "openai", "google" 或 "llamacpp")
 
         回傳:
             推薦的模型資訊，若無適合的則回傳 None
         """
         available_providers = (
-            [provider] if provider else self.config.get("default_providers", ["ollama", "openai", "anthropic"])
+            [provider] if provider else self.config.get("default_providers", ["ollama", "openai"])
         )
 
         # 定義不同任務的能力權重
@@ -1240,44 +1074,6 @@ class ModelManager:
         except Exception as e:
             return False, f"測試連線時發生錯誤: {e!s}"
 
-    async def _test_anthropic_connection(self, model_name: str, api_key: str) -> tuple[bool, str]:
-        """測試 Anthropic 模型連線
-
-        參數:
-            model_name: 模型名稱
-            api_key: API 金鑰
-
-        回傳:
-            (是否成功, 訊息)
-        """
-        if not ANTHROPIC_AVAILABLE:
-            return False, "未安裝 Anthropic 客戶端程式庫"
-
-        if not api_key:
-            return False, "未提供 API 金鑰"
-
-        try:
-            client = anthropic.Anthropic(api_key=api_key)
-            response = client.messages.create(
-                model=model_name, max_tokens=10, messages=[{"role": "user", "content": "Hello"}]
-            )
-
-            if response and response.content:
-                return True, "模型回應正常"
-            else:
-                return False, "模型回應格式異常"
-
-        except Exception as e:
-            error_msg = str(e).lower()
-            if "authentication" in error_msg or "invalid api key" in error_msg:
-                return False, "API 金鑰無效或認證失敗"
-            elif "rate limit" in error_msg:
-                return False, "達到 API 速率限制，請稍後再試"
-            elif "not found" in error_msg or "no such model" in error_msg:
-                return False, f"模型 {model_name} 不存在或不可用"
-            else:
-                return False, f"測試連線時發生錯誤: {e!s}"
-
     async def _test_google_connection(self, model_name: str, api_key: str) -> tuple[bool, str]:
         """測試 Google Gemini 模型連線
 
@@ -1321,7 +1117,7 @@ class ModelManager:
 
         參數:
             model_name: 模型名稱
-            provider: 提供者 (如 "ollama", "openai" 或 "anthropic")
+            provider: 提供者 (如 "ollama", "openai", "google" 或 "llamacpp")
             api_key: API 金鑰 (可選)
 
         回傳:
@@ -1355,10 +1151,6 @@ class ModelManager:
             key = api_key or self.api_keys.get("openai", "")
             success, message = await self._test_openai_connection(model_name, key)
             return {"success": success, "message": message}
-        elif provider == "anthropic":
-            key = api_key or self.api_keys.get("anthropic", "")
-            success, message = await self._test_anthropic_connection(model_name, key)
-            return {"success": success, "message": message}
         elif provider == "google":
             key = api_key or self.api_keys.get("google", "")
             success, message = await self._test_google_connection(model_name, key)
@@ -1372,7 +1164,7 @@ class ModelManager:
         回傳:
             包含各提供者狀態的字典
         """
-        status = {"ollama": False, "openai": False, "anthropic": False, "google": False}
+        status = {"ollama": False, "openai": False, "google": False}
 
         # 檢查 Ollama 連線
         try:
@@ -1387,7 +1179,6 @@ class ModelManager:
 
         # 其他提供者需要 API 金鑰，檢查是否有有效金鑰和客戶端庫
         status["openai"] = OPENAI_AVAILABLE and bool(self.api_keys.get("openai"))
-        status["anthropic"] = ANTHROPIC_AVAILABLE and bool(self.api_keys.get("anthropic"))
         status["google"] = GOOGLE_AVAILABLE and bool(self.api_keys.get("google"))
 
         return status
@@ -1644,7 +1435,7 @@ class ModelManager:
         """儲存 API 金鑰
 
         參數:
-            provider: 提供者 (如 "openai" 或 "anthropic")
+            provider: 提供者 (如 "openai" 或 "google")
             api_key: API 金鑰
 
         回傳:
@@ -1862,7 +1653,7 @@ async def test_model_connection(model_name: str, provider: str, api_key: str | N
 
     參數:
         model_name: 模型名稱
-        provider: 提供者 (如 "ollama", "openai" 或 "anthropic")
+        provider: 提供者 (如 "ollama", "openai", "google" 或 "llamacpp")
         api_key: API 金鑰 (可選)
 
     回傳:

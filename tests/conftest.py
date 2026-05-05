@@ -81,11 +81,6 @@ def mock_config_data() -> dict:
             "model": "gpt-3.5-turbo",
             "max_tokens": 150,
         },
-        "anthropic": {
-            "api_key": "test-api-key",
-            "model": "claude-3-haiku-20240307",
-            "max_tokens": 1024,
-        },
         "translation": {
             "source_lang": "en",
             "target_lang": "zh-TW",

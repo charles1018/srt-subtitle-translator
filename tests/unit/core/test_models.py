@@ -536,29 +536,6 @@ class TestModelManagerDefaultModels:
         assert isinstance(model, ModelInfo)
         assert model.id == "gpt-3.5-turbo"
 
-    def test_create_default_anthropic_model(self, manager):
-        """測試建立預設 Anthropic 模型"""
-        model = manager._create_default_anthropic_model()
-
-        assert isinstance(model, ModelInfo)
-        assert model.provider == "anthropic"
-        assert "claude" in model.id.lower()
-
-    def test_create_default_anthropic_model_not_in_db(self, temp_dir):
-        """測試建立不在資料庫中的 Anthropic 預設模型"""
-        config_file = temp_dir / "config" / "model_config.json"
-        config_file.parent.mkdir(exist_ok=True)
-        manager = ModelManager(str(config_file))
-
-        # 清空資料庫中的 anthropic 模型
-        if "anthropic:claude-3-haiku-20240307" in manager.model_database:
-            del manager.model_database["anthropic:claude-3-haiku-20240307"]
-
-        model = manager._create_default_anthropic_model()
-
-        assert isinstance(model, ModelInfo)
-        assert "claude" in model.id.lower()
-
     def test_get_default_model_ollama(self, manager):
         """測試獲取 Ollama 預設模型"""
         model_name = manager.get_default_model("ollama")
@@ -571,13 +548,6 @@ class TestModelManagerDefaultModels:
         model_name = manager.get_default_model("openai")
 
         assert model_name == "gpt-3.5-turbo"
-
-    def test_get_default_model_anthropic(self, manager):
-        """測試獲取 Anthropic 預設模型"""
-        model_name = manager.get_default_model("anthropic")
-
-        assert "claude" in model_name.lower()
-
 
 class TestModelManagerModelInfo:
     """測試模型資訊獲取"""
@@ -828,7 +798,7 @@ class TestModelManagerAsync:
         assert isinstance(status, dict)
         assert "ollama" in status
         assert "openai" in status
-        assert "anthropic" in status
+        assert "google" in status
 
         # 清理
         if manager.session:
@@ -1010,39 +980,6 @@ class TestModelManagerAsync:
         if manager.session:
             await manager._close_async_session()
 
-    @pytest.mark.asyncio
-    async def test_get_model_list_async_anthropic(self, manager):
-        """測試非同步獲取 Anthropic 模型列表"""
-        # Mock _get_anthropic_models_async 返回模型
-        mock_models = [ModelInfo(id="claude-3", provider="anthropic")]
-
-        with patch.object(manager, "_get_anthropic_models_async", return_value=mock_models):  # noqa: SIM117
-            with patch("srt_translator.core.models.ANTHROPIC_AVAILABLE", True):
-                result = await manager.get_model_list_async("anthropic", api_key="test-key")
-                assert isinstance(result, list)
-
-        # 清理
-        if manager.session:
-            await manager._close_async_session()
-
-    @pytest.mark.asyncio
-    async def test_get_model_list_async_anthropic_error(self, manager):
-        """測試 Anthropic 獲取失敗返回預設模型"""
-        # Mock 方法拋出錯誤
-        with patch.object(  # noqa: SIM117
-            manager, "_get_anthropic_models_async", side_effect=Exception("API error")
-        ):
-            with patch("srt_translator.core.models.ANTHROPIC_AVAILABLE", True):
-                result = await manager.get_model_list_async("anthropic")
-                # 應該返回預設 Anthropic 模型
-                assert isinstance(result, list)
-                if result:
-                    assert result[0].provider == "anthropic"
-
-        # 清理
-        if manager.session:
-            await manager._close_async_session()
-
 
 class TestModelManagerEdgeCases:
     """測試邊界條件"""
@@ -1086,4 +1023,4 @@ class TestModelManagerEdgeCases:
             assert ":" in key
             parts = key.split(":", 1)
             assert len(parts) == 2
-            assert parts[0] in ["ollama", "openai", "anthropic", "google"]
+            assert parts[0] in ["ollama", "openai", "google", "llamacpp"]

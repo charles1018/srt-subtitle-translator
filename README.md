@@ -5,7 +5,7 @@
 [![Tests](https://img.shields.io/badge/tests-841%20collected-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-htmlcov-lightgrey.svg)](htmlcov/)
 
-基於 Python 的 SRT 字幕檔自動翻譯工具。本專案近期正在整理 provider 整合，各層支援範圍目前仍有差異：實際翻譯 runtime 已實作 `ollama`、`openai`、`google`、`llamacpp`；CLI `translate/models/prompt` 參數目前接受 `ollama`、`openai`、`anthropic`、`google`、`llamacpp`；GUI provider 下拉目前顯示 `ollama`、`openai`、`anthropic`、`google`、`llamacpp`；OpenRouter 仍是規劃中工作。
+基於 Python 的 SRT 字幕檔自動翻譯工具。目前支援 `ollama`、`openai`、`google`、`llamacpp`；Anthropic 與 OpenRouter 已取消納入目前支援範圍，優先維持 OpenAI / Google / 本機模型路徑。
 
 ## ✨ 功能特點
 
@@ -13,9 +13,8 @@
 - 🌍 **多語言支援**：支援日文、英文、韓文、法文、德文、西班牙文、俄文、繁體中文等語言
 - 🤖 **多引擎支援**：
   - 實際翻譯 runtime：Ollama、OpenAI、Google、llama.cpp
-  - CLI provider 參數：Ollama、OpenAI、Anthropic、Google、llama.cpp
-  - GUI provider 下拉 / 模型發現：Ollama、OpenAI、Anthropic、Google、llama.cpp
-  - OpenRouter：尚未實作
+  - CLI provider 參數：Ollama、OpenAI、Google、llama.cpp
+  - GUI provider 下拉 / 模型發現：Ollama、OpenAI、Google、llama.cpp
 - 📝 **多格式支援**：SRT、VTT、ASS/SSA 字幕格式
 
 ### 進階功能
@@ -54,7 +53,6 @@
 - **網路連接**：使用 API 模式時需要
 - **API 金鑰**（依使用模式）：
   - OpenAI：`OPENAI_API_KEY` 或 `openapi_api_key.txt`
-  - Anthropic：`ANTHROPIC_API_KEY` 或 `anthropic_api_key.txt`
   - Google Gemini：`GOOGLE_API_KEY` / `GEMINI_API_KEY` 或 `google_api_key.txt`
   - Ollama 模式：需要在本機安裝 [Ollama](https://ollama.ai) 服務
   - llama.cpp 模式：需要下載 [llama.cpp](https://github.com/ggml-org/llama.cpp) 並啟動 `llama-server`
@@ -64,11 +62,11 @@
 | 層級 | 目前狀態 |
 |------|----------|
 | 實際翻譯 runtime | `ollama`、`openai`、`google`、`llamacpp` |
-| CLI `translate` / `models` / `prompt` 參數 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
-| GUI provider 下拉 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
-| 模型 metadata / 可用模型發現 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
-| `ConfigManager` 對 `user.llm_type` 驗證 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
-| OpenRouter | 僅規劃中，尚未落地 |
+| CLI `translate` / `models` / `prompt` 參數 | `ollama`、`openai`、`google`、`llamacpp` |
+| GUI provider 下拉 | `ollama`、`openai`、`google`、`llamacpp` |
+| 模型 metadata / 可用模型發現 | `ollama`、`openai`、`google`、`llamacpp` |
+| `ConfigManager` 對 `user.llm_type` 驗證 | `ollama`、`openai`、`google`、`llamacpp` |
+| 取消支援 | `anthropic`、`openrouter` |
 
 > 文件若與程式碼衝突，請以 `src/` 內實作為準。
 
@@ -119,9 +117,6 @@ cp .env.example .env
 # OpenAI API
 OPENAI_API_KEY=your-openai-api-key
 
-# Anthropic API
-ANTHROPIC_API_KEY=your-anthropic-api-key
-
 # Google Gemini API（二擇一）
 GOOGLE_API_KEY=your-google-api-key
 # 或
@@ -133,12 +128,10 @@ GEMINI_API_KEY=your-google-api-key
 ```bash
 # Linux/macOS
 export OPENAI_API_KEY="your-openai-api-key"
-export ANTHROPIC_API_KEY="your-anthropic-api-key"
 export GOOGLE_API_KEY="your-google-api-key"
 
 # Windows PowerShell
 $env:OPENAI_API_KEY="your-openai-api-key"
-$env:ANTHROPIC_API_KEY="your-anthropic-api-key"
 $env:GOOGLE_API_KEY="your-google-api-key"
 ```
 
@@ -146,7 +139,6 @@ $env:GOOGLE_API_KEY="your-google-api-key"
 
 ```bash
 echo "your-openai-api-key" > openapi_api_key.txt
-echo "your-anthropic-api-key" > anthropic_api_key.txt
 echo "your-google-api-key" > google_api_key.txt
 ```
 
@@ -154,7 +146,7 @@ echo "your-google-api-key" > google_api_key.txt
 >
 > **安全提示**：`.env` 檔案已加入 `.gitignore`，不會被提交到版本控制。
 >
-> **補充**：程式碼目前可讀取 `OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`。目前端到端翻譯 runtime 為 `ollama` / `openai` / `google` / `llamacpp`；`anthropic` 仍以模型資訊與金鑰層為主。
+> **補充**：程式碼目前可讀取 `OPENAI_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`。目前端到端翻譯 runtime 為 `ollama` / `openai` / `google` / `llamacpp`。
 
 #### Ollama（本地模型）
 確保 Ollama 服務正在運行：
@@ -244,7 +236,7 @@ srt-translator models -p google
 srt-translator cache --stats
 ```
 
-> `translate` 目前可直接使用 `ollama`、`openai`、`google`、`llamacpp`；`anthropic` 目前仍以 `models -p anthropic` 與金鑰讀取層為主，尚無第一級翻譯 runtime。
+> `translate` 目前可直接使用 `ollama`、`openai`、`google`、`llamacpp`。
 
 ## 🧯 疑難排解
 
@@ -450,7 +442,6 @@ uv run mypy src/srt_translator
 
 - [pysrt](https://github.com/byroot/pysrt) - SRT 字幕解析
 - [OpenAI](https://openai.com/) - GPT 系列模型
-- [Anthropic](https://www.anthropic.com/) - Claude 系列模型
 - [Google](https://ai.google.dev/) - Gemini 系列模型
 - [Ollama](https://ollama.ai/) - 本地 LLM 運行平台
 - [llama.cpp](https://github.com/ggml-org/llama.cpp) - 高效本地 LLM 推理引擎
@@ -480,7 +471,7 @@ uv run mypy src/srt_translator
 - **當前版本**：1.1.0
 - **Python 需求**：3.10+
 - **第一級翻譯 runtime**：Ollama / OpenAI / Google / llama.cpp
-- **仍在整理中的 provider**：Anthropic / OpenRouter（規劃）
+- **已取消納入目前支援範圍**：Anthropic / OpenRouter
 
 ---
 

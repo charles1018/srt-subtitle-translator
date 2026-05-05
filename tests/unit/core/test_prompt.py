@@ -235,11 +235,9 @@ class TestPromptManagerGetPrompt:
     def test_get_prompt_compact_prompt_scope_is_openai_only(self, manager):
         """測試 compact prompt 只套用到原始 openai provider。"""
         openai_prompt = manager.get_prompt("openai", "general")
-        anthropic_prompt = manager.get_prompt("anthropic", "general")
         google_prompt = manager.get_prompt("google", "general")
 
         assert "Keep the output as one subtitle only" in openai_prompt
-        assert "Keep the output as one subtitle only" not in anthropic_prompt
         assert "Keep the output as one subtitle only" not in google_prompt
 
     def test_get_prompt_maps_llamacpp_to_ollama_family_default(self, manager):
@@ -1029,7 +1027,7 @@ class TestPromptManagerFileOperations:
 
         assert result == str(export_path)
         export_data = json.loads(export_path.read_text(encoding="utf-8"))
-        assert {"ollama", "openai", "anthropic", "google", "llamacpp"} <= set(export_data["prompts"])
+        assert {"ollama", "openai", "google", "llamacpp"} <= set(export_data["prompts"])
 
     def test_import_prompt_accepts_google_and_llamacpp(self, manager, temp_dir):
         """測試匯入會接受 google 與 llamacpp provider。"""

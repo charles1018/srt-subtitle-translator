@@ -132,7 +132,6 @@ he's got a great spot waiting for him up there at the FD in Detroit
    - 目前建議優先使用 OpenAI GPT-4 / GPT-4o
    - GUI 雖然會顯示 Google Gemini，但仍建議先用 OpenAI 驗證流程
    - Ollama 本地模型也可用，但建議選較大的中文友善模型
-   - `anthropic` 目前尚無第一級翻譯 runtime，先不要當成穩定路徑
 
 4. **選擇字幕檔案**
    - 點擊「選擇輸入檔案」或直接拖放檔案

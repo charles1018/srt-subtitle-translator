@@ -1369,12 +1369,6 @@ class ModelService:
                 "default_path": "openapi_api_key.txt",
                 "warn_if_missing": True,
             },
-            "anthropic": {
-                "env_vars": ["ANTHROPIC_API_KEY"],
-                "config_key": "anthropic_key_path",
-                "default_path": "anthropic_api_key.txt",
-                "warn_if_missing": False,
-            },
             "google": {
                 "env_vars": ["GOOGLE_API_KEY", "GEMINI_API_KEY"],
                 "config_key": "google_key_path",
@@ -1521,7 +1515,7 @@ class ModelService:
         """儲存 API 金鑰
 
         參數:
-            provider: 提供者 (如 "openai" 或 "anthropic")
+            provider: 提供者 (如 "openai" 或 "google")
             api_key: API 金鑰
 
         回傳:

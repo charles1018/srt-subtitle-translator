@@ -30,7 +30,6 @@
    - llama.cpp（本地，直接推理）
    - OpenAI API 金鑰
    - Google Gemini API 金鑰（GUI / CLI）
-   - Anthropic API 金鑰（目前僅模型資訊 / 金鑰層）
 
 ### 5 分鐘快速上手
 
@@ -47,7 +46,6 @@ cp .env.example .env
 
 # 方式 B：環境變數
 export OPENAI_API_KEY="your-api-key"
-export ANTHROPIC_API_KEY="your-api-key"
 export GOOGLE_API_KEY="your-api-key"
 
 # 3. 啟動
@@ -66,17 +64,16 @@ srt-translator translate video.srt -s 日文 -t 繁體中文
 | 層級 | 目前狀態 |
 |------|----------|
 | 實際翻譯 runtime | `ollama`、`openai`、`google`、`llamacpp` |
-| CLI `translate` / `models` / `prompt` 參數 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
-| GUI provider 下拉 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
-| 模型 metadata / 金鑰載入 | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
-| `ConfigManager` 驗證 `user.llm_type` | `ollama`、`openai`、`anthropic`、`google`、`llamacpp` |
-| OpenRouter | 規劃中，尚未實作 |
+| CLI `translate` / `models` / `prompt` 參數 | `ollama`、`openai`、`google`、`llamacpp` |
+| GUI provider 下拉 | `ollama`、`openai`、`google`、`llamacpp` |
+| 模型 metadata / 金鑰載入 | `ollama`、`openai`、`google`、`llamacpp` |
+| `ConfigManager` 驗證 `user.llm_type` | `ollama`、`openai`、`google`、`llamacpp` |
+| 取消支援 | `anthropic`、`openrouter` |
 
 > 實務上：
 > - CLI `translate` 目前可直接使用 `ollama`、`openai`、`google`、`llamacpp`
 > - `llamacpp` 透過 llama-server 的 OpenAI 相容 API 運作，不需要 API 金鑰，詳見 [llama.cpp 設定指南](llamacpp-setup-guide.md)
 > - `google` 已暴露於 GUI 與 CLI；使用前請先確認 `GOOGLE_API_KEY` 或 `GEMINI_API_KEY` 與模型名稱可用
-> - `anthropic` 目前已接到金鑰與模型資訊層，但尚無第一級翻譯 runtime
 
 ---
 
@@ -171,9 +168,6 @@ cp .env.example .env
 # OpenAI API
 OPENAI_API_KEY=sk-your-openai-api-key
 
-# Anthropic API
-ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key
-
 # Google Gemini API（二擇一）
 GOOGLE_API_KEY=your-google-api-key
 # 或
@@ -187,12 +181,10 @@ GEMINI_API_KEY=your-google-api-key
 ```bash
 # Linux/macOS
 export OPENAI_API_KEY="sk-your-openai-api-key"
-export ANTHROPIC_API_KEY="sk-ant-your-anthropic-api-key"
 export GOOGLE_API_KEY="your-google-api-key"
 
 # Windows PowerShell
 $env:OPENAI_API_KEY="sk-your-openai-api-key"
-$env:ANTHROPIC_API_KEY="sk-ant-your-anthropic-api-key"
 $env:GOOGLE_API_KEY="your-google-api-key"
 ```
 
@@ -200,20 +192,18 @@ $env:GOOGLE_API_KEY="your-google-api-key"
 
 ```bash
 echo "sk-your-openai-api-key" > openapi_api_key.txt
-echo "sk-ant-your-anthropic-api-key" > anthropic_api_key.txt
 echo "your-google-api-key" > google_api_key.txt
 ```
 
 > **優先順序**：環境變數 > .env 檔案 > 金鑰檔案
 >
-> **補充**：程式碼目前可讀取 `OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`，但是否能在特定介面直接用於翻譯，仍以上方 provider 現況表為準。
+> **補充**：程式碼目前可讀取 `OPENAI_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`，但是否能在特定介面直接用於翻譯，仍以上方 provider 現況表為準。
 
 #### 取得 API 金鑰
 
 | 服務 | 取得位置 |
 |------|----------|
 | **OpenAI** | [OpenAI Platform](https://platform.openai.com/api-keys) |
-| **Anthropic** | [Anthropic Console](https://console.anthropic.com/settings/keys) |
 | **Google Gemini** | [Google AI Studio](https://aistudio.google.com/apikey) |
 
 ---
@@ -225,10 +215,9 @@ echo "your-google-api-key" > google_api_key.txt
 除了 GUI 圖形介面外，本工具也提供完整的命令列介面（CLI），適合自動化工作流程和批次處理。
 
 > **目前狀態說明**
-> - CLI parser 目前接受 `ollama`、`openai`、`anthropic`、`google`、`llamacpp`
+> - CLI parser 目前接受 `ollama`、`openai`、`google`、`llamacpp`
 > - CLI 第一級翻譯 runtime 目前為 `ollama`、`openai`、`google`、`llamacpp`
 > - `llamacpp` 需要預先啟動 `llama-server`，詳見 [llama.cpp 設定指南](llamacpp-setup-guide.md)
-> - `anthropic` 目前較適合用於 `models -p anthropic` 檢視模型資訊，尚無第一級翻譯 runtime
 > - `google` 已可直接用於 CLI `translate` / `models`
 
 ### 基本指令
@@ -269,7 +258,7 @@ srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
 |------|------|------|--------|
 | `--source` | `-s` | 來源語言 | 必填 |
 | `--target` | `-t` | 目標語言 | 必填 |
-| `--provider` | `-p` | CLI 參數可選值：`ollama` / `openai` / `anthropic` / `google` / `llamacpp`。其中第一級翻譯 runtime 為 `ollama` / `openai` / `google` / `llamacpp` | ollama |
+| `--provider` | `-p` | CLI 參數可選值：`ollama` / `openai` / `google` / `llamacpp` | ollama |
 | `--model` | `-m` | 模型名稱 | 各引擎推薦模型 |
 | `--content-type` | - | 內容類型：`general` / `adult` / `anime` / `movie` / `english_drama` | 目前 prompt 設定 |
 | `--style` | - | 翻譯風格：`standard` / `literal` / `localized` / `specialized` | 目前 prompt 設定 |
@@ -309,7 +298,6 @@ srt-translator models
 # 列出特定提供者的模型
 srt-translator models -p ollama
 srt-translator models -p openai
-srt-translator models -p anthropic
 srt-translator models -p google
 ```
 
@@ -627,7 +615,7 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja -c 2048 --parall
 | **清除全部** | 清空檔案清單 |
 | **源語言** | 選擇字幕原始語言 |
 | **目標語言** | 選擇翻譯目標語言 |
-| **LLM 類型** | GUI 下拉目前顯示 `ollama` / `openai` / `anthropic` / `google` / `llamacpp`；其中實際翻譯 runtime 目前為 `ollama` / `openai` / `google` / `llamacpp` |
+| **LLM 類型** | GUI 下拉目前顯示 `ollama` / `openai` / `google` / `llamacpp` |
 | **模型** | 選擇要使用的 AI 模型 |
 | **並發數** | 設定同時翻譯的字幕數量 |
 | **顯示模式** | 選擇輸出字幕的顯示方式 |
@@ -817,8 +805,6 @@ rm data/translation_cache.db
 | **OpenAI** | 3-6 | 速率限制較嚴格，建議保守 |
 | **Google（GUI）** | 3-8 | 速率限制適中 |
 
-> `anthropic` 目前尚無第一級翻譯 runtime，因此不列入並發建議。
-
 #### 自動調整
 
 程式會根據檔案大小自動調整批次處理策略：
@@ -886,7 +872,7 @@ config/
 }
 ```
 
-> 若手動編輯 `user_settings.json`，`ConfigManager` 目前接受 `ollama`、`openai`、`anthropic`、`google`、`llamacpp`。但這不等於每一層都已具備相同等級的翻譯 runtime，實際仍以上方 provider 現況表為準。
+> 若手動編輯 `user_settings.json`，`ConfigManager` 目前接受 `ollama`、`openai`、`google`、`llamacpp`。實際仍以上方 provider 現況表為準。
 
 #### cache_config.json
 
