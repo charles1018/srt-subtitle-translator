@@ -71,6 +71,8 @@ uv run ruff --version
 uv run pytest -v
 ```
 
+> `requirements.txt` 目前只維護 runtime 依賴。開發環境、測試、Ruff 與 Mypy 仍以 `uv sync --all-extras --dev` 或 `pip install -e ".[dev]"` 為準。
+
 ### 替代方案：使用 pip
 
 ```bash
