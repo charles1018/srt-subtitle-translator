@@ -116,6 +116,8 @@ pip install -r requirements.txt
 python -m srt_translator
 ```
 
+> `requirements.txt` 目前只維護 runtime 依賴。若你要跑完整測試、lint 或開發流程，請改用 `uv sync --all-extras --dev`。
+
 ### macOS / Linux
 
 #### 使用 uv（推薦）
@@ -152,6 +154,8 @@ pip install -r requirements.txt
 # 執行
 python -m srt_translator
 ```
+
+> `requirements.txt` 目前只維護 runtime 依賴。若你要跑完整測試、lint 或開發流程，請改用 `uv sync --all-extras --dev`。
 
 ### API 金鑰設定
 

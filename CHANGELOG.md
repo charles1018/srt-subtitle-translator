@@ -31,6 +31,15 @@
   - 提供 `.env.example` 範例檔案
   - 更安全的 API 金鑰管理方式
 
+### 🔧 維護
+
+#### 依賴基線刷新
+- 🧰 **更新 runtime / dev 依賴基線並重建 lock**
+  - runtime：`openai`、`aiohttp`、`google-genai`
+  - dev：`pytest`、`pytest-cov`、`ruff`、`mypy`
+  - `requirements.txt` 現在明確收斂為 runtime 依賴清單
+  - `chardet` 保持在 `<6`，避免與 `requests` 依賴範圍產生相容性警告
+
 #### CLI / Prompt 對齊
 - 🖥️ **CLI `translate` / `models` 現在暴露 `google` provider**
   - CLI parser 可選值更新為 `ollama` / `openai` / `google` / `llamacpp`

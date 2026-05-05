@@ -102,6 +102,8 @@ pip install -r requirements.txt
 python -m srt_translator
 ```
 
+> `requirements.txt` 目前收斂為 runtime 依賴清單。若要參與開發、執行完整測試或使用 Ruff / Mypy，請改用 `uv sync --all-extras --dev`。
+
 ### API 金鑰設定
 
 #### 方法 1：.env 檔案（推薦）
