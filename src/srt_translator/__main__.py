@@ -263,8 +263,49 @@ class App:
 
             return True, ""
 
-        if not check_internet_connection():
-            return False, "網路連線異常，請檢查網路後重試。"
+        if llm_type in {"openai", "google"}:
+            if not check_internet_connection():
+                return False, "網路連線異常，請檢查網路後重試。"
+
+            provider_label = "OpenAI" if llm_type == "openai" else "Google Gemini"
+            if not self.model_service.api_keys.get(llm_type):
+                env_var_hint = "OPENAI_API_KEY" if llm_type == "openai" else "GOOGLE_API_KEY / GEMINI_API_KEY"
+                return False, f"未設定 {provider_label} API 金鑰，請先設定 {env_var_hint} 或對應金鑰來源。"
+
+            try:
+                result = self._run_async_in_new_loop(self.model_service.test_model_connection(model_name, llm_type))
+            except Exception as e:
+                logger.error(f"{provider_label} 預檢失敗: {format_exception(e)}")
+                return False, f"{provider_label} 連線失敗。請確認網路、API 金鑰與模型名稱設定是否正確。詳細原因: {e!s}"
+
+            if not result.get("success", False):
+                detail = str(result.get("message", "未知錯誤"))
+                return False, f"{provider_label} 連線失敗。請確認網路、API 金鑰與模型名稱設定是否正確。詳細原因: {detail}"
+
+            return True, ""
+
+        if llm_type == "llamacpp":
+            llamacpp_url = get_config("model", "llamacpp_url", "http://localhost:8080")
+
+            try:
+                result = self._run_async_in_new_loop(self.model_service.test_model_connection(model_name, "llamacpp"))
+            except Exception as e:
+                logger.error(f"llama.cpp 預檢失敗: {format_exception(e)}")
+                return (
+                    False,
+                    f"llama.cpp 連線失敗，目前設定的服務位址為 {llamacpp_url}。"
+                    f"請確認 llama-server 已啟動且模型已載入。詳細原因: {e!s}",
+                )
+
+            if not result.get("success", False):
+                detail = str(result.get("message", "未知錯誤"))
+                return (
+                    False,
+                    f"llama.cpp 連線失敗，目前設定的服務位址為 {llamacpp_url}。"
+                    f"請確認 llama-server 已啟動且模型已載入。詳細原因: {detail}",
+                )
+
+            return True, ""
 
         return True, ""
 

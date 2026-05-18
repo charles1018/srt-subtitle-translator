@@ -1110,6 +1110,38 @@ class ModelManager:
             else:
                 return False, f"測試連線時發生錯誤: {e!s}"
 
+    async def _test_llamacpp_connection(self, model_name: str) -> tuple[bool, str]:
+        """測試 llama.cpp server 與目前載入模型的可用性。"""
+        try:
+            await self._init_async_session()
+            assert self.session is not None
+
+            base_url = self.llamacpp_url.rstrip("/")
+            if base_url.endswith("/v1"):
+                base_url = base_url[:-3]
+
+            payload = {
+                "model": model_name,
+                "messages": [{"role": "user", "content": "Hello"}],
+                "max_tokens": 5,
+                "temperature": 0,
+            }
+            url = f"{base_url}/v1/chat/completions"
+
+            async with self.session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                if response.status == 200:
+                    return True, "模型回應正常"
+
+                detail = (await response.text()).strip()
+                if detail:
+                    return False, f"模型回應失敗: {response.status} - {detail}"
+                return False, f"模型回應失敗: {response.status}"
+
+        except asyncio.TimeoutError:
+            return False, "連線逾時，請確認 llama-server 已啟動、模型已載入完成，或提高 request_timeout"
+        except Exception as e:
+            return False, f"連線失敗: {e!s}"
+
     async def test_model_connection(
         self, model_name: str, provider: str, api_key: str | None = None
     ) -> dict[str, Any]:
@@ -1154,6 +1186,9 @@ class ModelManager:
         elif provider == "google":
             key = api_key or self.api_keys.get("google", "")
             success, message = await self._test_google_connection(model_name, key)
+            return {"success": success, "message": message}
+        elif provider == "llamacpp":
+            success, message = await self._test_llamacpp_connection(model_name)
             return {"success": success, "message": message}
         else:
             return {"success": False, "message": f"不支援的提供者: {provider}"}

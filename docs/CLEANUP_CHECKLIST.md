@@ -34,10 +34,10 @@
 
 ## 階段 3：補齊 GUI 翻譯前置驗證的一致性
 
-- [ ] 讓 `openai` / `google` / `llamacpp` 也有 provider-specific preflight
-- [ ] 遠端 provider 應同時檢查網路、API 金鑰與模型連線結果
-- [ ] `llamacpp` 應回報 `llama-server` 連線失敗，而不是只走一般網路檢查
-- [ ] 補齊 `tests/unit/test_main.py` 覆蓋
+- [x] 讓 `openai` / `google` / `llamacpp` 也有 provider-specific preflight
+- [x] 遠端 provider 應同時檢查網路、API 金鑰與模型連線結果
+- [x] `llamacpp` 應回報 `llama-server` 連線失敗，而不是只走一般網路檢查
+- [x] 補齊 `tests/unit/test_main.py` 覆蓋
 
 驗證：
 
