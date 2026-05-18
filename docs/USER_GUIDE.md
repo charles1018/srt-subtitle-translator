@@ -59,7 +59,7 @@ srt-translator translate video.srt -s 日文 -t 繁體中文
 
 ### Provider 現況（請先看）
 
-目前專案不同層級對 provider 的支援範圍仍在整理中，使用前請先區分：
+目前 provider 支援範圍如下，文件若與程式碼衝突請以 `src/` 為準：
 
 | 層級 | 目前狀態 |
 |------|----------|
@@ -231,7 +231,7 @@ srt-translator translate video.srt -s 日文 -t 繁體中文
 srt-translator translate ./subtitles/ -s 英文 -t 繁體中文
 
 # 使用特定模型
-srt-translator translate video.srt -s 日文 -t 繁體中文 -p openai -m gpt-4
+srt-translator translate video.srt -s 日文 -t 繁體中文 -p openai -m gpt-4o
 
 # 使用 llama.cpp 本地模型（需先啟動 llama-server）
 # 重要：-m 須包含模型家族關鍵字（如 Qwen3.5），否則無法觸發專用功能
@@ -631,7 +631,7 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja -c 2048 --parall
    - 源語言：日文
    - 目標語言：繁體中文
    - LLM 類型：openai
-   - 模型：gpt-3.5-turbo
+   - 模型：gpt-4o-mini
    - 並發數：5
    - 顯示模式：雙語對照
 5. **開始翻譯**：點擊「開始翻譯」

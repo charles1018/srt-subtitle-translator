@@ -2,10 +2,10 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-841%20collected-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-962%20passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-htmlcov-lightgrey.svg)](htmlcov/)
 
-基於 Python 的 SRT 字幕檔自動翻譯工具。目前支援 `ollama`、`openai`、`google`、`llamacpp`；Anthropic 與 OpenRouter 已取消納入目前支援範圍，優先維持 OpenAI / Google / 本機模型路徑。
+基於 Python 的 SRT 字幕檔自動翻譯工具。目前支援 `ollama`、`openai`、`google`、`llamacpp`；Anthropic 與 OpenRouter 已不在目前支援範圍內。
 
 ## ✨ 功能特點
 

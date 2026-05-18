@@ -1,8 +1,12 @@
 """Tests for translation/manager.py module."""
 
+import asyncio
+import hashlib
+import json
 import time
+from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -140,81 +144,235 @@ class TestTranslationStats:
 class TestTranslationManagerInit:
     """Tests for TranslationManager initialization."""
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
-    def test_initialization(self):
-        """Test TranslationManager initialization - skipped due to complex dependencies."""
-        pass
+    @patch("srt_translator.translation.manager.get_config")
+    @patch("srt_translator.translation.manager.ServiceFactory.get_progress_service")
+    @patch("srt_translator.translation.manager.ServiceFactory.get_cache_service")
+    @patch("srt_translator.translation.manager.ServiceFactory.get_file_service")
+    @patch("srt_translator.translation.manager.ServiceFactory.get_translation_service")
+    def test_initialization(
+        self,
+        mock_get_translation_service,
+        mock_get_file_service,
+        mock_get_cache_service,
+        mock_get_progress_service,
+        mock_get_config,
+        tmp_path,
+    ):
+        """Test TranslationManager initialization with service factory mocks."""
+        checkpoints_dir = tmp_path / "checkpoints"
+        mock_get_translation_service.return_value = MagicMock()
+        mock_get_file_service.return_value = MagicMock()
+        mock_get_cache_service.return_value = MagicMock()
+        mock_get_progress_service.return_value = MagicMock()
+        mock_get_config.side_effect = lambda section, key, default=None: {
+            ("app", "checkpoints_dir"): str(checkpoints_dir),
+            ("model", "context_window"): 5,
+            ("model", "max_retries"): 4,
+            ("model", "retry_delay"): 2.5,
+        }.get((section, key), default)
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
-    def test_initialization_with_api_key(self):
-        """Test TranslationManager initialization with API key - skipped."""
-        pass
+        manager = TranslationManager(
+            file_path="movie.srt",
+            source_lang="英文",
+            target_lang="繁體中文",
+            model_name="gpt-4.1-mini",
+            parallel_requests=3,
+            progress_callback=None,
+            complete_callback=None,
+            display_mode="標準模式",
+            llm_type="openai",
+        )
+
+        expected_hash = hashlib.md5("movie.srt_繁體中文_gpt-4.1-mini".encode()).hexdigest()[:10]
+        assert manager.file_path == "movie.srt"
+        assert manager.translation_service is mock_get_translation_service.return_value
+        assert manager.file_service is mock_get_file_service.return_value
+        assert manager.cache_service is mock_get_cache_service.return_value
+        assert manager.progress_service is mock_get_progress_service.return_value
+        assert manager.context_window == 5
+        assert manager.max_retries == 4
+        assert manager.retry_delay == 2.5
+        assert manager.pause_event.is_set() is True
+        assert manager.running is True
+        assert manager.checkpoint_path == str(checkpoints_dir / f"checkpoint_{expected_hash}.json")
+        assert manager._key_terms_dict == {}
+
+    @patch("srt_translator.translation.manager.get_config", side_effect=lambda _s, _k, default=None: default)
+    @patch("srt_translator.translation.manager.ServiceFactory.get_progress_service", return_value=MagicMock())
+    @patch("srt_translator.translation.manager.ServiceFactory.get_cache_service", return_value=MagicMock())
+    @patch("srt_translator.translation.manager.ServiceFactory.get_file_service", return_value=MagicMock())
+    @patch("srt_translator.translation.manager.ServiceFactory.get_translation_service", return_value=MagicMock())
+    def test_initialization_with_api_key(
+        self,
+        _mock_get_translation_service,
+        _mock_get_file_service,
+        _mock_get_cache_service,
+        _mock_get_progress_service,
+        _mock_get_config,
+    ):
+        """Test TranslationManager initialization with API key."""
+        manager = TranslationManager(
+            file_path="movie.srt",
+            source_lang="英文",
+            target_lang="繁體中文",
+            model_name="gemini-1.5-flash",
+            parallel_requests=2,
+            progress_callback=None,
+            complete_callback=None,
+            display_mode="標準模式",
+            llm_type="google",
+            api_key="test-api-key",
+        )
+
+        assert manager.api_key == "test-api-key"
+        assert manager.llm_type == "google"
 
 
 class TestTranslationManagerPostProcess:
     """Tests for TranslationManager post-processing."""
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
-    def test_post_process_simple(self):
-        """Test simple post-processing - skipped."""
-        pass
+    @patch("srt_translator.translation.manager.get_config")
+    def test_post_process_simple(self, mock_get_config):
+        """Test punctuation-stripping post-processing."""
+        mock_get_config.side_effect = (
+            lambda section, key, default=None: False if (section, key) == ("user", "preserve_punctuation") else default
+        )
+        manager = TranslationManager.__new__(TranslationManager)
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
-    def test_post_process_with_key_terms(self):
-        """Test post-processing with key terms dictionary - skipped."""
-        pass
+        result = manager._post_process_translation("Hello, world!", " 哈囉，世界！ ")
+
+        assert result == "哈囉 世界"
+
+    @patch("srt_translator.translation.manager.get_config")
+    def test_post_process_with_preserved_punctuation(self, mock_get_config):
+        """Test punctuation-preserving post-processing."""
+        mock_get_config.side_effect = (
+            lambda section, key, default=None: True if (section, key) == ("user", "preserve_punctuation") else default
+        )
+        manager = TranslationManager.__new__(TranslationManager)
+
+        result = manager._post_process_translation("Hello, world!", " 哈囉，世界！ ")
+
+        assert result == "哈囉，世界！"
 
 
 class TestTranslationManagerCheckpoint:
     """Tests for TranslationManager checkpoint functionality."""
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
-    def test_get_checkpoint_path(self):
-        """Test checkpoint path generation - skipped."""
-        pass
+    @patch("srt_translator.translation.manager.get_config")
+    def test_get_checkpoint_path(self, mock_get_config, tmp_path):
+        """Test checkpoint path generation."""
+        checkpoints_dir = tmp_path / "checkpoints"
+        mock_get_config.side_effect = (
+            lambda section, key, default=None: str(checkpoints_dir)
+            if (section, key) == ("app", "checkpoints_dir")
+            else default
+        )
+        manager = TranslationManager.__new__(TranslationManager)
+        manager.file_path = "movie.srt"
+        manager.target_lang = "繁體中文"
+        manager.model_name = "gpt-4.1-mini"
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
-    def test_save_checkpoint(self):
-        """Test saving checkpoint - skipped."""
-        pass
+        checkpoint_path = manager._get_checkpoint_path()
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
-    def test_load_checkpoint_not_exists(self):
-        """Test loading checkpoint when file doesn't exist - skipped."""
-        pass
+        expected_hash = hashlib.md5("movie.srt_繁體中文_gpt-4.1-mini".encode()).hexdigest()[:10]
+        assert checkpoint_path == str(checkpoints_dir / f"checkpoint_{expected_hash}.json")
+
+    def test_save_checkpoint(self, tmp_path):
+        """Test saving checkpoint with atomic write and backup."""
+        checkpoint_path = tmp_path / "checkpoints" / "checkpoint.json"
+        checkpoint_path.parent.mkdir(parents=True)
+        checkpoint_path.write_text('{"old": true}', encoding="utf-8")
+
+        manager = TranslationManager.__new__(TranslationManager)
+        manager.checkpoint_path = str(checkpoint_path)
+        manager.file_path = "movie.srt"
+        manager.target_lang = "繁體中文"
+        manager.model_name = "gpt-4.1-mini"
+        manager.translated_indices = {1, 3}
+        manager.stats = TranslationStats(total_subtitles=5, translated_count=2, errors=["err"])
+        manager._key_terms_dict = {"Fed": "聯準會"}
+
+        manager._save_checkpoint()
+
+        checkpoint_data = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+        backup_data = json.loads(Path(f"{checkpoint_path}.bak").read_text(encoding="utf-8"))
+
+        assert checkpoint_data["file_path"] == "movie.srt"
+        assert checkpoint_data["target_lang"] == "繁體中文"
+        assert checkpoint_data["model_name"] == "gpt-4.1-mini"
+        assert set(checkpoint_data["translated_indices"]) == {1, 3}
+        assert checkpoint_data["stats"]["translated_count"] == 2
+        assert checkpoint_data["key_terms_dict"] == {"Fed": "聯準會"}
+        assert backup_data == {"old": True}
+        assert not Path(f"{checkpoint_path}.tmp").exists()
+
+    def test_load_checkpoint_not_exists(self, tmp_path):
+        """Test loading checkpoint when file doesn't exist."""
+        manager = TranslationManager.__new__(TranslationManager)
+        manager.checkpoint_path = str(tmp_path / "missing.json")
+
+        assert manager._load_checkpoint() is False
 
 
 class TestTranslationManagerControl:
     """Tests for TranslationManager control methods."""
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
     def test_pause(self):
-        """Test pausing translation - skipped."""
-        pass
+        """Test pausing translation."""
+        manager = TranslationManager.__new__(TranslationManager)
+        manager.pause_event = asyncio.Event()
+        manager.pause_event.set()
+        manager._save_checkpoint = MagicMock()
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
+        manager.pause()
+
+        assert manager.pause_event.is_set() is False
+        manager._save_checkpoint.assert_called_once()
+
     def test_resume(self):
-        """Test resuming translation - skipped."""
-        pass
+        """Test resuming translation."""
+        manager = TranslationManager.__new__(TranslationManager)
+        manager.pause_event = asyncio.Event()
+        manager.pause_event.clear()
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
+        manager.resume()
+
+        assert manager.pause_event.is_set() is True
+
     def test_stop(self):
-        """Test stopping translation - skipped."""
-        pass
+        """Test stopping translation."""
+        manager = TranslationManager.__new__(TranslationManager)
+        manager.running = True
+        manager.pause_event = asyncio.Event()
+        manager.pause_event.clear()
+
+        manager.stop()
+
+        assert manager.running is False
+        assert manager.pause_event.is_set() is True
 
 
 class TestTranslationManagerEncoding:
     """Tests for TranslationManager encoding methods."""
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
     def test_get_subtitle_encoding_default(self):
-        """Test getting default encoding - skipped."""
-        pass
+        """Test falling back to UTF-8 when file info lookup fails."""
+        manager = TranslationManager.__new__(TranslationManager)
+        manager.file_path = "movie.srt"
+        manager.file_service = MagicMock()
+        manager.file_service.get_subtitle_info.side_effect = RuntimeError("boom")
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
+        assert manager._get_subtitle_encoding() == "utf-8"
+
     def test_get_subtitle_encoding_from_info(self):
-        """Test getting encoding from file info - skipped."""
-        pass
+        """Test getting encoding from subtitle info."""
+        manager = TranslationManager.__new__(TranslationManager)
+        manager.file_path = "movie.srt"
+        manager.file_service = MagicMock()
+        manager.file_service.get_subtitle_info.return_value = {"編碼": "big5"}
+
+        assert manager._get_subtitle_encoding() == "big5"
 
 
 class TestTranslationManagerContextSnapshot:
@@ -258,27 +416,42 @@ class TestTranslationManagerContextSnapshot:
 
 
 # ============================================================
-# TranslationThread Tests
+# TranslationManager Lifecycle Tests
 # ============================================================
 
 
-class TestTranslationThread:
-    """Tests for TranslationThread class."""
+class TestTranslationManagerLifecycle:
+    """Tests for TranslationManager lifecycle helpers."""
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
-    def test_initialization(self):
-        """Test TranslationThread initialization - skipped."""
-        pass
+    @pytest.mark.asyncio
+    async def test_initialize_loads_checkpoint(self):
+        """Test initialize delegates to checkpoint loading."""
+        manager = TranslationManager.__new__(TranslationManager)
+        manager.llm_type = "openai"
+        manager.model_name = "gpt-4.1-mini"
+        manager._load_checkpoint = MagicMock(return_value=True)
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
-    def test_stop(self):
-        """Test stopping thread - skipped."""
-        pass
+        await manager.initialize()
 
-    @pytest.mark.skip(reason="Complex initialization requires full service setup")
-    def test_pause_resume(self):
-        """Test pausing and resuming thread - skipped."""
-        pass
+        manager._load_checkpoint.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_cleanup_is_noop(self):
+        """Test cleanup completes without touching managed services."""
+        manager = TranslationManager.__new__(TranslationManager)
+
+        await manager.cleanup()
+
+    def test_capture_source_text_snapshot_and_get_source_text(self):
+        """Test source snapshot capture prevents later subtitle mutation from leaking in."""
+        manager = TranslationManager.__new__(TranslationManager)
+        subs = [SimpleNamespace(text="原文 A"), SimpleNamespace(text="原文 B")]
+
+        manager._capture_source_text_snapshot(subs)
+        subs[0].text = "譯文 A"
+
+        assert manager._source_text_snapshot == ["原文 A", "原文 B"]
+        assert manager._get_source_text(subs, 0) == "原文 A"
 
 
 # ============================================================

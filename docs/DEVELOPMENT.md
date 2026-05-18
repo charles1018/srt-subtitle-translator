@@ -28,7 +28,7 @@
 
 ### Provider 現況（開發時請以 `src/` 為準）
 
-目前專案正處於 provider 整理階段，開發時請先區分各層支援範圍：
+目前 provider 現況如下；開發時若文件與程式碼衝突，請以 `src/` 為準：
 
 - 實際翻譯 runtime：`ollama`、`openai`、`google`、`llamacpp`
 - CLI `translate` / `models` / `prompt` 參數：`ollama`、`openai`、`google`、`llamacpp`
@@ -235,9 +235,9 @@ srt-subtitle-translator/
 ### 1. 建立功能分支
 
 ```bash
-# 確保 master 是最新的
-git checkout master
-git pull origin master
+# 確保 main 是最新的
+git checkout main
+git pull origin main
 
 # 建立新分支
 git checkout -b feature/your-feature-name
@@ -384,7 +384,7 @@ async def test_translate_text(mock_openai_client):
     result = await client.translate_text(
         "Hello",
         [],
-        "gpt-3.5-turbo",
+        "gpt-4o-mini",
     )
 
     assert result is not None

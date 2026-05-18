@@ -47,6 +47,7 @@
 - `llamacpp` 目前會額外探測 `llama-server` 的 `/health`、`/props`、`/slots`，用於健康檢查、模型 metadata 與實際並發對齊
 - `llamacpp` 目前預設會送出 non-thinking 控制、Qwen3.5 專屬採樣參數，並使用 `response_format=json_schema` 將翻譯輸出鎖定為單一 `translation` 欄位
 - provider 支援目前已收斂為 `ollama` / `openai` / `google` / `llamacpp`
+- 遠端 provider 金鑰目前只支援環境變數 / `.env`：`OPENAI_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`
 - Anthropic / OpenRouter 已取消納入目前 public API 範圍
 
 ### 架構概覽
@@ -243,7 +244,7 @@ cache_manager = CacheManager(db_path="data/translation_cache.db")
 translation = cache_manager.get_cached_translation(
     "Hello, world!",
     ["Previous subtitle"],
-    "gpt-3.5-turbo"
+    "gpt-4o-mini"
 )
 ```
 
@@ -265,7 +266,7 @@ cache_manager.store_translation(
     "Hello, world!",
     "你好，世界！",
     ["Previous subtitle"],
-    "gpt-3.5-turbo"
+    "gpt-4o-mini"
 )
 ```
 
@@ -419,7 +420,7 @@ model_manager = ModelManager()
 models = await model_manager.get_model_list_async("openai")
 model_ids = [model.id for model in models]
 
-# ['gpt-4o', 'gpt-4-turbo', ...]
+# ['gpt-4o', 'gpt-4o-mini', ...]
 ```
 
 ##### `get_model_list(llm_type: str, api_key: str | None = None) -> list[str]`
@@ -1100,7 +1101,7 @@ async def translate_file():
         subtitle_info.subtitles[0].text,
         ["Previous context"],
         "openai",
-        "gpt-3.5-turbo"
+        "gpt-4o-mini"
     )
 
     print(f"翻譯結果: {translated}")
@@ -1120,7 +1121,7 @@ cache_manager = CacheManager()
 cached = cache_manager.get_cached_translation(
     "Hello",
     [],
-    "gpt-3.5-turbo"
+    "gpt-4o-mini"
 )
 
 if cached:
@@ -1132,7 +1133,7 @@ else:
         "Hello",
         translation,
         [],
-        "gpt-3.5-turbo"
+        "gpt-4o-mini"
     )
 ```
 
@@ -1170,7 +1171,7 @@ async def batch_translate():
 
     results = await client.translate_batch(
         texts,
-        "gpt-3.5-turbo",
+        "gpt-4o-mini",
         concurrent_limit=3
     )
 
@@ -1205,7 +1206,7 @@ from srt_translator.utils import safe_execute, format_exception
 from srt_translator.utils.errors import TranslationError
 
 try:
-    result = await client.translate_text(text, [], "gpt-3.5-turbo")
+    result = await client.translate_text(text, [], "gpt-4o-mini")
 except TranslationError as e:
     logger.error(format_exception(e))
 ```
@@ -1216,10 +1217,10 @@ except TranslationError as e:
 
 ```python
 # ✅ 正確
-translation = await client.translate_text(text, context_texts, "gpt-3.5-turbo")
+translation = await client.translate_text(text, context_texts, "gpt-4o-mini")
 
 # ❌ 錯誤
-translation = client.translate_text(text, context_texts, "gpt-3.5-turbo")
+translation = client.translate_text(text, context_texts, "gpt-4o-mini")
 ```
 
 ### 4. 資源清理

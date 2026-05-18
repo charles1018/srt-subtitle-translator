@@ -13,6 +13,7 @@ from srt_translator.services.factory import (
     ProgressService,
     ServiceFactory,
     TranslationService,
+    TranslationTask,
     TranslationTaskManager,
 )
 from srt_translator.translation.client import TranslationClient
@@ -1798,17 +1799,69 @@ class TestTranslationTaskManager:
 class TestTranslationTask:
     """Tests for TranslationTask class."""
 
-    @pytest.mark.skip(reason="TranslationTask requires complex initialization")
     def test_initialization(self):
-        """Test TranslationTask initialization - skipped."""
-        pass
+        """Test TranslationTask initialization."""
+        progress_callback = MagicMock()
+        complete_callback = MagicMock()
 
-    @pytest.mark.skip(reason="TranslationTask requires complex initialization")
+        task = TranslationTask(
+            file_path="movie.srt",
+            source_lang="英文",
+            target_lang="繁體中文",
+            model_name="gpt-4.1-mini",
+            parallel_requests=3,
+            display_mode="標準模式",
+            llm_type="openai",
+            progress_callback=progress_callback,
+            complete_callback=complete_callback,
+        )
+
+        assert task.daemon is True
+        assert task.file_path == "movie.srt"
+        assert task.source_lang == "英文"
+        assert task.target_lang == "繁體中文"
+        assert task.model_name == "gpt-4.1-mini"
+        assert task.parallel_requests == 3
+        assert task.display_mode == "標準模式"
+        assert task.llm_type == "openai"
+        assert task.progress_callback is progress_callback
+        assert task.complete_callback is complete_callback
+        assert task.translation_service is None
+        assert task._is_running is True
+        assert task.is_paused() is False
+
     def test_stop(self):
-        """Test stopping a task - skipped."""
-        pass
+        """Test stopping a task resumes paused workers and flips running flag."""
+        task = TranslationTask(
+            file_path="movie.srt",
+            source_lang="英文",
+            target_lang="繁體中文",
+            model_name="gpt-4.1-mini",
+            parallel_requests=1,
+            display_mode="標準模式",
+            llm_type="openai",
+        )
+        task.pause()
 
-    @pytest.mark.skip(reason="TranslationTask requires complex initialization")
+        task.stop()
+
+        assert task._is_running is False
+        assert task.is_paused() is False
+
     def test_pause_resume(self):
-        """Test pausing and resuming a task - skipped."""
-        pass
+        """Test pausing and resuming a task."""
+        task = TranslationTask(
+            file_path="movie.srt",
+            source_lang="英文",
+            target_lang="繁體中文",
+            model_name="gpt-4.1-mini",
+            parallel_requests=1,
+            display_mode="標準模式",
+            llm_type="openai",
+        )
+
+        task.pause()
+        assert task.is_paused() is True
+
+        task.resume()
+        assert task.is_paused() is False
