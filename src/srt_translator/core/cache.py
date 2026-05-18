@@ -190,7 +190,7 @@ class CacheManager:
             )
         """)
 
-    def _create_cache_indexes(self, conn):
+    def _create_cache_indexes(self, conn: sqlite3.Connection) -> None:
         """建立快取查詢索引。"""
         conn.execute("CREATE INDEX IF NOT EXISTS idx_context ON translations(context_hash)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_model ON translations(model_name)")
@@ -198,12 +198,12 @@ class CacheManager:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_last_used ON translations(last_used)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_style ON translations(style)")
 
-    def _table_exists(self, conn, table_name: str) -> bool:
+    def _table_exists(self, conn: sqlite3.Connection, table_name: str) -> bool:
         """檢查資料表是否存在。"""
         cursor = conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table_name,))
         return cursor.fetchone() is not None
 
-    def _translations_schema_is_current(self, conn) -> bool:
+    def _translations_schema_is_current(self, conn: sqlite3.Connection) -> bool:
         """檢查 translations schema 是否符合目前快取 key。"""
         cursor = conn.execute("PRAGMA table_info(translations)")
         columns = {row[1]: row for row in cursor.fetchall()}

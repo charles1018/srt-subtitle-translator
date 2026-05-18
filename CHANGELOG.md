@@ -43,6 +43,19 @@
   - dev：`pytest`、`pytest-cov`、`ruff`、`mypy`
   - `requirements.txt` 現在明確收斂為 runtime 依賴清單
   - `chardet` 保持在 `<6`，避免與 `requests` 依賴範圍產生相容性警告
+- 🧪 **第一階段升級低風險依賴並保留高風險項目分批處理**
+  - runtime：`openai` 升級至 `>=2.37.0`、`tiktoken` 升級至 `>=0.13.0`
+  - dev：`ruff` 升級至 `>=0.15.13`
+  - `pytest-cov` 維持 `>=7.1.0`，避免在 `requires-python >=3.10` 的解析矩陣下觸發 `python 3.15` split 無解
+- 🤖 **第二階段升級 Google Gemini SDK**
+  - runtime：`google-genai` 升級至 `>=2.4.0`
+  - 保持分批驗證，避免與 `mypy` 大版本變動混在同一批升級
+- 🧾 **第三階段升級型別檢查工具鏈**
+  - dev：`mypy` 升級至 `>=2.1.0`
+  - 補齊既有缺漏的型別標註，修正 `list` 不變性與重複定義告警，讓新版 `mypy` 可直接落地
+- 🧹 **對齊 helpers 套件檢查清單與實際 runtime 依賴**
+  - `check_python_packages()` 移除未宣告也未使用的 `numpy`、`matplotlib`
+  - 改為回報目前 `pyproject.toml` 實際 runtime 依賴中的 `google-genai`、`python-dotenv`、`tkinterdnd2`、`webvtt-py`、`psutil`
 
 #### CLI / Prompt 對齊
 - 🖥️ **CLI `translate` / `models` 現在暴露 `google` provider**

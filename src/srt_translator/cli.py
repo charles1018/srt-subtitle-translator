@@ -5,6 +5,7 @@ import asyncio
 import logging
 import os
 import sys
+from typing import Any
 
 from srt_translator.core.config import ConfigManager
 from srt_translator.core.prompt import PromptManager
@@ -394,7 +395,7 @@ def print_progress(current: int, total: int, extra_data: dict | None = None) -> 
 
 
 def apply_translation_runtime_overrides(
-    translation_service,
+    translation_service: Any,
     content_type: str | None,
     style: str | None,
     netflix_style: bool | None,
@@ -698,7 +699,7 @@ def cmd_glossary(args: argparse.Namespace) -> int:
             print("取消操作")
 
     elif args.glossary_command == "import":
-        name = getattr(args, "name", None)
+        name = getattr(args, "name", None) or ""
         glossary = manager.import_glossary(args.file, name=name)
         if glossary:
             print(f"已匯入術語表: {glossary.name} ({len(glossary.entries)} 條目)")
@@ -904,7 +905,7 @@ def cmd_cps_audit(args: argparse.Namespace) -> int:
         return 1
 
 
-def _print_cps_report(report) -> None:
+def _print_cps_report(report: Any) -> None:
     """輸出 CPS 審計報告"""
     print(f"總字幕數: {report.total_subtitles}")
     print(f"問題字幕: {report.problematic_count}")

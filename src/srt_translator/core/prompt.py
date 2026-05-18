@@ -1075,8 +1075,8 @@ Rules:
 
         # 構建結構化的上下文訊息
         # context_texts 包含當前字幕及其前後文，需要分離出來
-        context_before = []
-        context_after = []
+        context_before: list[str] = []
+        context_after: list[str] = []
 
         context_before, context_after, resolved_index = self._split_context_texts(text, context_texts, current_index)
         if resolved_index is None:

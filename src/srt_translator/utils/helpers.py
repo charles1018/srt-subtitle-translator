@@ -757,7 +757,19 @@ def check_python_packages() -> dict[str, str]:
     回傳:
         包名和版本字典
     """
-    required_packages = ["pysrt", "tiktoken", "aiohttp", "backoff", "openai", "numpy", "matplotlib", "chardet"]
+    required_packages = [
+        "pysrt",
+        "tiktoken",
+        "aiohttp",
+        "backoff",
+        "openai",
+        "google-genai",
+        "python-dotenv",
+        "tkinterdnd2",
+        "webvtt-py",
+        "psutil",
+        "chardet",
+    ]
 
     package_versions: dict[str, str] = {}
 

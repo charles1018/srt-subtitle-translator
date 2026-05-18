@@ -2,6 +2,7 @@ import asyncio
 import json
 import re
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, ClassVar
@@ -437,6 +438,11 @@ class TranslationClient:
         self.session = None
         self.api_key = api_key
         self.metrics = ApiMetrics()
+        self.google_client: Any | None = None
+        self.openai_client: AsyncOpenAI | None = None
+        self.request_timestamps: list[float] = []
+        self.token_usage: list[tuple[float, int]] = []
+        self.pricing: dict[str, dict[str, float]] = {}
         self._llamacpp_server_diagnostics: dict[str, Any] | None = None
         self._llamacpp_server_diagnostics_timestamp = 0.0
         self._llamacpp_server_diagnostics_ttl = 30.0
@@ -472,7 +478,6 @@ class TranslationClient:
         }
 
         # Google Gemini 客戶端
-        self.google_client = None
         if llm_type == "google":
             if not GOOGLE_AVAILABLE:
                 logger.error("未安裝 Google GenAI 客戶端函式庫，Google 模式不可用")
@@ -498,16 +503,16 @@ class TranslationClient:
 
             # 本地推理可能較慢（尤其 CPU-only 或思考模型），設定較長逾時
             llamacpp_timeout = 600  # 10 分鐘
-            self.openai_client: AsyncOpenAI | None = AsyncOpenAI(
+            self.openai_client = AsyncOpenAI(
                 base_url=f"{self.base_url}/v1",
                 api_key="sk-no-key-required",  # llama-server 預設無需認證
                 timeout=llamacpp_timeout,
                 max_retries=1,  # 本地模型重試意義不大
             )
             # llamacpp 不需要速率限制，但需要 token_usage 屬性以相容 OpenAI 路徑
-            self.request_timestamps: list[float] = []
-            self.token_usage: list[tuple[float, int]] = []
-            self.pricing: dict[str, dict[str, float]] = {}
+            self.request_timestamps = []
+            self.token_usage = []
+            self.pricing = {}
 
             logger.info(f"llama.cpp 客戶端已初始化，連線至 {self.base_url}（逾時: {llamacpp_timeout}s）")
 
@@ -517,17 +522,17 @@ class TranslationClient:
                 logger.error("未安裝 OpenAI 客戶端函式庫，OpenAI 模式不可用")
                 raise ImportError("請安裝 OpenAI Python 套件: pip install openai")
 
-            self.openai_client: AsyncOpenAI | None = AsyncOpenAI(api_key=api_key, timeout=self.conn_timeout.total)
+            self.openai_client = AsyncOpenAI(api_key=api_key, timeout=self.conn_timeout.total)
 
             # 為各模型載入適當的 tokenizer
             self.tokenizers: dict[str, Any] = {}
             self._load_tokenizers()
 
             # 速率限制追蹤
-            self.request_timestamps: list[float] = []  # 用於追蹤 API 請求時間
+            self.request_timestamps = []  # 用於追蹤 API 請求時間
             self.max_requests_per_minute = 3500  # OpenAI API 預設限制
             self.max_tokens_per_minute = 180000  # OpenAI API 預設限制
-            self.token_usage: list[tuple[float, int]] = []  # 用於追蹤 token 使用量
+            self.token_usage = []  # 用於追蹤 token 使用量
 
             # 價格計算
             self.pricing = {
@@ -1655,7 +1660,7 @@ class TranslationClient:
             profile = self._get_llamacpp_model_profile(model_name)
             options = profile.get("options", {})
 
-            openai_params: dict[str, Any] = {
+            openai_params = {
                 "model": model_name,
                 "messages": messages,
                 "temperature": options.get("temperature", 0.1),
@@ -1668,7 +1673,7 @@ class TranslationClient:
             if "top_p" in options:
                 openai_params["top_p"] = options["top_p"]
         else:
-            openai_params: dict[str, Any] = {
+            openai_params = {
                 "model": model_name,
                 "messages": messages,
                 "temperature": 0.1,
@@ -1690,7 +1695,7 @@ class TranslationClient:
             if not self.openai_client:
                 raise TranslationError("OpenAI 客戶端未初始化")
             logger.debug(f"發送 {'llama.cpp' if is_llamacpp else 'OpenAI'} API 請求: {model_name}")
-            response = await self.openai_client.chat.completions.create(**openai_params)  # type: ignore[call-overload]
+            response = await self.openai_client.chat.completions.create(**openai_params)
             choice = response.choices[0]
             finish_reason = getattr(choice, "finish_reason", None)
             if finish_reason == "length":
@@ -1831,7 +1836,7 @@ class TranslationClient:
             )
 
             if response and response.text:
-                translation = response.text.strip()
+                translation = str(response.text).strip()
                 logger.debug(f"Google Gemini API 回應翻譯: {translation}")
                 return translation
             else:
@@ -1853,7 +1858,7 @@ class TranslationClient:
         texts: list[tuple[str, list[str]]],
         model_name: str,
         concurrent_limit: int = 5,
-        current_indices: list[int | None] | None = None,
+        current_indices: Sequence[int | None] | None = None,
         use_cache: bool = True,
     ) -> list[str]:
         """批量翻譯多個字幕，帶有並發控制"""

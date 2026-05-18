@@ -35,17 +35,17 @@ classifiers = [
 dependencies = [
     # Core dependencies
     "pysrt>=1.1.2",
-    "openai>=2.34.0",
+    "openai>=2.37.0",
     "aiohttp>=3.13.5",
     "backoff>=2.2.1",
-    "tiktoken>=0.7.0",
+    "tiktoken>=0.13.0",
     "chardet>=5.0.0,<6",
 
     # Environment configuration
     "python-dotenv>=1.0.0",
 
     # Optional LLM APIs
-    "google-genai>=1.75.0",
+    "google-genai>=2.4.0",
 
     # GUI dependencies
     "tkinterdnd2>=0.4.0",
@@ -66,8 +66,8 @@ dev = [
     "pytest-mock>=3.11.0",
 
     # Code quality
-    "ruff>=0.15.12",
-    "mypy>=1.20.2",
+    "ruff>=0.15.13",
+    "mypy>=2.1.0",
 
     # Type stubs
     "types-chardet>=5.0.0",

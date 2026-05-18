@@ -4,7 +4,7 @@ import os
 import re
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any, ClassVar, Optional, TypeVar
 
 import pysrt
@@ -627,7 +627,7 @@ class TranslationService:
         llm_type: str,
         model_name: str,
         concurrent_limit: int = 5,
-        current_indices: list[int | None] | None = None,
+        current_indices: Sequence[int | None] | None = None,
         use_cache: bool = True,
     ) -> list[str]:
         """批量翻譯多個文本
@@ -686,7 +686,12 @@ class TranslationService:
             # 自行實現批量翻譯
             semaphore = asyncio.Semaphore(concurrent_limit)
 
-            async def process_item(idx, text, context, current_index):
+            async def process_item(
+                idx: int,
+                text: str,
+                context: list[str],
+                current_index: int | None,
+            ) -> tuple[int, str]:
                 async with semaphore:
                     translation = await self.translate_text(
                         text, context, llm_type, model_name, current_index=current_index, use_cache=use_cache
@@ -962,7 +967,7 @@ class TranslationService:
 
     async def _translate_batch_structure_text(
         self,
-        subs,
+        subs: pysrt.SubRipFile,
         batch_indices: list[int],
         llm_type: str,
         model_name: str,
