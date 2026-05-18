@@ -230,6 +230,7 @@ srt-translator cache --stats
 ```
 
 > `translate` 目前可直接使用 `ollama`、`openai`、`google`、`llamacpp`。
+> `qa` 結構驗證通過時回傳 `0`；有錯誤時回傳非 `0`。`cps-audit` 則會在偵測到可讀性問題時回傳非 `0`，方便接到 shell script 或 CI。
 
 ## 🧯 疑難排解
 

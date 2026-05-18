@@ -386,6 +386,8 @@ srt-translator qa source.srt translated.srt --strict
 
 檢查項目：字幕數量、timestamp 一致性、index 連續性。
 
+> `qa` 通過時 exit code 為 `0`；若有結構錯誤，或在 `--strict` 模式下出現警告，會回傳非 `0`。
+
 ### CPS Audit（可讀性審計）
 
 分析字幕的 CPS（Characters Per Second）可讀性：
@@ -396,6 +398,8 @@ srt-translator cps-audit translated.srt
 # 自訂閾值
 srt-translator cps-audit translated.srt --max-cps 15 --max-line-length 20 --min-duration 1200
 ```
+
+> `cps-audit` 一定會輸出審計摘要；當有任何問題字幕時，exit code 會是非 `0`。這是預期行為，適合拿來做批次檢查或 CI gate。
 
 預設閾值：
 | 指標 | 預設值 | 說明 |

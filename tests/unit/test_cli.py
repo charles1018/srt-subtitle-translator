@@ -1,5 +1,6 @@
 """CLI 測試。"""
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -231,3 +232,118 @@ def test_cmd_prompt_import_runs_prompt_manager(capsys) -> None:
     assert result == 0
     mock_prompt_manager.import_prompt.assert_called_once_with("/tmp/prompts.json")
     assert capsys.readouterr().out.strip() == "已匯入提示詞: /tmp/prompts.json"
+
+
+def test_cmd_qa_returns_zero_and_prints_summary(capsys) -> None:
+    """qa 成功時應輸出摘要並回傳 0。"""
+    parser = cli.create_parser()
+    args = parser.parse_args(["qa", "source.srt", "target.srt"])
+
+    qa_result = SimpleNamespace(
+        is_valid=True,
+        source_count=12,
+        target_count=12,
+        errors=[],
+        warnings=[],
+    )
+
+    with patch("srt_translator.tools.srt_tools.qa", return_value=qa_result) as mock_qa:
+        result = cli.cmd_qa(args)
+
+    assert result == 0
+    mock_qa.assert_called_once_with("source.srt", "target.srt")
+    output = capsys.readouterr().out
+    assert "來源字幕: 12 個" in output
+    assert "目標字幕: 12 個" in output
+    assert "QA 通過" in output
+
+
+def test_cmd_qa_strict_mode_fails_on_warning(capsys) -> None:
+    """qa 在 strict 模式下遇到警告應回傳非 0。"""
+    parser = cli.create_parser()
+    args = parser.parse_args(["qa", "source.srt", "target.srt", "--strict"])
+
+    qa_result = SimpleNamespace(
+        is_valid=True,
+        source_count=8,
+        target_count=8,
+        errors=[],
+        warnings=["Index 不匹配 #1: 來源=1, 目標=2"],
+    )
+
+    with patch("srt_translator.tools.srt_tools.qa", return_value=qa_result):
+        result = cli.cmd_qa(args)
+
+    assert result == 1
+    output = capsys.readouterr().out
+    assert "警告:" in output
+    assert "QA 失敗（嚴格模式：有警告）" in output
+
+
+def test_cmd_qa_with_cps_runs_audit_report(capsys) -> None:
+    """qa --cps 應附加執行 CPS 審計並輸出報告。"""
+    parser = cli.create_parser()
+    args = parser.parse_args(["qa", "source.srt", "target.srt", "--cps"])
+
+    qa_result = SimpleNamespace(
+        is_valid=True,
+        source_count=5,
+        target_count=5,
+        errors=[],
+        warnings=[],
+    )
+    cps_report = SimpleNamespace(
+        total_subtitles=5,
+        problematic_count=1,
+        avg_cps=6.2,
+        max_cps=19.5,
+        summary={"high_cps": 1, "long_line": 0, "too_many_lines": 0, "short_duration": 0},
+        entries=[SimpleNamespace(index=3, text="測試字幕", issues=["CPS=19.5 (>17.0)"])],
+    )
+
+    with (
+        patch("srt_translator.tools.srt_tools.qa", return_value=qa_result),
+        patch("srt_translator.tools.srt_tools.cps_audit", return_value=cps_report) as mock_cps_audit,
+    ):
+        result = cli.cmd_qa(args)
+
+    assert result == 0
+    mock_cps_audit.assert_called_once_with("target.srt", max_cps=17.0, max_line_length=22)
+    output = capsys.readouterr().out
+    assert "--- CPS/可讀性審計 ---" in output
+    assert "總字幕數: 5" in output
+    assert "問題字幕: 1" in output
+
+
+def test_cmd_cps_audit_returns_nonzero_when_problematic(capsys) -> None:
+    """cps-audit 有問題字幕時應回傳非 0 並印出摘要。"""
+    parser = cli.create_parser()
+    args = parser.parse_args(["cps-audit", "target.srt"])
+
+    cps_report = SimpleNamespace(
+        total_subtitles=10,
+        problematic_count=2,
+        avg_cps=5.9,
+        max_cps=21.3,
+        summary={"high_cps": 1, "long_line": 0, "too_many_lines": 1, "short_duration": 0},
+        entries=[
+            SimpleNamespace(index=2, text="第一句", issues=["CPS=21.3 (>17.0)"]),
+            SimpleNamespace(index=4, text="第二句", issues=["行數=3 (>2)"]),
+        ],
+    )
+
+    with patch("srt_translator.tools.srt_tools.cps_audit", return_value=cps_report) as mock_cps_audit:
+        result = cli.cmd_cps_audit(args)
+
+    assert result == 1
+    mock_cps_audit.assert_called_once_with(
+        "target.srt",
+        max_cps=17.0,
+        max_line_length=22,
+        max_lines=2,
+        min_duration_ms=1000,
+    )
+    output = capsys.readouterr().out
+    assert "總字幕數: 10" in output
+    assert "問題字幕: 2" in output
+    assert "問題字幕詳情" in output

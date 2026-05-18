@@ -926,26 +926,28 @@ structure_path, text_path = extract("video.srt")
 
 比對源檔與翻譯檔的結構完整性。
 
-**回傳**：`QAResult` - 包含 `passed`、`issues` 等屬性
+**回傳**：`QAResult` - 包含 `is_valid`、`source_count`、`target_count`、`errors`、`warnings`
 
 ```python
 result = qa("source.srt", "translated.srt")
-if result.passed:
+if result.is_valid:
     print("結構完整性檢查通過")
 else:
-    for issue in result.issues:
+    for issue in result.errors:
         print(f"問題: {issue}")
+    for warning in result.warnings:
+        print(f"警告: {warning}")
 ```
 
 ##### `cps_audit(srt_path: str, max_cps: float = 17.0, ...) -> CpsAuditReport`
 
 CPS 可讀性審計。
 
-**回傳**：`CpsAuditReport` - 包含 `total`、`flagged`、`entries` 等屬性
+**回傳**：`CpsAuditReport` - 包含 `total_subtitles`、`problematic_count`、`avg_cps`、`max_cps`、`summary`、`entries`
 
 ```python
 report = cps_audit("translated.srt")
-print(f"總字幕: {report.total}, 有問題: {report.flagged}")
+print(f"總字幕: {report.total_subtitles}, 有問題: {report.problematic_count}")
 for entry in report.entries:
     print(f"#{entry.index}: CPS={entry.cps:.1f}, 問題={entry.issues}")
 ```
