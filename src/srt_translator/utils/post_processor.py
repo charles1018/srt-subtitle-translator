@@ -68,9 +68,21 @@ class NetflixStylePostProcessor:
     QUOTE_MAP: ClassVar[dict[str, tuple[str, str]]] = {
         '"': ("「", "」"),
         "'": ("「", "」"),
-        """: ('「', '」'),
-        """: ("「", "」"),
     }
+
+    # 先將 curly quotes 正規化為半形 quote，再交由 QUOTE_MAP 做成對轉換。
+    QUOTE_NORMALIZATION_MAP: ClassVar[dict[int, str]] = str.maketrans(
+        {
+            "“": '"',
+            "”": '"',
+            "„": '"',
+            "‟": '"',
+            "‘": "'",
+            "’": "'",
+            "‚": "'",
+            "‛": "'",
+        }
+    )
 
     # 全形數字轉半形
     FULLWIDTH_TO_HALFWIDTH = str.maketrans("０１２３４５６７８９", "0123456789")
@@ -175,6 +187,7 @@ class NetflixStylePostProcessor:
             return text
 
         original = text
+        text = text.translate(self.QUOTE_NORMALIZATION_MAP)
 
         # 處理成對的引號
         for western_quote, (open_quote, close_quote) in self.QUOTE_MAP.items():

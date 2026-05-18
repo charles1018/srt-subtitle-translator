@@ -1,7 +1,5 @@
 """Tests for utils/post_processor.py module."""
 
-import pytest
-
 from srt_translator.utils.post_processor import (
     NetflixStylePostProcessor,
     ProcessingResult,
@@ -180,7 +178,6 @@ class TestNetflixStylePostProcessorQuotations:
         assert "「" in result.text
         assert "」" in result.text
 
-    @pytest.mark.skip(reason="Curly quote pairs (U+201C/U+201D) not fully implemented in QUOTE_MAP")
     def test_fix_curly_quotes(self):
         """Test fixing curly quotes."""
         processor = NetflixStylePostProcessor()
@@ -188,6 +185,17 @@ class TestNetflixStylePostProcessorQuotations:
         result = processor.process('他說\u201c你好\u201d')
         assert "「" in result.text
         assert "」" in result.text
+        assert "\u201c" not in result.text
+        assert "\u201d" not in result.text
+
+    def test_fix_mixed_curly_single_quotes(self):
+        """Test fixing curly single quotes."""
+        processor = NetflixStylePostProcessor()
+        result = processor.process("她回答\u2018沒問題\u2019")
+        assert "「" in result.text
+        assert "」" in result.text
+        assert "\u2018" not in result.text
+        assert "\u2019" not in result.text
 
     def test_quotations_disabled(self):
         """Test quotation fixing when disabled."""
