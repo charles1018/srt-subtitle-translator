@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from srt_translator.file_handling.handler import FileHandler, SubtitleInfo
 
 # ============================================================
@@ -286,20 +284,66 @@ class TestFileHandlerSingleton:
 class TestFileHandlerDirectoryOperations:
     """Tests for FileHandler directory operations."""
 
-    @pytest.mark.skip(reason="FileHandler singleton requires complex setup")
     def test_scan_directory_recursive(self, temp_dir):
-        """Test recursive directory scanning - skipped."""
-        pass
+        """Test recursive directory scanning."""
+        FileHandler._instance = None
 
-    @pytest.mark.skip(reason="FileHandler singleton requires complex setup")
+        root_dir = temp_dir / "subs"
+        nested_dir = root_dir / "nested"
+        nested_dir.mkdir(parents=True)
+        (root_dir / "a.srt").write_text("test", encoding="utf-8")
+        (nested_dir / "b.vtt").write_text("test", encoding="utf-8")
+        (nested_dir / "ignore.txt").write_text("test", encoding="utf-8")
+
+        with patch("srt_translator.file_handling.handler.ConfigManager") as mock_config:
+            mock_instance = MagicMock()
+            mock_instance.get_value.side_effect = lambda key, default=None: default
+            mock_config.get_instance.return_value = mock_instance
+
+            handler = FileHandler.get_instance()
+            result = handler.scan_directory(str(root_dir), recursive=True)
+
+        assert sorted(result) == sorted([str(root_dir / "a.srt"), str(nested_dir / "b.vtt")])
+        FileHandler._instance = None
+
     def test_scan_directory_non_recursive(self, temp_dir):
-        """Test non-recursive directory scanning - skipped."""
-        pass
+        """Test non-recursive directory scanning."""
+        FileHandler._instance = None
 
-    @pytest.mark.skip(reason="FileHandler singleton requires complex setup")
+        root_dir = temp_dir / "subs"
+        nested_dir = root_dir / "nested"
+        nested_dir.mkdir(parents=True)
+        (root_dir / "a.srt").write_text("test", encoding="utf-8")
+        (nested_dir / "b.vtt").write_text("test", encoding="utf-8")
+
+        with patch("srt_translator.file_handling.handler.ConfigManager") as mock_config:
+            mock_instance = MagicMock()
+            mock_instance.get_value.side_effect = lambda key, default=None: default
+            mock_config.get_instance.return_value = mock_instance
+
+            handler = FileHandler.get_instance()
+            result = handler.scan_directory(str(root_dir), recursive=False)
+
+        assert result == [str(root_dir / "a.srt")]
+        FileHandler._instance = None
+
     def test_scan_directory_empty(self, temp_dir):
-        """Test scanning empty directory - skipped."""
-        pass
+        """Test scanning empty directory."""
+        FileHandler._instance = None
+
+        empty_dir = temp_dir / "empty"
+        empty_dir.mkdir()
+
+        with patch("srt_translator.file_handling.handler.ConfigManager") as mock_config:
+            mock_instance = MagicMock()
+            mock_instance.get_value.side_effect = lambda key, default=None: default
+            mock_config.get_instance.return_value = mock_instance
+
+            handler = FileHandler.get_instance()
+            result = handler.scan_directory(str(empty_dir), recursive=True)
+
+        assert result == []
+        FileHandler._instance = None
 
 
 class TestFileHandlerSubtitleInfo:
@@ -454,15 +498,40 @@ class TestFileHandlerBatchSettings:
 class TestFileHandlerOutputPath:
     """Tests for FileHandler output path methods."""
 
-    @pytest.mark.skip(reason="FileHandler singleton requires complex setup")
     def test_get_output_path_nonexistent_source(self, temp_dir):
-        """Test output path for nonexistent source file - skipped."""
-        pass
+        """Test output path for nonexistent source file."""
+        FileHandler._instance = None
 
-    @pytest.mark.skip(reason="FileHandler singleton requires complex setup")
+        with patch("srt_translator.file_handling.handler.ConfigManager") as mock_config:
+            mock_instance = MagicMock()
+            mock_instance.get_value.side_effect = lambda key, default=None: default
+            mock_config.get_instance.return_value = mock_instance
+
+            handler = FileHandler.get_instance()
+            result = handler.get_output_path(str(temp_dir / "missing.srt"), "繁體中文")
+
+        assert result is None
+        FileHandler._instance = None
+
     def test_get_output_path_valid_source(self, temp_dir):
-        """Test output path for valid source file - skipped."""
-        pass
+        """Test output path for valid source file."""
+        FileHandler._instance = None
+
+        source_dir = temp_dir / "input"
+        source_dir.mkdir()
+        source_file = source_dir / "episode.srt"
+        source_file.write_text("test", encoding="utf-8")
+
+        with patch("srt_translator.file_handling.handler.ConfigManager") as mock_config:
+            mock_instance = MagicMock()
+            mock_instance.get_value.side_effect = lambda key, default=None: default
+            mock_config.get_instance.return_value = mock_instance
+
+            handler = FileHandler.get_instance()
+            result = handler.get_output_path(str(source_file), "繁體中文")
+
+        assert result == str(source_dir / "episode_繁體中文.srt")
+        FileHandler._instance = None
 
 
 # ============================================================
