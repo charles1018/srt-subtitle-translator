@@ -15,6 +15,10 @@
   - 移除 `anthropic` Python 套件依賴
   - 刪除 OpenRouter provider implementation plan；OpenRouter 不再列為待落地主要任務
   - 原因：目前沒有明顯優於 OpenAI 的字幕翻譯性價比，且 Anthropic 成本較高
+- 🔐 **取消舊式 `.txt` API 金鑰檔支援**
+  - 移除 `openapi_api_key.txt` / `google_api_key.txt` runtime fallback
+  - 移除儲存 API 金鑰到本機明文檔案的舊介面
+  - 統一改用環境變數 / `.env` 進行金鑰管理
 
 ### ✨ 新增
 
@@ -27,7 +31,7 @@
 
 #### 環境變數配置
 - 🔐 **新增 .env 檔案支援**（python-dotenv）
-  - 優先順序：環境變數 > .env 檔案 > .txt 檔案
+  - 本機建議使用 `.env`，CI / shell export 則沿用環境變數
   - 提供 `.env.example` 範例檔案
   - 更安全的 API 金鑰管理方式
 

@@ -5,11 +5,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from srt_translator.core.config import ConfigManager
-from srt_translator.core.models import ModelInfo, ModelManager, get_model_info, get_recommended_model
+from srt_translator.core.models import ModelManager, get_model_info, get_recommended_model
 
 
 class TestModelManagerAPIKeyOperations:
-    """測試 API 金鑰操作"""
+    """測試 API 金鑰載入行為"""
 
     @pytest.fixture(autouse=True)
     def reset_instances(self):
@@ -27,44 +27,25 @@ class TestModelManagerAPIKeyOperations:
         config_file.parent.mkdir(exist_ok=True)
         return ModelManager(str(config_file))
 
-    def test_save_api_key_success(self, manager, temp_dir):
-        """測試成功儲存 API 金鑰"""
-        test_key = "sk-test-key-123456"
-        key_file = temp_dir / "test_api_key.txt"
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "sk-env-openai", "GOOGLE_API_KEY": "env-google"}, clear=True)
+    def test_load_api_keys_from_environment(self, manager):
+        """測試從環境變數 / .env 載入 API 金鑰。"""
+        manager.api_keys.clear()
 
-        with patch("srt_translator.core.models.get_config", return_value=str(key_file)):
-            result = manager.save_api_key("openai", test_key)
+        manager._load_api_keys()
 
-            assert result is True
-            assert manager.api_keys.get("openai") == test_key
-            # 驗證檔案已建立
-            assert key_file.exists()
-            assert key_file.read_text(encoding="utf-8") == test_key
+        assert manager.api_keys == {"openai": "sk-env-openai", "google": "env-google"}
 
-    def test_save_api_key_clears_cache(self, manager, temp_dir):
-        """測試儲存 API 金鑰會清除快取"""
-        # 設定快取
-        manager.cached_models["openai"] = [ModelInfo(id="test", provider="openai")]
-        manager.cache_time["openai"] = 1234567890
+    @patch.dict("os.environ", {}, clear=True)
+    def test_load_api_keys_does_not_fallback_to_legacy_txt_files(self, manager):
+        """測試未設定環境變數時不再回退讀取舊 txt 金鑰檔。"""
+        manager.api_keys.clear()
 
-        test_key = "sk-test-key-123456"
-        key_file = temp_dir / "test_api_key.txt"
+        with patch("os.path.exists", return_value=True), patch("builtins.open", MagicMock()) as mock_open:
+            manager._load_api_keys()
 
-        with patch("srt_translator.core.models.get_config", return_value=str(key_file)):
-            manager.save_api_key("openai", test_key)
-
-            # 驗證快取已清除
-            assert "openai" not in manager.cached_models
-            assert "openai" not in manager.cache_time
-
-    def test_save_api_key_error_handling(self, manager):
-        """測試儲存 API 金鑰錯誤處理"""
-        # 使用無效路徑
-        with patch("srt_translator.core.models.get_config", return_value="/invalid/path/key.txt"):  # noqa: SIM117
-            with patch("os.makedirs", side_effect=PermissionError("Access denied")):
-                result = manager.save_api_key("openai", "test-key")
-                # 應該返回 False
-                assert result is False
+        assert manager.api_keys == {}
+        mock_open.assert_not_called()
 
 class TestModelManagerConfigOperations:
     """測試配置操作"""

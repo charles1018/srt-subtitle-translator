@@ -52,8 +52,8 @@
 - **Python**：3.10 或更高版本
 - **網路連接**：使用 API 模式時需要
 - **API 金鑰**（依使用模式）：
-  - OpenAI：`OPENAI_API_KEY` 或 `openapi_api_key.txt`
-  - Google Gemini：`GOOGLE_API_KEY` / `GEMINI_API_KEY` 或 `google_api_key.txt`
+  - OpenAI：在 `.env` 或環境變數中設定 `OPENAI_API_KEY`
+  - Google Gemini：在 `.env` 或環境變數中設定 `GOOGLE_API_KEY` / `GEMINI_API_KEY`
   - Ollama 模式：需要在本機安裝 [Ollama](https://ollama.ai) 服務
   - llama.cpp 模式：需要下載 [llama.cpp](https://github.com/ggml-org/llama.cpp) 並啟動 `llama-server`
 
@@ -125,7 +125,7 @@ GOOGLE_API_KEY=your-google-api-key
 GEMINI_API_KEY=your-google-api-key
 ```
 
-#### 方法 2：環境變數
+#### 方法 2：直接環境變數
 
 ```bash
 # Linux/macOS
@@ -137,18 +137,9 @@ $env:OPENAI_API_KEY="your-openai-api-key"
 $env:GOOGLE_API_KEY="your-google-api-key"
 ```
 
-#### 方法 3：金鑰檔案（向下相容）
-
-```bash
-echo "your-openai-api-key" > openapi_api_key.txt
-echo "your-google-api-key" > google_api_key.txt
-```
-
-> **優先順序**：環境變數 > .env 檔案 > 金鑰檔案
->
 > **安全提示**：`.env` 檔案已加入 `.gitignore`，不會被提交到版本控制。
 >
-> **補充**：程式碼目前可讀取 `OPENAI_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`。目前端到端翻譯 runtime 為 `ollama` / `openai` / `google` / `llamacpp`。
+> **補充**：程式碼目前以 `OPENAI_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY` 為唯一支援的金鑰載入方式。若你偏好 shell exports，也屬於相同的環境變數路徑。端到端翻譯 runtime 為 `ollama` / `openai` / `google` / `llamacpp`。
 
 #### Ollama（本地模型）
 確保 Ollama 服務正在運行：

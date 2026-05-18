@@ -114,17 +114,21 @@ set GOOGLE_API_KEY=test-google-key
 REM 或使用 set GEMINI_API_KEY=test-google-key
 ```
 
-**方法 2：金鑰檔案**
+**方法 2：`.env` 檔案**
 
 ```bash
-# OpenAI（如需測試 OpenAI 整合）
-echo "sk-test-key" > openapi_api_key.txt
-
-# Google（GUI / runtime 路徑）
-echo "test-google-key" > google_api_key.txt
+cp .env.example .env
 ```
 
-> **注意**：環境變數優先於金鑰檔案。使用環境變數更安全，避免將金鑰意外提交到版本控制。
+然後在 `.env` 內填入測試金鑰：
+
+```env
+OPENAI_API_KEY=sk-test-key
+GOOGLE_API_KEY=test-google-key
+# 或 GEMINI_API_KEY=test-google-key
+```
+
+> **注意**：目前 runtime 僅支援環境變數 / `.env` 的金鑰載入方式，不再讀取舊式 `.txt` 金鑰檔。使用 `.env` 可避免將金鑰意外提交到版本控制。
 >
 > **補充**：`google` 已可直接用於 CLI `translate` / `models` 與 GUI。
 

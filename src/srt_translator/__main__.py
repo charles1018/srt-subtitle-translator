@@ -270,7 +270,7 @@ class App:
             provider_label = "OpenAI" if llm_type == "openai" else "Google Gemini"
             if not self.model_service.api_keys.get(llm_type):
                 env_var_hint = "OPENAI_API_KEY" if llm_type == "openai" else "GOOGLE_API_KEY / GEMINI_API_KEY"
-                return False, f"未設定 {provider_label} API 金鑰，請先設定 {env_var_hint} 或對應金鑰來源。"
+                return False, f"未設定 {provider_label} API 金鑰，請先在 `.env` 或環境變數設定 {env_var_hint}。"
 
             try:
                 result = self._run_async_in_new_loop(self.model_service.test_model_connection(model_name, llm_type))

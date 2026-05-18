@@ -149,12 +149,8 @@ Prefer environment variables or `.env` over local key files.
 Current key-loading reality:
 - supported env vars in the codebase today: `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GEMINI_API_KEY`
 - Anthropic / OpenRouter key env vars are not part of the current supported scope
-- legacy file fallbacks still exist in several places and should be removed or consolidated carefully
-
-Important compatibility detail:
-- the current code primarily uses `openapi_api_key.txt` as the legacy OpenAI fallback filename
-- another legacy fallback name still in use is `google_api_key.txt`
-- do not silently rename these fallback paths without updating code, tests, and docs together
+- API key loading is environment-based only; `.env` is the standard local workflow
+- do not reintroduce plaintext key-file fallbacks without updating code, tests, and docs together
 
 ## Agent Communication
 With this user, use Traditional Chinese (Taiwan); otherwise use default English.

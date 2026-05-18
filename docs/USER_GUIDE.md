@@ -180,7 +180,7 @@ GEMINI_API_KEY=your-google-api-key
 
 > **安全提示**：`.env` 檔案已加入 `.gitignore`，不會被提交到版本控制。
 
-#### 方法 2：環境變數
+#### 方法 2：直接環境變數
 
 ```bash
 # Linux/macOS
@@ -192,16 +192,7 @@ $env:OPENAI_API_KEY="sk-your-openai-api-key"
 $env:GOOGLE_API_KEY="your-google-api-key"
 ```
 
-#### 方法 3：金鑰檔案（向下相容）
-
-```bash
-echo "sk-your-openai-api-key" > openapi_api_key.txt
-echo "your-google-api-key" > google_api_key.txt
-```
-
-> **優先順序**：環境變數 > .env 檔案 > 金鑰檔案
->
-> **補充**：程式碼目前可讀取 `OPENAI_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`，但是否能在特定介面直接用於翻譯，仍以上方 provider 現況表為準。
+> **補充**：程式碼目前以 `OPENAI_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY` 為唯一支援的金鑰載入方式；`.env` 是推薦做法，直接環境變數也相容。是否能在特定介面直接用於翻譯，仍以上方 provider 現況表為準。
 
 #### 取得 API 金鑰
 
@@ -965,8 +956,8 @@ python -m srt_translator
 # 檢查環境變數
 printenv OPENAI_API_KEY
 
-# 若你仍使用舊式金鑰檔案，再檢查檔案內容
-cat openapi_api_key.txt
+# 若使用 `.env`，確認檔案中已設定對應金鑰
+grep OPENAI_API_KEY .env
 
 # 測試網路連接
 ping api.openai.com

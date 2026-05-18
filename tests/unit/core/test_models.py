@@ -253,27 +253,18 @@ class TestModelManagerAPIKeys:
         """測試 API 金鑰字典已初始化"""
         assert isinstance(manager.api_keys, dict)
 
-    def test_load_api_keys_file_not_exist(self, manager):
-        """測試載入不存在的 API 金鑰檔案"""
-        # _load_api_keys 已在初始化時調用
-        # 檔案不存在時不應該崩潰
+    def test_load_api_keys_without_environment_vars(self, manager):
+        """測試未設定環境變數時不應崩潰。"""
         assert isinstance(manager.api_keys, dict)
 
-    def test_load_api_keys_with_file(self, manager, temp_dir):
-        """測試從檔案載入 API 金鑰"""
-        # 建立 API 金鑰檔案
-        api_key_file = temp_dir / "test_api_key.txt"
-        test_key = "sk-test-key-12345"
-        with open(api_key_file, "w", encoding="utf-8") as f:
-            f.write(test_key)
-
-        # Mock get_config 以返回測試檔案路徑
-        with patch("srt_translator.core.models.get_config", return_value=str(api_key_file)):
-            # 重新載入
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test-key-12345"}, clear=True)
+    def test_load_api_keys_from_environment(self, manager):
+        """測試從環境變數載入 API 金鑰。"""
+        with patch("os.path.exists", return_value=True), patch("builtins.open", MagicMock()) as mock_open:
             manager._load_api_keys()
 
-        # 驗證金鑰已載入（如果 mock 生效）
-        assert isinstance(manager.api_keys, dict)
+        assert manager.api_keys.get("openai") == "sk-test-key-12345"
+        mock_open.assert_not_called()
 
 
 class TestModelManagerDatabase:

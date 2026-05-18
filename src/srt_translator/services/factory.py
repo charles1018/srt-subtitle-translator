@@ -1363,24 +1363,14 @@ class ModelService:
     def _load_api_keys(self) -> None:
         """載入各種服務的 API 金鑰"""
         key_configs = {
-            "openai": {
-                "env_vars": ["OPENAI_API_KEY"],
-                "config_key": "openai_key_path",
-                "default_path": "openapi_api_key.txt",
-                "warn_if_missing": True,
-            },
-            "google": {
-                "env_vars": ["GOOGLE_API_KEY", "GEMINI_API_KEY"],
-                "config_key": "google_key_path",
-                "default_path": "google_api_key.txt",
-                "warn_if_missing": False,
-            },
+            "openai": ["OPENAI_API_KEY"],
+            "google": ["GOOGLE_API_KEY", "GEMINI_API_KEY"],
         }
 
-        for provider, config in key_configs.items():
+        for provider, env_vars in key_configs.items():
             try:
                 api_key = ""
-                for env_var in config["env_vars"]:
+                for env_var in env_vars:
                     candidate = os.environ.get(env_var, "").strip()
                     if candidate:
                         api_key = candidate
@@ -1388,16 +1378,7 @@ class ModelService:
 
                 if api_key:
                     self.api_keys[provider] = api_key
-                    logger.info(f"已從環境變數載入 {provider} API 金鑰")
-                    continue
-
-                key_path = get_config("app", config["config_key"], config["default_path"])
-                if os.path.exists(key_path):
-                    with open(key_path, encoding="utf-8") as f:
-                        self.api_keys[provider] = f.read().strip()
-                    logger.info(f"已載入 {provider} API 金鑰")
-                elif config["warn_if_missing"]:
-                    logger.warning(f"{provider.capitalize()} API 金鑰檔案不存在: {key_path}")
+                    logger.info(f"已從環境變數 / .env 載入 {provider} API 金鑰")
             except Exception as e:
                 logger.error(f"載入 {provider} API 金鑰時發生錯誤: {e!s}")
 
@@ -1510,30 +1491,6 @@ class ModelService:
             提供者狀態字典
         """
         return await self.model_manager.get_provider_status()
-
-    def save_api_key(self, provider: str, api_key: str) -> bool:
-        """儲存 API 金鑰
-
-        參數:
-            provider: 提供者 (如 "openai" 或 "google")
-            api_key: API 金鑰
-
-        回傳:
-            是否儲存成功
-        """
-        try:
-            key_path = get_config("app", f"{provider}_key_path", f"{provider}_api_key.txt")
-            with open(key_path, "w", encoding="utf-8") as f:
-                f.write(api_key)
-
-            # 更新緩存
-            self.api_keys[provider] = api_key
-
-            logger.info(f"已儲存 {provider} API 金鑰")
-            return True
-        except Exception as e:
-            logger.error(f"儲存 {provider} API 金鑰時發生錯誤: {e!s}")
-            return False
 
     async def cleanup(self) -> None:
         """清理資源"""

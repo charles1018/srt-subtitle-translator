@@ -42,7 +42,7 @@ except ImportError:
     GOOGLE_AVAILABLE = False
 
 # 從配置管理器導入
-from srt_translator.core.config import ConfigManager, get_config
+from srt_translator.core.config import ConfigManager
 
 # 設定日誌
 logger = logging.getLogger(__name__)
@@ -199,10 +199,6 @@ class ModelManager:
     def _load_api_keys(self) -> None:
         """載入各種服務的 API 金鑰
 
-        優先順序：
-        1. 環境變數（可透過 .env 檔案設定）- 推薦用於生產環境
-        2. 檔案儲存（作為備選方案，向後相容）
-
         支援的環境變數：
         - OPENAI_API_KEY: OpenAI API 金鑰
         - GOOGLE_API_KEY 或 GEMINI_API_KEY: Google Gemini API 金鑰
@@ -213,21 +209,13 @@ class ModelManager:
         """
         # 載入 OpenAI API 金鑰
         try:
-            # 優先從環境變數讀取（包含 .env 檔案）
             openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
 
             if openai_key:
                 self.api_keys["openai"] = openai_key
-                logger.info("已從環境變數載入 OpenAI API 金鑰")
+                logger.info("已從環境變數 / .env 載入 OpenAI API 金鑰")
             else:
-                # 備選：從檔案讀取
-                openai_key_path = get_config("app", "openai_key_path", "openapi_api_key.txt")
-                if os.path.exists(openai_key_path):
-                    with open(openai_key_path, encoding="utf-8") as f:
-                        self.api_keys["openai"] = f.read().strip()
-                    logger.info("已從檔案載入 OpenAI API 金鑰（建議改用 .env 檔案）")
-                else:
-                    logger.debug("未設定 OpenAI API 金鑰")
+                logger.debug("未設定 OpenAI API 金鑰")
         except Exception as e:
             logger.error(f"載入 OpenAI API 金鑰時發生錯誤: {e!s}")
 
@@ -240,14 +228,7 @@ class ModelManager:
 
             if google_key:
                 self.api_keys["google"] = google_key
-                logger.info("已從環境變數載入 Google API 金鑰")
-            else:
-                # 備選：從檔案讀取
-                google_key_path = get_config("app", "google_key_path", "google_api_key.txt")
-                if os.path.exists(google_key_path):
-                    with open(google_key_path, encoding="utf-8") as f:
-                        self.api_keys["google"] = f.read().strip()
-                    logger.info("已從檔案載入 Google API 金鑰（建議改用 .env 檔案）")
+                logger.info("已從環境變數 / .env 載入 Google API 金鑰")
         except Exception as e:
             logger.error(f"載入 Google API 金鑰時發生錯誤: {e!s}")
 
@@ -1465,40 +1446,6 @@ class ModelManager:
                 available=False,
             )
         ]
-
-    def save_api_key(self, provider: str, api_key: str) -> bool:
-        """儲存 API 金鑰
-
-        參數:
-            provider: 提供者 (如 "openai" 或 "google")
-            api_key: API 金鑰
-
-        回傳:
-            是否儲存成功
-        """
-        try:
-            key_path = get_config("app", f"{provider}_key_path", f"{provider}_api_key.txt")
-
-            # 確保目錄存在
-            os.makedirs(os.path.dirname(key_path), exist_ok=True)
-
-            with open(key_path, "w", encoding="utf-8") as f:
-                f.write(api_key)
-
-            # 更新緩存
-            self.api_keys[provider] = api_key
-
-            # 清除模型快取，強制重新檢測
-            if provider in self.cached_models:
-                del self.cached_models[provider]
-                if provider in self.cache_time:
-                    del self.cache_time[provider]
-
-            logger.info(f"已儲存 {provider} API 金鑰")
-            return True
-        except Exception as e:
-            logger.error(f"儲存 {provider} API 金鑰時發生錯誤: {e!s}")
-            return False
 
     def _format_model_name(self, model_id: str) -> str:
         """格式化模型名稱，使其更易讀

@@ -466,6 +466,20 @@ class TestModelService:
 
         assert service.api_keys.get("google") == "test-google-key"
 
+    @patch.dict("os.environ", {}, clear=True)
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.ConfigManager")
+    def test_initialization_does_not_fallback_to_legacy_txt_files(self, mock_config, mock_model):
+        """Test ModelService no longer reads legacy txt key files."""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_model.return_value = MagicMock()
+
+        with patch("os.path.exists", return_value=True), patch("builtins.open", MagicMock()) as mock_open:
+            service = ModelService()
+
+        assert service.api_keys == {}
+        mock_open.assert_not_called()
+
     @pytest.mark.asyncio
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.ConfigManager")
@@ -503,19 +517,6 @@ class TestModelService:
             "id": "gemini-2.5-flash",
         }
         mock_model_instance.get_model_info.assert_called_once_with("gemini-2.5-flash", "google")
-
-    @patch("srt_translator.services.factory.ModelManager")
-    @patch("srt_translator.services.factory.ConfigManager")
-    def test_save_api_key(self, mock_config, mock_model):
-        """Test saving API key."""
-        mock_config.get_instance.return_value = MagicMock()
-        mock_model_instance = MagicMock()
-        mock_model.return_value = mock_model_instance
-
-        service = ModelService()
-        service.save_api_key("openai", "sk-test-key")
-
-        assert service.api_keys.get("openai") == "sk-test-key"
 
     @pytest.mark.asyncio
     @patch("srt_translator.services.factory.ModelManager")
