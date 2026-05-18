@@ -1,6 +1,20 @@
 # Cleanup Checklist
 
-本文件整理目前 repo 中已確認的未收尾工作，依建議執行順序拆成可獨立提交的 cleanup 階段。
+狀態：已完成封存
+
+完成日期：2026-05-19（Asia/Taipei）
+
+對應提交：
+- `9e0eea8` `docs(cleanup): add executable cleanup checklist`
+- `43bca01` `docs(repo): align agents guidance with current provider reality`
+- `d890548` `refactor(config): remove legacy openai-only key loading path`
+- `e32be84` `fix(gui): align provider preflight validation`
+- `b338a0e` `test(services): replace stable factory skip placeholders`
+- `a7e4be4` `chore(translation): remove stale manual client demo`
+- `d95e85f` `chore(models): remove stale manual model manager demo`
+- `ab2724a` `refactor(config): drop legacy txt api key fallback`
+
+本文件原本用來整理 repo 中已確認的未收尾工作，並依建議順序拆成可獨立提交的 cleanup 階段。相關項目已完成，文件保留作為封存紀錄與變更追溯依據。
 
 ## 執行原則
 
