@@ -58,9 +58,9 @@
 
 ## 階段 5：移除過時的檔尾手動測試與殘留過渡碼
 
-- [ ] 移除 `translation/client.py` 檔尾只支援 `openai` / `ollama` 的手動測試程式碼
-- [ ] 確認不再殘留與目前 provider reality 衝突的過渡入口
-- [ ] 視需要補充對應測試或文件註記
+- [x] 移除 `translation/client.py` 檔尾只支援 `openai` / `ollama` 的手動測試程式碼
+- [x] 確認不再殘留與目前 provider reality 衝突的過渡入口
+- [x] 視需要補充對應測試或文件註記
 
 驗證：
 
