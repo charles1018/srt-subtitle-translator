@@ -13,8 +13,7 @@ import time
 from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
 
-import pytest
-
+import srt_translator.utils.helpers as helpers_module
 from srt_translator.utils.errors import TranslationError
 from srt_translator.utils.helpers import (
     # 本地化工具
@@ -611,13 +610,37 @@ class TestSystemInfo:
         assert "memory" in info
         assert "disk" in info
 
-    @pytest.mark.skip(reason="check_python_packages 依賴 pkg_resources，在 Python 3.13+ 中不可用")
     def test_check_python_packages(self):
         """測試檢查 Python 包"""
-        # 由於 pkg_resources 在 Python 3.13+ 中已被棄用且不可用，
-        # 這個測試被跳過。實際項目中應該遷移到 importlib.metadata
         packages = check_python_packages()
         assert isinstance(packages, dict)
+        assert "openai" in packages
+        assert "aiohttp" in packages
+
+    def test_check_python_packages_fallback_when_metadata_missing(self):
+        """測試缺少 distribution metadata 時，仍可回退到模組層級版本資訊。"""
+        from importlib import metadata
+
+        mock_metadata = Mock()
+        mock_metadata.PackageNotFoundError = metadata.PackageNotFoundError
+        mock_metadata.version.side_effect = metadata.PackageNotFoundError()
+
+        def import_module_side_effect(package_name):
+            if package_name == "openai":
+                module = Mock()
+                module.__version__ = "fallback-9.9"
+                return module
+            raise ImportError(f"{package_name} not installed")
+
+        with (
+            patch.object(helpers_module, "metadata", mock_metadata),
+            patch.object(helpers_module.importlib, "import_module", side_effect=import_module_side_effect) as mock_import,
+        ):
+            packages = check_python_packages()
+
+        assert packages["openai"] == "fallback-9.9"
+        assert packages["aiohttp"] == "未安裝"
+        mock_import.assert_any_call("openai")
 
 
 # ============================================================

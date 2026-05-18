@@ -5,6 +5,7 @@
 
 import hashlib
 import heapq
+import importlib
 import json
 import logging
 import os
@@ -14,6 +15,7 @@ import time
 import traceback
 from collections.abc import Callable
 from datetime import datetime
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
@@ -755,20 +757,16 @@ def check_python_packages() -> dict[str, str]:
     回傳:
         包名和版本字典
     """
-    import importlib
-
-    import pkg_resources  # type: ignore[import-not-found]
-
     required_packages = ["pysrt", "tiktoken", "aiohttp", "backoff", "openai", "numpy", "matplotlib", "chardet"]
 
-    package_versions = {}
+    package_versions: dict[str, str] = {}
 
     for package in required_packages:
         try:
-            package_versions[package] = pkg_resources.get_distribution(package).version
-        except (pkg_resources.DistributionNotFound, pkg_resources.VersionConflict):
+            package_versions[package] = metadata.version(package)
+        except metadata.PackageNotFoundError:
             try:
-                # 嘗試直接導入並檢查版本
+                # 某些環境可能只有模組可導入但缺少 distribution metadata，保留舊行為作為 fallback。
                 module = importlib.import_module(package)
                 if hasattr(module, "__version__"):
                     package_versions[package] = module.__version__
