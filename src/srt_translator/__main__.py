@@ -481,10 +481,24 @@ def main() -> None:
 
     根據命令列參數決定執行 GUI 或 CLI 模式:
     - 無參數或 --gui: 啟動 GUI 模式
-    - translate/models/cache/config/version: 執行 CLI 命令
+    - 支援的 CLI 子命令: 執行 CLI 命令
     """
     # 快速檢查是否為 CLI 模式
-    cli_commands = {"translate", "models", "cache", "config", "glossary", "version", "-h", "--help"}
+    cli_commands = {
+        "translate",
+        "models",
+        "cache",
+        "config",
+        "glossary",
+        "prompt",
+        "version",
+        "extract",
+        "assemble",
+        "qa",
+        "cps-audit",
+        "-h",
+        "--help",
+    }
     is_cli_mode = len(sys.argv) > 1 and sys.argv[1] in cli_commands
 
     if is_cli_mode:

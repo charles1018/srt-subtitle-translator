@@ -1,8 +1,10 @@
-"""Tests for GUI app preflight checks."""
+"""Tests for GUI app preflight checks and main entry routing."""
 
+import sys
+from contextlib import suppress
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from srt_translator.__main__ import App
+from srt_translator.__main__ import App, main
 
 
 def test_init_services_does_not_require_legacy_file_api_key_loader():
@@ -107,3 +109,35 @@ def test_validate_translation_request_for_llamacpp_uses_server_check_not_network
     assert "http://localhost:8088" in message
     assert "網路連線異常" not in message
     app._run_async_in_new_loop.assert_called_once_with("llamacpp-preflight")
+
+
+def test_main_routes_qa_subcommand_to_cli():
+    """qa 應走 CLI 入口，不可誤進 GUI 模式。"""
+    with (
+        patch.object(sys, "argv", ["srt-translator", "qa", "source.srt", "target.srt"]),
+        patch("srt_translator.__main__.App") as mock_app,
+        patch("srt_translator.cli.main", return_value=0) as mock_cli_main,
+        patch("sys.exit", side_effect=SystemExit(0)) as mock_exit,
+        suppress(SystemExit),
+    ):
+        main()
+
+    mock_cli_main.assert_called_once_with()
+    mock_exit.assert_called_once_with(0)
+    mock_app.assert_not_called()
+
+
+def test_main_routes_cps_audit_subcommand_to_cli():
+    """cps-audit 應走 CLI 入口，不可誤進 GUI 模式。"""
+    with (
+        patch.object(sys, "argv", ["srt-translator", "cps-audit", "target.srt"]),
+        patch("srt_translator.__main__.App") as mock_app,
+        patch("srt_translator.cli.main", return_value=0) as mock_cli_main,
+        patch("sys.exit", side_effect=SystemExit(0)) as mock_exit,
+        suppress(SystemExit),
+    ):
+        main()
+
+    mock_cli_main.assert_called_once_with()
+    mock_exit.assert_called_once_with(0)
+    mock_app.assert_not_called()

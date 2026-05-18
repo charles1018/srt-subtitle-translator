@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-19
+
 ### ⚠️ 變更
 
 #### Provider 支援範圍收斂
@@ -604,9 +606,10 @@
 
 ---
 
-**最後更新**：2026-03-12
+**最後更新**：2026-05-19
 
-[Unreleased]: https://github.com/charles1018/srt-subtitle-translator/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/charles1018/srt-subtitle-translator/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/charles1018/srt-subtitle-translator/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/charles1018/srt-subtitle-translator/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/charles1018/srt-subtitle-translator/releases/tag/v1.0.0
 [0.9.0]: https://github.com/charles1018/srt-subtitle-translator/releases/tag/v0.9.0

@@ -461,7 +461,7 @@ uv run mypy src/srt_translator
 ## 📊 專案統計
 
 - **開發開始**：2023
-- **當前版本**：1.1.0
+- **當前版本**：1.2.0
 - **Python 需求**：3.10+
 - **第一級翻譯 runtime**：Ollama / OpenAI / Google / llama.cpp
 - **已取消納入目前支援範圍**：Anthropic / OpenRouter

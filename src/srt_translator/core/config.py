@@ -122,7 +122,7 @@ class ConfigManager:
         """
         return {
             "app": {
-                "version": "1.0.0",
+                "version": "1.2.0",
                 "debug_mode": False,
                 "data_dir": "data",
                 "checkpoints_dir": "data/checkpoints",
@@ -1025,7 +1025,7 @@ if __name__ == "__main__":
     user_config = ConfigManager.get_instance("user")
 
     # 設置並獲取配置
-    config_manager.set_value("version", "1.1.0")
+    config_manager.set_value("version", "1.2.0")
     print(f"應用程式版本: {config_manager.get_value('version')}")
 
     # 設置並獲取巢狀配置
