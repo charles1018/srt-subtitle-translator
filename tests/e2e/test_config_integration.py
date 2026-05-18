@@ -202,7 +202,7 @@ async def test_model_config_affects_translation(sample_srt_path: Path, mock_tran
 
         # 重置 Mock
         mock_translation_service.translate_text.reset_mock()
-        mock_translation_service.translate_text.return_value = AsyncMock(return_value="使用 GPT-3.5 翻譯")()
+        mock_translation_service.translate_text.return_value = "使用 GPT-3.5 翻譯"
 
         # 執行翻譯
         await translation_service.translate_text("Hello, world!", [], "openai", "gpt-3.5-turbo")
