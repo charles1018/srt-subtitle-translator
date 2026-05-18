@@ -61,7 +61,6 @@ class TestConfigBackupRestore:
         assert "exported_at" in backup_data["metadata"]
         assert "config_type" in backup_data["metadata"]
 
-    @pytest.mark.skip(reason="restore_backup 在還原前創建備份，導致時間戳相同時覆蓋原始備份")
     def test_restore_backup_success(self, config_manager, temp_dir):
         """測試成功還原備份"""
         # 設置初始配置
@@ -79,6 +78,37 @@ class TestConfigBackupRestore:
 
         # 驗證配置已還原
         assert config_manager.get_value("version") == "original"
+
+    def test_create_backup_uses_unique_filename_without_sleep(self, config_manager):
+        """測試連續建立備份時檔名仍保持唯一。"""
+        first_backup = config_manager.create_backup()
+        second_backup = config_manager.create_backup()
+
+        assert first_backup is not None
+        assert second_backup is not None
+        assert first_backup != second_backup
+        assert Path(first_backup).exists()
+        assert Path(second_backup).exists()
+
+    def test_restore_backup_does_not_overwrite_source_backup(self, config_manager):
+        """測試 restore 前建立的新備份不會覆蓋指定的來源備份。"""
+        config_manager.set_value("version", "before_restore", auto_save=True)
+        source_backup = config_manager.create_backup()
+        assert source_backup is not None
+
+        source_backup_data = Path(source_backup).read_text(encoding="utf-8")
+
+        config_manager.set_value("version", "after_change", auto_save=True)
+
+        result = config_manager.restore_backup(source_backup)
+
+        assert result is True
+        assert config_manager.get_value("version") == "before_restore"
+        assert Path(source_backup).read_text(encoding="utf-8") == source_backup_data
+
+        backups = config_manager.list_backups("app")
+        assert len(backups) >= 2
+        assert any(backup["path"] != source_backup for backup in backups)
 
     def test_restore_backup_nonexistent_file(self, config_manager):
         """測試還原不存在的備份文件"""

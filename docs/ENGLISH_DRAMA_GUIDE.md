@@ -129,9 +129,9 @@ he's got a great spot waiting for him up there at the FD in Detroit
    - 在「內容類型」下拉選單中選擇 **"english_drama"**
 
 3. **選擇 LLM 引擎**
-   - 目前建議優先使用 OpenAI GPT-4 / GPT-4o
-   - GUI 雖然會顯示 Google Gemini，但仍建議先用 OpenAI 驗證流程
-   - Ollama 本地模型也可用，但建議選較大的中文友善模型
+   - GUI 目前可直接選擇 `ollama`、`openai`、`google`、`llamacpp`
+   - 若以翻譯品質優先，建議先從 OpenAI GPT-4o 類模型做小樣本驗證
+   - Ollama / llama.cpp 本地模型也可用，但建議選較大的中文友善模型
 
 4. **選擇字幕檔案**
    - 點擊「選擇輸入檔案」或直接拖放檔案
@@ -145,7 +145,7 @@ he's got a great spot waiting for him up there at the FD in Detroit
 
 ### 在命令列中使用
 
-CLI 目前沒有 `--content-type` 或 `--llm-type` 這類旗標。若要在 CLI 使用 `english_drama` 提示詞，請先透過 GUI 的「設定 → 提示詞編輯」切換內容類型，或直接調整 `config/prompt_config.json` 的 `current_content_type` 為 `english_drama`，再執行一般 `translate` 指令。
+CLI 目前可直接透過 `--content-type` 指定 `english_drama`。provider 參數名稱是 `--provider`（或 `-p`），不是 `--llm-type`。若要同時指定翻譯風格，可再搭配 `--style`。
 
 ```bash
 uv run srt-translator translate \
@@ -153,7 +153,15 @@ uv run srt-translator translate \
   -s 英文 \
   -t 繁體中文 \
   -p openai \
-  -m gpt-4o
+  -m gpt-4o \
+  --content-type english_drama \
+  --style localized
+```
+
+也可以先檢查目前 `english_drama` 提示詞內容：
+
+```bash
+uv run srt-translator prompt show -p openai --content-type english_drama
 ```
 
 ## 🎓 翻譯範例

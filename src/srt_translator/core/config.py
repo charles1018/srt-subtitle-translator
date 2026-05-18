@@ -858,9 +858,13 @@ class ConfigManager:
             backup_dir = os.path.join(self.config_dir, "backups")
             os.makedirs(backup_dir, exist_ok=True)
 
-            # 建立備份檔案名稱
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            # 使用微秒時間戳並在極端情況下附加序號，避免 restore 前後同秒備份互相覆蓋
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             backup_file = os.path.join(backup_dir, f"{config_type}_config_{timestamp}.json")
+            suffix = 1
+            while os.path.exists(backup_file):
+                backup_file = os.path.join(backup_dir, f"{config_type}_config_{timestamp}_{suffix:02d}.json")
+                suffix += 1
 
             # 導出配置到備份檔案
             if self.export_config(backup_file, config_type):
