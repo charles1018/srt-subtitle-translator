@@ -5,8 +5,6 @@
 
 import json
 
-import pytest
-
 from srt_translator.core.config import ConfigManager
 
 
@@ -127,35 +125,29 @@ class TestConfigMultiInstanceIntegration:
         # 重置單例
         ConfigManager._instances = {}
 
-        # 創建不同類型的配置管理器
-        # 注意：實際使用需要根據 ConfigManager 的實現調整
-        # 這裡只是示例結構
+        config_dir = str(integration_env["config_dir"])
 
-        # app_manager = ConfigManager.get_instance("app")
-        # user_manager = ConfigManager.get_instance("user")
+        app_manager = ConfigManager.get_instance("app", config_dir=config_dir)
+        user_manager = ConfigManager.get_instance("user", config_dir=config_dir)
 
-        # 驗證它們是不同的實例
-        # assert app_manager is not user_manager
-        # assert app_manager.config_type == "app"
-        # assert user_manager.config_type == "user"
-
-        # 暫時跳過此測試，因為需要了解 ConfigManager 的完整實現
-        pytest.skip("需要根據 ConfigManager 實際實現調整")
+        assert app_manager is not user_manager
+        assert app_manager.config_type == "app"
+        assert user_manager.config_type == "user"
+        assert app_manager.config_dir == user_manager.config_dir == config_dir
+        assert app_manager.config_paths["app"] != user_manager.config_paths["user"]
 
     def test_config_singleton_per_type(self, integration_env):
         """測試每種配置類型的單例模式"""
         # 重置單例
         ConfigManager._instances = {}
 
-        # 創建相同類型的多個實例請求
-        # manager1 = ConfigManager.get_instance("app")
-        # manager2 = ConfigManager.get_instance("app")
+        config_dir = str(integration_env["config_dir"])
 
-        # 驗證返回相同實例
-        # assert manager1 is manager2
+        manager1 = ConfigManager.get_instance("app", config_dir=config_dir)
+        manager2 = ConfigManager.get_instance("app", config_dir=config_dir)
 
-        # 暫時跳過此測試
-        pytest.skip("需要根據 ConfigManager 實際實現調整")
+        assert manager1 is manager2
+        assert len(ConfigManager._instances) == 1
 
 
 class TestConfigDefaultsIntegration:
