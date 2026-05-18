@@ -318,15 +318,32 @@ class TestCacheService:
 
         mock_cache_instance.store_translation.assert_called_once()
 
-    @pytest.mark.skip(reason="CacheService.get_cache_stats method signature may differ")
-    def test_get_cache_stats(self):
-        """Test getting cache stats - skipped."""
-        pass
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.ConfigManager")
+    def test_get_cache_stats(self, mock_config, mock_cache):
+        """Test getting cache stats."""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_cache_instance = MagicMock()
+        mock_cache_instance.get_cache_stats.return_value = {"total": 3}
+        mock_cache.return_value = mock_cache_instance
 
-    @pytest.mark.skip(reason="CacheService.clear_all_cache method may not exist")
-    def test_clear_all_cache(self):
-        """Test clearing all cache - skipped."""
-        pass
+        service = CacheService()
+
+        assert service.get_cache_stats() == {"total": 3}
+
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.ConfigManager")
+    def test_clear_all_cache(self, mock_config, mock_cache):
+        """Test clearing all cache."""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_cache_instance = MagicMock()
+        mock_cache_instance.clear_all_cache.return_value = True
+        mock_cache.return_value = mock_cache_instance
+
+        service = CacheService()
+
+        assert service.clear_all_cache() is True
+        mock_cache_instance.clear_all_cache.assert_called_once_with()
 
 
 # ============================================================
@@ -355,25 +372,60 @@ class TestFileService:
         service = FileService()
         assert service.file_handler is not None
 
-    @pytest.mark.skip(reason="FileService methods need proper mock setup")
-    def test_scan_directory(self):
-        """Test scanning directory - skipped."""
-        pass
+    @patch("srt_translator.services.factory.FileHandler")
+    @patch("srt_translator.services.factory.ConfigManager")
+    def test_scan_directory(self, mock_config, mock_file):
+        """Test scanning directory."""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_handler = MagicMock()
+        mock_handler.scan_directory.return_value = ["a.srt", "b.srt"]
+        mock_file.return_value = mock_handler
 
-    @pytest.mark.skip(reason="FileService methods need proper mock setup")
-    def test_get_subtitle_info(self):
-        """Test getting subtitle info - skipped."""
-        pass
+        service = FileService()
 
-    @pytest.mark.skip(reason="FileService methods need proper mock setup")
-    def test_set_batch_settings(self):
-        """Test setting batch settings - skipped."""
-        pass
+        assert service.scan_directory("/tmp/subtitles", recursive=False) == ["a.srt", "b.srt"]
+        mock_handler.scan_directory.assert_called_once_with("/tmp/subtitles", False)
 
-    @pytest.mark.skip(reason="FileService methods need proper mock setup")
-    def test_get_batch_settings(self):
-        """Test getting batch settings - skipped."""
-        pass
+    @patch("srt_translator.services.factory.FileHandler")
+    @patch("srt_translator.services.factory.ConfigManager")
+    def test_get_subtitle_info(self, mock_config, mock_file):
+        """Test getting subtitle info."""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_handler = MagicMock()
+        mock_handler.get_subtitle_info.return_value = {"格式": "srt"}
+        mock_file.return_value = mock_handler
+
+        service = FileService()
+
+        assert service.get_subtitle_info("episode01.srt", force_refresh=True) == {"格式": "srt"}
+        mock_handler.get_subtitle_info.assert_called_once_with("episode01.srt", True)
+
+    @patch("srt_translator.services.factory.FileHandler")
+    @patch("srt_translator.services.factory.ConfigManager")
+    def test_set_batch_settings(self, mock_config, mock_file):
+        """Test setting batch settings."""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_handler = MagicMock()
+        mock_file.return_value = mock_handler
+
+        service = FileService()
+        settings = {"preserve_folder_structure": False}
+        service.set_batch_settings(settings)
+
+        mock_handler.set_batch_settings.assert_called_once_with(settings)
+
+    @patch("srt_translator.services.factory.FileHandler")
+    @patch("srt_translator.services.factory.ConfigManager")
+    def test_get_batch_settings(self, mock_config, mock_file):
+        """Test getting batch settings."""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_handler = MagicMock()
+        mock_handler.batch_settings = {"output_directory": "dist"}
+        mock_file.return_value = mock_handler
+
+        service = FileService()
+
+        assert service.get_batch_settings() == {"output_directory": "dist"}
 
 
 # ============================================================
@@ -414,15 +466,43 @@ class TestModelService:
 
         assert service.api_keys.get("google") == "test-google-key"
 
-    @pytest.mark.skip(reason="ModelService.get_available_models is async")
-    def test_get_available_models(self):
-        """Test getting available models - skipped (async method)."""
-        pass
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.ConfigManager")
+    async def test_get_available_models(self, mock_config, mock_model):
+        """Test getting available models."""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_model_instance = MagicMock()
+        mock_model_instance.get_model_list_async = AsyncMock(
+            return_value=[SimpleNamespace(id="gpt-4o-mini"), SimpleNamespace(id="gpt-4o")]
+        )
+        mock_model_instance._close_async_session = AsyncMock()
+        mock_model.return_value = mock_model_instance
 
-    @pytest.mark.skip(reason="ModelService methods need proper mock setup")
-    def test_get_model_info(self):
-        """Test getting model info - skipped."""
-        pass
+        service = ModelService()
+        service.api_keys["openai"] = "sk-test"
+
+        models = await service.get_available_models("openai")
+
+        assert models == ["gpt-4o-mini", "gpt-4o"]
+        mock_model_instance.get_model_list_async.assert_awaited_once_with("openai", "sk-test")
+
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.ConfigManager")
+    def test_get_model_info(self, mock_config, mock_model):
+        """Test getting model info."""
+        mock_config.get_instance.return_value = MagicMock()
+        mock_model_instance = MagicMock()
+        mock_model_instance.get_model_info.return_value = {"provider": "google", "id": "gemini-2.5-flash"}
+        mock_model.return_value = mock_model_instance
+
+        service = ModelService()
+
+        assert service.get_model_info("gemini-2.5-flash", "google") == {
+            "provider": "google",
+            "id": "gemini-2.5-flash",
+        }
+        mock_model_instance.get_model_info.assert_called_once_with("gemini-2.5-flash", "google")
 
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.ConfigManager")

@@ -46,10 +46,10 @@
 
 ## 階段 4：清理高訊號的 skipped tests，補回目前行為的測試保護
 
-- [ ] 優先處理 `tests/unit/services/test_factory.py` 中與 `ModelService` / `FileService` 直接相關的 skipped tests
-- [ ] 補上 async `ModelService.get_available_models()` 的正式測試
-- [ ] 移除已可穩定測試的 skip 佔位
-- [ ] 保留仍需大型初始化的測試，但將原因收斂到真正無法解決者
+- [x] 優先處理 `tests/unit/services/test_factory.py` 中與 `ModelService` / `FileService` 直接相關的 skipped tests
+- [x] 補上 async `ModelService.get_available_models()` 的正式測試
+- [x] 移除已可穩定測試的 skip 佔位
+- [x] 保留仍需大型初始化的測試，但將原因收斂到真正無法解決者
 
 驗證：
 
