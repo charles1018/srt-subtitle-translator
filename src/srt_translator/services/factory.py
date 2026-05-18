@@ -1810,29 +1810,6 @@ class FileService:
         """
         return self.file_handler.extract_subtitle(video_path, callback)
 
-    def load_api_key(self, file_path: str = "openapi_api_key.txt") -> str:
-        """載入API金鑰
-
-        參數:
-            file_path: API金鑰檔案路徑
-
-        回傳:
-            API金鑰
-        """
-        return self.file_handler.load_api_key(file_path)
-
-    def save_api_key(self, api_key: str, file_path: str = "openapi_api_key.txt") -> bool:
-        """儲存API金鑰
-
-        參數:
-            api_key: API金鑰
-            file_path: API金鑰檔案路徑
-
-        回傳:
-            是否儲存成功
-        """
-        return self.file_handler.save_api_key(api_key, file_path)
-
     def handle_drop(self, event: Any) -> list[str]:
         """處理檔案拖放事件
 

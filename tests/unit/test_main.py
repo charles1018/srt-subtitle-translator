@@ -5,6 +5,31 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from srt_translator.__main__ import App
 
 
+def test_init_services_does_not_require_legacy_file_api_key_loader():
+    """初始化服務時不應再依賴 FileService 的舊 OpenAI-only key loader。"""
+    app = App.__new__(App)
+    file_service = MagicMock(spec=[])
+    model_service = MagicMock()
+    translation_service = MagicMock()
+    cache_service = MagicMock()
+
+    with (
+        patch.object(app, "_ensure_directories"),
+        patch("srt_translator.__main__.ServiceFactory.get_file_service", return_value=file_service),
+        patch("srt_translator.__main__.ServiceFactory.get_model_service", return_value=model_service),
+        patch("srt_translator.__main__.ServiceFactory.get_translation_service", return_value=translation_service),
+        patch("srt_translator.__main__.ServiceFactory.get_cache_service", return_value=cache_service),
+        patch("srt_translator.__main__.TranslationTaskManager", return_value=MagicMock()),
+        patch("srt_translator.__main__.ConfigManager.get_instance", side_effect=[MagicMock(), MagicMock()]),
+    ):
+        app._init_services()
+
+    assert app.file_service is file_service
+    assert app.model_service is model_service
+    assert app.translation_service is translation_service
+    assert app.cache_service is cache_service
+
+
 def test_validate_translation_request_for_ollama_includes_configured_url():
     """Ollama 預檢失敗時，應回報目前設定的服務位址。"""
     app = App.__new__(App)

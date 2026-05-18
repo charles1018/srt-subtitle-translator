@@ -10,10 +10,10 @@
 
 ## 階段 1：修正 repo 治理指令與當前 reality 不一致
 
-- [ ] 更新 `AGENTS.md` 的 Current Phase Focus
-- [ ] 移除已刪除的 OpenRouter plan 路徑與過時 provider 現況描述
-- [ ] 將 provider reality 改成與目前 `src/`、`README.md`、`CHANGELOG.md` 一致
-- [ ] 檢查 `docs/` 清單是否仍引用不存在的檔案
+- [x] 更新 `AGENTS.md` 的 Current Phase Focus
+- [x] 移除已刪除的 OpenRouter plan 路徑與過時 provider 現況描述
+- [x] 將 provider reality 改成與目前 `src/`、`README.md`、`CHANGELOG.md` 一致
+- [x] 檢查 `docs/` 清單是否仍引用不存在的檔案
 
 驗證：
 
@@ -22,10 +22,10 @@
 
 ## 階段 2：收斂 API 金鑰載入入口，拔除舊 OpenAI-only 路徑
 
-- [ ] 移除 `App._load_api_keys()` 對 `FileService.load_api_key()` 的舊依賴
-- [ ] 移除 `FileService` 與 `FileHandler` 中僅支援 OpenAI 的舊 key loading / saving 介面
-- [ ] 確保 GUI / runtime 僅透過 `ModelService` / `ModelManager` 的 provider-aware 路徑處理金鑰
-- [ ] 更新或新增對應單元測試
+- [x] 移除 `App._load_api_keys()` 對 `FileService.load_api_key()` 的舊依賴
+- [x] 移除 `FileService` 與 `FileHandler` 中僅支援 OpenAI 的舊 key loading / saving 介面
+- [x] 確保 GUI / runtime 僅透過 `ModelService` / `ModelManager` 的 provider-aware 路徑處理金鑰
+- [x] 更新或新增對應單元測試
 
 驗證：
 

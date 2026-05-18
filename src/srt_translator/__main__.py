@@ -81,22 +81,12 @@ class App:
         self.user_config = ConfigManager.get_instance("user")
         self.app_config = ConfigManager.get_instance("app")
 
-        # 載入 API 金鑰
-        self._load_api_keys()
-
     def _ensure_directories(self) -> None:
         """確保必要的目錄存在"""
         directories = ["data", "data/checkpoints", "config", "logs", "data/terms_dictionaries"]
 
         for directory in directories:
             os.makedirs(directory, exist_ok=True)
-
-    def _load_api_keys(self) -> None:
-        """載入 API 金鑰"""
-        # 載入 OpenAI API 金鑰
-        openai_key = self.file_service.load_api_key()
-        if not openai_key:
-            logger.warning("未找到 OpenAI API 金鑰或檔案為空，OpenAI 模式可能不可用")
 
     def _init_gui(self) -> None:
         """初始化圖形介面"""
