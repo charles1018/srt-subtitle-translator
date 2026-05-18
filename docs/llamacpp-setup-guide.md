@@ -384,7 +384,7 @@ llama-server -m model.gguf --reasoning-format deepseek
 
 > **注意**：Qwen3.5 的架構（Gated DeltaNet 混合注意力）與 Qwen3（標準 Transformer）完全不同，因此官方推薦的採樣參數差異很大。本專案會根據模型名稱自動偵測 Qwen3 或 Qwen3.5 並套用對應的 profile。
 
-本專案在 `llamacpp` runtime 還會同時固定 `cache_prompt=true`、`seed=42`，且用 `response_format=json_object` 將輸出限制為 JSON 格式。若你使用其他 OpenAI 相容客戶端，也建議比照加入。
+本專案在 `llamacpp` runtime 還會同時固定 `cache_prompt=true`、`seed=42`，並優先用 `response_format=json_schema` 將輸出限制為只含 `translation` 欄位的結構化 JSON。若你使用其他 OpenAI 相容客戶端，也建議比照加入。
 
 ### 穩定模式與吞吐模式
 

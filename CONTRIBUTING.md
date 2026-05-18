@@ -183,9 +183,9 @@ uv run pytest --cov=src/srt_translator --cov-report=html
 ### 建立分支
 
 ```bash
-# 確保您的 master 分支是最新的
-git checkout master
-git pull upstream master
+# 確保您的 main 分支是最新的
+git checkout main
+git pull upstream main
 
 # 建立功能分支
 git checkout -b feature/your-feature-name
@@ -271,7 +271,7 @@ from typing import List, Optional, Dict, Any
 def get_translation(
     text: str,
     context: List[str],
-    model: str = "gpt-3.5-turbo"
+    model: str = "gpt-4o-mini"
 ) -> Optional[str]:
     """獲取翻譯結果
 
@@ -385,14 +385,14 @@ async def test_translation_integration():
         "Hello",
         [],
         "openai",
-        "gpt-3.5-turbo"
+        "gpt-4o-mini"
     )
 
     # 驗證結果被快取
     cached = cache_service.get_cached_translation(
         "Hello",
         [],
-        "gpt-3.5-turbo"
+        "gpt-4o-mini"
     )
 
     assert cached == result
@@ -499,7 +499,7 @@ Fixes #456
 - [ ] 新增了必要的測試
 - [ ] 更新了相關文檔
 - [ ] 提交訊息清晰且符合規範
-- [ ] 分支基於最新的 master
+- [ ] 分支基於最新的 main
 
 ### 建立 Pull Request
 
