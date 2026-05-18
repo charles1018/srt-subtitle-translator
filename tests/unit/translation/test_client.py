@@ -1138,11 +1138,37 @@ class TestTranslationClientAsync:
             lookup_source="translation_client_store",
         )
 
-    @pytest.mark.skip(reason="Complex async mock setup needed")
     @pytest.mark.asyncio
-    async def test_translate_with_ollama(self):
-        """Test translation with Ollama API - skipped."""
-        pass
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    async def test_translate_with_ollama(self, mock_prompt, mock_cache):
+        """Test translation with standard Ollama /api/chat response."""
+        mock_cache_instance = MagicMock()
+        mock_cache.return_value = mock_cache_instance
+
+        mock_resp = AsyncMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json = AsyncMock(return_value={"message": {"role": "assistant", "content": " 翻譯結果 "}})
+
+        mock_context_manager = MagicMock()
+        mock_context_manager.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_context_manager.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = MagicMock()
+        mock_session.post.return_value = mock_context_manager
+
+        client = TranslationClient(llm_type="ollama")
+        client.session = mock_session
+
+        result = await client._translate_with_ollama(
+            [{"role": "user", "content": "Hello"}],
+            "llama3.2",
+        )
+
+        assert result == "翻譯結果"
+        mock_session.post.assert_called_once()
+        assert mock_session.post.call_args.args[0] == "http://localhost:11434/api/chat"
+        assert mock_session.post.call_args.kwargs["json"]["model"] == "llama3.2"
 
     @pytest.mark.asyncio
     @patch("srt_translator.translation.client.CacheManager")
@@ -1733,11 +1759,29 @@ class TestTranslationClientMetrics:
 class TestTranslationClientApiAvailability:
     """Tests for API availability check."""
 
-    @pytest.mark.skip(reason="Complex async mock setup needed")
     @pytest.mark.asyncio
-    async def test_is_api_available_ollama_success(self):
-        """Test Ollama API availability check success - skipped."""
-        pass
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    async def test_is_api_available_ollama_success(self, mock_prompt, mock_cache):
+        """Test Ollama API availability check success."""
+        mock_cache_instance = MagicMock()
+        mock_cache.return_value = mock_cache_instance
+
+        mock_response = MagicMock(status=200)
+        mock_context_manager = MagicMock()
+        mock_context_manager.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_context_manager.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_context_manager
+
+        client = TranslationClient(llm_type="ollama")
+        client.session = mock_session
+
+        result = await client.is_api_available()
+
+        assert result is True
+        mock_session.get.assert_called_once_with("http://localhost:11434/api/tags", timeout=5)
 
     @pytest.mark.asyncio
     @patch("srt_translator.translation.client.CacheManager")
