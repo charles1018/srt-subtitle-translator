@@ -133,7 +133,7 @@
 
 ### 前置需求
 
-- Python 3.8+
+- Python 3.10+
 - uv 或 pip
 - Git
 

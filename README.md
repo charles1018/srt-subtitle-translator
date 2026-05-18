@@ -353,9 +353,9 @@ uv run mypy src/srt_translator
 
 ## 📊 測試狀態
 
-本專案擁有完整的測試體系。以目前 `uv run pytest --collect-only -q` 的結果為準：
+本專案擁有完整的測試體系。以目前非 GUI 基線為準：
 
-- **可收集測試數**：841 個
+- **非 GUI 基線**：962 passed / 0 skipped / 0 warnings
 - **測試類型**：unit / integration / e2e / gui marker
 - **覆蓋率報告**：`pytest` 預設會產生 `htmlcov/`
 
