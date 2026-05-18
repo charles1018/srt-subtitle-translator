@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from srt_translator.core.config import ConfigManager, get_config, set_config
+from srt_translator.version import APP_VERSION
 
 # ============================================================
 # 備份與還原功能測試
@@ -531,7 +532,7 @@ class TestConfigErrorHandlingExtended:
 
         # 應該創建預設配置
         version = config_manager.get_value("version")
-        assert version == "1.0.0"
+        assert version == APP_VERSION
 
 
 # ============================================================

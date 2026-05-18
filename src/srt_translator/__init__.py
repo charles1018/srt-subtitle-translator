@@ -3,7 +3,9 @@
 基於 Python 的 SRT 字幕檔自動翻譯工具，支援 Ollama、OpenAI、Google、llama.cpp 多種 AI 引擎。
 """
 
-__version__ = "1.0.0"
+from srt_translator.version import get_app_version
+
+__version__ = get_app_version()
 __author__ = "charles1018"
 __email__ = "chmadux8@gmail.com"
 

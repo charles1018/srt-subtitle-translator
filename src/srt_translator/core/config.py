@@ -9,6 +9,7 @@ from typing import Any, ClassVar
 
 from srt_translator.utils.errors import ConfigError
 from srt_translator.utils.logging_config import setup_logger
+from srt_translator.version import get_app_version
 
 # 使用集中化日誌配置
 logger = setup_logger(__name__, "config_manager.log")
@@ -120,9 +121,10 @@ class ConfigManager:
         回傳:
             包含各類型預設配置的字典
         """
+        app_version = get_app_version()
         return {
             "app": {
-                "version": "1.2.0",
+                "version": app_version,
                 "debug_mode": False,
                 "data_dir": "data",
                 "checkpoints_dir": "data/checkpoints",
@@ -1025,7 +1027,7 @@ if __name__ == "__main__":
     user_config = ConfigManager.get_instance("user")
 
     # 設置並獲取配置
-    config_manager.set_value("version", "1.2.0")
+    config_manager.set_value("version", get_app_version())
     print(f"應用程式版本: {config_manager.get_value('version')}")
 
     # 設置並獲取巢狀配置

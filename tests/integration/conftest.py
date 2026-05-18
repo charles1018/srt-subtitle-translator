@@ -12,6 +12,7 @@ from srt_translator.core.cache import CacheManager
 from srt_translator.core.config import ConfigManager
 from srt_translator.core.models import ModelManager
 from srt_translator.core.prompt import PromptManager
+from srt_translator.version import APP_VERSION
 
 
 @pytest.fixture(scope="function")
@@ -35,7 +36,7 @@ def integration_env(temp_dir):
     # 2. 建立測試配置檔案
     test_config = {
         "app": {
-            "version": "1.0.0",
+            "version": APP_VERSION,
             "debug_mode": True,
             "log_level": "INFO",
         },

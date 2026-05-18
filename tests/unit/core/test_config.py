@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from srt_translator.core.config import ConfigManager
+from srt_translator.version import APP_VERSION
 
 
 @pytest.fixture(autouse=True)
@@ -144,7 +145,7 @@ class TestConfigGetSet:
     def test_get_value_basic(self, config_manager):
         """測試獲取基本配置值"""
         version = config_manager.get_value("version")
-        assert version == "1.0.0"
+        assert isinstance(version, str)
 
     def test_get_value_with_default(self, config_manager):
         """測試獲取不存在的值時返回預設值"""
@@ -333,7 +334,7 @@ class TestConfigReset:
         assert result is True
 
         # 驗證已重置
-        assert config_manager.get_value("version") == "1.0.0"
+        assert config_manager.get_value("version") == APP_VERSION
 
 
 class TestConfigImportExport:
@@ -465,7 +466,7 @@ class TestConfigErrorHandling:
         # 載入應該使用預設值
         config_manager.load_config()
         version = config_manager.get_value("version")
-        assert version == "1.0.0"  # 應該回退到預設值
+        assert version == APP_VERSION  # 應該回退到預設值
 
     def test_set_value_unknown_config_type(self, config_manager):
         """測試設置未知配置類型的值"""

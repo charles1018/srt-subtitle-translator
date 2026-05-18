@@ -8,4 +8,6 @@ Test Structure:
     - fixtures/: Shared test fixtures and data
 """
 
-__version__ = "1.0.0"
+from srt_translator.version import APP_VERSION
+
+__version__ = APP_VERSION

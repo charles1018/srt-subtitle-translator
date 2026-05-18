@@ -234,6 +234,15 @@ def test_cmd_prompt_import_runs_prompt_manager(capsys) -> None:
     assert capsys.readouterr().out.strip() == "已匯入提示詞: /tmp/prompts.json"
 
 
+def test_cmd_version_uses_centralized_version_source(capsys) -> None:
+    """version 子命令應使用集中版本來源。"""
+    with patch.object(cli, "get_app_version", return_value="9.9.9"):
+        result = cli.cmd_version()
+
+    assert result == 0
+    assert capsys.readouterr().out.strip() == "SRT Subtitle Translator v9.9.9"
+
+
 def test_cmd_qa_returns_zero_and_prints_summary(capsys) -> None:
     """qa 成功時應輸出摘要並回傳 0。"""
     parser = cli.create_parser()

@@ -13,6 +13,7 @@ from srt_translator.utils import format_exception
 
 # 嘗試匯入拖放功能模組（含 X11/XCB 相容性檢測）
 from srt_translator.utils.tkdnd_check import TKDND_AVAILABLE
+from srt_translator.version import get_app_version
 
 if TKDND_AVAILABLE:
     from tkinterdnd2 import DND_FILES, TkinterDnD
@@ -1587,8 +1588,8 @@ class GUIComponents:
 
     def show_about(self):
         """顯示關於資訊"""
-        about_text = """
-SRT字幕翻譯器 V1.0.0
+        about_text = f"""
+SRT字幕翻譯器 V{get_app_version()}
 
 這是一個使用大型語言模型(LLM)的字幕翻譯工具，支援多種語言和翻譯風格。
 可以使用本地模型(Ollama)或OpenAI API進行翻譯。
@@ -1957,7 +1958,7 @@ if __name__ == "__main__":
         gui.setup()
 
         # 設置標題顯示版本
-        version = get_config("app", "version", "1.0.0")
+        version = get_config("app", "version", get_app_version())
         root.title(f"SRT 字幕翻譯器 v{version}")
 
         # 執行主迴圈

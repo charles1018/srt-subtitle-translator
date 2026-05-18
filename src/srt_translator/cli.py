@@ -11,6 +11,7 @@ from srt_translator.core.config import ConfigManager
 from srt_translator.core.prompt import PromptManager
 from srt_translator.services.factory import ServiceFactory
 from srt_translator.utils import format_exception
+from srt_translator.version import get_app_version
 
 # 設定日誌
 logging.basicConfig(
@@ -793,14 +794,7 @@ def cmd_prompt(args: argparse.Namespace) -> int:
 
 def cmd_version() -> int:
     """顯示版本資訊"""
-    try:
-        from importlib.metadata import version
-
-        ver = version("srt-subtitle-translator")
-    except Exception:
-        ver = "unknown"
-
-    print(f"SRT Subtitle Translator v{ver}")
+    print(f"SRT Subtitle Translator v{get_app_version()}")
     return 0
 
 
