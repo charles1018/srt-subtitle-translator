@@ -643,15 +643,22 @@ class TranslationClient:
         return normalized.split("@", maxsplit=1)[0]
 
     _QWEN_UD_FAMILIES: ClassVar[frozenset[str]] = frozenset({"qwen3.5", "qwen3.6"})
+    _QWEN_UD_ALIAS_KEYWORDS: ClassVar[tuple[str, ...]] = (
+        "heretic",
+        "omnimerge",
+        "bartowski",
+    )
 
     def _is_qwen_ud_model(self, model_name: str) -> bool:
-        """判斷是否為 Qwen3.5 / Qwen3.6 的 UD 變體"""
+        """判斷是否為 Qwen3.5 / Qwen3.6 的 UD 變體（含社群對照組）"""
         if self._detect_ollama_model_family(model_name) not in self._QWEN_UD_FAMILIES:
             return False
 
         normalized = self._normalize_model_name(model_name)
         tokens = [token for token in re.split(r"[^a-z0-9]+", normalized) if token]
-        return "ud" in tokens
+        if "ud" in tokens:
+            return True
+        return any(keyword in normalized for keyword in self._QWEN_UD_ALIAS_KEYWORDS)
 
     @staticmethod
     def _dedupe_preserve_order(values: list[str]) -> list[str]:
