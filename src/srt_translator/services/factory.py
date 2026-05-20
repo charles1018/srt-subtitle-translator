@@ -27,6 +27,18 @@ from srt_translator.utils.logging_config import setup_logger
 # 使用集中化日誌配置
 logger = setup_logger(__name__, "services.log")
 
+_OPENCC_S2TW_CONVERTER: Any = None
+
+
+def _get_s2tw_converter() -> Any:
+    """惰性建立 OpenCC s2twp 轉換器（簡中 → 台灣繁中，含詞彙轉換）。冪等於繁中/非中文輸入。"""
+    global _OPENCC_S2TW_CONVERTER
+    if _OPENCC_S2TW_CONVERTER is None:
+        from opencc import OpenCC
+
+        _OPENCC_S2TW_CONVERTER = OpenCC("s2twp")
+    return _OPENCC_S2TW_CONVERTER
+
 
 # 定義服務類型變數
 T = TypeVar("T")
@@ -1122,6 +1134,12 @@ class TranslationService:
         """
         if not translated_text:
             return translated_text
+
+        # 防線：以 OpenCC s2twp 將輸出統一為台灣繁體（簡轉繁；對純繁中/非中文冪等）
+        try:
+            translated_text = _get_s2tw_converter().convert(translated_text)
+        except Exception as exc:
+            logger.debug(f"OpenCC s2twp 轉換失敗，沿用原始輸出: {exc}")
 
         source_aware_text = self._normalize_source_aware_subtitle_phrases(original_text, translated_text)
         if source_aware_text != translated_text:

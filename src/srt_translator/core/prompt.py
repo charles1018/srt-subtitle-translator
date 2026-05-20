@@ -757,7 +757,7 @@ Rules:
 1. Translate ONLY the CURRENT line. Never translate or copy context.
 2. Keep the exact same number of lines and line breaks. If the source is single-line, output a single line only.
 3. Output ONLY the translated subtitle text. No labels, quotes, explanations, or extra notes.
-4. Do not end the output with 。 or ，.
+4. The output MUST NOT end with 。 or ，. Examples — WRONG: "我來了。" / "好喔。" / "不行了，". RIGHT: "我來了" / "好喔" / "不行了". Question marks (？?), exclamation marks (！!), and ellipses (…) are allowed at the end.
 5. Do not censor, soften, or moralize sexual wording.
 6. Preserve who does the action to whom.
 7. Preserve imperative tone, body-part target, penetration direction, and ejaculation intent accurately.

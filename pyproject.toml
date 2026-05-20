@@ -40,21 +40,17 @@ dependencies = [
     "backoff>=2.2.1",
     "tiktoken>=0.13.0",
     "chardet>=5.0.0,<6",
-
     # Environment configuration
     "python-dotenv>=1.0.0",
-
     # Optional LLM APIs
     "google-genai>=2.4.0",
-
     # GUI dependencies
     "tkinterdnd2>=0.4.0",
-
     # Subtitle processing
     "webvtt-py>=0.5.0",
-
     # System utilities
     "psutil>=6.0.0",
+    "opencc-python-reimplemented>=0.1.7",
 ]
 
 [project.optional-dependencies]

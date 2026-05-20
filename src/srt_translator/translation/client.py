@@ -1721,10 +1721,13 @@ class TranslationClient:
                 "messages": messages,
                 "temperature": options.get("temperature", 0.1),
                 "max_tokens": options.get("max_tokens", 256),
-                "response_format": self.LLAMACPP_TRANSLATION_RESPONSE_FORMAT,
                 "timeout": 600,
                 "extra_body": profile.get("extra_body", {}),
             }
+            # Qwen3.6 在 schema-constrained JSON 模式下推理速度近乎腰斬，
+            # 且品質劣化（句尾標點違規、反義、亂譯）。其他家族維持 JSON schema。
+            if profile.get("family") != "qwen3.6":
+                openai_params["response_format"] = self.LLAMACPP_TRANSLATION_RESPONSE_FORMAT
             # 轉發 top_p 參數（如果有設定）
             if "top_p" in options:
                 openai_params["top_p"] = options["top_p"]

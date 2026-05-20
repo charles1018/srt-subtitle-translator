@@ -27,6 +27,25 @@ from srt_translator.utils import (
 # 使用集中化日誌配置
 logger = setup_logger(__name__, "translation_manager.log")
 
+_OPENCC_S2TW_CONVERTER: Any = None
+
+
+def _get_s2tw_converter() -> Any:
+    """惰性建立 OpenCC s2tw 轉換器（簡中 → 台灣繁中，含詞彙轉換）。"""
+    global _OPENCC_S2TW_CONVERTER
+    if _OPENCC_S2TW_CONVERTER is None:
+        from opencc import OpenCC
+
+        _OPENCC_S2TW_CONVERTER = OpenCC("s2twp")
+    return _OPENCC_S2TW_CONVERTER
+
+
+def _is_traditional_chinese_target(target_lang: str) -> bool:
+    """判斷目標語言是否屬於繁體中文家族（觸發 OpenCC s2tw 後處理）。"""
+    if not target_lang:
+        return False
+    return "繁體" in target_lang or target_lang.lower() in {"zh-tw", "zh_tw", "zh-hant", "traditional chinese"}
+
 
 @dataclass
 class TranslationStats:
@@ -184,6 +203,13 @@ class TranslationManager:
         回傳:
             後處理後的翻譯文字
         """
+        # 防線：若目標為繁體中文且輸出含簡體字，先以 OpenCC s2twp 轉成台灣繁體
+        if _is_traditional_chinese_target(getattr(self, "target_lang", "")):
+            try:
+                translated_text = _get_s2tw_converter().convert(translated_text)
+            except Exception as exc:
+                logger.debug(f"OpenCC s2twp 轉換失敗，沿用原始輸出: {exc}")
+
         # 檢查是否需要保留原始標點符號
         preserve_punctuation = get_config("user", "preserve_punctuation", True)
         if preserve_punctuation:
