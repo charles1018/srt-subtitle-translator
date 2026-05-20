@@ -731,26 +731,26 @@ Each input line maps to exactly one output line — no exceptions.
             return ""
         return model_name.strip().lower().split("@", maxsplit=1)[0]
 
-    def _is_qwen35_family_model(self, model_name: str | None) -> bool:
-        """判斷是否為 Qwen3.5 家族模型"""
+    def _is_qwen_ud_family_model(self, model_name: str | None) -> bool:
+        """判斷是否為 Qwen3.5 / Qwen3.6 家族模型"""
         normalized = self._normalize_model_name(model_name)
-        return bool(re.search(r"qwen(?:[-_/\s]?3\.5|35)", normalized))
+        return bool(re.search(r"qwen(?:[-_/\s]?3\.[56]|3[56])", normalized))
 
-    def _is_qwen35_ud_model(self, model_name: str | None) -> bool:
-        """判斷是否為 qwen3.5-ud 類型模型"""
+    def _is_qwen_ud_model(self, model_name: str | None) -> bool:
+        """判斷是否為 Qwen3.5 / Qwen3.6 的 UD 變體"""
         normalized = self._normalize_model_name(model_name)
-        if not normalized or not self._is_qwen35_family_model(normalized):
+        if not normalized or not self._is_qwen_ud_family_model(normalized):
             return False
 
         tokens = [token for token in re.split(r"[^a-z0-9]+", normalized) if token]
         return "ud" in tokens
 
-    def _should_use_qwen35_ud_adult_prompt(self, llm_type: str, content_type: str, model_name: str | None) -> bool:
-        """判斷是否應使用 qwen3.5-ud 的成人字幕特化 prompt"""
-        return llm_type in {"ollama", "llamacpp"} and content_type == "adult" and self._is_qwen35_ud_model(model_name)
+    def _should_use_qwen_ud_adult_prompt(self, llm_type: str, content_type: str, model_name: str | None) -> bool:
+        """判斷是否應使用 Qwen UD 的成人字幕特化 prompt"""
+        return llm_type in {"ollama", "llamacpp"} and content_type == "adult" and self._is_qwen_ud_model(model_name)
 
-    def _get_qwen35_ud_adult_prompt(self) -> str:
-        """取得 qwen3.5-ud 專用的成人字幕短 prompt"""
+    def _get_qwen_ud_adult_prompt(self) -> str:
+        """取得 Qwen UD 專用的成人字幕短 prompt"""
         return """
 You translate Japanese adult subtitles into natural Taiwan Traditional Chinese.
 Rules:
@@ -788,7 +788,7 @@ Rules:
     ) -> str:
         """取得訊息結構策略版本，用於快取區分"""
         resolved_content_type = content_type or self.current_content_type
-        if self._should_use_qwen35_ud_adult_prompt(llm_type, resolved_content_type, model_name):
+        if self._should_use_qwen_ud_adult_prompt(llm_type, resolved_content_type, model_name):
             return "qwen35_ud_adult_compact_context_v3"
         return "default_structured_context_v1"
 
@@ -835,7 +835,7 @@ Rules:
     ) -> list[str]:
         """回傳實際用於 prompt 的壓縮後上下文列表。"""
         content_type = self.current_content_type
-        if not self._should_use_qwen35_ud_adult_prompt(llm_type, content_type, model_name):
+        if not self._should_use_qwen_ud_adult_prompt(llm_type, content_type, model_name):
             return context_texts
 
         context_before, context_after, resolved_index = self._split_context_texts(text, context_texts, current_index)
@@ -879,7 +879,7 @@ Rules:
         current_index: int | None = None,
     ) -> list[str] | None:
         """為 qwen3.5-ud 的短句建立較寬鬆的快取鍵上下文。"""
-        if not self._should_use_qwen35_ud_adult_prompt(llm_type, self.current_content_type, model_name):
+        if not self._should_use_qwen_ud_adult_prompt(llm_type, self.current_content_type, model_name):
             return None
         if not self._is_qwen35_ud_short_cache_candidate(text):
             return None
@@ -997,8 +997,8 @@ Rules:
         # 檢查是否有自訂提示詞
         if content_type in self.custom_prompts and llm_type in self.custom_prompts[content_type]:
             prompt = self.custom_prompts[content_type][llm_type]
-        elif self._should_use_qwen35_ud_adult_prompt(llm_type, content_type, model_name):
-            prompt = self._get_qwen35_ud_adult_prompt()
+        elif self._should_use_qwen_ud_adult_prompt(llm_type, content_type, model_name):
+            prompt = self._get_qwen_ud_adult_prompt()
         elif self._should_use_compact_prompt(llm_type):
             prompt = self._get_compact_prompt_text(content_type)
         else:
@@ -1085,8 +1085,8 @@ Rules:
             context_before = context_texts
             context_after = []
 
-        use_qwen35_ud_strategy = self._should_use_qwen35_ud_adult_prompt(llm_type, content_type, model_name)
-        if use_qwen35_ud_strategy:
+        use_qwen_ud_strategy = self._should_use_qwen_ud_adult_prompt(llm_type, content_type, model_name)
+        if use_qwen_ud_strategy:
             context_before, context_after = self._compact_qwen35_ud_context(text, context_before, context_after)
 
         # 檢測句子是否以連接詞結尾
@@ -1113,7 +1113,7 @@ Rules:
         )
 
         # 構建新格式的 user message
-        if use_qwen35_ud_strategy:
+        if use_qwen_ud_strategy:
             user_message = self._build_qwen35_ud_user_message(text, context_before, context_after)
         elif self._should_use_compact_prompt(llm_type):
             user_content_parts = ["CURRENT:", text]

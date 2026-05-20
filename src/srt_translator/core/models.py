@@ -350,6 +350,18 @@ class ModelManager:
                 tags=["free", "local", "chinese", "multilingual", "long-context"],
                 capabilities={"translation": 0.9, "multilingual": 0.88, "context_handling": 0.92, "chinese": 0.95},
             ),
+            "qwen3.6": ModelInfo(
+                id="qwen3.6",
+                provider="ollama",
+                name="Qwen 3.6",
+                description="Qwen 3.6 系列模型，沿用 3.5 hybrid 架構，預期翻譯品質再提升",
+                context_length=262144,
+                pricing="免費(本機執行)",
+                recommended_for="高品質中日英字幕翻譯與長上下文任務（待 benchmark 確認）",
+                parallel=1,
+                tags=["free", "local", "chinese", "multilingual", "long-context"],
+                capabilities={"translation": 0.92, "multilingual": 0.9, "context_handling": 0.92, "chinese": 0.95},
+            ),
             "qwen": ModelInfo(
                 id="qwen",
                 provider="ollama",
@@ -652,6 +664,8 @@ class ModelManager:
 
         normalized = " ".join(detail_parts).lower()
 
+        if re.search(r"qwen(?:[-_/\s]?3\.6|36)", normalized):
+            return "qwen3.6"
         if re.search(r"qwen(?:[-_/\s]?3\.5|35)", normalized):
             return "qwen3.5"
         if re.search(r"qwen[-_/\s]?3\b", normalized):
@@ -675,14 +689,18 @@ class ModelManager:
         parameter_size = str(details.get("parameter_size", "")).strip()
         quantization_level = str(details.get("quantization_level", "")).strip()
 
-        if family == "qwen3.5":
-            description = "Qwen 3.5 系列模型，對繁體中文與多語字幕翻譯表現較佳"
+        if family in {"qwen3.5", "qwen3.6"}:
+            label = "Qwen 3.6" if family == "qwen3.6" else "Qwen 3.5"
+            description = f"{label} 系列模型，對繁體中文與多語字幕翻譯表現較佳"
             if parameter_size:
                 description += f"（{parameter_size}）"
 
             tags = ["free", "local", "chinese", "multilingual", "long-context"]
             if quantization_level:
                 tags.append(quantization_level.lower())
+
+            translation_score = 0.92 if family == "qwen3.6" else 0.9
+            multilingual_score = 0.9 if family == "qwen3.6" else 0.88
 
             return ModelInfo(
                 id=model_id,
@@ -694,7 +712,12 @@ class ModelManager:
                 recommended_for="高品質中日英字幕翻譯與長上下文任務",
                 parallel=1,
                 tags=tags,
-                capabilities={"translation": 0.9, "multilingual": 0.88, "context_handling": 0.92, "chinese": 0.95},
+                capabilities={
+                    "translation": translation_score,
+                    "multilingual": multilingual_score,
+                    "context_handling": 0.92,
+                    "chinese": 0.95,
+                },
             )
 
         if family in {"qwen3", "qwen"}:

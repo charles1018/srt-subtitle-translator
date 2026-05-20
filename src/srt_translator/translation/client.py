@@ -312,6 +312,28 @@ class TranslationClient:
                 "num_predict": 96,
             },
         },
+        "qwen3.6": {
+            "keep_alive": "15m",
+            "batch_concurrency_limit": 1,
+            "options": {
+                "temperature": 0.7,
+                "top_p": 0.8,
+                "top_k": 20,
+                "min_p": 0.0,
+                "num_predict": 256,
+            },
+        },
+        "qwen3.6-ud": {
+            "keep_alive": "15m",
+            "batch_concurrency_limit": 1,
+            "options": {
+                "temperature": 0.7,
+                "top_p": 0.8,
+                "top_k": 20,
+                "min_p": 0.0,
+                "num_predict": 96,
+            },
+        },
         "gemma4": {
             "keep_alive": "15m",
             "batch_concurrency_limit": None,
@@ -367,6 +389,32 @@ class TranslationClient:
             },
         },
         "qwen3.5-ud": {
+            "batch_concurrency_limit": None,
+            "options": {
+                "temperature": 0.7,
+                "top_p": 0.8,
+                "max_tokens": 96,
+            },
+            "extra_body": {
+                "presence_penalty": 1.5,
+                "top_k": 20,
+                "min_p": 0.0,
+            },
+        },
+        "qwen3.6": {
+            "batch_concurrency_limit": None,
+            "options": {
+                "temperature": 0.7,
+                "top_p": 0.8,
+                "max_tokens": 256,
+            },
+            "extra_body": {
+                "presence_penalty": 1.5,
+                "top_k": 20,
+                "min_p": 0.0,
+            },
+        },
+        "qwen3.6-ud": {
             "batch_concurrency_limit": None,
             "options": {
                 "temperature": 0.7,
@@ -462,6 +510,7 @@ class TranslationClient:
             "openai": {"gpt-4": ["gpt-3.5-turbo"], "gpt-4-turbo": ["gpt-4", "gpt-3.5-turbo"], "gpt-3.5-turbo": []},
             "ollama": {
                 "llama3.2": ["qwen3", "gemma3"],
+                "qwen3.6": ["qwen3.5", "qwen3", "llama3.2", "gemma3"],
                 "qwen3.5": ["qwen3", "llama3.2", "gemma3"],
                 "qwen3": ["llama3.2", "gemma3"],
                 "gemma3": ["llama3.2", "qwen3"],
@@ -570,6 +619,8 @@ class TranslationClient:
         """根據模型名稱偵測 Ollama 模型家族"""
         normalized = self._normalize_model_name(model_name)
 
+        if re.search(r"qwen(?:[-_/\s]?3\.6|36)", normalized):
+            return "qwen3.6"
         if re.search(r"qwen(?:[-_/\s]?3\.5|35)", normalized):
             return "qwen3.5"
         if re.search(r"qwen[-_/\s]?3\b", normalized):
@@ -591,9 +642,11 @@ class TranslationClient:
         normalized = model_name.strip().lower()
         return normalized.split("@", maxsplit=1)[0]
 
-    def _is_qwen35_ud_model(self, model_name: str) -> bool:
-        """判斷是否為 qwen3.5-ud 變體"""
-        if self._detect_ollama_model_family(model_name) != "qwen3.5":
+    _QWEN_UD_FAMILIES: ClassVar[frozenset[str]] = frozenset({"qwen3.5", "qwen3.6"})
+
+    def _is_qwen_ud_model(self, model_name: str) -> bool:
+        """判斷是否為 Qwen3.5 / Qwen3.6 的 UD 變體"""
+        if self._detect_ollama_model_family(model_name) not in self._QWEN_UD_FAMILIES:
             return False
 
         normalized = self._normalize_model_name(model_name)
@@ -615,10 +668,13 @@ class TranslationClient:
 
         return deduped
 
-    def _get_qwen35_ud_fallback_candidates(self, model_name: str) -> list[str]:
-        """取得 qwen3.5-ud 的優先回退候選模型"""
-        if not self._is_qwen35_ud_model(model_name):
+    def _get_qwen_ud_fallback_candidates(self, model_name: str) -> list[str]:
+        """取得 Qwen3.5 / Qwen3.6 UD 變體的優先回退候選模型"""
+        if not self._is_qwen_ud_model(model_name):
             return []
+
+        family = self._detect_ollama_model_family(model_name)
+        base = f"{family}-uncensored"
 
         tag = ""
         if ":" in model_name:
@@ -626,16 +682,16 @@ class TranslationClient:
 
         candidates = []
         if tag:
-            candidates.append(f"qwen3.5-uncensored:{tag}")
+            candidates.append(f"{base}:{tag}")
 
-        candidates.extend(["qwen3.5-uncensored:latest", "qwen3.5-uncensored"])
+        candidates.extend([f"{base}:latest", base])
         candidates = [candidate for candidate in candidates if candidate != model_name]
         return self._dedupe_preserve_order(candidates)
 
     def _get_ollama_model_profile(self, model_name: str) -> dict[str, Any]:
         """取得 Ollama 模型的請求設定"""
         family = self._detect_ollama_model_family(model_name)
-        profile_key = "qwen3.5-ud" if self._is_qwen35_ud_model(model_name) else family
+        profile_key = f"{family}-ud" if self._is_qwen_ud_model(model_name) else family
         default_profile = self.OLLAMA_MODEL_PROFILES["default"]
         family_profile = self.OLLAMA_MODEL_PROFILES.get(profile_key, {})
 
@@ -656,7 +712,7 @@ class TranslationClient:
         family = self._detect_ollama_model_family(effective_name)
         if effective_name != model_name and family != "default":
             logger.debug(f"llama.cpp 模型家族從 server model_path 偵測為: {family}")
-        profile_key = "qwen3.5-ud" if self._is_qwen35_ud_model(effective_name) else family
+        profile_key = f"{family}-ud" if self._is_qwen_ud_model(effective_name) else family
         default_profile = self.LLAMACPP_MODEL_PROFILES["default"]
         family_profile = self.LLAMACPP_MODEL_PROFILES.get(profile_key, {})
 
@@ -817,12 +873,12 @@ class TranslationClient:
                 return self._llamacpp_resolved_model_name
         return model_name
 
-    def _should_apply_qwen35_ud_runtime_guards(self, model_name: str) -> bool:
-        """判斷是否應啟用 qwen3.5-ud 成人字幕的額外保護機制。"""
+    def _should_apply_qwen_ud_runtime_guards(self, model_name: str) -> bool:
+        """判斷是否應啟用 Qwen UD 成人字幕的額外保護機制。"""
         effective_name = self._resolve_llamacpp_model_name(model_name)
         return (
             self.llm_type in {"ollama", "llamacpp"}
-            and self._is_qwen35_ud_model(effective_name)
+            and self._is_qwen_ud_model(effective_name)
             and getattr(self.prompt_manager, "current_content_type", "") == "adult"
         )
 
@@ -854,7 +910,7 @@ class TranslationClient:
             protected_text = protected_text.replace(candidate, placeholder)
             protected_contexts = [context.replace(candidate, placeholder) for context in protected_contexts]
 
-        logger.debug("qwen3.5-ud 啟用日文名字保護: %s", restore_map)
+        logger.debug("Qwen UD 啟用日文名字保護: %s", restore_map)
         return protected_text, protected_contexts, restore_map
 
     @classmethod
@@ -1092,11 +1148,11 @@ class TranslationClient:
         provider_fallbacks = self.fallback_models.get(self.llm_type, {})
         fallback_options = provider_fallbacks.get(model_name, [])
 
-        if self.llm_type == "ollama" and self._is_qwen35_ud_model(model_name):
+        if self.llm_type == "ollama" and self._is_qwen_ud_model(model_name):
             family = self._detect_ollama_model_family(model_name)
-            qwen35_ud_fallbacks = self._get_qwen35_ud_fallback_candidates(model_name)
+            qwen_ud_fallbacks = self._get_qwen_ud_fallback_candidates(model_name)
             return self._dedupe_preserve_order(
-                qwen35_ud_fallbacks + fallback_options + provider_fallbacks.get(family, [])
+                qwen_ud_fallbacks + fallback_options + provider_fallbacks.get(family, [])
             )
 
         if fallback_options or self.llm_type != "ollama":
@@ -1474,7 +1530,7 @@ class TranslationClient:
         current_style = getattr(self.prompt_manager, "current_style", "standard") or "standard"
         prompt_version = self.prompt_manager.get_prompt_version(self.llm_type, model_name=model_name)
 
-        # 對 qwen3.5-ud，快取鍵使用壓縮後的上下文，確保與實際 prompt 一致
+        # 對 Qwen UD（3.5/3.6），快取鍵使用壓縮後的上下文，確保與實際 prompt 一致
         effective_context = self.prompt_manager.get_effective_cache_context_texts(
             text, context_texts, self.llm_type, model_name, current_index=current_index
         )
@@ -1502,7 +1558,7 @@ class TranslationClient:
         protected_text = text
         protected_contexts = context_texts
         protected_name_restore_map: dict[str, str] = {}
-        if self._should_apply_qwen35_ud_runtime_guards(model_name):
+        if self._should_apply_qwen_ud_runtime_guards(model_name):
             protected_text, protected_contexts, protected_name_restore_map = self._protect_japanese_names_in_inputs(
                 text,
                 context_texts,
