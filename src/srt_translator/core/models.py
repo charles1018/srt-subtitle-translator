@@ -467,6 +467,36 @@ class ModelManager:
             ),
         }
 
+        # llama.cpp 本地模型資訊（騰訊 Hunyuan-MT2 翻譯專用模型）
+        # id 刻意使用 GGUF 檔名，使未指定 -m 時推薦結果能觸發 hunyuan-mt prompt 策略；
+        # llama-server 會忽略 API 的 model 欄位、改用實際載入的模型，故名稱僅影響 prompt 策略。
+        llamacpp_models = {
+            "Hy-MT2-7B-Q4_K_M": ModelInfo(
+                id="Hy-MT2-7B-Q4_K_M",
+                provider="llamacpp",
+                name="Hunyuan-MT2 7B (Q4_K_M)",
+                description="騰訊 Hunyuan-MT2 翻譯專用模型 7B，支援 33 語言；8GB VRAM 可全載入，品質優於 1.8B",
+                context_length=262144,
+                pricing="免費(本機執行)",
+                recommended_for="高品質日英中字幕翻譯（本地首選，速度快、語意理解佳）",
+                parallel=3,
+                tags=["free", "local", "translation", "multilingual", "chinese"],
+                capabilities={"translation": 0.95, "multilingual": 0.93, "context_handling": 0.6, "chinese": 0.93},
+            ),
+            "Hy-MT2-1.8B-Q8_0": ModelInfo(
+                id="Hy-MT2-1.8B-Q8_0",
+                provider="llamacpp",
+                name="Hunyuan-MT2 1.8B (Q8_0)",
+                description="騰訊 Hunyuan-MT2 翻譯專用模型 1.8B，極輕量、速度最快；品質略遜 7B",
+                context_length=262144,
+                pricing="免費(本機執行)",
+                recommended_for="低資源環境的快速字幕翻譯",
+                parallel=3,
+                tags=["free", "local", "translation", "multilingual", "chinese", "fast"],
+                capabilities={"translation": 0.88, "multilingual": 0.86, "context_handling": 0.55, "chinese": 0.88},
+            ),
+        }
+
         # 合併所有模型資訊到資料庫
         for model in openai_models.values():
             self.model_database[f"openai:{model.id}"] = model
@@ -476,6 +506,9 @@ class ModelManager:
 
         for model in google_models.values():
             self.model_database[f"google:{model.id}"] = model
+
+        for model in llamacpp_models.values():
+            self.model_database[f"llamacpp:{model.id}"] = model
 
     def _get_session_lock(self) -> asyncio.Lock:
         """取得當前 event loop 可安全使用的 session lock。"""
