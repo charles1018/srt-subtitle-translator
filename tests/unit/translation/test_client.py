@@ -399,6 +399,24 @@ class TestTranslationClientHelpers:
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    def test_should_protect_japanese_names_hunyuan_all_content_types(self, mock_prompt, mock_cache):
+        """Hunyuan-MT 翻譯專用模型在所有內容類型都啟用日文名保護；Qwen UD 維持成人專屬。"""
+        client = TranslationClient(llm_type="llamacpp")
+
+        # Hunyuan：不論 content_type 都保護
+        client.prompt_manager.current_content_type = "general"
+        assert client._should_protect_japanese_names("Hy-MT2-7B-Q4_K_M") is True
+        client.prompt_manager.current_content_type = "adult"
+        assert client._should_protect_japanese_names("Hy-MT2-7B-Q4_K_M") is True
+
+        # Qwen UD：僅成人類型啟用（行為不變）
+        client.prompt_manager.current_content_type = "general"
+        assert client._should_protect_japanese_names("qwen3.6-ud:latest") is False
+        client.prompt_manager.current_content_type = "adult"
+        assert client._should_protect_japanese_names("qwen3.6-ud:latest") is True
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     def test_restore_japanese_names_with_placeholder_variants(self, mock_prompt, mock_cache):
         """Test placeholder restoration tolerates common bracket and bare-token variants."""
         client = TranslationClient(llm_type="ollama")

@@ -222,7 +222,8 @@ class TranslationClient:
     JAPANESE_NAME_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
         r"(?:(?<=^)|(?<=[、，。！？!?「」（）『』\s]))"
         r"(([ァ-ヶー]{2,10}|[ぁ-ゖーっ]{2,10})(?:ちゃん|くん|君|さん|さま|様|先輩|先生|氏))"
-        r"(?=$|[、，。！？!?」』\s]|の|が|を|に|へ|と|も|は)"
+        # 結尾邊界：句尾、標點、空白、格助詞，以及口語句中助詞（って/さ/ね/よ/な）
+        r"(?=$|[、，。！？!?」』\s]|の|が|を|に|へ|と|も|は|って|さ|ね|よ|な)"
     )
     JAPANESE_KANA_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[ぁ-ゖァ-ヺー]")
     JAPANESE_HIRAGANA_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[ぁ-ゖ]")
@@ -914,12 +915,21 @@ class TranslationClient:
                 return self._llamacpp_resolved_model_name
         return model_name
 
-    def _should_apply_qwen_ud_runtime_guards(self, model_name: str) -> bool:
-        """判斷是否應啟用 Qwen UD 成人字幕的額外保護機制。"""
+    def _should_protect_japanese_names(self, model_name: str) -> bool:
+        """判斷是否應啟用日文人名占位保護。
+
+        - Hunyuan-MT 翻譯專用模型傾向把帶敬稱的日文名字漢化（如 メアちゃん→梅雅），
+          所有內容類型都啟用保護。
+        - Qwen UD 維持原本的成人字幕專屬保護行為。
+        """
+        if self.llm_type not in {"ollama", "llamacpp"}:
+            return False
+
         effective_name = self._resolve_llamacpp_model_name(model_name)
+        if self._detect_ollama_model_family(effective_name) == "hunyuan-mt":
+            return True
         return (
-            self.llm_type in {"ollama", "llamacpp"}
-            and self._is_qwen_ud_model(effective_name)
+            self._is_qwen_ud_model(effective_name)
             and getattr(self.prompt_manager, "current_content_type", "") == "adult"
         )
 
@@ -1599,7 +1609,7 @@ class TranslationClient:
         protected_text = text
         protected_contexts = context_texts
         protected_name_restore_map: dict[str, str] = {}
-        if self._should_apply_qwen_ud_runtime_guards(model_name):
+        if self._should_protect_japanese_names(model_name):
             protected_text, protected_contexts, protected_name_restore_map = self._protect_japanese_names_in_inputs(
                 text,
                 context_texts,
