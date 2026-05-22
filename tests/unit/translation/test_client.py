@@ -570,6 +570,40 @@ class TestTranslationClientHelpers:
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
+    def test_detect_family_hunyuan_mt(self, mock_prompt, mock_cache):
+        """Test Hunyuan-MT2 翻譯專用模型的家族偵測（GGUF 檔名與 repo id）。"""
+        client = TranslationClient(llm_type="ollama")
+
+        assert client._detect_ollama_model_family("Hy-MT2-1.8B-Q8_0.gguf") == "hunyuan-mt"
+        assert client._detect_ollama_model_family("hunyuan-mt2") == "hunyuan-mt"
+        assert client._detect_ollama_model_family("tencent/Hy-MT2-1.8B-GGUF") == "hunyuan-mt"
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    def test_get_llamacpp_model_profile_hunyuan_mt(self, mock_prompt, mock_cache):
+        """Test Hunyuan-MT2 套用官方翻譯取樣參數，且清除 thinking 相關設定。"""
+        client = TranslationClient(llm_type="ollama")
+
+        profile = client._get_llamacpp_model_profile("Hy-MT2-1.8B-Q8_0.gguf")
+
+        assert profile["family"] == "hunyuan-mt"
+        assert profile["options"]["temperature"] == 0.7
+        assert profile["options"]["top_p"] == 0.6
+        assert profile["options"]["max_tokens"] == 128
+        assert profile["extra_body"]["repetition_penalty"] == 1.05
+        assert profile["extra_body"]["top_k"] == 20
+        assert profile["extra_body"]["reasoning_format"] == "none"
+        assert profile["extra_body"]["cache_prompt"] is True
+        assert profile["extra_body"]["seed"] == 42
+        # 無 thinking 模式：default 的思考相關設定須被清除
+        assert "reasoning_budget_tokens" not in profile["extra_body"]
+        assert "chat_template_kwargs" not in profile["extra_body"]
+        assert "presence_penalty" not in profile["extra_body"]
+        # 翻譯專用模型跳過 JSON schema 強制輸出
+        assert profile["family"] in client._LLAMACPP_SKIP_JSON_SCHEMA_FAMILIES
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
     def test_sanitize_ollama_translation_removes_think_and_chatml(self, mock_prompt, mock_cache):
         """Test cleaning residual thinking blocks and ChatML assistant markers."""
         client = TranslationClient(llm_type="ollama")

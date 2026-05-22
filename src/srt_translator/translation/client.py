@@ -344,6 +344,18 @@ class TranslationClient:
                 "num_predict": 256,
             },
         },
+        # Hunyuan-MT2（騰訊翻譯專用模型，1.8B/7B）官方建議取樣參數，無 thinking 模式
+        "hunyuan-mt": {
+            "keep_alive": "10m",
+            "batch_concurrency_limit": None,
+            "options": {
+                "temperature": 0.7,
+                "top_p": 0.6,
+                "top_k": 20,
+                "repeat_penalty": 1.05,
+                "num_predict": 128,
+            },
+        },
     }
     _LLAMACPP_FALLBACK_SLOTS: ClassVar[int] = 2
 
@@ -440,6 +452,24 @@ class TranslationClient:
                 "reasoning_format": "none",
                 # 目前新版 llama.cpp 已建議改用 reasoning=off，而非 template kwargs
                 "reasoning": "off",
+                "reasoning_budget_tokens": None,
+                "chat_template_kwargs": None,
+            },
+        },
+        # Hunyuan-MT2：翻譯專用模型，官方建議 temp 0.7 / top_p 0.6 / top_k 20 /
+        # repetition_penalty 1.05，且無 thinking 模式，需清除 default 的思考相關設定。
+        "hunyuan-mt": {
+            "batch_concurrency_limit": None,
+            "options": {
+                "temperature": 0.7,
+                "top_p": 0.6,
+                "max_tokens": 128,
+            },
+            "extra_body": {
+                "repetition_penalty": 1.05,
+                "top_k": 20,
+                "min_p": 0.0,
+                "reasoning_format": "none",
                 "reasoning_budget_tokens": None,
                 "chat_template_kwargs": None,
             },
@@ -619,6 +649,8 @@ class TranslationClient:
         """根據模型名稱偵測 Ollama 模型家族"""
         normalized = self._normalize_model_name(model_name)
 
+        if re.search(r"(?:hunyuan[-_/\s]?mt|hy[-_/\s]?mt)", normalized):
+            return "hunyuan-mt"
         if re.search(r"qwen(?:[-_/\s]?3\.6|36)", normalized):
             return "qwen3.6"
         if re.search(r"qwen(?:[-_/\s]?3\.5|35)", normalized):
@@ -643,6 +675,8 @@ class TranslationClient:
         return normalized.split("@", maxsplit=1)[0]
 
     _QWEN_UD_FAMILIES: ClassVar[frozenset[str]] = frozenset({"qwen3.5", "qwen3.6"})
+    # 跳過 llama.cpp JSON schema 強制輸出的家族（推理劣化或翻譯專用模型）
+    _LLAMACPP_SKIP_JSON_SCHEMA_FAMILIES: ClassVar[frozenset[str]] = frozenset({"qwen3.6", "hunyuan-mt"})
     _QWEN_UD_ALIAS_KEYWORDS: ClassVar[tuple[str, ...]] = (
         "heretic",
         "omnimerge",
@@ -1731,9 +1765,10 @@ class TranslationClient:
                 "timeout": 600,
                 "extra_body": profile.get("extra_body", {}),
             }
-            # Qwen3.6 在 schema-constrained JSON 模式下推理速度近乎腰斬，
-            # 且品質劣化（句尾標點違規、反義、亂譯）。其他家族維持 JSON schema。
-            if profile.get("family") != "qwen3.6":
+            # Qwen3.6 在 schema-constrained JSON 模式下推理速度近乎腰斬且品質劣化；
+            # Hunyuan-MT2 為翻譯專用模型，習慣直接輸出純文字翻譯，強制 JSON 反而劣化。
+            # 這些家族跳過 JSON schema，其餘維持結構化輸出。
+            if profile.get("family") not in self._LLAMACPP_SKIP_JSON_SCHEMA_FAMILIES:
                 openai_params["response_format"] = self.LLAMACPP_TRANSLATION_RESPONSE_FORMAT
             # 轉發 top_p 參數（如果有設定）
             if "top_p" in options:

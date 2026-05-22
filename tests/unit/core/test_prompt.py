@@ -547,6 +547,36 @@ class TestPromptManagerOptimizedMessage:
         assert messages[0]["role"] == "system"
         assert messages[1]["role"] == "user"
 
+    def test_hunyuan_mt_strategy_drops_context_and_markers(self, manager):
+        """Hunyuan-MT2 翻譯專用模型：只送單句、不含上下文標記，避免洩漏。"""
+        manager.current_content_type = "adult"
+        text = "上機嫌じゃん"
+        context = ["前文參考", text, "後文參考"]
+
+        messages = manager.get_optimized_message(
+            text, context, "llamacpp", "Hy-MT2-1.8B-Q8_0", current_index=1
+        )
+
+        assert len(messages) == 2
+        user_content = messages[1]["content"]
+        # 當前句必須出現，但上下文與結構化標記都不該出現
+        assert text in user_content
+        assert "前文參考" not in user_content
+        assert "後文參考" not in user_content
+        assert "[CURRENT]" not in user_content
+        assert "[CONTEXT_BEFORE]" not in user_content
+        assert "請只翻譯這一句" not in user_content
+        # system prompt 為 Hunyuan 簡化版
+        assert "professional subtitle translator" in messages[0]["content"]
+
+    def test_hunyuan_mt_strategy_signature_distinct(self, manager):
+        """Hunyuan-MT2 應有獨立的快取策略簽章。"""
+        sig = manager._get_message_strategy_signature("llamacpp", "adult", "Hy-MT2-1.8B-Q8_0")
+        assert sig == "hunyuan_mt_single_v1"
+        # 非 Hunyuan 模型維持原行為
+        other = manager._get_message_strategy_signature("llamacpp", "general", "qwen3.6-27b")
+        assert other != "hunyuan_mt_single_v1"
+
     def test_get_optimized_message_ollama_format(self, manager):
         """測試 Ollama 訊息格式"""
         text = "Test text"

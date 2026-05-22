@@ -766,6 +766,51 @@ Rules:
 10. Use concise Taiwan Traditional Chinese suitable for spoken subtitles.
 """.strip()
 
+    def _is_hunyuan_mt_model(self, model_name: str | None) -> bool:
+        """判斷是否為 Hunyuan-MT 系列翻譯專用模型"""
+        normalized = self._normalize_model_name(model_name)
+        return bool(re.search(r"(?:hunyuan[-_/\s]?mt|hy[-_/\s]?mt)", normalized))
+
+    def _should_use_hunyuan_mt_prompt(self, llm_type: str, model_name: str | None) -> bool:
+        """判斷是否應使用 Hunyuan-MT 翻譯專用模型的簡化 prompt 策略
+
+        Hunyuan-MT2 為翻譯專用模型，習慣官方「只輸出翻譯結果」的單句模板，
+        無法正確處理本專案的多段上下文標記（會把標記與上下文一併翻譯/洩漏）。
+        因此對所有 content_type 都改走簡化單句策略。
+        """
+        return llm_type in {"ollama", "llamacpp"} and self._is_hunyuan_mt_model(model_name)
+
+    def _get_hunyuan_mt_prompt(self, content_type: str) -> str:
+        """取得 Hunyuan-MT 翻譯專用模型的精簡 system prompt"""
+        rules = [
+            "You are a professional subtitle translator. Translate the user's text into natural "
+            "Taiwan Traditional Chinese (zh-TW).",
+            "Output ONLY the translated text. No labels, quotes, romaji, pinyin, explanations, or extra notes.",
+            "Translate ONLY the text given. Do not add, complete, or merge it with any other sentence.",
+            "Keep the same number of lines as the source. Use concise wording suitable for spoken subtitles.",
+            "Keep Japanese personal names and nicknames in their original Japanese form; do not romanize or "
+            "sinicize them.",
+            "Do not end the output with 。 or ，. Question marks (？), exclamation marks (！), and ellipses (…) "
+            "are allowed.",
+        ]
+        if content_type == "adult":
+            rules.extend(
+                [
+                    "This is adult content. Do not censor, soften, or moralize sexual wording.",
+                    "Preserve who does the action to whom, imperative tone, body-part target, penetration "
+                    "direction, and ejaculation intent accurately.",
+                ]
+            )
+        return "\n".join(rules)
+
+    def _build_hunyuan_mt_user_message(self, text: str) -> str:
+        """建立 Hunyuan-MT 專用的單句 user message
+
+        沿用模型官方訓練的翻譯模板，且**不附帶上下文**，避免模型把上下文標記與
+        上下文內容一併洩漏進輸出。
+        """
+        return f"將以下文本翻譯為繁體中文（台灣），注意只需要輸出翻譯後的結果，不要額外解釋：\n\n{text}"
+
     def _resolve_default_prompt_llm_type(self, llm_type: str) -> str:
         """將 runtime/provider 名稱對齊到 prompt 模板實際維護的 key。"""
         return PROMPT_PROVIDER_FALLBACKS.get(llm_type, llm_type)
@@ -788,6 +833,8 @@ Rules:
     ) -> str:
         """取得訊息結構策略版本，用於快取區分"""
         resolved_content_type = content_type or self.current_content_type
+        if self._should_use_hunyuan_mt_prompt(llm_type, model_name):
+            return "hunyuan_mt_single_v1"
         if self._should_use_qwen_ud_adult_prompt(llm_type, resolved_content_type, model_name):
             return "qwen35_ud_adult_compact_context_v3"
         return "default_structured_context_v1"
@@ -997,6 +1044,8 @@ Rules:
         # 檢查是否有自訂提示詞
         if content_type in self.custom_prompts and llm_type in self.custom_prompts[content_type]:
             prompt = self.custom_prompts[content_type][llm_type]
+        elif self._should_use_hunyuan_mt_prompt(llm_type, model_name):
+            prompt = self._get_hunyuan_mt_prompt(content_type)
         elif self._should_use_qwen_ud_adult_prompt(llm_type, content_type, model_name):
             prompt = self._get_qwen_ud_adult_prompt()
         elif self._should_use_compact_prompt(llm_type):
@@ -1084,6 +1133,11 @@ Rules:
             logger.warning("無法在上下文中找到當前文本，使用舊格式")
             context_before = context_texts
             context_after = []
+
+        # Hunyuan-MT 翻譯專用模型：跳過所有上下文與規則注入，僅送單句官方模板
+        if self._should_use_hunyuan_mt_prompt(llm_type, model_name):
+            user_message = self._build_hunyuan_mt_user_message(text)
+            return [{"role": "system", "content": prompt}, {"role": "user", "content": user_message}]
 
         use_qwen_ud_strategy = self._should_use_qwen_ud_adult_prompt(llm_type, content_type, model_name)
         if use_qwen_ud_strategy:

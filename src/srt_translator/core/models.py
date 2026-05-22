@@ -664,6 +664,8 @@ class ModelManager:
 
         normalized = " ".join(detail_parts).lower()
 
+        if re.search(r"(?:hunyuan[-_/\s]?mt|hy[-_/\s]?mt)", normalized):
+            return "hunyuan-mt"
         if re.search(r"qwen(?:[-_/\s]?3\.6|36)", normalized):
             return "qwen3.6"
         if re.search(r"qwen(?:[-_/\s]?3\.5|35)", normalized):
