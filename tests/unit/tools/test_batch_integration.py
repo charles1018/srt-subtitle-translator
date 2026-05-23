@@ -57,7 +57,7 @@ class TestTranslationServiceStructureText:
         service.translate_text.return_value = "你好\n世界\n再見"
 
         result = await service._translate_batch_structure_text(
-            subs, batch_indices, "ollama", "test-model", 5
+            subs, batch_indices, "llamacpp", "test-model", 5
         )
 
         assert result == ["你好", "世界", "再見"]
@@ -79,7 +79,7 @@ class TestTranslationServiceStructureText:
         service.translate_text.return_value = "你好\\n世界\n再見\\n朋友"
 
         result = await service._translate_batch_structure_text(
-            subs, batch_indices, "ollama", "test-model", 5
+            subs, batch_indices, "llamacpp", "test-model", 5
         )
 
         assert result == ["你好\n世界", "再見\n朋友"]
@@ -98,7 +98,7 @@ class TestTranslationServiceStructureText:
         service.translate_batch.return_value = ["你好", "世界", "再見"]
 
         result = await service._translate_batch_structure_text(
-            subs, batch_indices, "ollama", "test-model", 5
+            subs, batch_indices, "llamacpp", "test-model", 5
         )
 
         # Should have fallen back to translate_batch
@@ -119,7 +119,7 @@ class TestTranslationServiceStructureText:
         service.translate_batch.return_value = ["你好", "世界"]
 
         await service._translate_batch_structure_text(
-            subs, batch_indices, "ollama", "test-model", 5
+            subs, batch_indices, "llamacpp", "test-model", 5
         )
 
         assert service.translate_text.call_count == 2
@@ -136,7 +136,7 @@ class TestTranslationServiceStructureText:
         service.translate_batch.return_value = ["你好"]
 
         result = await service._translate_batch_structure_text(
-            subs, batch_indices, "ollama", "test-model", 5
+            subs, batch_indices, "llamacpp", "test-model", 5
         )
 
         assert result == ["你好"]
@@ -152,7 +152,7 @@ class TestTranslationServiceStructureText:
         service.translate_batch.return_value = ["你好", "世界"]
 
         result = await service._translate_batch_structure_text(
-            subs, batch_indices, "ollama", "test-model", 5
+            subs, batch_indices, "llamacpp", "test-model", 5
         )
 
         assert result == ["你好", "世界"]
@@ -170,7 +170,7 @@ class TestTranslationServiceStructureText:
         service.translate_text.return_value = "你好\n世界"
 
         result = await service._translate_batch_structure_text(
-            subs, batch_indices, "ollama", "test-model", 5
+            subs, batch_indices, "llamacpp", "test-model", 5
         )
 
         assert result == ["[你好]", "[世界]"]
@@ -190,7 +190,7 @@ class TestTranslationServiceStructureText:
         ]
 
         result = await service._translate_batch_structure_text(
-            subs, batch_indices, "ollama", "test-model", 5
+            subs, batch_indices, "llamacpp", "test-model", 5
         )
 
         assert result == ["你好", "世界"]
@@ -206,7 +206,7 @@ class TestTranslationServiceStructureText:
         service.translate_text.return_value = "\n你好\n\n"
 
         result = await service._translate_batch_structure_text(
-            subs, [0, 1, 2], "ollama", "test-model", 5
+            subs, [0, 1, 2], "llamacpp", "test-model", 5
         )
 
         assert result == ["", "你好", ""]
@@ -232,7 +232,7 @@ class TestTranslationManagerStructureText:
         manager.retry_delay = 0.01
         manager.progress_callback = None
         manager.display_mode = "僅顯示翻譯"
-        manager.llm_type = "ollama"
+        manager.llm_type = "llamacpp"
         manager.model_name = "test-model"
         manager._source_text_snapshot = []
 

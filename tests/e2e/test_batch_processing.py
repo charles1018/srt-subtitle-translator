@@ -57,7 +57,7 @@ def mock_all_services_for_batch(mock_translation_client, mock_translation_respon
     # Mock ModelService
     mock_model_service = Mock()
     mock_model_service.get_translation_client = AsyncMock(return_value=mock_translation_client)
-    mock_model_service.api_keys = {"openai": "test-key", "ollama": ""}
+    mock_model_service.api_keys = {"openai": "test-key", "llamacpp": ""}
     mock_model_service.cleanup = AsyncMock()
 
     # Mock CacheService

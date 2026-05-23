@@ -22,15 +22,15 @@ class TestModelInfo:
 
     def test_model_info_creation(self):
         """測試基本的 ModelInfo 建立"""
-        model = ModelInfo(id="test-model", provider="ollama", name="Test Model")
+        model = ModelInfo(id="test-model", provider="llamacpp", name="Test Model")
 
         assert model.id == "test-model"
-        assert model.provider == "ollama"
+        assert model.provider == "llamacpp"
         assert model.name == "Test Model"
 
     def test_model_info_defaults(self):
         """測試 ModelInfo 預設值"""
-        model = ModelInfo(id="test", provider="ollama")
+        model = ModelInfo(id="test", provider="llamacpp")
 
         assert model.context_length == 4096
         assert model.pricing == "未知"
@@ -43,14 +43,14 @@ class TestModelInfo:
     def test_model_info_to_dict(self):
         """測試 ModelInfo 轉換為字典"""
         model = ModelInfo(
-            id="test-model", provider="ollama", name="Test Model", description="A test model", tags=["test", "demo"]
+            id="test-model", provider="llamacpp", name="Test Model", description="A test model", tags=["test", "demo"]
         )
 
         result = model.to_dict()
 
         assert isinstance(result, dict)
         assert result["id"] == "test-model"
-        assert result["provider"] == "ollama"
+        assert result["provider"] == "llamacpp"
         assert result["name"] == "Test Model"
         assert result["description"] == "A test model"
         assert result["tags"] == ["test", "demo"]
@@ -66,15 +66,15 @@ class TestModelInfo:
 
     def test_model_info_availability(self):
         """測試模型可用性標記"""
-        model_available = ModelInfo(id="model1", provider="ollama", available=True)
-        model_unavailable = ModelInfo(id="model2", provider="ollama", available=False)
+        model_available = ModelInfo(id="model1", provider="llamacpp", available=True)
+        model_unavailable = ModelInfo(id="model2", provider="llamacpp", available=False)
 
         assert model_available.available is True
         assert model_unavailable.available is False
 
     def test_model_info_name_fallback(self):
         """測試名稱回退到 ID"""
-        model = ModelInfo(id="my-model", provider="ollama")
+        model = ModelInfo(id="my-model", provider="llamacpp")
         result = model.to_dict()
 
         # 當沒有設置 name 時，應該使用 id
@@ -82,7 +82,7 @@ class TestModelInfo:
 
     def test_model_info_custom_parallel(self):
         """測試自定義並行數量"""
-        model = ModelInfo(id="fast-model", provider="ollama", parallel=20)
+        model = ModelInfo(id="fast-model", provider="llamacpp", parallel=20)
 
         assert model.parallel == 20
 

@@ -531,7 +531,7 @@ class TestModelService:
         mock_model.return_value = mock_model_instance
 
         service = ModelService()
-        result = await service.get_available_models("ollama")
+        result = await service.get_available_models("llamacpp")
 
         assert result == ["qwen3.5-ud:latest"]
         mock_model_instance._close_async_session.assert_awaited_once()
@@ -548,10 +548,10 @@ class TestModelService:
         mock_model.return_value = mock_model_instance
 
         service = ModelService()
-        result = await service.test_model_connection("qwen3.5-ud:latest", "ollama")
+        result = await service.test_model_connection("qwen3.5-ud:latest", "llamacpp")
 
         assert result["success"] is True
-        mock_model_instance.test_model_connection.assert_awaited_once_with("qwen3.5-ud:latest", "ollama", None)
+        mock_model_instance.test_model_connection.assert_awaited_once_with("qwen3.5-ud:latest", "llamacpp", None)
         mock_model_instance._close_async_session.assert_awaited_once()
 
 
@@ -662,7 +662,7 @@ class TestTranslationService:
         mock_config.get_instance.return_value = MagicMock()
 
         service = TranslationService()
-        result = await service.translate_text("", [], "ollama", "llama3")
+        result = await service.translate_text("", [], "llamacpp", "llama3")
 
         assert result == ""
 
@@ -683,7 +683,7 @@ class TestTranslationService:
         service.cache_service = MagicMock()
         service.cache_service.get_translation.return_value = "cached translation"
 
-        result = await service.translate_text("test", [], "ollama", "llama3")
+        result = await service.translate_text("test", [], "llamacpp", "llama3")
 
         assert result == "cached translation"
         assert service.stats["cached_translations"] == 1
@@ -716,7 +716,7 @@ class TestTranslationService:
         service.model_service = MagicMock()
         service.model_service.get_translation_client = AsyncMock(return_value=mock_client)
 
-        result = await service.translate_text("最近", ["前文", "最近", "後文"], "ollama", "llama3")
+        result = await service.translate_text("最近", ["前文", "最近", "後文"], "llamacpp", "llama3")
 
         assert result == "最近怎麼樣？"
         assert service.stats["cached_translations"] == 0
@@ -768,7 +768,7 @@ class TestTranslationService:
         result = await service.translate_text(
             "Hello",
             ["前一行", "Hello", "Hello", "後一行"],
-            "ollama",
+            "llamacpp",
             "qwen3.5-ud:latest",
             current_index=2,
         )
@@ -786,7 +786,7 @@ class TestTranslationService:
         mock_prompt_instance.get_effective_cache_context_texts.assert_called_once_with(
             "Hello",
             ["前一行", "Hello", "Hello", "後一行"],
-            "ollama",
+            "llamacpp",
             "qwen3.5-ud:latest",
             current_index=2,
         )
@@ -835,7 +835,7 @@ class TestTranslationService:
         service.model_service = MagicMock()
         service.model_service.get_translation_client = AsyncMock(return_value=mock_client)
 
-        result = await service.translate_text("最近", ["前文", "最近", "後文"], "ollama", "llama3")
+        result = await service.translate_text("最近", ["前文", "最近", "後文"], "llamacpp", "llama3")
 
         assert result == "最近どう？"
         service.cache_service.store_translation.assert_not_called()
@@ -867,7 +867,7 @@ class TestTranslationService:
         service.model_service = MagicMock()
         service.model_service.get_translation_client = AsyncMock(return_value=mock_client)
 
-        result = await service.translate_text("Hello", ["Hello"], "ollama", "llama3", use_cache=False)
+        result = await service.translate_text("Hello", ["Hello"], "llamacpp", "llama3", use_cache=False)
 
         assert result == "你好"
         service.cache_service.get_translation.assert_not_called()
@@ -919,7 +919,7 @@ class TestTranslationService:
             "mistral",
             1,
             "僅顯示翻譯",
-            "ollama",
+            "llamacpp",
         )
 
         assert success is False
@@ -969,7 +969,7 @@ class TestTranslationService:
             "mistral",
             1,
             "僅顯示翻譯",
-            "ollama",
+            "llamacpp",
             complete_callback=complete_callback,
         )
 
@@ -1038,7 +1038,7 @@ class TestTranslationService:
             "mistral",
             1,
             "僅顯示翻譯",
-            "ollama",
+            "llamacpp",
         )
 
         assert success is True

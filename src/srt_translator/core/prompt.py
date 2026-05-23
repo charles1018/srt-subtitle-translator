@@ -17,9 +17,8 @@ logger.setLevel(logging.DEBUG)
 
 PROMPT_PROVIDER_FALLBACKS = {
     "google": "openai",
-    "llamacpp": "ollama",
 }
-SUPPORTED_PROMPT_LLM_TYPES = ["ollama", "openai", "google", "llamacpp"]
+SUPPORTED_PROMPT_LLM_TYPES = ["openai", "google", "llamacpp"]
 
 # 確保日誌目錄存在
 os.makedirs("logs", exist_ok=True)
@@ -256,7 +255,7 @@ Subtitle translations must be concise and punchy for comfortable reading speed:
 
         return {
             "general": {
-                "ollama": f"""
+                "llamacpp": f"""
 You are a professional subtitle translator. Your task is to translate subtitles accurately.
 Please strictly follow these rules:
 1. Only translate the CURRENT text sent to you, NOT any context text.
@@ -283,7 +282,7 @@ You are a high-efficiency subtitle translator. Your task:
 """,
             },
             "adult": {
-                "ollama": f"""
+                "llamacpp": f"""
 You are a professional translator for adult video subtitles.
 Please strictly follow these rules:
 1. Only translate the CURRENT text sent to you, NOT any context text.
@@ -311,7 +310,7 @@ You are a high-efficiency adult content subtitle translator. Your task:
 """,
             },
             "anime": {
-                "ollama": f"""
+                "llamacpp": f"""
 You are a professional anime subtitle translator.
 Please strictly follow these rules:
 1. Only translate the CURRENT text sent to you, NOT any context text.
@@ -359,7 +358,7 @@ You are an anime subtitle translator. Your task:
 """,
             },
             "movie": {
-                "ollama": f"""
+                "llamacpp": f"""
 You are a professional movie subtitle translator.
 Please strictly follow these rules:
 1. Only translate the CURRENT text sent to you, NOT any context text.
@@ -391,7 +390,7 @@ You are a movie subtitle translator. Your task:
 """,
             },
             "english_drama": {
-                "ollama": f"""
+                "llamacpp": f"""
 ⚠️ **ABSOLUTE PRIORITY RULE #1 - CONJUNCTION PRESERVATION** ⚠️
 🚨 **THIS RULE OVERRIDES ALL OTHER CONSIDERATIONS** 🚨
 
@@ -747,7 +746,7 @@ Each input line maps to exactly one output line — no exceptions.
 
     def _should_use_qwen_ud_adult_prompt(self, llm_type: str, content_type: str, model_name: str | None) -> bool:
         """判斷是否應使用 Qwen UD 的成人字幕特化 prompt"""
-        return llm_type in {"ollama", "llamacpp"} and content_type == "adult" and self._is_qwen_ud_model(model_name)
+        return llm_type == "llamacpp" and content_type == "adult" and self._is_qwen_ud_model(model_name)
 
     def _get_qwen_ud_adult_prompt(self) -> str:
         """取得 Qwen UD 專用的成人字幕短 prompt"""
@@ -778,7 +777,7 @@ Rules:
         無法正確處理本專案的多段上下文標記（會把標記與上下文一併翻譯/洩漏）。
         因此對所有 content_type 都改走簡化單句策略。
         """
-        return llm_type in {"ollama", "llamacpp"} and self._is_hunyuan_mt_model(model_name)
+        return llm_type == "llamacpp" and self._is_hunyuan_mt_model(model_name)
 
     def _get_hunyuan_mt_prompt(self, content_type: str) -> str:
         """取得 Hunyuan-MT 翻譯專用模型的精簡 system prompt"""
@@ -862,7 +861,7 @@ Rules:
         resolved_llm_type = self._resolve_default_prompt_llm_type(llm_type)
 
         return prompt_group.get(resolved_llm_type) or self.default_prompts["general"].get(
-            resolved_llm_type, self.default_prompts["general"]["ollama"]
+            resolved_llm_type, self.default_prompts["general"]["llamacpp"]
         )
 
     def _get_message_strategy_signature(
@@ -1061,7 +1060,7 @@ Rules:
 
     def get_prompt(
         self,
-        llm_type: str = "ollama",
+        llm_type: str = "llamacpp",
         content_type: str | None = None,
         style: str | None = None,
         model_name: str | None = None,
@@ -1069,7 +1068,7 @@ Rules:
         """根據 LLM 類型、內容類型和風格取得適合的 Prompt
 
         參數:
-            llm_type: LLM類型 (如 "ollama" 或 "openai")
+            llm_type: LLM類型 (如 "llamacpp" 或 "openai")
             content_type: 內容類型，若為None則使用當前設定
             style: 翻譯風格，若為None則使用當前設定
             model_name: 模型名稱，用於套用模型特化 prompt
@@ -1104,7 +1103,7 @@ Rules:
 
     def get_prompt_version(
         self,
-        llm_type: str = "ollama",
+        llm_type: str = "llamacpp",
         content_type: str | None = None,
         style: str | None = None,
         model_name: str | None = None,
@@ -1148,7 +1147,7 @@ Rules:
         參數:
             text: 要翻譯的文字
             context_texts: 上下文文本列表（包含前文、當前文本、後文）
-            llm_type: LLM類型 (如 "ollama" 或 "openai")
+            llm_type: LLM類型 (如 "llamacpp" 或 "openai")
             model_name: 模型名稱
 
         回傳:
@@ -1272,7 +1271,7 @@ Rules:
             # OpenAI的訊息格式
             messages = [{"role": "system", "content": prompt}, {"role": "user", "content": user_message}]
         else:
-            # Ollama等其他LLM的訊息格式
+            # 本地模型等其他 LLM 的訊息格式
             messages = [{"role": "system", "content": prompt}, {"role": "user", "content": user_message}]
 
         return messages
@@ -1290,15 +1289,15 @@ Rules:
         """
         style_modifiers = {
             "literal": {
-                "ollama": "Focus on providing a more literal translation that is closer to the original text meaning. Prioritize accuracy to source text over natural flow in the target language. Remember to ONLY translate the CURRENT text, not context.",
+                "llamacpp": "Focus on providing a more literal translation that is closer to the original text meaning. Prioritize accuracy to source text over natural flow in the target language. Remember to ONLY translate the CURRENT text, not context.",
                 "openai": "Translate literally. Prioritize source accuracy over target fluency. Only translate the current text, never context.",
             },
             "localized": {
-                "ollama": "Focus on adapting the content to the target culture. Use Taiwan-specific expressions, cultural references, and idioms where appropriate to make the translation feel natural to local readers. Remember to ONLY translate the CURRENT text, not context.",
+                "llamacpp": "Focus on adapting the content to the target culture. Use Taiwan-specific expressions, cultural references, and idioms where appropriate to make the translation feel natural to local readers. Remember to ONLY translate the CURRENT text, not context.",
                 "openai": "Translate with cultural adaptation. Use Taiwan expressions and references. Only translate the current text, never context.",
             },
             "specialized": {
-                "ollama": "Focus on accurate translation of terminology relevant to the content domain. Prioritize precision in specialized terms and concepts. Remember to ONLY translate the CURRENT text, not context.",
+                "llamacpp": "Focus on accurate translation of terminology relevant to the content domain. Prioritize precision in specialized terms and concepts. Remember to ONLY translate the CURRENT text, not context.",
                 "openai": "Translate with domain precision. Prioritize accurate terminology. Only translate the current text, never context.",
             },
         }
@@ -1343,12 +1342,12 @@ Rules:
 
         return prompt
 
-    def set_prompt(self, new_prompt: str, llm_type: str = "ollama", content_type: str | None = None) -> bool:
+    def set_prompt(self, new_prompt: str, llm_type: str = "llamacpp", content_type: str | None = None) -> bool:
         """設置特定 LLM 和內容類型的提示詞
 
         參數:
             new_prompt: 新的提示詞
-            llm_type: LLM類型 (如 "ollama" 或 "openai")
+            llm_type: LLM類型 (如 "llamacpp" 或 "openai")
             content_type: 內容類型，若為None則使用當前設定
 
         回傳:

@@ -71,7 +71,7 @@ def sample_srt_file(temp_dir: Path, sample_srt_content: str) -> Path:
 def mock_config_data() -> dict:
     """提供模擬配置資料"""
     return {
-        "ollama": {
+        "llamacpp": {
             "api_base": "http://localhost:11434",
             "model": "llama2",
             "timeout": 300,

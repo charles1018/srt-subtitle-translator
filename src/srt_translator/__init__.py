@@ -1,6 +1,6 @@
 """SRT 字幕翻譯器
 
-基於 Python 的 SRT 字幕檔自動翻譯工具，支援 Ollama、OpenAI、Google、llama.cpp 多種 AI 引擎。
+基於 Python 的 SRT 字幕檔自動翻譯工具，支援 OpenAI、Google、llama.cpp 多種 AI 引擎。
 """
 
 from srt_translator.version import get_app_version

@@ -41,7 +41,7 @@ def integration_env(temp_dir):
             "log_level": "INFO",
         },
         "model": {
-            "default_provider": "ollama",
+            "default_provider": "llamacpp",
             "timeout": 30,
         },
         "translation": {
@@ -54,7 +54,7 @@ def integration_env(temp_dir):
             "max_memory_cache": 100,
             "auto_cleanup_days": 7,
         },
-        "ollama": {
+        "llamacpp": {
             "api_base": "http://localhost:11434",
             "model": "llama2",
             "timeout": 300,

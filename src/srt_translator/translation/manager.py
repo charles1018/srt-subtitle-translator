@@ -449,7 +449,7 @@ class TranslationManager:
             # OpenAI有速率限制，使用較小批次
             base_size = min(5, self.parallel_requests)
         else:
-            # Ollama本地執行，可使用較大批次
+            # llama.cpp 本地執行，可使用較大批次
             if total_subs < 100:
                 base_size = min(self.parallel_requests, total_subs)
             elif total_subs < 500:
@@ -1115,7 +1115,7 @@ if __name__ == "__main__":
 
         # 啟動翻譯
         manager.start_translation(
-            [test_file], "日文", "繁體中文", "llama3", 2, "雙語對照", "ollama", progress, complete
+            [test_file], "日文", "繁體中文", "Hy-MT2-7B-Q4_K_M", 2, "雙語對照", "llamacpp", progress, complete
         )
 
         # 等待所有任務完成

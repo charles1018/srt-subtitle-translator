@@ -85,9 +85,9 @@ class TestPromptManagerInit:
         assert "anime" in manager.default_prompts
         assert "movie" in manager.default_prompts
 
-        # 驗證每個內容類型都有 ollama 和 openai 的提示詞
+        # 驗證每個內容類型都有 llamacpp 和 openai 的提示詞
         for content_type in ["general", "adult", "anime", "movie"]:
-            assert "ollama" in manager.default_prompts[content_type]
+            assert "llamacpp" in manager.default_prompts[content_type]
             assert "openai" in manager.default_prompts[content_type]
 
     def test_translation_styles_defined(self, temp_config_file):
@@ -173,9 +173,9 @@ class TestPromptManagerGetPrompt:
         config_file.parent.mkdir(exist_ok=True)
         return PromptManager(str(config_file))
 
-    def test_get_prompt_default_general_ollama(self, manager):
-        """測試獲取預設 general/ollama 提示詞"""
-        prompt = manager.get_prompt(llm_type="ollama", content_type="general")
+    def test_get_prompt_default_general_llamacpp(self, manager):
+        """測試獲取預設 general/llamacpp 提示詞"""
+        prompt = manager.get_prompt(llm_type="llamacpp", content_type="general")
 
         assert prompt is not None
         assert len(prompt) > 0
@@ -194,7 +194,7 @@ class TestPromptManagerGetPrompt:
         content_types = ["general", "adult", "anime", "movie"]
 
         for content_type in content_types:
-            prompt = manager.get_prompt("ollama", content_type)
+            prompt = manager.get_prompt("llamacpp", content_type)
             assert prompt is not None
             assert len(prompt) > 0
 
@@ -205,17 +205,17 @@ class TestPromptManagerGetPrompt:
         manager.current_style = "standard"
 
         # 不指定參數，應該使用當前設定
-        prompt = manager.get_prompt("ollama")
+        prompt = manager.get_prompt("llamacpp")
         assert prompt is not None
 
     def test_get_prompt_with_custom_prompt(self, manager):
         """測試獲取自訂提示詞"""
         # 設置自訂提示詞
         custom_prompt = "This is a custom prompt for testing."
-        manager.set_prompt(custom_prompt, "ollama", "general")
+        manager.set_prompt(custom_prompt, "llamacpp", "general")
 
         # 獲取應該返回自訂提示詞
-        prompt = manager.get_prompt("ollama", "general")
+        prompt = manager.get_prompt("llamacpp", "general")
         assert custom_prompt in prompt
 
     def test_get_prompt_fallback_to_general(self, manager):
@@ -240,12 +240,12 @@ class TestPromptManagerGetPrompt:
         assert "Keep the output as one subtitle only" in openai_prompt
         assert "Keep the output as one subtitle only" not in google_prompt
 
-    def test_get_prompt_maps_llamacpp_to_ollama_family_default(self, manager):
-        """測試 llamacpp 會沿用 ollama 家族的預設 prompt。"""
+    def test_get_prompt_maps_llamacpp_to_llamacpp_family_default(self, manager):
+        """測試 llamacpp 會沿用 llamacpp 家族的預設 prompt。"""
         llamacpp_prompt = manager.get_prompt("llamacpp", "general")
-        ollama_prompt = manager.get_prompt("ollama", "general")
+        llamacpp_prompt = manager.get_prompt("llamacpp", "general")
 
-        assert llamacpp_prompt == ollama_prompt
+        assert llamacpp_prompt == llamacpp_prompt
 
     def test_get_prompt_applies_style_modifier_to_google(self, manager):
         """測試 google 也會套用 openai 家族的風格修飾。"""
@@ -276,12 +276,12 @@ class TestPromptManagerSetPrompt:
     def test_set_prompt_basic(self, manager):
         """測試基本設置提示詞"""
         new_prompt = "This is a new custom prompt."
-        result = manager.set_prompt(new_prompt, "ollama", "general")
+        result = manager.set_prompt(new_prompt, "llamacpp", "general")
 
         assert result is True
 
         # 驗證提示詞已設置
-        prompt = manager.get_prompt("ollama", "general")
+        prompt = manager.get_prompt("llamacpp", "general")
         assert new_prompt in prompt
 
     def test_set_prompt_updates_custom_prompts(self, manager):
@@ -296,7 +296,7 @@ class TestPromptManagerSetPrompt:
     def test_set_prompt_saves_to_file(self, manager, temp_dir):
         """測試設置提示詞儲存至檔案"""
         new_prompt = "Prompt saved to file."
-        manager.set_prompt(new_prompt, "ollama", "general")
+        manager.set_prompt(new_prompt, "llamacpp", "general")
 
         # 驗證模板檔案存在
         template_file = Path(manager.templates_dir) / "general_template.json"
@@ -305,28 +305,28 @@ class TestPromptManagerSetPrompt:
         # 驗證檔案內容
         with open(template_file, encoding="utf-8") as f:
             data = json.load(f)
-        assert "ollama" in data
-        assert data["ollama"].strip() == new_prompt
+        assert "llamacpp" in data
+        assert data["llamacpp"].strip() == new_prompt
 
     def test_set_prompt_adds_to_version_history(self, manager):
         """測試設置提示詞添加到版本歷史"""
         # 先設置一次
-        manager.set_prompt("First version.", "ollama", "general")
+        manager.set_prompt("First version.", "llamacpp", "general")
 
         # 再設置第二次（會保存第一次到歷史）
-        manager.set_prompt("Second version.", "ollama", "general")
+        manager.set_prompt("Second version.", "llamacpp", "general")
 
         # 驗證版本歷史
-        history = manager.get_version_history("general", "ollama")
+        history = manager.get_version_history("general", "llamacpp")
         assert len(history) >= 1
 
     def test_set_prompt_with_whitespace(self, manager):
         """測試設置帶空白的提示詞（應該自動去除）"""
         new_prompt = "  \n  Prompt with whitespace.  \n  "
-        manager.set_prompt(new_prompt, "ollama", "general")
+        manager.set_prompt(new_prompt, "llamacpp", "general")
 
         # 驗證空白已去除
-        prompt = manager.custom_prompts["general"]["ollama"]
+        prompt = manager.custom_prompts["general"]["llamacpp"]
         assert prompt == new_prompt.strip()
 
 
@@ -352,7 +352,7 @@ class TestPromptManagerStyles:
     def test_apply_style_modifier_literal(self, manager):
         """測試套用直譯風格修飾符"""
         base_prompt = "Translate this text."
-        modified = manager._apply_style_modifier(base_prompt, "literal", "ollama")
+        modified = manager._apply_style_modifier(base_prompt, "literal", "llamacpp")
 
         assert "literal" in modified.lower()
         assert base_prompt in modified
@@ -360,7 +360,7 @@ class TestPromptManagerStyles:
     def test_apply_style_modifier_localized(self, manager):
         """測試套用本地化風格修飾符"""
         base_prompt = "Translate this text."
-        modified = manager._apply_style_modifier(base_prompt, "localized", "ollama")
+        modified = manager._apply_style_modifier(base_prompt, "localized", "llamacpp")
 
         assert "Taiwan" in modified or "文化" in modified
         assert base_prompt in modified
@@ -368,7 +368,7 @@ class TestPromptManagerStyles:
     def test_apply_style_modifier_specialized(self, manager):
         """測試套用專業風格修飾符"""
         base_prompt = "Translate this text."
-        modified = manager._apply_style_modifier(base_prompt, "specialized", "ollama")
+        modified = manager._apply_style_modifier(base_prompt, "specialized", "llamacpp")
 
         assert "terminology" in modified.lower() or "術語" in modified
         assert base_prompt in modified
@@ -376,13 +376,13 @@ class TestPromptManagerStyles:
     def test_apply_style_modifier_standard_unchanged(self, manager):
         """測試標準風格不修改提示詞"""
         base_prompt = "Translate this text."
-        modified = manager._apply_style_modifier(base_prompt, "standard", "ollama")
+        modified = manager._apply_style_modifier(base_prompt, "standard", "llamacpp")
 
         assert modified == base_prompt
 
     def test_get_prompt_with_style(self, manager):
         """測試獲取帶風格的提示詞"""
-        prompt = manager.get_prompt("ollama", "general", "literal")
+        prompt = manager.get_prompt("llamacpp", "general", "literal")
 
         assert prompt is not None
         assert "literal" in prompt.lower()
@@ -427,7 +427,7 @@ class TestPromptManagerVersionHistory:
         """測試獲取空版本歷史"""
         # 清空版本歷史
         manager.version_history = {}
-        history = manager.get_version_history("general", "ollama")
+        history = manager.get_version_history("general", "llamacpp")
         assert history == [] or len(history) == 0
 
     def test_get_version_history_after_update(self, manager):
@@ -436,13 +436,13 @@ class TestPromptManagerVersionHistory:
         manager.version_history = {}
 
         # 設置初始提示詞
-        manager.set_prompt("Version 1", "ollama", "general")
+        manager.set_prompt("Version 1", "llamacpp", "general")
 
         # 更新提示詞（會保存 v1 到歷史）
-        manager.set_prompt("Version 2", "ollama", "general")
+        manager.set_prompt("Version 2", "llamacpp", "general")
 
         # 獲取歷史
-        history = manager.get_version_history("general", "ollama")
+        history = manager.get_version_history("general", "llamacpp")
         assert len(history) >= 1
         # 驗證歷史中包含 Version 1
         assert any("Version 1" in h["prompt"] for h in history)
@@ -451,18 +451,18 @@ class TestPromptManagerVersionHistory:
         """測試版本歷史維護數量限制（最多10個）"""
         # 設置超過10個版本
         for i in range(15):
-            manager.set_prompt(f"Version {i}", "ollama", "general")
+            manager.set_prompt(f"Version {i}", "llamacpp", "general")
 
         # 驗證最多保留10個
-        history = manager.get_version_history("general", "ollama")
+        history = manager.get_version_history("general", "llamacpp")
         assert len(history) <= 10
 
     def test_version_history_includes_metadata(self, manager):
         """測試版本歷史包含元數據"""
-        manager.set_prompt("First", "ollama", "general")
-        manager.set_prompt("Second", "ollama", "general")
+        manager.set_prompt("First", "llamacpp", "general")
+        manager.set_prompt("Second", "llamacpp", "general")
 
-        history = manager.get_version_history("general", "ollama")
+        history = manager.get_version_history("general", "llamacpp")
         assert len(history) > 0
 
         # 驗證元數據
@@ -477,32 +477,32 @@ class TestPromptManagerVersionHistory:
         manager.version_history = {}
 
         # 設置多個版本
-        manager.set_prompt("Version 1", "ollama", "general")
-        manager.set_prompt("Version 2", "ollama", "general")
-        manager.set_prompt("Version 3", "ollama", "general")
+        manager.set_prompt("Version 1", "llamacpp", "general")
+        manager.set_prompt("Version 2", "llamacpp", "general")
+        manager.set_prompt("Version 3", "llamacpp", "general")
 
         # 獲取歷史以確認有版本
-        history = manager.get_version_history("general", "ollama")
+        history = manager.get_version_history("general", "llamacpp")
 
         if len(history) > 0:
             # 恢復到第一個版本
-            result = manager.restore_version("general", "ollama", 0)
+            result = manager.restore_version("general", "llamacpp", 0)
             assert result is True
         else:
             # 如果沒有歷史，測試恢復無效索引
-            result = manager.restore_version("general", "ollama", 999)
+            result = manager.restore_version("general", "llamacpp", 999)
             assert result is False
 
     def test_restore_version_invalid_index(self, manager):
         """測試恢復無效版本索引"""
-        result = manager.restore_version("general", "ollama", 999)
+        result = manager.restore_version("general", "llamacpp", 999)
         assert result is False
 
     def test_get_version_history_all_llm_types(self, manager):
         """測試獲取所有 LLM 類型的歷史"""
         # 為不同 LLM 設置提示詞
-        manager.set_prompt("Ollama v1", "ollama", "general")
-        manager.set_prompt("Ollama v2", "ollama", "general")
+        manager.set_prompt("llama.cpp v1", "llamacpp", "general")
+        manager.set_prompt("llama.cpp v2", "llamacpp", "general")
         manager.set_prompt("OpenAI v1", "openai", "general")
         manager.set_prompt("OpenAI v2", "openai", "general")
 
@@ -512,7 +512,7 @@ class TestPromptManagerVersionHistory:
         # 應該包含兩種 LLM 的歷史
         assert len(all_history) >= 2
         llm_types = {entry["llm_type"] for entry in all_history}
-        assert "ollama" in llm_types
+        assert "llamacpp" in llm_types
         assert "openai" in llm_types
 
 
@@ -540,7 +540,7 @@ class TestPromptManagerOptimizedMessage:
         text = "Hello"
         context = ["Hi", "Bye"]
 
-        messages = manager.get_optimized_message(text, context, "ollama", "llama3")
+        messages = manager.get_optimized_message(text, context, "llamacpp", "llama3")
 
         assert isinstance(messages, list)
         assert len(messages) >= 2
@@ -612,12 +612,12 @@ class TestPromptManagerOptimizedMessage:
         other = manager._get_message_strategy_signature("llamacpp", "general", "qwen3.6-27b")
         assert other != "hunyuan_mt_context_v2"
 
-    def test_get_optimized_message_ollama_format(self, manager):
-        """測試 Ollama 訊息格式"""
+    def test_get_optimized_message_llamacpp_format(self, manager):
+        """測試 llama.cpp 訊息格式"""
         text = "Test text"
         context = ["Context 1", "Context 2"]
 
-        messages = manager.get_optimized_message(text, context, "ollama", "llama3")
+        messages = manager.get_optimized_message(text, context, "llamacpp", "llama3")
 
         # 驗證訊息結構
         assert len(messages) == 2
@@ -723,7 +723,7 @@ class TestPromptManagerOptimizedMessage:
         text = "Main text"
         context = ["Before", "After"]
 
-        messages = manager.get_optimized_message(text, context, "ollama", "model")
+        messages = manager.get_optimized_message(text, context, "llamacpp", "model")
 
         # 驗證上下文包含在用戶訊息中
         user_message = messages[1]["content"]
@@ -735,7 +735,7 @@ class TestPromptManagerOptimizedMessage:
         """測試 qwen3.5-ud 在 adult 模式下使用較短的專用 prompt"""
         manager.current_content_type = "adult"
 
-        prompt = manager.get_prompt("ollama", "adult", model_name="qwen3.5-ud:latest")
+        prompt = manager.get_prompt("llamacpp", "adult", model_name="qwen3.5-ud:latest")
 
         assert "Preserve who does the action to whom." in prompt
         assert "Never translate or copy context." in prompt
@@ -755,8 +755,8 @@ class TestPromptManagerOptimizedMessage:
         """測試 qwen3.5-ud 的 prompt 版本會和一般策略區分"""
         manager.current_content_type = "adult"
 
-        generic_version = manager.get_prompt_version("ollama", "adult", model_name="llama3")
-        qwen35_ud_version = manager.get_prompt_version("ollama", "adult", model_name="qwen3.5-ud:latest")
+        generic_version = manager.get_prompt_version("llamacpp", "adult", model_name="llama3")
+        qwen35_ud_version = manager.get_prompt_version("llamacpp", "adult", model_name="qwen3.5-ud:latest")
 
         assert generic_version != qwen35_ud_version
 
@@ -766,7 +766,7 @@ class TestPromptManagerOptimizedMessage:
         text = "彼氏にはそんな風に舐めてるの?"
         context = ["前一行", text, "後一行"]
 
-        messages = manager.get_optimized_message(text, context, "ollama", "qwen3.5-ud:latest")
+        messages = manager.get_optimized_message(text, context, "llamacpp", "qwen3.5-ud:latest")
 
         user_message = messages[1]["content"]
         assert messages[0]["content"].startswith("You translate Japanese adult subtitles")
@@ -782,7 +782,7 @@ class TestPromptManagerOptimizedMessage:
         text = "ちゃんと根元まで入れてあげるからもっと気持ちよくなってね"
         context = ["前二行", "前一行", text, "後一行", "後二行"]
 
-        messages = manager.get_optimized_message(text, context, "ollama", "qwen3.5-ud:latest")
+        messages = manager.get_optimized_message(text, context, "llamacpp", "qwen3.5-ud:latest")
 
         user_message = messages[1]["content"]
         assert "REFERENCE ONLY" in user_message
@@ -815,7 +815,7 @@ class TestPromptManagerOptimizedMessage:
         messages = manager.get_optimized_message(
             text,
             context,
-            "ollama",
+            "llamacpp",
             "qwen3.5-ud:latest",
             current_index=3,
         )
@@ -834,14 +834,14 @@ class TestPromptManagerOptimizedMessage:
         first_context = manager.get_effective_cache_context_texts(
             text,
             context,
-            "ollama",
+            "llamacpp",
             "qwen3.5-ud:latest",
             current_index=1,
         )
         second_context = manager.get_effective_cache_context_texts(
             text,
             context,
-            "ollama",
+            "llamacpp",
             "qwen3.5-ud:latest",
             current_index=3,
         )
@@ -857,14 +857,14 @@ class TestPromptManagerOptimizedMessage:
         first_context = manager.get_effective_cache_context_texts(
             "いいよ",
             ["前一句", "いいよ", "後一句"],
-            "ollama",
+            "llamacpp",
             "qwen3.5-ud:latest",
             current_index=1,
         )
         second_context = manager.get_effective_cache_context_texts(
             "いいよ",
             ["另一句", "いいよ", "別一句"],
-            "ollama",
+            "llamacpp",
             "qwen3.5-ud:latest",
             current_index=1,
         )
@@ -882,7 +882,7 @@ class TestPromptManagerOptimizedMessage:
         relaxed_context = manager.get_effective_cache_context_texts(
             "ほら",
             ["真的嗎？", "ほら", "快一點"],
-            "ollama",
+            "llamacpp",
             "qwen3.5-ud:latest",
             current_index=1,
         )
@@ -915,20 +915,20 @@ class TestPromptManagerReset:
     def test_reset_to_default_specific_llm(self, manager):
         """測試重置特定 LLM 類型為預設值"""
         # 設置自訂提示詞
-        manager.set_prompt("Custom prompt", "ollama", "general")
+        manager.set_prompt("Custom prompt", "llamacpp", "general")
 
         # 重置
-        result = manager.reset_to_default("ollama", "general")
+        result = manager.reset_to_default("llamacpp", "general")
         assert result is True
 
         # 驗證已恢復預設值
-        prompt = manager.get_prompt("ollama", "general")
+        prompt = manager.get_prompt("llamacpp", "general")
         assert "Custom prompt" not in prompt
 
     def test_reset_to_default_all_llm_types(self, manager):
         """測試重置所有 LLM 類型為預設值"""
         # 設置多個自訂提示詞
-        manager.set_prompt("Custom Ollama", "ollama", "general")
+        manager.set_prompt("Custom llama.cpp", "llamacpp", "general")
         manager.set_prompt("Custom OpenAI", "openai", "general")
 
         # 重置所有
@@ -936,10 +936,10 @@ class TestPromptManagerReset:
         assert result is True
 
         # 驗證所有都已恢復預設值
-        ollama_prompt = manager.get_prompt("ollama", "general")
+        llamacpp_prompt = manager.get_prompt("llamacpp", "general")
         openai_prompt = manager.get_prompt("openai", "general")
 
-        assert "Custom Ollama" not in ollama_prompt
+        assert "Custom llama.cpp" not in llamacpp_prompt
         assert "Custom OpenAI" not in openai_prompt
 
     def test_reset_to_default_google_uses_openai_family_prompt(self, manager):
@@ -1021,7 +1021,7 @@ class TestPromptManagerFileOperations:
     def test_save_prompt_template(self, manager):
         """測試儲存提示詞模板"""
         # 設置自訂提示詞
-        manager.custom_prompts["test_type"] = {"ollama": "Test prompt for ollama", "openai": "Test prompt for openai"}
+        manager.custom_prompts["test_type"] = {"llamacpp": "Test prompt for llamacpp", "openai": "Test prompt for openai"}
 
         # 儲存模板
         result = manager._save_prompt_template("test_type")
@@ -1037,7 +1037,7 @@ class TestPromptManagerFileOperations:
         template_file = Path(manager.templates_dir) / "general_template.json"
         template_file.parent.mkdir(exist_ok=True)
 
-        template_data = {"ollama": "Custom General Ollama prompt", "openai": "Custom General OpenAI prompt"}
+        template_data = {"llamacpp": "Custom General llama.cpp prompt", "openai": "Custom General OpenAI prompt"}
 
         with open(template_file, "w", encoding="utf-8") as f:
             json.dump(template_data, f)
@@ -1074,7 +1074,7 @@ class TestPromptManagerFileOperations:
         manager.templates_dir = "/invalid/path/that/does/not/exist"
 
         # 設置自訂提示詞
-        manager.custom_prompts["test"] = {"ollama": "test"}
+        manager.custom_prompts["test"] = {"llamacpp": "test"}
 
         # 嘗試儲存（應該返回 False 而不是崩潰）
         result = manager._save_prompt_template("test")
@@ -1092,7 +1092,7 @@ class TestPromptManagerFileOperations:
 
         assert result == str(export_path)
         export_data = json.loads(export_path.read_text(encoding="utf-8"))
-        assert {"ollama", "openai", "google", "llamacpp"} <= set(export_data["prompts"])
+        assert {"llamacpp", "openai", "google", "llamacpp"} <= set(export_data["prompts"])
 
     def test_import_prompt_accepts_google_and_llamacpp(self, manager, temp_dir):
         """測試匯入會接受 google 與 llamacpp provider。"""
@@ -1144,7 +1144,7 @@ class TestPromptManagerEdgeCases:
 
     def test_get_prompt_with_unknown_content_type(self, manager):
         """測試獲取未知內容類型的提示詞"""
-        prompt = manager.get_prompt("ollama", "unknown_type")
+        prompt = manager.get_prompt("llamacpp", "unknown_type")
 
         # 應該回退到預設提示詞
         assert prompt is not None
@@ -1153,19 +1153,19 @@ class TestPromptManagerEdgeCases:
     def test_set_prompt_creates_content_type(self, manager):
         """測試設置提示詞時自動創建內容類型"""
         new_type = "documentary"
-        manager.set_prompt("Documentary prompt", "ollama", new_type)
+        manager.set_prompt("Documentary prompt", "llamacpp", new_type)
 
         # 驗證新類型已創建
         assert new_type in manager.custom_prompts
-        assert "ollama" in manager.custom_prompts[new_type]
+        assert "llamacpp" in manager.custom_prompts[new_type]
 
     def test_version_history_timestamp(self, manager):
         """測試版本歷史包含時間戳"""
         manager.version_history = {}
-        manager.set_prompt("V1", "ollama", "general")
-        manager.set_prompt("V2", "ollama", "general")
+        manager.set_prompt("V1", "llamacpp", "general")
+        manager.set_prompt("V2", "llamacpp", "general")
 
-        history = manager.get_version_history("general", "ollama")
+        history = manager.get_version_history("general", "llamacpp")
         if len(history) > 0:
             # 驗證時間戳格式
             timestamp = history[0]["timestamp"]
@@ -1188,15 +1188,15 @@ class TestPromptManagerEdgeCases:
 
     def test_get_optimized_message_with_empty_context(self, manager):
         """測試生成沒有上下文的優化訊息"""
-        messages = manager.get_optimized_message("Test", [], "ollama", "model")
+        messages = manager.get_optimized_message("Test", [], "llamacpp", "model")
 
         assert len(messages) == 2
         assert messages[1]["role"] == "user"
 
     def test_multiple_style_applications(self, manager):
         """測試多次套用風格修飾符"""
-        prompt = manager.get_prompt("ollama", "general", "literal")
-        prompt2 = manager.get_prompt("ollama", "general", "localized")
+        prompt = manager.get_prompt("llamacpp", "general", "literal")
+        prompt2 = manager.get_prompt("llamacpp", "general", "localized")
 
         # 兩個提示詞應該不同
         assert prompt != prompt2
@@ -1204,10 +1204,10 @@ class TestPromptManagerEdgeCases:
     def test_reset_to_default_for_new_content_type(self, manager):
         """測試重置新內容類型（不在預設中）"""
         # 設置一個新類型的自訂提示詞
-        manager.set_prompt("Custom", "ollama", "new_type")
+        manager.set_prompt("Custom", "llamacpp", "new_type")
 
         # 嘗試重置（應該處理不存在於 default_prompts 的情況）
-        result = manager.reset_to_default("ollama", "new_type")
+        result = manager.reset_to_default("llamacpp", "new_type")
 
         # 可能成功或失敗都是合理的，只要不崩潰
         assert result is True or result is False
@@ -1254,7 +1254,7 @@ class TestPromptWorkbenchEnhancements:
 
     def test_filler_word_instruction_in_general(self, manager):
         """填充詞過濾指令存在於 general prompt"""
-        prompt = manager.get_prompt("ollama", "general")
+        prompt = manager.get_prompt("llamacpp", "general")
         assert "Filler Word" in prompt or "filler" in prompt.lower()
 
     def test_dynamic_equivalency_in_general(self, manager):
@@ -1264,26 +1264,26 @@ class TestPromptWorkbenchEnhancements:
 
     def test_cps_compression_in_general(self, manager):
         """CPS 壓縮指令存在於 general prompt"""
-        prompt = manager.get_prompt("ollama", "general")
+        prompt = manager.get_prompt("llamacpp", "general")
         assert "CPS Compression" in prompt or "Conciseness" in prompt
 
     def test_enhancement_in_all_content_types(self, manager):
         """所有 content type 都包含增強指令"""
         for content_type in ["general", "adult", "anime", "movie", "english_drama"]:
-            for llm_type in ["ollama", "openai"]:
+            for llm_type in ["llamacpp", "openai"]:
                 prompt = manager.get_prompt(llm_type, content_type)
                 assert "Filler Word" in prompt, f"Missing filler word instruction in {content_type}/{llm_type}"
                 assert "Dynamic Equivalency" in prompt, f"Missing dynamic equivalency in {content_type}/{llm_type}"
 
     def test_netflix_rules_still_present(self, manager):
         """既有 Netflix 規則未被破壞"""
-        prompt = manager.get_prompt("ollama", "general")
+        prompt = manager.get_prompt("llamacpp", "general")
         assert "Netflix" in prompt
         assert "16" in prompt  # 16 chars per line
 
     def test_taiwanese_colloquial_still_present(self, manager):
         """既有台式口語規則未被破壞"""
-        prompt = manager.get_prompt("ollama", "general")
+        prompt = manager.get_prompt("llamacpp", "general")
         assert "Taiwanese" in prompt
 
     def test_batch_line_mapping_instruction(self, manager):
@@ -1295,5 +1295,5 @@ class TestPromptWorkbenchEnhancements:
 
     def test_batch_instruction_not_in_default_prompts(self, manager):
         """批次行映射指令不應出現在預設 prompt 中"""
-        prompt = manager.get_prompt("ollama", "general")
+        prompt = manager.get_prompt("llamacpp", "general")
         assert "Strict Line Mapping" not in prompt

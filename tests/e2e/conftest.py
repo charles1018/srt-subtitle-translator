@@ -236,7 +236,7 @@ def mock_model_service(mock_translation_client):
         mock_service = Mock()
         mock_service.get_translation_client = AsyncMock(return_value=mock_translation_client)
         mock_service.get_available_models = AsyncMock(return_value=["test-model"])
-        mock_service.api_keys = {"openai": "test-key", "ollama": ""}
+        mock_service.api_keys = {"openai": "test-key", "llamacpp": ""}
         MockModelService.return_value = mock_service
         yield mock_service
 
