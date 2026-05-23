@@ -480,7 +480,7 @@ class TranslationClient:
     def __init__(
         self,
         llm_type: str,
-        base_url: str = "http://localhost:11434",
+        base_url: str = "http://localhost:8080",
         api_key: str | None = None,
         cache_db_path: str = "data/translation_cache.db",
         netflix_style_config: dict[str, Any] | None = None,
@@ -489,7 +489,7 @@ class TranslationClient:
         初始化翻譯客戶端
 
         參數:
-            llm_type: LLM 類型 ('ollama', 'openai' 或 'google')
+            llm_type: LLM 類型 ('llamacpp', 'openai' 或 'google')
             base_url: API 基礎 URL
             api_key: API 金鑰 (用於 OpenAI, Google)
             cache_db_path: 快取資料庫路徑
@@ -501,9 +501,7 @@ class TranslationClient:
                 - max_lines: 最多行數（預設: 2）
         """
         self.llm_type = llm_type
-        if llm_type == "ollama":
-            self.base_url = base_url.rstrip("/")
-        elif llm_type == "llamacpp":
+        if llm_type == "llamacpp":
             normalized_base_url = (base_url or "http://localhost:8080").rstrip("/")
             if normalized_base_url.endswith("/v1"):
                 normalized_base_url = normalized_base_url[:-3]
@@ -539,14 +537,6 @@ class TranslationClient:
         # 回退機制設定
         self.fallback_models = {
             "openai": {"gpt-4": ["gpt-3.5-turbo"], "gpt-4-turbo": ["gpt-4", "gpt-3.5-turbo"], "gpt-3.5-turbo": []},
-            "ollama": {
-                "llama3.2": ["qwen3", "gemma3"],
-                "qwen3.6": ["qwen3.5", "qwen3", "llama3.2", "gemma3"],
-                "qwen3.5": ["qwen3", "llama3.2", "gemma3"],
-                "qwen3": ["llama3.2", "gemma3"],
-                "gemma3": ["llama3.2", "qwen3"],
-                "mistral": ["llama3.2", "qwen3"],
-            },
             "google": {
                 "gemini-2.5-pro": ["gemini-2.5-flash", "gemini-2.0-flash"],
                 "gemini-2.5-flash": ["gemini-2.0-flash", "gemini-1.5-flash"],
@@ -922,7 +912,7 @@ class TranslationClient:
           所有內容類型都啟用保護。
         - Qwen UD 維持原本的成人字幕專屬保護行為。
         """
-        if self.llm_type not in {"ollama", "llamacpp"}:
+        if self.llm_type != "llamacpp":
             return False
 
         effective_name = self._resolve_llamacpp_model_name(model_name)
@@ -1069,27 +1059,12 @@ class TranslationClient:
         """根據 provider 執行單次翻譯請求。"""
         if self.llm_type in ("openai", "llamacpp"):
             return await self._translate_with_openai(messages, model_name)
-        if self.llm_type == "ollama":
-            return await self._translate_with_ollama(messages, model_name)
         if self.llm_type == "google":
             return await self._translate_with_google(messages, model_name)
         raise ValidationError(f"不支援的 LLM 類型: {self.llm_type}")
 
-    def _build_ollama_payload(self, messages: list[dict[str, str]], model_name: str) -> dict[str, Any]:
-        """建立 Ollama chat API 請求內容"""
-        profile = self._get_local_model_profile(model_name)
-
-        return {
-            "model": model_name,
-            "messages": messages,
-            "stream": False,
-            "think": False,
-            "keep_alive": profile["keep_alive"],
-            "options": profile["options"],
-        }
-
-    def _sanitize_ollama_translation(self, translation: str) -> str:
-        """清理 Ollama 回傳中常見的推理與模板殘留"""
+    def _sanitize_local_translation(self, translation: str) -> str:
+        """清理本地模型回傳中常見的推理與模板殘留。"""
         cleaned = translation.strip()
         cleaned = re.sub(r"(?is)<think>[\s\S]*?</think>\s*", "", cleaned).strip()
         cleaned = re.sub(r"(?is)^<\|im_start\|>assistant\s*", "", cleaned).strip()
@@ -1128,25 +1103,6 @@ class TranslationClient:
 
         return cleaned
 
-    def _get_ollama_batch_size(
-        self, model_name: str, concurrent_limit: int, adaptive_concurrency: int, pending: int
-    ) -> int:
-        """根據模型家族調整 Ollama 批次並發數"""
-        batch_size = min(concurrent_limit, adaptive_concurrency, pending)
-        profile = self._get_local_model_profile(model_name)
-        model_limit = profile.get("batch_concurrency_limit")
-
-        if model_limit is not None:
-            limited_batch_size = min(batch_size, model_limit)
-            if limited_batch_size != batch_size:
-                logger.info(
-                    f"Ollama 模型 {model_name} ({profile['family']}) "
-                    f"限制並發數為 {limited_batch_size}，原始計算值: {batch_size}"
-                )
-            batch_size = limited_batch_size
-
-        return max(1, batch_size)
-
     async def _get_effective_batch_size(
         self,
         model_name: str,
@@ -1155,9 +1111,6 @@ class TranslationClient:
         pending: int,
     ) -> int:
         """根據 provider 與 server 狀態計算實際批次並發數"""
-        if self.llm_type == "ollama":
-            return self._get_ollama_batch_size(model_name, concurrent_limit, adaptive_concurrency, pending)
-
         batch_size = min(concurrent_limit, adaptive_concurrency, pending)
         if self.llm_type != "llamacpp":
             return max(1, batch_size)
@@ -1197,20 +1150,7 @@ class TranslationClient:
     def _get_fallback_models(self, model_name: str) -> list[str]:
         """取得當前模型可用的回退模型清單"""
         provider_fallbacks = self.fallback_models.get(self.llm_type, {})
-        fallback_options = provider_fallbacks.get(model_name, [])
-
-        if self.llm_type == "ollama" and self._is_qwen_ud_model(model_name):
-            family = self._detect_model_family(model_name)
-            qwen_ud_fallbacks = self._get_qwen_ud_fallback_candidates(model_name)
-            return self._dedupe_preserve_order(
-                qwen_ud_fallbacks + fallback_options + provider_fallbacks.get(family, [])
-            )
-
-        if fallback_options or self.llm_type != "ollama":
-            return fallback_options
-
-        family = self._detect_model_family(model_name)
-        return provider_fallbacks.get(family, [])
+        return provider_fallbacks.get(model_name, [])
 
     def _load_tokenizers(self):
         """載入各 OpenAI 模型的 tokenizer"""
@@ -1239,8 +1179,8 @@ class TranslationClient:
 
     async def __aenter__(self):
         """使用非同步上下文管理器初始化"""
-        if self.llm_type in {"ollama", "llamacpp"}:
-            # 本地 provider 共用 aiohttp session 進行健康檢查與管理端探測
+        if self.llm_type == "llamacpp":
+            # llama.cpp 使用 aiohttp session 進行健康檢查與管理端探測
             connector = aiohttp.TCPConnector(
                 limit=self.conn_limit,
                 limit_per_host=self.conn_limit,
@@ -1833,11 +1773,11 @@ class TranslationClient:
                     logger.debug("llama.cpp 思考模型：content 為空，從 reasoning_content 提取翻譯")
                     # 先嘗試從 reasoning 中提取結構化 JSON，再退回純文字清理
                     extracted = self._extract_llamacpp_structured_translation(reasoning)
-                    translation = extracted or self._sanitize_ollama_translation(reasoning)
+                    translation = extracted or self._sanitize_local_translation(reasoning)
 
             # llama.cpp 回應清理（處理 <think> 標籤等）
             if is_llamacpp and translation:
-                translation = self._sanitize_ollama_translation(translation)
+                translation = self._sanitize_local_translation(translation)
 
             # 記錄實際 token 使用量
             if response.usage:
@@ -1866,53 +1806,6 @@ class TranslationClient:
         except Exception as e:
             provider_label = "llama.cpp" if is_llamacpp else "OpenAI"
             logger.error(f"{provider_label} API 請求失敗: {e!s}")
-            raise
-
-    async def _translate_with_ollama(self, messages: list[dict[str, str]], model_name: str) -> str:
-        """使用 Ollama API 翻譯"""
-        if not self.session:
-            raise TranslationError("Ollama 客戶端未初始化，請使用非同步上下文管理器")
-
-        payload = self._build_ollama_payload(messages, model_name)
-
-        api_url = f"{self.base_url}/api/chat"
-
-        try:
-            logger.debug(f"發送 Ollama API 請求: {api_url}")
-            async with self.session.post(api_url, json=payload, timeout=self.conn_timeout) as response:
-                response.raise_for_status()
-                result = await response.json()
-
-                # 處理 Ollama /api/chat 回應格式
-                # 標準格式: {"message": {"role": "assistant", "content": "..."}, "done": true}
-                if "message" in result and isinstance(result["message"], dict):
-                    msg = result["message"]
-                    translation = msg.get("content", "").strip()
-                    # 記錄 thinking 欄位（若模型忽略 think:false 仍返回推理過程）
-                    if msg.get("thinking"):
-                        logger.debug("Ollama 模型返回了推理過程，已忽略 thinking 欄位")
-                elif "choices" in result and len(result["choices"]) > 0:
-                    # OpenAI 相容端點 /v1/chat/completions 格式
-                    translation = result["choices"][0]["message"]["content"].strip()
-                elif "response" in result:
-                    # /api/generate 端點的回應格式
-                    translation = result["response"].strip()
-                else:
-                    logger.warning(f"未知的 Ollama API 回應格式: {result}")
-                    translation = str(result).strip()
-
-                translation = self._sanitize_ollama_translation(translation)
-                logger.debug(f"Ollama API 回應翻譯: {translation}")
-                return translation
-
-        except aiohttp.ClientError as e:
-            logger.error(f"Ollama API 連線錯誤: {e!s}")
-            raise
-        except json.JSONDecodeError as e:
-            logger.error(f"Ollama API 回應解析錯誤: {e!s}")
-            raise
-        except Exception as e:
-            logger.error(f"Ollama API 請求失敗: {e!s}")
             raise
 
     async def _translate_with_google(self, messages: list[dict[str, str]], model_name: str) -> str:
@@ -2142,27 +2035,6 @@ class TranslationClient:
                 except Exception as e:
                     logger.error(f"OpenAI API 連線測試失敗: {e!s}")
                     return False
-
-            elif self.llm_type == "ollama":
-                if not self.session:
-                    # 如果 session 未初始化，臨時建立一個
-                    async with aiohttp.ClientSession() as session:
-                        try:
-                            api_url = f"{self.base_url}/api/tags"
-                            async with session.get(api_url, timeout=5) as response:
-                                return response.status == 200
-                        except Exception as e:
-                            logger.error(f"Ollama API 連線測試失敗: {e!s}")
-                            return False
-                else:
-                    # 使用已有的 session
-                    try:
-                        api_url = f"{self.base_url}/api/tags"
-                        async with self.session.get(api_url, timeout=5) as response:
-                            return response.status == 200
-                    except Exception as e:
-                        logger.error(f"Ollama API 連線測試失敗: {e!s}")
-                        return False
 
             elif self.llm_type == "llamacpp":
                 diagnostics = await self._get_llamacpp_server_diagnostics(force_refresh=True)
