@@ -233,8 +233,8 @@ srt-translator translate ./subtitles/ -s 英文 -t 繁體中文
 srt-translator translate video.srt -s 日文 -t 繁體中文 -p openai -m gpt-4o
 
 # 使用 llama.cpp 本地模型（需先啟動 llama-server）
-# 重要：-m 須包含模型家族關鍵字（如 Qwen3.5），否則無法觸發專用功能
-srt-translator translate video.srt -s 日文 -t 繁體中文 -p llamacpp -m Qwen3.5-9B-UD --content-type adult
+# 建議：目前本地翻譯主力為 Hy-MT2-7B，並顯式指定 -m 以套用正確模型家族策略
+srt-translator translate video.srt -s 日文 -t 繁體中文 -p llamacpp -m Hy-MT2-7B-Q4_K_M --content-type adult
 
 # 使用 Google 與 GUI 對齊的翻譯設定
 srt-translator translate video.srt -s 日文 -t 繁體中文 -p google --content-type anime --style localized --netflix-style
@@ -1102,7 +1102,7 @@ cat logs/translation.log
 
 | 內容類型 | 推薦模型 | 並發數 | 顯示模式 |
 |---------|---------|--------|---------|
-| **動畫** | GPT-4o / GPT-4 / Qwen3.5 | 3-5 | 雙語對照 |
+| **動畫** | Hy-MT2-7B / GPT-4o / GPT-4 | 2-4 | 雙語對照 |
 | **電影** | GPT-4o / Gemini 2.x（GUI） | 3-5 | 僅顯示翻譯 |
 | **紀錄片** | GPT-3.5-Turbo | 5-8 | 雙語對照 |
 | **教學影片** | GPT-3.5-Turbo | 5-10 | 僅顯示翻譯 |

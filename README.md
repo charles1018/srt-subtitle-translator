@@ -2,7 +2,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-962%20passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-955%20passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-htmlcov-lightgrey.svg)](htmlcov/)
 
 基於 Python 的 SRT 字幕檔自動翻譯工具。目前支援 `llamacpp`、`openai`、`google`；Anthropic 與 OpenRouter 已不在目前支援範圍內。
@@ -150,6 +150,7 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja -c 2048 --parall
 
 如果你使用：
 
+- `Hy-MT2-7B`：建議作為目前 llama.cpp 本地翻譯主力，並在 CLI 顯式指定 `-m Hy-MT2-7B-Q4_K_M`
 - `Qwen3.5`：建議再加上 `--reasoning-format deepseek`
 - `Gemma 4`：建議改用 `--reasoning off --reasoning-format none`
 
@@ -168,7 +169,7 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja -c 2048 --parall
    - 選擇字幕檔案（可拖放）
    - 設定源語言和目標語言
    - 選擇 AI 引擎和模型
-   - 調整並發數和顯示模式（使用 llama.cpp Qwen3.5 時，程式會自動限制為 1；其他 llama.cpp 模型則會受 server slots 限制）
+   - 調整並發數和顯示模式（目前本地推薦模型為 Hy-MT2-7B；若使用 llama.cpp Qwen3.5，程式會自動限制並發為 1，其他 llama.cpp 模型則會受 server slots 限制）
    - 點擊「開始翻譯」
 
 3. 翻譯完成後，檔案會自動儲存在原檔案目錄
@@ -340,7 +341,7 @@ uv run mypy src/srt_translator
 
 本專案擁有完整的測試體系。以目前非 GUI 基線為準：
 
-- **非 GUI 基線**：962 passed / 0 skipped / 0 warnings
+- **非 GUI 基線**：955 passed / 0 skipped / 0 warnings
 - **測試類型**：unit / integration / e2e / gui marker
 - **覆蓋率報告**：`pytest` 預設會產生 `htmlcov/`
 

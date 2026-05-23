@@ -2,7 +2,7 @@
 
 狀態：已完成
 
-最後更新：2026-05-19（Asia/Taipei）
+最後更新：2026-05-23（Asia/Taipei）
 
 本文件是 cleanup 工作的唯一 current status。
 
@@ -16,7 +16,7 @@
 
 - provider/runtime cleanup 已完成
 - 文件、測試與目前 shipped behavior 已對齊到 `llamacpp` / `openai` / `google`
-- 非 GUI 基線目前為 `962 passed / 0 skipped / 0 warnings`
+- 非 GUI 基線目前為 `955 passed / 0 skipped / 0 warnings`
 
 ## 本輪完成重點
 
@@ -37,7 +37,7 @@ uv run ruff check .
 最近確認結果：
 
 - targeted 單元測試：`126 passed`
-- 非 GUI 全量基線：`962 passed / 0 skipped / 0 warnings`
+- 非 GUI 全量基線：`955 passed / 0 skipped / 0 warnings`
 - `ruff check .`：通過
 
 ## 封存文件
