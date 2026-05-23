@@ -11,16 +11,27 @@
 
 實證：本 repo `data/benchmark-2026-05-23-ipzz810/` 用 IPZZ-810 全片（466 條字幕、127 分鐘）測試後發現，預設 Whisper Balanced 模式產出 ≥12 處「日文語言上不可能正確的字串」（如 `童貞のマヴァ`、`冷房をガンガンナイフで食べる`、`水塗ってさ`）。改用 WhisperJAV anime-whisper + Qwen3-ASR Ensemble 模式後這些字串全部消除，女主角名「ミツリ」也首次穩定識別。
 
+## 路徑佔位符約定
+
+以下指令使用佔位符代替個人路徑，實際使用時請替換或設成環境變數：
+
+| 佔位符 | 意義 | 範例 |
+|---|---|---|
+| `<WHISPERJAV_BIN>` | WhisperJAV 執行檔絕對路徑 | Linux: `~/tools/WhisperJAV/.venv/bin/whisperjav`<br>Windows: `C:\Users\<USER>\AppData\Local\WhisperJAV\Scripts\whisperjav.exe` |
+| `<INPUT_VIDEO>` | 輸入影片絕對路徑 | `~/videos/sample.mp4` / `C:\Videos\sample.mp4` |
+| `<OUTPUT_DIR>` | 輸出 SRT 資料夾 | `~/srt-out/` / `C:\Videos\srt-out\` |
+| `<LLAMACPP_BIN_DIR>` | llama.cpp 預編譯目錄 | 參見本 repo `CLAUDE.md` |
+| `<MODEL_DIR>` | GGUF 模型目錄 | 參見本 repo `CLAUDE.md` |
+
 ## 安裝步驟（Linux + CUDA）
 
 ### 1. 取得原始碼
 
-本機建議 clone 路徑：`~/dev/tools/claude/WhisperJAV/`
+clone 到固定位置（例如 `~/tools/WhisperJAV/`），後續以 `<WHISPERJAV_DIR>` 表示：
 
 ```bash
-cd ~/dev/tools/claude/
-git clone https://github.com/meizhong986/WhisperJAV.git
-cd WhisperJAV
+git clone https://github.com/meizhong986/WhisperJAV.git <WHISPERJAV_DIR>
+cd <WHISPERJAV_DIR>
 ```
 
 ### 2. 安裝系統依賴
@@ -33,7 +44,7 @@ sudo apt install -y portaudio19-dev libsndfile1
 
 ### 3. 跑安裝腳本
 
-WhisperJAV 用 `uv` 管理 Python 環境，安裝腳本 `install.py` 會自動偵測 GPU 並選擇對應 PyTorch wheel。本機 RTX 3070 Laptop（CUDA 13.2 驅動）用 cu128：
+WhisperJAV 用 `uv` 管理 Python 環境，安裝腳本 `install.py` 會自動偵測 GPU 並選擇對應 PyTorch wheel。CUDA 12.x 驅動環境用 cu128：
 
 ```bash
 python3 install.py --cuda cu128 --no-local-llm
@@ -43,27 +54,91 @@ python3 install.py --cuda cu128 --no-local-llm
 - `--cuda cu128`：明示用 CUDA 12.8 PyTorch wheel
 - `--no-local-llm`：跳過 `llama-cpp-python` 本地 LLM 安裝（本 repo 已有自己的 llama.cpp 翻譯堆疊）
 
-完成後二進位位於 `~/dev/tools/claude/WhisperJAV/.venv/bin/whisperjav`。
+完成後二進位位於 `<WHISPERJAV_DIR>/.venv/bin/whisperjav`（即 `<WHISPERJAV_BIN>`）。
 
 ### 4. 驗證
 
 ```bash
-~/dev/tools/claude/WhisperJAV/.venv/bin/whisperjav --check
-~/dev/tools/claude/WhisperJAV/.venv/bin/whisperjav --help
+<WHISPERJAV_BIN> --check
+<WHISPERJAV_BIN> --help
 ```
+
+## 安裝步驟（Windows + CUDA）
+
+Windows 端 WhisperJAV 提供官方 installer，預設安裝路徑為 `C:\Users\<USER>\AppData\Local\WhisperJAV\`，執行檔位於 `Scripts\whisperjav.exe`。
+
+驗證環境：
+
+```powershell
+& "<WHISPERJAV_BIN>" --check
+```
+
+預期看到 Python、CUDA、PyTorch、GPU 記憶體、FFmpeg、Python 依賴全部 ✓。
 
 ## 推薦 CLI：Ensemble Mode（anime-whisper + Qwen3-ASR）
 
-本機 2026-05-23 驗證最佳設定：
+2026-05-23 驗證最佳設定（語法樹形式，下方分 shell 展開實際指令）：
+
+```text
+<WHISPERJAV_BIN> <INPUT_VIDEO>
+  --ensemble --ensemble-serial
+  --pass1-pipeline qwen --pass1-qwen-params '{"generator_backend":"anime-whisper"}'
+  --pass2-pipeline qwen --pass2-qwen-params '{"generator_backend":"qwen3"}'
+  --merge-strategy smart_merge
+  --language japanese
+  --output-dir <OUTPUT_DIR>
+```
+
+### Linux / macOS / Git Bash
+
+Bash 系列 shell 中單引號內為字面字串，JSON 雙引號可直接寫：
 
 ```bash
-~/dev/tools/claude/WhisperJAV/.venv/bin/whisperjav input.mp4 \
+<WHISPERJAV_BIN> <INPUT_VIDEO> \
   --ensemble --ensemble-serial \
   --pass1-pipeline qwen --pass1-qwen-params '{"generator_backend":"anime-whisper"}' \
   --pass2-pipeline qwen --pass2-qwen-params '{"generator_backend":"qwen3"}' \
   --merge-strategy smart_merge \
   --language japanese \
-  --output-dir ./out/
+  --output-dir <OUTPUT_DIR>
+```
+
+### Windows PowerShell 7+
+
+PowerShell 單引號內的 `"` 需要 escape 成 `""`：
+
+```powershell
+& "<WHISPERJAV_BIN>" `
+  "<INPUT_VIDEO>" `
+  --ensemble --ensemble-serial `
+  --pass1-pipeline qwen --pass1-qwen-params '{""generator_backend"":""anime-whisper""}' `
+  --pass2-pipeline qwen --pass2-qwen-params '{""generator_backend"":""qwen3""}' `
+  --merge-strategy smart_merge `
+  --language japanese `
+  --output-dir "<OUTPUT_DIR>"
+```
+
+或用 stop-parsing token `--%` 跳過 PowerShell 的引號處理，直接交由執行檔解析：
+
+```powershell
+& "<WHISPERJAV_BIN>" --% "<INPUT_VIDEO>" --ensemble --ensemble-serial --pass1-pipeline qwen --pass1-qwen-params {"generator_backend":"anime-whisper"} --pass2-pipeline qwen --pass2-qwen-params {"generator_backend":"qwen3"} --merge-strategy smart_merge --language japanese --output-dir "<OUTPUT_DIR>"
+```
+
+注意：`--%` 之後不能再做變數展開，所有路徑要寫死。
+
+### Windows CMD
+
+CMD 用 `\"` escape 雙引號、`^` 接續行：
+
+```cmd
+"<WHISPERJAV_BIN>" ^
+  "<INPUT_VIDEO>" ^
+  --ensemble --ensemble-serial ^
+  --pass1-pipeline qwen --pass1-qwen-params "{\"generator_backend\":\"anime-whisper\"}" ^
+  --pass2-pipeline qwen --pass2-qwen-params "{\"generator_backend\":\"qwen3\"}" ^
+  --merge-strategy smart_merge ^
+  --language japanese ^
+  --output-dir "<OUTPUT_DIR>"
 ```
 
 ### 參數說明
@@ -99,23 +174,23 @@ RTX 3070 Laptop 8GB VRAM 剛好塞下，無需特別量化設定。Qwen3-ASR-1.7
 WhisperJAV 輸出標準 SRT，直接餵給本 repo 翻譯 CLI：
 
 ```bash
-# 1. 轉錄
-whisperjav input.mp4 --ensemble --ensemble-serial \
+# 1. 轉錄（依平台選擇上方對應的 shell 寫法）
+<WHISPERJAV_BIN> <INPUT_VIDEO> --ensemble --ensemble-serial \
   --pass1-pipeline qwen --pass1-qwen-params '{"generator_backend":"anime-whisper"}' \
   --pass2-pipeline qwen --pass2-qwen-params '{"generator_backend":"qwen3"}' \
   --merge-strategy smart_merge --language japanese \
-  --output-dir ./srt-out/
+  --output-dir <OUTPUT_DIR>
 
-# 2. 啟 llama-server（從本 repo CLAUDE.md 方案 B / 7B 推薦）
-GGML_CUDA_NO_VMM=1 LD_LIBRARY_PATH=~/dev/llama-bin-ubuntu-cuda \
-  ~/dev/llama-bin-ubuntu-cuda/llama-server \
-    -m ~/dev/model/Hy-MT2-7B-Q4_K_M.gguf -ngl auto -fa on \
+# 2. 啟 llama-server（路徑與旗標見本 repo CLAUDE.md 之 llama.cpp 章節）
+GGML_CUDA_NO_VMM=1 LD_LIBRARY_PATH=<LLAMACPP_BIN_DIR> \
+  <LLAMACPP_BIN_DIR>/llama-server \
+    -m <MODEL_DIR>/Hy-MT2-7B-Q4_K_M.gguf -ngl auto -fa on \
     -ctk q8_0 -ctv q8_0 -kvu -cram 4096 --jinja -c 4096 -np 2 \
     --no-context-shift -rea off --cache-reuse 256 \
     --host 127.0.0.1 --port 8080 &
 
-# 3. 翻譯
-uv run srt-translator translate ./srt-out/input.ja.merged.whisperjav.srt \
+# 3. 翻譯（替換為實際 SRT 檔名；Ensemble 模式輸出為 <video>.ja.merged.whisperjav.srt）
+uv run srt-translator translate <OUTPUT_DIR>/<video>.ja.merged.whisperjav.srt \
   -s 日文 -t 繁體中文 \
   --provider llamacpp -m Hy-MT2-7B-Q4_K_M \
   --content-type adult
@@ -154,13 +229,17 @@ uv run srt-translator translate ./srt-out/input.ja.merged.whisperjav.srt \
 
 ## 升級與維護
 
-WhisperJAV 活躍維護中（2026 仍每季有 release），升級用：
+WhisperJAV 活躍維護中（2026 仍每季有 release），升級方式：
+
+Linux / macOS：
 
 ```bash
-cd ~/dev/tools/claude/WhisperJAV
+cd <WHISPERJAV_DIR>
 git pull
-.venv/bin/python install.py --cuda cu128 --no-local-llm  # 或用 ~/dev/tools/claude/WhisperJAV/.venv/bin/whisperjav-upgrade
+.venv/bin/python install.py --cuda cu128 --no-local-llm  # 或執行 <WHISPERJAV_BIN>-upgrade
 ```
+
+Windows（官方 installer 安裝者）：執行開始功能表中的 **WhisperJAV → Upgrade** 捷徑，或直接跑 `whisperjav-upgrade.exe`（與 `whisperjav.exe` 同目錄）。
 
 新 release 可能調整 CLI 參數，升級後務必 `whisperjav --help` 確認 Ensemble 設定仍適用。
 
