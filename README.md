@@ -275,6 +275,7 @@ uv run srt-translator --help
 - [開發者指南](docs/DEVELOPMENT.md) - 開發環境設定與貢獻指南
 - [Ollama 設定指南](docs/ollama-setup-guide.md) - Ollama 本地模型設定
 - [llama.cpp 設定指南](docs/llamacpp-setup-guide.md) - llama.cpp 本地模型設定
+- [WhisperJAV 設定指南](docs/whisperjav-setup-guide.md) - 日文成人字幕（JAV）上游轉錄工具（anime-whisper + Qwen3-ASR Ensemble）
 - [變更日誌](CHANGELOG.md) - 版本更新記錄
 - [貢獻指南](CONTRIBUTING.md) - 如何為專案做出貢獻
 
