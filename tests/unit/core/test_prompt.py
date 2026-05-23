@@ -547,8 +547,18 @@ class TestPromptManagerOptimizedMessage:
         assert messages[0]["role"] == "system"
         assert messages[1]["role"] == "user"
 
-    def test_hunyuan_mt_strategy_drops_context_and_markers(self, manager):
-        """Hunyuan-MT2 翻譯專用模型：只送單句、不含上下文標記，避免洩漏。"""
+    def test_hunyuan_mt_strategy_uses_minimal_context_framing(self, manager):
+        """Hunyuan-MT2 採最小化 context-aware 模板（v2）：
+        以中文自然語句框架（前一句／後一句／僅供理解／只輸出這一句）注入 1 前 1 後，
+        故意避開 [Background Information]/[Source Text] / [Translation Tasks] 等官方 tag ——
+        雖為官方訓練格式，但實測 v3/v4 兩種「貼齊官方」路徑都負加速：
+        - v3 [Background Information]：訓練語意「背景應影響翻譯」與字幕消歧義場景衝突，
+          造成 context 污染、亂編詞如「原膠體」
+          （見 benchmark-2026-05-23-hymt2-7b-ctx-v3）
+        - v4 Personalization [Translation Tasks]：把 adult 規則移到 user message 後，
+          adult 詞彙集體變含蓄、出現人稱反轉等隨機 regression
+          （見 benchmark-2026-05-23-hymt2-7b-persona-v4）
+        """
         manager.current_content_type = "adult"
         text = "上機嫌じゃん"
         context = ["前文參考", text, "後文參考"]
@@ -559,23 +569,48 @@ class TestPromptManagerOptimizedMessage:
 
         assert len(messages) == 2
         user_content = messages[1]["content"]
-        # 當前句必須出現，但上下文與結構化標記都不該出現
+        # 當前句與 1 前 1 後上下文都應出現
         assert text in user_content
-        assert "前文參考" not in user_content
-        assert "後文參考" not in user_content
-        assert "[CURRENT]" not in user_content
-        assert "[CONTEXT_BEFORE]" not in user_content
-        assert "請只翻譯這一句" not in user_content
-        # system prompt 為 Hunyuan 簡化版
-        assert "professional subtitle translator" in messages[0]["content"]
+        assert "前文參考" in user_content
+        assert "後文參考" in user_content
+        # 自然語句框架，故意避開 v3/v4 失敗的官方 bracket tags
+        assert "[Background Information]" not in user_content
+        assert "[Source Text]" not in user_content
+        assert "[Translation Tasks]" not in user_content
+        # 必含「僅供理解／只輸出這一句」的關鍵指示
+        assert "僅供理解" in user_content
+        assert "只輸出這一句" in user_content
+        # Adult 規則仍在 system prompt（v4 試圖移動失敗，仍維持 v2 位置）
+        system_content = messages[0]["content"]
+        assert "professional subtitle translator" in system_content
+        assert "Do not censor" in system_content
+
+    def test_hunyuan_mt_strategy_falls_back_to_single_when_no_context(self, manager):
+        """無相鄰上下文時，Hunyuan 應回退到 v1 官方單句模板。"""
+        manager.current_content_type = "adult"
+        text = "上機嫌じゃん"
+
+        # context_texts 僅含當前句，沒有前後文
+        messages = manager.get_optimized_message(
+            text, [text], "llamacpp", "Hy-MT2-1.8B-Q8_0", current_index=0
+        )
+
+        user_content = messages[1]["content"]
+        assert text in user_content
+        # v1 單句模板的特徵字串
+        assert "將以下文本翻譯為繁體中文（台灣）" in user_content
+        # 不應出現 v2 才有的框架字串
+        assert "僅供理解" not in user_content
+        assert "前一句" not in user_content
+        assert "後一句" not in user_content
 
     def test_hunyuan_mt_strategy_signature_distinct(self, manager):
-        """Hunyuan-MT2 應有獨立的快取策略簽章。"""
+        """Hunyuan-MT2 應有獨立的快取策略簽章（v2 含上下文）。"""
         sig = manager._get_message_strategy_signature("llamacpp", "adult", "Hy-MT2-1.8B-Q8_0")
-        assert sig == "hunyuan_mt_single_v1"
-        # 非 Hunyuan 模型維持原行為
+        assert sig == "hunyuan_mt_context_v2"
+        # 非 Hunyuan 模型不應共用此簽章
         other = manager._get_message_strategy_signature("llamacpp", "general", "qwen3.6-27b")
-        assert other != "hunyuan_mt_single_v1"
+        assert other != "hunyuan_mt_context_v2"
 
     def test_get_optimized_message_ollama_format(self, manager):
         """測試 Ollama 訊息格式"""

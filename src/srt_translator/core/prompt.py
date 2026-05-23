@@ -803,13 +803,53 @@ Rules:
             )
         return "\n".join(rules)
 
-    def _build_hunyuan_mt_user_message(self, text: str) -> str:
-        """建立 Hunyuan-MT 專用的單句 user message
+    def _build_hunyuan_mt_user_message(
+        self,
+        text: str,
+        context_before: list[str] | None = None,
+        context_after: list[str] | None = None,
+    ) -> str:
+        """建立 Hunyuan-MT 專用的 user message
 
-        沿用模型官方訓練的翻譯模板，且**不附帶上下文**，避免模型把上下文標記與
-        上下文內容一併洩漏進輸出。
+        若有相鄰上下文，採「中文自然語句框架 + 僅供理解 + 只輸出目標句」的最小化
+        context-aware 模板（v2）：故意避開 [前文]/[後文]/== 等 marker，以降低
+        Hunyuan 把 marker 翻進輸出的風險。只取最近的 1 前 1 後，縮小擾動面。
+
+        若無相鄰上下文，回退到 v1 官方單句模板。
+
+        歷史警示（避免後人重踩）：
+        - v3 試官方 [Background Information]/[Source Text] 模板 → 失敗
+          （官方訓練語意「背景應影響翻譯」與字幕消歧義場景衝突，造成 context 污染、
+          model 亂編詞如「原膠體」）。詳：`data/benchmark-2026-05-23-hymt2-7b-ctx-v3/`
+        - v4 試官方 Personalization 模板（把 adult 規則從 system_prompt 搬到
+          user message [Translation Tasks]） → 失敗（adult 詞彙集體變含蓄、出現
+          人稱反轉等隨機 regression）。詳：`data/benchmark-2026-05-23-hymt2-7b-persona-v4/`
+        - 兩次「貼齊官方」優化都負加速，**v2 自製中文框架仍為最優解**。
         """
-        return f"將以下文本翻譯為繁體中文（台灣），注意只需要輸出翻譯後的結果，不要額外解釋：\n\n{text}"
+        prev = context_before[-1].strip() if context_before else ""
+        nxt = context_after[0].strip() if context_after else ""
+
+        if not prev and not nxt:
+            return (
+                "將以下文本翻譯為繁體中文（台灣），"
+                "注意只需要輸出翻譯後的結果，不要額外解釋：\n\n"
+                f"{text}"
+            )
+
+        ref_lines = []
+        if prev:
+            ref_lines.append(f"前一句：{prev}")
+        if nxt:
+            ref_lines.append(f"後一句：{nxt}")
+        ref_block = "\n".join(ref_lines)
+
+        return (
+            "以下是字幕的相鄰句子，僅供理解語境，請勿翻譯這幾句：\n"
+            f"{ref_block}\n\n"
+            "請將下面這一句翻譯為繁體中文（台灣），"
+            "只輸出這一句的翻譯結果，不要附上前後句、不要加解釋、輸出僅一行：\n\n"
+            f"{text}"
+        )
 
     def _resolve_default_prompt_llm_type(self, llm_type: str) -> str:
         """將 runtime/provider 名稱對齊到 prompt 模板實際維護的 key。"""
@@ -834,7 +874,7 @@ Rules:
         """取得訊息結構策略版本，用於快取區分"""
         resolved_content_type = content_type or self.current_content_type
         if self._should_use_hunyuan_mt_prompt(llm_type, model_name):
-            return "hunyuan_mt_single_v1"
+            return "hunyuan_mt_context_v2"
         if self._should_use_qwen_ud_adult_prompt(llm_type, resolved_content_type, model_name):
             return "qwen35_ud_adult_compact_context_v3"
         return "default_structured_context_v1"
@@ -1134,9 +1174,10 @@ Rules:
             context_before = context_texts
             context_after = []
 
-        # Hunyuan-MT 翻譯專用模型：跳過所有上下文與規則注入，僅送單句官方模板
+        # Hunyuan-MT 翻譯專用模型：採最小化 context-aware 模板（v2，1 前 1 後），
+        # 避開結構化 marker 以降低洩漏風險；無上下文時回退到 v1 官方單句模板
         if self._should_use_hunyuan_mt_prompt(llm_type, model_name):
-            user_message = self._build_hunyuan_mt_user_message(text)
+            user_message = self._build_hunyuan_mt_user_message(text, context_before, context_after)
             return [{"role": "system", "content": prompt}, {"role": "user", "content": user_message}]
 
         use_qwen_ud_strategy = self._should_use_qwen_ud_adult_prompt(llm_type, content_type, model_name)
