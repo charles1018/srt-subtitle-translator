@@ -421,14 +421,14 @@ class TestConfigValidation:
         errors = manager.validate_config("user")
         assert "source_lang" in errors
 
-    def test_validate_model_config_invalid_url(self):
-        """測試驗證無效的 URL"""
+    def test_validate_model_config_invalid_llamacpp_url(self):
+        """測試驗證無效的 llama.cpp URL"""
         ConfigManager._instances = {}
         manager = ConfigManager("model")
-        manager.set_value("ollama_url", "invalid_url", auto_save=False)
+        manager.set_value("llamacpp_url", "invalid_url", auto_save=False)
 
         errors = manager.validate_config("model")
-        assert "ollama_url" in errors
+        assert "llamacpp_url" in errors
 
     def test_validate_all_configs(self):
         """測試驗證所有配置類型"""

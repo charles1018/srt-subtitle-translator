@@ -55,6 +55,19 @@ def test_create_parser_accepts_google_and_prompt_flags() -> None:
     assert args.netflix_style is True
 
 
+def test_create_parser_defaults_to_llamacpp_provider() -> None:
+    """CLI parser 的 provider 預設值應與本地 runtime 預設一致。"""
+    parser = cli.create_parser()
+
+    translate_args = parser.parse_args(["translate", "input.srt", "-s", "日文", "-t", "繁體中文"])
+    models_args = parser.parse_args(["models"])
+    prompt_args = parser.parse_args(["prompt", "show"])
+
+    assert translate_args.provider == "llamacpp"
+    assert models_args.provider == "llamacpp"
+    assert prompt_args.provider == "llamacpp"
+
+
 def test_create_parser_accepts_prompt_subcommands() -> None:
     """CLI parser 應接受 prompt 管理子命令。"""
     parser = cli.create_parser()

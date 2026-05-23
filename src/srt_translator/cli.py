@@ -33,9 +33,9 @@ CLI_DISPLAY_MODE_CHOICES = [
     *DISPLAY_MODE_ALIASES.keys(),
 ]
 
-CLI_TRANSLATE_PROVIDERS = ["ollama", "openai", "google", "llamacpp"]
-CLI_MODEL_PROVIDERS = ["ollama", "openai", "google", "llamacpp"]
-CLI_PROMPT_PROVIDERS = ["ollama", "openai", "google", "llamacpp"]
+CLI_TRANSLATE_PROVIDERS = ["openai", "google", "llamacpp"]
+CLI_MODEL_PROVIDERS = ["openai", "google", "llamacpp"]
+CLI_PROMPT_PROVIDERS = ["openai", "google", "llamacpp"]
 CLI_CONTENT_TYPES = ["general", "adult", "anime", "movie", "english_drama"]
 CLI_STYLES = ["standard", "literal", "localized", "specialized"]
 
@@ -49,7 +49,7 @@ def create_parser() -> argparse.ArgumentParser:
     """建立命令列參數解析器"""
     parser = argparse.ArgumentParser(
         prog="srt-translator",
-        description=("SRT 字幕翻譯工具 - CLI provider 支援 Ollama、OpenAI、Google、llama.cpp"),
+        description=("SRT 字幕翻譯工具 - CLI provider 支援 OpenAI、Google、llama.cpp"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 範例:
@@ -70,7 +70,7 @@ def create_parser() -> argparse.ArgumentParser:
   srt-translator translate video.srt -s 日文 -t 繁體中文 --provider llamacpp -m Qwen3.5-9B-UD
 
   # 顯示可用模型
-  srt-translator models --provider ollama
+  srt-translator models --provider llamacpp
 
   # 顯示快取統計
   srt-translator cache --stats
@@ -96,8 +96,8 @@ def create_parser() -> argparse.ArgumentParser:
   srt-translator cps-audit video.zh-TW.srt
 
 說明:
-  - CLI parser 目前接受: ollama / openai / google / llamacpp
-  - translate 實際建議優先使用: ollama / openai / google / llamacpp
+  - CLI parser 目前接受: openai / google / llamacpp
+  - translate 實際建議優先使用: llamacpp / openai / google
 """,
     )
 
@@ -111,9 +111,9 @@ def create_parser() -> argparse.ArgumentParser:
     translate_parser.add_argument(
         "-p",
         "--provider",
-        default="ollama",
+        default="llamacpp",
         choices=CLI_TRANSLATE_PROVIDERS,
-        help="LLM 提供者（CLI 可選: ollama/openai/google/llamacpp；預設: ollama）",
+        help="LLM 提供者（CLI 可選: openai/google/llamacpp；預設: llamacpp）",
     )
     translate_parser.add_argument("-m", "--model", help="模型名稱 (未指定則使用推薦模型)")
     translate_parser.add_argument(
@@ -166,9 +166,9 @@ def create_parser() -> argparse.ArgumentParser:
     models_parser.add_argument(
         "-p",
         "--provider",
-        default="ollama",
+        default="llamacpp",
         choices=CLI_MODEL_PROVIDERS,
-        help="LLM 提供者（列模型支援: ollama/openai/google/llamacpp）",
+        help="LLM 提供者（列模型支援: openai/google/llamacpp）",
     )
 
     # cache 子命令
@@ -246,9 +246,9 @@ def create_parser() -> argparse.ArgumentParser:
     prompt_show.add_argument(
         "-p",
         "--provider",
-        default="ollama",
+        default="llamacpp",
         choices=CLI_PROMPT_PROVIDERS,
-        help="提示詞 provider（預設: ollama）",
+        help="提示詞 provider（預設: llamacpp）",
     )
     prompt_show.add_argument(
         "--content-type",
@@ -260,9 +260,9 @@ def create_parser() -> argparse.ArgumentParser:
     prompt_set.add_argument(
         "-p",
         "--provider",
-        default="ollama",
+        default="llamacpp",
         choices=CLI_PROMPT_PROVIDERS,
-        help="提示詞 provider（預設: ollama）",
+        help="提示詞 provider（預設: llamacpp）",
     )
     prompt_set.add_argument(
         "--content-type",
@@ -277,9 +277,9 @@ def create_parser() -> argparse.ArgumentParser:
     prompt_reset.add_argument(
         "-p",
         "--provider",
-        default="ollama",
+        default="llamacpp",
         choices=CLI_PROMPT_PROVIDERS,
-        help="提示詞 provider（預設: ollama）",
+        help="提示詞 provider（預設: llamacpp）",
     )
     prompt_reset.add_argument(
         "--content-type",

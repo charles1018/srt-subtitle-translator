@@ -135,7 +135,7 @@ class ConfigManager:
             "user": {
                 "source_lang": "英文",
                 "target_lang": "繁體中文",
-                "llm_type": "openai",
+                "llm_type": "llamacpp",
                 "model_name": "",
                 "parallel_requests": 3,
                 "display_mode": "僅顯示翻譯",
@@ -152,9 +152,7 @@ class ConfigManager:
                 },
             },
             "model": {
-                "ollama_url": "http://localhost:11434",
                 "llamacpp_url": "http://localhost:8080",
-                "default_ollama_model": "llama3.2",
                 "cache_expiry": 600,  # 秒數
                 "connect_timeout": 5,
                 "request_timeout": 10,
@@ -178,7 +176,7 @@ class ConfigManager:
                     "command-r",
                     "glm",
                 ],
-                "default_providers": ["ollama", "openai"],
+                "default_providers": ["llamacpp", "openai"],
                 "translation_capability_weight": {"translation": 0.7, "multilingual": 0.2, "context_handling": 0.1},
             },
             "prompt": {
@@ -670,8 +668,8 @@ class ConfigManager:
 
         # LLM 類型
         llm_type = config.get("llm_type", "")
-        if llm_type not in ["ollama", "openai", "google", "llamacpp"]:
-            errors["llm_type"] = ["無效的 LLM 類型，有效選項: ollama, openai, google, llamacpp"]
+        if llm_type not in ["openai", "google", "llamacpp"]:
+            errors["llm_type"] = ["無效的 LLM 類型，有效選項: openai, google, llamacpp"]
 
         # 並行請求數
         parallel = config.get("parallel_requests", 0)
@@ -690,12 +688,12 @@ class ConfigManager:
         """驗證模型配置"""
         errors = {}
 
-        # Ollama URL
-        ollama_url = config.get("ollama_url", "")
-        if not isinstance(ollama_url, str) or not (
-            ollama_url.startswith("http://") or ollama_url.startswith("https://")
+        # llama.cpp URL
+        llamacpp_url = config.get("llamacpp_url", "")
+        if not isinstance(llamacpp_url, str) or not (
+            llamacpp_url.startswith("http://") or llamacpp_url.startswith("https://")
         ):
-            errors["ollama_url"] = ["必須為有效的 HTTP/HTTPS URL"]
+            errors["llamacpp_url"] = ["必須為有效的 HTTP/HTTPS URL"]
 
         # 逾時設定
         for timeout_key in ["connect_timeout", "request_timeout"]:
