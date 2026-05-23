@@ -66,10 +66,10 @@
 
 ```markdown
 ### Bug 描述
-使用 Ollama 模式時，翻譯進度卡在 50%
+使用 llama.cpp 模式時，翻譯進度卡在 50%
 
 ### 重現步驟
-1. 選擇 Ollama 模式
+1. 選擇 llama.cpp 模式
 2. 選擇 llama3.2 模型
 3. 開始翻譯包含 100 條字幕的檔案
 4. 進度在 50% 處停止
@@ -84,7 +84,7 @@
 - OS: Windows 11
 - Python: 3.11.0
 - 專案版本: 1.0.0
-- Ollama 版本: 0.1.5
+- llama.cpp 版本: 0.1.5
 
 ### 日誌
 [附上相關日誌]
@@ -205,7 +205,7 @@ git checkout -b fix/your-bug-fix
 
 **範例**：
 - `feature/export-translation-memory`
-- `fix/ollama-connection-timeout`
+- `fix/llamacpp-connection-timeout`
 - `docs/api-examples`
 - `refactor/config-manager`
 

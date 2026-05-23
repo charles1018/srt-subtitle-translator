@@ -30,11 +30,11 @@
 
 目前 provider 現況如下；開發時若文件與程式碼衝突，請以 `src/` 為準：
 
-- 實際翻譯 runtime：`ollama`、`openai`、`google`、`llamacpp`
-- CLI `translate` / `models` / `prompt` 參數：`ollama`、`openai`、`google`、`llamacpp`
-- GUI provider 下拉：`ollama`、`openai`、`google`、`llamacpp`
-- `ConfigManager` 對 `user.llm_type` 驗證：`ollama`、`openai`、`google`、`llamacpp`
-- `ModelManager` / 模型 metadata / 金鑰載入：`ollama`、`openai`、`google`、`llamacpp`
+- 實際翻譯 runtime：`llamacpp`、`openai`、`google`
+- CLI `translate` / `models` / `prompt` 參數：`llamacpp`、`openai`、`google`
+- GUI provider 下拉：`llamacpp`、`openai`、`google`
+- `ConfigManager` 對 `user.llm_type` 驗證：`llamacpp`、`openai`、`google`
+- `ModelManager` / 模型 metadata / 金鑰載入：`llamacpp`、`openai`、`google`
 - Anthropic / OpenRouter：已取消納入目前支援範圍
 
 ### 推薦工具

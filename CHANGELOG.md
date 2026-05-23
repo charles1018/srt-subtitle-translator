@@ -7,6 +7,11 @@
 
 ## [Unreleased]
 
+### Removed
+
+- 移除 `ollama` provider 的翻譯執行路徑、模型清單、CLI / GUI provider 選項與相關文件
+- 本地翻譯升級指引：請改用 `--provider llamacpp`，並依 `docs/llamacpp-setup-guide.md` 啟動 `llama-server`
+
 ## [1.2.0] - 2026-05-19
 
 ### ⚠️ 變更

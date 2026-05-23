@@ -5,23 +5,23 @@
 [![Tests](https://img.shields.io/badge/tests-962%20passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-htmlcov-lightgrey.svg)](htmlcov/)
 
-基於 Python 的 SRT 字幕檔自動翻譯工具。目前支援 `ollama`、`openai`、`google`、`llamacpp`；Anthropic 與 OpenRouter 已不在目前支援範圍內。
+基於 Python 的 SRT 字幕檔自動翻譯工具。目前支援 `llamacpp`、`openai`、`google`；Anthropic 與 OpenRouter 已不在目前支援範圍內。
 
 ## ✨ 功能特點
 
 ### 核心功能
 - 🌍 **多語言支援**：支援日文、英文、韓文、法文、德文、西班牙文、俄文、繁體中文等語言
 - 🤖 **多引擎支援**：
-  - 實際翻譯 runtime：Ollama、OpenAI、Google、llama.cpp
-  - CLI provider 參數：Ollama、OpenAI、Google、llama.cpp
-  - GUI provider 下拉 / 模型發現：Ollama、OpenAI、Google、llama.cpp
+  - 實際翻譯 runtime：llama.cpp、OpenAI、Google
+  - CLI provider 參數：llama.cpp、OpenAI、Google
+  - GUI provider 下拉 / 模型發現：llama.cpp、OpenAI、Google
 - 📝 **多格式支援**：SRT、VTT、ASS/SSA 字幕格式
 
 ### 進階功能
 - 🖥️ **CLI 命令列模式**：支援命令列翻譯、批次處理、術語表管理、提示詞管理
 - 📚 **術語表管理**：確保專有名詞翻譯一致性（支援建立、啟用/停用、JSON/CSV/TXT 匯入匯出）
 - ⚡ **批量處理**：同時處理多個字幕檔案
-- 🔄 **並發翻譯**：可調整並發數，優化翻譯效率；部分 Ollama 模型（如 Qwen3.5）會依模型特性自動降至安全並發數，llama.cpp 則會依 `llama-server --parallel` 實際 slots 自動收斂
+- 🔄 **並發翻譯**：可調整並發數，優化翻譯效率；llama.cpp 會依 `llama-server --parallel` 實際 slots 自動收斂，Qwen3.5 家族模型則會依模型特性自動降至安全並發數
 - 🆕 **結構-文本分離翻譯模式**：實驗性批次翻譯，將字幕結構（timestamp/index）與文本分離，僅翻譯純文字後重組，消除 LLM 損壞結構的風險
 - 💾 **翻譯快取**：自動快取翻譯結果，減少重複 API 呼叫
   - 🆕 **GUI 快取管理**：完整的快取管理界面，支援查看統計資訊和一鍵清除快取
@@ -54,18 +54,17 @@
 - **API 金鑰**（依使用模式）：
   - OpenAI：在 `.env` 或環境變數中設定 `OPENAI_API_KEY`
   - Google Gemini：在 `.env` 或環境變數中設定 `GOOGLE_API_KEY` / `GEMINI_API_KEY`
-  - Ollama 模式：需要在本機安裝 [Ollama](https://ollama.ai) 服務
   - llama.cpp 模式：需要下載 [llama.cpp](https://github.com/ggml-org/llama.cpp) 並啟動 `llama-server`
 
 ## 🔎 目前 Provider 現況
 
 | 層級 | 目前狀態 |
 |------|----------|
-| 實際翻譯 runtime | `ollama`、`openai`、`google`、`llamacpp` |
-| CLI `translate` / `models` / `prompt` 參數 | `ollama`、`openai`、`google`、`llamacpp` |
-| GUI provider 下拉 | `ollama`、`openai`、`google`、`llamacpp` |
-| 模型 metadata / 可用模型發現 | `ollama`、`openai`、`google`、`llamacpp` |
-| `ConfigManager` 對 `user.llm_type` 驗證 | `ollama`、`openai`、`google`、`llamacpp` |
+| 實際翻譯 runtime | `llamacpp`、`openai`、`google` |
+| CLI `translate` / `models` / `prompt` 參數 | `llamacpp`、`openai`、`google` |
+| GUI provider 下拉 | `llamacpp`、`openai`、`google` |
+| 模型 metadata / 可用模型發現 | `llamacpp`、`openai`、`google` |
+| `ConfigManager` 對 `user.llm_type` 驗證 | `llamacpp`、`openai`、`google` |
 | 取消支援 | `anthropic`、`openrouter` |
 
 > 文件若與程式碼衝突，請以 `src/` 內實作為準。
@@ -139,25 +138,10 @@ $env:GOOGLE_API_KEY="your-google-api-key"
 
 > **安全提示**：`.env` 檔案已加入 `.gitignore`，不會被提交到版本控制。
 >
-> **補充**：程式碼目前以 `OPENAI_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY` 為唯一支援的金鑰載入方式。若你偏好 shell exports，也屬於相同的環境變數路徑。端到端翻譯 runtime 為 `ollama` / `openai` / `google` / `llamacpp`。
-
-#### Ollama（本地模型）
-確保 Ollama 服務正在運行：
-
-```bash
-# 安裝 Ollama（參考 https://ollama.ai）
-# 啟動 Ollama 服務
-ollama serve
-
-# 拉取模型（例如）
-ollama pull llama3.2
-```
-
-如果你使用本地匯入的 Qwen3.5 GGUF 模型，建議依照 [docs/ollama-setup-guide.md](docs/ollama-setup-guide.md) 建立專用 `Modelfile`，以正確處理 ChatML 與 `<think>` 輸出。
+> **補充**：程式碼目前以 `OPENAI_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY` 為唯一支援的金鑰載入方式。若你偏好 shell exports，也屬於相同的環境變數路徑。端到端翻譯 runtime 為 `llamacpp` / `openai` / `google`。
 
 #### llama.cpp（本地模型，直接推理）
-
-相較於 Ollama，llama.cpp 提供更直接的 GPU 控制和更低的包裝層開銷。需要預先啟動 `llama-server`：
+需要預先啟動 `llama-server`：
 
 ```bash
 # 啟動 llama-server（詳細設定請參考 docs/llamacpp-setup-guide.md）
@@ -184,7 +168,7 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja -c 2048 --parall
    - 選擇字幕檔案（可拖放）
    - 設定源語言和目標語言
    - 選擇 AI 引擎和模型
-   - 調整並發數和顯示模式（使用 Ollama Qwen3.5 時，程式會自動限制為 1；使用 llama.cpp 時，實際並發會受 server slots 限制）
+   - 調整並發數和顯示模式（使用 llama.cpp Qwen3.5 時，程式會自動限制為 1；其他 llama.cpp 模型則會受 server slots 限制）
    - 點擊「開始翻譯」
 
 3. 翻譯完成後，檔案會自動儲存在原檔案目錄
@@ -222,14 +206,14 @@ srt-translator prompt show -p google --content-type anime
 srt-translator prompt export --content-type anime -o ./anime-prompts.json
 
 # 查看可用模型
-srt-translator models -p ollama
+srt-translator models -p llamacpp
 srt-translator models -p google
 
 # 快取管理
 srt-translator cache --stats
 ```
 
-> `translate` 目前可直接使用 `ollama`、`openai`、`google`、`llamacpp`。
+> `translate` 目前可直接使用 `llamacpp`、`openai`、`google`。
 > `qa` 結構驗證通過時回傳 `0`；有錯誤時回傳非 `0`。`cps-audit` 則會在偵測到可讀性問題時回傳非 `0`，方便接到 shell script 或 CI。
 
 ## 🧯 疑難排解
@@ -273,7 +257,6 @@ uv run srt-translator --help
 - [使用者指南](docs/USER_GUIDE.md) - 詳細使用說明
 - [API 文檔](docs/API.md) - 開發者 API 參考
 - [開發者指南](docs/DEVELOPMENT.md) - 開發環境設定與貢獻指南
-- [Ollama 設定指南](docs/ollama-setup-guide.md) - Ollama 本地模型設定
 - [llama.cpp 設定指南](docs/llamacpp-setup-guide.md) - llama.cpp 本地模型設定
 - [WhisperJAV 設定指南](docs/whisperjav-setup-guide.md) - 日文成人字幕（JAV）上游轉錄工具（anime-whisper + Qwen3-ASR Ensemble）
 - [變更日誌](CHANGELOG.md) - 版本更新記錄
@@ -385,13 +368,13 @@ uv run mypy src/srt_translator
 - **平滑調整**：使用指數移動平均（EMA）避免頻繁波動
 - **預期效果**：平均翻譯時間減少 25%（4 分鐘 → 3 分鐘）
 
-> **Ollama / Qwen3.5 例外：** 由於目前 Ollama 對 Qwen3.5 仍存在已知並行限制，程式在偵測到 Qwen3.5 家族模型時，會自動將批次翻譯並發數限制為 `1`，以優先確保穩定性。
+> **llama.cpp / Qwen3.5 例外：** 由於目前 llama.cpp 對 Qwen3.5 仍存在已知並行限制，程式在偵測到 Qwen3.5 家族模型時，會自動將批次翻譯並發數限制為 `1`，以優先確保穩定性。
 
 ### 並發數設定（手動模式）
 
 如需手動控制，可根據不同 AI 引擎調整並發數：
 
-- **Ollama**：一般建議 1-3；Qwen3.5 建議 1，且目前程式會自動限制
+- **llama.cpp**：一般建議 1-3；Qwen3.5 建議 1，且目前程式會自動限制
 - **OpenAI**：3-6（避免觸發速率限制）
 - **Google**：3-8（目前走 GUI / runtime 路徑）
 
@@ -438,7 +421,7 @@ uv run mypy src/srt_translator
 - [pysrt](https://github.com/byroot/pysrt) - SRT 字幕解析
 - [OpenAI](https://openai.com/) - GPT 系列模型
 - [Google](https://ai.google.dev/) - Gemini 系列模型
-- [Ollama](https://ollama.ai/) - 本地 LLM 運行平台
+- [llama.cpp](https://llamacpp.ai/) - 本地 LLM 運行平台
 - [llama.cpp](https://github.com/ggml-org/llama.cpp) - 高效本地 LLM 推理引擎
 
 ## 📮 問題反饋
@@ -465,7 +448,7 @@ uv run mypy src/srt_translator
 - **開發開始**：2023
 - **當前版本**：1.2.0
 - **Python 需求**：3.10+
-- **第一級翻譯 runtime**：Ollama / OpenAI / Google / llama.cpp
+- **第一級翻譯 runtime**：llama.cpp / OpenAI / Google
 - **已取消納入目前支援範圍**：Anthropic / OpenRouter
 
 ---

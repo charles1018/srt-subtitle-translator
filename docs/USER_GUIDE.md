@@ -26,7 +26,6 @@
 1. **Python 環境**：Python 3.10 或更高版本
 2. **網路連接**：使用 API 模式時必須
 3. **AI 服務**（擇一）：
-   - Ollama（本地）
    - llama.cpp（本地，直接推理）
    - OpenAI API 金鑰
    - Google Gemini API 金鑰（GUI / CLI）
@@ -63,15 +62,15 @@ srt-translator translate video.srt -s 日文 -t 繁體中文
 
 | 層級 | 目前狀態 |
 |------|----------|
-| 實際翻譯 runtime | `ollama`、`openai`、`google`、`llamacpp` |
-| CLI `translate` / `models` / `prompt` 參數 | `ollama`、`openai`、`google`、`llamacpp` |
-| GUI provider 下拉 | `ollama`、`openai`、`google`、`llamacpp` |
-| 模型 metadata / 金鑰載入 | `ollama`、`openai`、`google`、`llamacpp` |
-| `ConfigManager` 驗證 `user.llm_type` | `ollama`、`openai`、`google`、`llamacpp` |
+| 實際翻譯 runtime | `llamacpp`、`openai`、`google` |
+| CLI `translate` / `models` / `prompt` 參數 | `llamacpp`、`openai`、`google` |
+| GUI provider 下拉 | `llamacpp`、`openai`、`google` |
+| 模型 metadata / 金鑰載入 | `llamacpp`、`openai`、`google` |
+| `ConfigManager` 驗證 `user.llm_type` | `llamacpp`、`openai`、`google` |
 | 取消支援 | `anthropic`、`openrouter` |
 
 > 實務上：
-> - CLI `translate` 目前可直接使用 `ollama`、`openai`、`google`、`llamacpp`
+> - CLI `translate` 目前可直接使用 `llamacpp`、`openai`、`google`
 > - `llamacpp` 透過 llama-server 的 OpenAI 相容 API 運作，不需要 API 金鑰，詳見 [llama.cpp 設定指南](llamacpp-setup-guide.md)
 > - `google` 已暴露於 GUI 與 CLI；使用前請先確認 `GOOGLE_API_KEY` 或 `GEMINI_API_KEY` 與模型名稱可用
 
@@ -210,8 +209,8 @@ $env:GOOGLE_API_KEY="your-google-api-key"
 除了 GUI 圖形介面外，本工具也提供完整的命令列介面（CLI），適合自動化工作流程和批次處理。
 
 > **目前狀態說明**
-> - CLI parser 目前接受 `ollama`、`openai`、`google`、`llamacpp`
-> - CLI 第一級翻譯 runtime 目前為 `ollama`、`openai`、`google`、`llamacpp`
+> - CLI parser 目前接受 `llamacpp`、`openai`、`google`
+> - CLI 第一級翻譯 runtime 目前為 `llamacpp`、`openai`、`google`
 > - `llamacpp` 需要預先啟動 `llama-server`，詳見 [llama.cpp 設定指南](llamacpp-setup-guide.md)
 > - `google` 已可直接用於 CLI `translate` / `models`
 
@@ -253,7 +252,7 @@ srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
 |------|------|------|--------|
 | `--source` | `-s` | 來源語言 | 必填 |
 | `--target` | `-t` | 目標語言 | 必填 |
-| `--provider` | `-p` | CLI 參數可選值：`ollama` / `openai` / `google` / `llamacpp` | ollama |
+| `--provider` | `-p` | CLI 參數可選值：`llamacpp` / `openai` / `google` | llamacpp |
 | `--model` | `-m` | 模型名稱 | 各引擎推薦模型 |
 | `--content-type` | - | 內容類型：`general` / `adult` / `anime` / `movie` / `english_drama` | 目前 prompt 設定 |
 | `--style` | - | 翻譯風格：`standard` / `literal` / `localized` / `specialized` | 目前 prompt 設定 |
@@ -291,7 +290,7 @@ srt-translator translate video.srt -s 英文 -t 繁體中文 -p openai -m gpt-4o
 srt-translator models
 
 # 列出特定提供者的模型
-srt-translator models -p ollama
+srt-translator models -p llamacpp
 srt-translator models -p openai
 srt-translator models -p google
 ```
@@ -538,23 +537,6 @@ srt-translator glossary activate anime
 
 ---
 
-#### Ollama
-
-1. 前往 [Ollama 官網](https://ollama.ai) 下載並安裝
-2. 啟動 Ollama 服務：
-
-```bash
-ollama serve
-```
-
-3. 拉取模型（例如 llama3.2）：
-
-```bash
-ollama pull llama3.2
-```
-
-詳細設定請參閱 [Ollama 設定指南](ollama-setup-guide.md)。
-
 #### llama.cpp（本地模型，直接推理）
 
 llama.cpp 提供更直接的 GPU 控制和更低的包裝層開銷，適合追求最大推理速度或需要精確控制 GPU 記憶體的使用者。
@@ -593,7 +575,7 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja -c 2048 --parall
 │  [選擇檔案] [移除選取] [清除全部]           │
 │                                             │
 │  源語言: [日文 ▼]   目標語言: [繁體中文 ▼] │
-│  LLM 類型: [ollama ▼]                       │
+│  LLM 類型: [llamacpp ▼]                       │
 │  模型: [llama3.2 ▼]                          │
 │  並發數: [3 ▼]                              │
 │  顯示模式: [雙語對照 ▼]                     │
@@ -614,7 +596,7 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja -c 2048 --parall
 | **清除全部** | 清空檔案清單 |
 | **源語言** | 選擇字幕原始語言 |
 | **目標語言** | 選擇翻譯目標語言 |
-| **LLM 類型** | GUI 下拉目前顯示 `ollama` / `openai` / `google` / `llamacpp` |
+| **LLM 類型** | GUI 下拉目前顯示 `llamacpp` / `openai` / `google` |
 | **模型** | 選擇要使用的 AI 模型 |
 | **並發數** | 設定同時翻譯的字幕數量 |
 | **顯示模式** | 選擇輸出字幕的顯示方式 |
@@ -655,7 +637,7 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja -c 2048 --parall
 2. **設定參數**：
    - 源語言：英文
    - 目標語言：繁體中文
-   - LLM 類型：ollama
+   - LLM 類型：llamacpp
    - 模型：llama3.2
    - 並發數：3（本地模型建議較低）
    - 顯示模式：僅顯示翻譯
@@ -799,7 +781,6 @@ rm data/translation_cache.db
 
 | AI 引擎 | 建議並發數 | 理由 |
 |---------|-----------|------|
-| **Ollama** | 1-3 | 受限於本地 GPU/CPU 資源 |
 | **llama.cpp** | 1-2 | 受限於本地 GPU/CPU 資源；可透過 `--parallel` 控制伺服器端併發，實際有效值會再受 server slots 限制 |
 | **OpenAI** | 3-6 | 速率限制較嚴格，建議保守 |
 | **Google（GUI）** | 3-8 | 速率限制適中 |
@@ -871,7 +852,7 @@ config/
 }
 ```
 
-> 若手動編輯 `user_settings.json`，`ConfigManager` 目前接受 `ollama`、`openai`、`google`、`llamacpp`。實際仍以上方 provider 現況表為準。
+> 若手動編輯 `user_settings.json`，`ConfigManager` 目前接受 `llamacpp`、`openai`、`google`。實際仍以上方 provider 現況表為準。
 
 #### cache_config.json
 
@@ -970,20 +951,20 @@ ping api.openai.com
 # 前往 https://platform.openai.com/usage
 ```
 
-#### 3. Ollama 連接失敗
+#### 3. llama.cpp 連接失敗
 
-**問題**：「無法連接到 Ollama 服務」
+**問題**：「無法連接到 llama.cpp 服務」
 
 **解決方案**：
 ```bash
-# 確認 Ollama 正在運行
-ps aux | grep ollama
+# 確認 llama-server 正在運行
+ps aux | grep llama-server
 
-# 啟動 Ollama
-ollama serve
+# 啟動 llama-server
+llama-server -m ~/dev/model/your-model.gguf --port 8080
 
 # 測試連接
-curl http://localhost:11434/api/tags
+curl http://localhost:8080/health
 ```
 
 #### 4. 翻譯結果異常
@@ -1045,7 +1026,7 @@ cat logs/translation.log
 
 ### Q2：可以離線使用嗎？
 
-**A**：使用 Ollama 或 llama.cpp 本地模型可以完全離線使用，但首次需要連網下載模型。llama.cpp 直接使用 GGUF 格式模型檔案，無需額外轉換。
+**A**：使用 llama.cpp 或 llama.cpp 本地模型可以完全離線使用，但首次需要連網下載模型。llama.cpp 直接使用 GGUF 格式模型檔案，無需額外轉換。
 
 ### Q3：翻譯速度有多快？
 
@@ -1053,14 +1034,14 @@ cat logs/translation.log
 
 | 因素 | 影響 |
 |------|------|
-| **AI 引擎** | Ollama（本地）最快，API 需網路往返 |
+| **AI 引擎** | llama.cpp（本地）最快，API 需網路往返 |
 | **字幕數量** | 越多越慢，但可透過並發優化 |
 | **並發數** | 適當提高並發可顯著加速 |
 | **快取命中** | 命中快取可立即回傳結果 |
 
 **建議做法**：
 - 先用 10-20 條字幕的小樣本測試
-- Ollama 的速度主要取決於本機硬體與模型大小
+- llama.cpp 的速度主要取決於本機硬體與模型大小
 - 雲端 provider 的速度則受網路、速率限制與模型負載影響
 
 ### Q4：翻譯品質如何？
@@ -1071,12 +1052,12 @@ cat logs/translation.log
 - 內容類型與提示詞是否選對
 - 並發數是否過高而導致輸出不穩定
 
-若你要先求穩定，建議從 `openai` 或 `ollama` 的小樣本測試開始，再依內容類型調整 prompt。
+若你要先求穩定，建議從 `openai` 或 `llamacpp` 的小樣本測試開始，再依內容類型調整 prompt。
 
 ### Q5：費用如何計算？
 
 **A**：
-- **Ollama（本地）**：不收 API 費，但需要自備本機運算資源
+- **llama.cpp（本地）**：不收 API 費，但需要自備本機運算資源
 - **雲端 provider**：通常依 token 計費，且價格與模型名稱常變動
 
 > 建議直接查看各 provider 官方價格頁。這部分變動頻繁，不建議把文件中的估算值當成最新報價。

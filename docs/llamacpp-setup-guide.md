@@ -1,6 +1,6 @@
 # llama.cpp 本地模型設定指南
 
-本指南說明如何使用 llama.cpp 的 `llama-server` 搭配 SRT Subtitle Translator 進行字幕翻譯。相較於 Ollama，llama.cpp 提供更直接的 GPU 控制、更低的包裝層開銷，以及對進階量化格式（如 IQ4_NL）的完整支援。
+本指南說明如何使用 llama.cpp 的 `llama-server` 搭配 SRT Subtitle Translator 進行字幕翻譯。llama.cpp 提供直接的 GPU 控制、較低的包裝層開銷，以及對進階量化格式（如 IQ4_NL）的完整支援。
 
 ---
 
@@ -404,17 +404,17 @@ llama-server -m model.gguf --reasoning-format deepseek
 | IQ4_NL | 良好 | 較小 | 快 | VRAM 有限但要求品質 |
 | Q4_K_S | 可接受 | 較小 | 最快 | VRAM 非常有限 |
 
-### llama.cpp vs Ollama 效能差異
+### llama.cpp 部署特性摘要
 
-| 項目 | llama.cpp | Ollama |
-|------|-----------|--------|
-| 架構 | 直接執行 C++ 推理 | Go 包裝層 + llama.cpp |
-| 單一請求速度 | 基準 | 慢約 9% |
-| 併發效能 | 優（維持穩定） | 差（高併發時溢出到 CPU） |
-| GPU 記憶體管理 | 精確控制 | 自動管理（較鬆散） |
-| 量化格式支援 | 完整（含 IQ 系列） | 部分 |
-| 設定彈性 | 高（每個參數可調） | 中（透過 Modelfile） |
-| 使用便利性 | 需手動啟動伺服器 | 自動管理、systemd 整合 |
+| 項目 | 說明 |
+|------|------|
+| 架構 | 直接執行 C++ 推理，透過 OpenAI 相容 API 提供服務 |
+| 單一請求速度 | 可直接控制 sampling、KV cache 與 GPU layer，適合低延遲翻譯 |
+| 併發效能 | 受 `--parallel` 與實際 VRAM 影響，建議先以穩定模式驗證 |
+| GPU 記憶體管理 | 可精確控制 context、GPU layers、KV cache 量化 |
+| 量化格式支援 | 完整（含 IQ 系列） |
+| 設定彈性 | 高（每個參數可調） |
+| 使用便利性 | 需手動啟動伺服器，但行為最可控 |
 
 ---
 
@@ -547,14 +547,13 @@ CUDA_VISIBLE_DEVICES=1 llama-server -m model.gguf -ngl 999
 
 ---
 
-## 附錄：與 Ollama 的使用場景比較
+## 附錄：使用場景建議
 
-| 場景 | 推薦方案 |
-|------|----------|
-| 第一次使用本地模型 | Ollama（安裝簡單、自動管理） |
-| 追求最大推理速度 | llama.cpp（少一層 Go 包裝、Flash Attention） |
-| 使用 IQ4_NL 等進階量化 | llama.cpp（Ollama 不支援部分量化格式） |
-| 需要精確控制 GPU 記憶體 | llama.cpp（-ngl、-c 等精確參數） |
-| 有 DGX / 5090 等高階硬體 | llama.cpp（直接控制，無中間層開銷） |
-| 需要 systemd 自動啟動 | Ollama（內建服務管理） |
-| 多人共用一台推理伺服器 | llama.cpp（--parallel 參數、無額外記憶體開銷） |
+| 場景 | 建議 |
+|------|------|
+| 第一次在本專案使用本地模型 | 先用 `--parallel 1`、`-c 2048` 的穩定模式 |
+| 追求最大推理速度 | 優先使用 CUDA build、`GGML_CUDA_NO_VMM=1`、Flash Attention |
+| 使用 IQ4_NL 等進階量化 | 選用 llama.cpp，避免受較高封裝工具的格式限制 |
+| 需要精確控制 GPU 記憶體 | 使用 `-ngl`、`-c`、`-ctk`、`-ctv` 做細調 |
+| 有高階硬體 | 提高 `--parallel` 並觀察 KV cache / slots 使用量 |
+| 多人共用一台推理伺服器 | 先量測單 slot 延遲，再逐步提高 `--parallel` |

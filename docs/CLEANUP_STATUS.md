@@ -15,7 +15,7 @@
 ## 目前結論
 
 - provider/runtime cleanup 已完成
-- 文件、測試與目前 shipped behavior 已對齊到 `ollama` / `openai` / `google` / `llamacpp`
+- 文件、測試與目前 shipped behavior 已對齊到 `llamacpp` / `openai` / `google`
 - 非 GUI 基線目前為 `962 passed / 0 skipped / 0 warnings`
 
 ## 本輪完成重點

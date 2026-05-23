@@ -42,11 +42,11 @@
 
 - 文件若與 `src/` 內實作衝突，請以 `src/` 為準
 - provider 相關資訊需要區分「模型資訊 / 可用模型發現」與「真正可執行的翻譯 runtime」
-- 目前 `TranslationClient` 的翻譯執行路徑實作為 `ollama`、`openai`、`google`、`llamacpp`
+- 目前 `TranslationClient` 的翻譯執行路徑實作為 `llamacpp`、`openai`、`google`
 - `llamacpp` 透過 OpenAI 相容 API 連接本地 `llama-server`，不需要 API 金鑰
 - `llamacpp` 目前會額外探測 `llama-server` 的 `/health`、`/props`、`/slots`，用於健康檢查、模型 metadata 與實際並發對齊
 - `llamacpp` 目前預設會送出 non-thinking 控制、Qwen3.5 專屬採樣參數，並使用 `response_format=json_schema` 將翻譯輸出鎖定為單一 `translation` 欄位
-- provider 支援目前已收斂為 `ollama` / `openai` / `google` / `llamacpp`
+- provider 支援目前已收斂為 `llamacpp` / `openai` / `google`
 - 遠端 provider 金鑰目前只支援環境變數 / `.env`：`OPENAI_API_KEY`、`GOOGLE_API_KEY`、`GEMINI_API_KEY`
 - Anthropic / OpenRouter 已取消納入目前 public API 範圍
 
@@ -410,7 +410,7 @@ model_manager = ModelManager()
 獲取可用模型列表。
 
 **參數**：
-- `llm_type` (str): LLM 類型（`"ollama"`、`"openai"`、`"google"`、`"llamacpp"`）
+- `llm_type` (str): LLM 類型（`"llamacpp"`、`"openai"`、`"google"`）
 - `api_key` (str | None): 覆蓋預設金鑰的可選值
 
 **回傳**：`list[ModelInfo]` - 包含 provider、能力、可用性等資訊的模型列表
@@ -484,12 +484,12 @@ prompt_manager = PromptManager()
 
 #### 主要方法
 
-##### `get_prompt(llm_type: str = "ollama", content_type: str | None = None, style: str | None = None, model_name: str | None = None) -> str`
+##### `get_prompt(llm_type: str = "llamacpp", content_type: str | None = None, style: str | None = None, model_name: str | None = None) -> str`
 
 獲取翻譯提示詞。
 
 **參數**：
-- `llm_type` (str): LLM 類型。可傳入 `ollama` / `openai` / `google` / `llamacpp`；若未設定 custom prompt，`google` 會沿用 OpenAI 家族預設，`llamacpp` 會沿用 Ollama 家族預設
+- `llm_type` (str): LLM 類型。可傳入 `llamacpp` / `openai` / `google`；若未設定 custom prompt，`google` 會沿用 OpenAI 家族預設
 - `content_type` (str): 內容類型 ("general", "anime", "movie", "adult", "english_drama")
 - `style` (str): 翻譯風格 ("standard", "literal", "localized", "specialized")
 - `model_name` (str | None): 模型名稱；部分模型特化 prompt 會使用此值
@@ -505,7 +505,7 @@ prompt = prompt_manager.get_prompt("openai", "general", "standard")
 prompt = prompt_manager.get_prompt("openai", "anime", "localized")
 ```
 
-##### `set_prompt(new_prompt: str, llm_type: str = "ollama", content_type: str | None = None) -> bool`
+##### `set_prompt(new_prompt: str, llm_type: str = "llamacpp", content_type: str | None = None) -> bool`
 
 設定自訂提示詞。
 
@@ -605,7 +605,7 @@ client = TranslationClient(
 )
 ```
 
-> `TranslationClient` 目前的翻譯執行路徑實作為 `ollama`、`openai`、`google`、`llamacpp`。
+> `TranslationClient` 目前的翻譯執行路徑實作為 `llamacpp`、`openai`、`google`。
 >
 > `llamacpp` 補充：
 > - 會依模型家族套用專屬 profile；Qwen3.5 會明確關閉 thinking，並補 `presence_penalty`、`cache_prompt`、`seed`
@@ -619,9 +619,9 @@ client = TranslationClient(
 初始化翻譯客戶端。
 
 **參數**：
-- `llm_type` (str): runtime 支援的 LLM 類型（`"ollama"`、`"openai"`、`"google"`、`"llamacpp"`）
-- `base_url` (str): API 基礎位址（Ollama / llamacpp 可覆蓋）
-- `api_key` (Optional[str]): API 金鑰（Ollama / llamacpp 不需要）
+- `llm_type` (str): runtime 支援的 LLM 類型（`"llamacpp"`、`"openai"`、`"google"`）
+- `base_url` (str): API 基礎位址（llama.cpp / llamacpp 可覆蓋）
+- `api_key` (Optional[str]): API 金鑰（llama.cpp / llamacpp 不需要）
 - `cache_db_path` (str): 翻譯快取資料庫路徑
 - `netflix_style_config` (dict | None): 後處理配置
 

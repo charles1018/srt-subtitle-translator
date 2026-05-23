@@ -129,9 +129,9 @@ he's got a great spot waiting for him up there at the FD in Detroit
    - 在「內容類型」下拉選單中選擇 **"english_drama"**
 
 3. **選擇 LLM 引擎**
-   - GUI 目前可直接選擇 `ollama`、`openai`、`google`、`llamacpp`
+   - GUI 目前可直接選擇 `llamacpp`、`openai`、`google`、`llamacpp`
    - 若以翻譯品質優先，建議先從 OpenAI GPT-4o 類模型做小樣本驗證
-   - Ollama / llama.cpp 本地模型也可用，但建議選較大的中文友善模型
+   - llama.cpp / llama.cpp 本地模型也可用，但建議選較大的中文友善模型
 
 4. **選擇字幕檔案**
    - 點擊「選擇輸入檔案」或直接拖放檔案
