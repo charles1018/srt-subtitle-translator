@@ -665,6 +665,14 @@ class TranslationClient:
         normalized = model_name.strip().lower()
         return normalized.split("@", maxsplit=1)[0]
 
+    @staticmethod
+    def _openai_uses_completion_tokens(model_name: str) -> bool:
+        """GPT-5.x 與 o-series 推理模型把 max_tokens 改名為 max_completion_tokens。"""
+        normalized = model_name.strip().lower()
+        if re.match(r"^gpt-5(?:\.\d+)?(?:[-_]|$)", normalized):
+            return True
+        return bool(re.match(r"^o[134](?:[-_]|$)", normalized))
+
     _QWEN_UD_FAMILIES: ClassVar[frozenset[str]] = frozenset({"qwen3.5", "qwen3.6"})
     # 跳過 llama.cpp JSON schema 強制輸出的家族（推理劣化或翻譯專用模型）
     _LLAMACPP_SKIP_JSON_SCHEMA_FAMILIES: ClassVar[frozenset[str]] = frozenset({"qwen3.6", "hunyuan-mt"})
@@ -1724,19 +1732,22 @@ class TranslationClient:
             if "top_p" in options:
                 openai_params["top_p"] = options["top_p"]
         else:
+            # GPT-5.x 與 o-series 推理模型把 max_tokens 改成 max_completion_tokens
+            max_tokens_key = "max_completion_tokens" if self._openai_uses_completion_tokens(model_name) else "max_tokens"
             openai_params = {
                 "model": model_name,
                 "messages": messages,
                 "temperature": 0.1,
-                "max_tokens": min(150, 4096),
+                max_tokens_key: min(150, 4096),
                 "timeout": 30,
             }
 
         if not is_llamacpp and batch_line_count and batch_line_count > 1:
             dynamic_max_tokens = self._get_openai_batch_max_tokens(batch_line_count)
-            openai_params["max_tokens"] = max(int(openai_params["max_tokens"]), dynamic_max_tokens)
+            tokens_key = "max_completion_tokens" if "max_completion_tokens" in openai_params else "max_tokens"
+            openai_params[tokens_key] = max(int(openai_params[tokens_key]), dynamic_max_tokens)
             openai_params["temperature"] = 0.0
-            logger.debug("偵測到批次翻譯請求: %d 行，調整 max_tokens=%d", batch_line_count, openai_params["max_tokens"])
+            logger.debug("偵測到批次翻譯請求: %d 行，調整 %s=%d", batch_line_count, tokens_key, openai_params[tokens_key])
 
         # 添加 response_format 參數（適用於較新的模型）
         if not is_llamacpp and ("gpt-4" in model_name or "gpt-3.5-turbo" in model_name):
