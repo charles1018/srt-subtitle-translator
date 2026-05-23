@@ -74,7 +74,7 @@ class GUIComponents:
         # 建立控制項變數
         self.source_lang = tk.StringVar(value="日文")
         self.target_lang = tk.StringVar(value="繁體中文")
-        self.llm_type = tk.StringVar(value="ollama")
+        self.llm_type = tk.StringVar(value="llamacpp")
         self.model_combo_var = tk.StringVar()
         self.parallel_requests = tk.StringVar(value="3")
         self.display_mode = tk.StringVar(value="雙語對照")
@@ -485,7 +485,7 @@ class GUIComponents:
         llm_grid.pack(fill=tk.BOTH, expand=True)
 
         ttk.Label(llm_grid, text="LLM 類型:").grid(row=0, column=0, sticky=tk.W, pady=8)
-        llm_types = ["ollama", "openai", "google", "llamacpp"]
+        llm_types = ["openai", "google", "llamacpp"]
         self.llm_combobox = ttk.Combobox(
             llm_grid, textvariable=self.llm_type, values=llm_types, width=12, state="readonly"
         )
@@ -1592,7 +1592,7 @@ class GUIComponents:
 SRT字幕翻譯器 V{get_app_version()}
 
 這是一個使用大型語言模型(LLM)的字幕翻譯工具，支援多種語言和翻譯風格。
-可以使用本地模型(Ollama)或OpenAI API進行翻譯。
+可以使用本地模型（llama.cpp）或雲端 API（OpenAI / Google）進行翻譯。
 
 特點：
 - 支援多種字幕格式
@@ -1671,11 +1671,11 @@ class PromptEditorWindow:
 
         # LLM 類型選擇
         ttk.Label(options_frame, text="LLM類型:").pack(side=tk.LEFT, padx=(10, 5))
-        self.llm_type_var = tk.StringVar(value="ollama")
+        self.llm_type_var = tk.StringVar(value="llamacpp")
         llm_type_combo = ttk.Combobox(
             options_frame,
             textvariable=self.llm_type_var,
-            values=["ollama", "openai", "google", "llamacpp"],
+            values=["openai", "google", "llamacpp"],
             state="readonly",
             width=10,
         )

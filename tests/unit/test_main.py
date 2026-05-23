@@ -32,20 +32,19 @@ def test_init_services_does_not_require_legacy_file_api_key_loader():
     assert app.cache_service is cache_service
 
 
-def test_validate_translation_request_for_ollama_includes_configured_url():
-    """Ollama 預檢失敗時，應回報目前設定的服務位址。"""
+def test_validate_translation_request_for_llamacpp_includes_configured_url_on_exception():
+    """llama.cpp 預檢拋例外時，應回報目前設定的服務位址。"""
     app = App.__new__(App)
     app.model_service = MagicMock()
-    app.model_service.test_model_connection = AsyncMock(
-        return_value={"success": False, "message": "連線失敗: name resolution error"}
-    )
+    app.model_service.test_model_connection = MagicMock(return_value="llamacpp-preflight")
+    app._run_async_in_new_loop = MagicMock(side_effect=RuntimeError("connection refused"))
 
-    with patch("srt_translator.__main__.get_config", return_value="http://newhost:11434"):
-        is_valid, message = app._validate_translation_request("ollama", "mistral")
+    with patch("srt_translator.__main__.get_config", return_value="http://newhost:8088"):
+        is_valid, message = app._validate_translation_request("llamacpp", "Qwen3.5-9B-UD")
 
     assert is_valid is False
-    assert "http://newhost:11434" in message
-    assert "ollama_url" in message
+    assert "http://newhost:8088" in message
+    assert "llama.cpp 連線失敗" in message
 
 
 def test_validate_translation_request_for_remote_provider_checks_network():

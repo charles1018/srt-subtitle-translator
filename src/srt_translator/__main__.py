@@ -123,7 +123,7 @@ class App:
         # 設定 GUI 元件的初始值
         self.gui.source_lang.set(settings.get("source_lang", "日文"))
         self.gui.target_lang.set(settings.get("target_lang", "繁體中文"))
-        self.gui.llm_type.set(settings.get("llm_type", "ollama"))
+        self.gui.llm_type.set(settings.get("llm_type", "llamacpp"))
         self.gui.parallel_requests.set(str(settings.get("parallel_requests", "3")))
         self.gui.display_mode.set(settings.get("display_mode", "雙語對照"))
 
@@ -235,33 +235,6 @@ class App:
         invalid_models = {"", "載入中...", "無可用模型", "無法載入模型"}
         if model_name in invalid_models:
             return False, "目前沒有可用模型，請先確認模型列表是否已成功載入。"
-
-        if llm_type == "ollama":
-            ollama_url = get_config("model", "ollama_url", "http://localhost:11434")
-
-            try:
-                result = self._run_async_in_new_loop(
-                    self.model_service.test_model_connection(model_name, "ollama")
-                )
-            except Exception as e:
-                logger.error(f"Ollama 預檢失敗: {format_exception(e)}")
-                return (
-                    False,
-                    f"Ollama 連線失敗，目前設定的服務位址為 {ollama_url}。"
-                    f"請確認 Ollama 已啟動，或將 config/model_config.json 的 ollama_url 改回 "
-                    f"http://localhost:11434。詳細原因: {e!s}",
-                )
-
-            if not result.get("success", False):
-                detail = str(result.get("message", "未知錯誤"))
-                return (
-                    False,
-                    f"Ollama 連線失敗，目前設定的服務位址為 {ollama_url}。"
-                    f"請確認 Ollama 已啟動，或將 config/model_config.json 的 ollama_url 改回 "
-                    f"http://localhost:11434。詳細原因: {detail}",
-                )
-
-            return True, ""
 
         if llm_type in {"openai", "google"}:
             if not check_internet_connection():
