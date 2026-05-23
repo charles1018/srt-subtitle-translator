@@ -6,6 +6,7 @@
 """
 
 import asyncio
+import contextlib
 import logging
 import os
 import sys
@@ -449,6 +450,24 @@ class App:
     def run(self):
         """啟動應用程式主迴圈"""
         self.root.mainloop()
+def _ensure_utf8_stdio() -> None:
+    """Reconfigure stdout/stderr to UTF-8 when the active encoding can't represent
+    non-ASCII characters (e.g. Windows console defaulting to cp950/cp1252). On POSIX
+    systems with UTF-8 locales this is a no-op."""
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is None:
+            continue
+        encoding = (getattr(stream, "encoding", "") or "").lower()
+        if encoding.replace("-", "") == "utf8":
+            continue
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        with contextlib.suppress(OSError, ValueError):
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def main() -> None:
     """主程式入口點
 
@@ -456,6 +475,8 @@ def main() -> None:
     - 無參數或 --gui: 啟動 GUI 模式
     - 支援的 CLI 子命令: 執行 CLI 命令
     """
+    _ensure_utf8_stdio()
+
     # 快速檢查是否為 CLI 模式
     cli_commands = {
         "translate",

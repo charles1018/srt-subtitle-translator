@@ -697,24 +697,34 @@ class FileHandler:
             if output_dir and os.path.exists(output_dir):
                 # Whether to preserve directory structure
                 if self.batch_settings["preserve_folder_structure"]:
-                    # Get relative path (if there's a common base directory)
-                    try:
-                        common_base = os.path.commonpath([self.last_directory, file_path])
-                        rel_dir = os.path.dirname(os.path.relpath(file_path, common_base))
-                        new_dir = os.path.join(output_dir, rel_dir)
-
-                        # Security check: use pathlib for robust path traversal prevention
-                        if not self._is_path_within_directory(new_dir, output_dir):
-                            logger.warning(
-                                f"Path traversal attempt blocked: {new_dir} is not within {output_dir}, "
-                                "using flat structure"
-                            )
-                            new_dir = output_dir
-                        else:
-                            os.makedirs(new_dir, exist_ok=True)
-                    except Exception as e:
-                        logger.warning(f"Error calculating relative path: {e!s}, using flat structure")
+                    # On Windows, paths on different drives have no common base — fall
+                    # back to a flat layout silently rather than tripping commonpath().
+                    last_drive = os.path.splitdrive(self.last_directory or "")[0].lower()
+                    file_drive = os.path.splitdrive(file_path)[0].lower()
+                    if last_drive != file_drive:
+                        logger.debug(
+                            "Source and reference are on different drives "
+                            f"({file_drive or '<none>'} vs {last_drive or '<none>'}); using flat structure"
+                        )
                         new_dir = output_dir
+                    else:
+                        try:
+                            common_base = os.path.commonpath([self.last_directory, file_path])
+                            rel_dir = os.path.dirname(os.path.relpath(file_path, common_base))
+                            new_dir = os.path.join(output_dir, rel_dir)
+
+                            # Security check: use pathlib for robust path traversal prevention
+                            if not self._is_path_within_directory(new_dir, output_dir):
+                                logger.warning(
+                                    f"Path traversal attempt blocked: {new_dir} is not within {output_dir}, "
+                                    "using flat structure"
+                                )
+                                new_dir = output_dir
+                            else:
+                                os.makedirs(new_dir, exist_ok=True)
+                        except Exception as e:
+                            logger.warning(f"Error calculating relative path: {e!s}, using flat structure")
+                            new_dir = output_dir
                 else:
                     new_dir = output_dir
 
