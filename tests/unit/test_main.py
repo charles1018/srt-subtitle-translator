@@ -2,7 +2,7 @@
 
 import sys
 from contextlib import suppress
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from srt_translator.__main__ import App, main
 

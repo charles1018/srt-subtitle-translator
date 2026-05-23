@@ -1092,7 +1092,7 @@ class TestPromptManagerFileOperations:
 
         assert result == str(export_path)
         export_data = json.loads(export_path.read_text(encoding="utf-8"))
-        assert {"llamacpp", "openai", "google", "llamacpp"} <= set(export_data["prompts"])
+        assert {"llamacpp", "openai", "google"} <= set(export_data["prompts"])
 
     def test_import_prompt_accepts_google_and_llamacpp(self, manager, temp_dir):
         """測試匯入會接受 google 與 llamacpp provider。"""

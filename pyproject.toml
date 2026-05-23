@@ -1,7 +1,7 @@
 [project]
 name = "srt-subtitle-translator"
 version = "1.2.0"
-description = "基於 Python 的 SRT 字幕檔自動翻譯工具，支援 Ollama、OpenAI、Google Gemini、llama.cpp 多種 AI 引擎"
+description = "基於 Python 的 SRT 字幕檔自動翻譯工具，支援 llama.cpp、OpenAI、Google Gemini 多種 AI 引擎"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -14,7 +14,7 @@ keywords = [
     "srt",
     "ai",
     "openai",
-    "ollama",
+    "llamacpp",
     "gemini",
     "google",
 ]
@@ -178,6 +178,7 @@ exclude = [
 # 針對第三方套件忽略缺少型別資訊的錯誤
 [[tool.mypy.overrides]]
 module = [
+    "opencc",
     "pysrt.*",
     "tkinterdnd2.*",
     "webvtt.*",
