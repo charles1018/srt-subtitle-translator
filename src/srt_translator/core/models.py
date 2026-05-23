@@ -66,7 +66,7 @@ class ModelInfo:
     """模型資訊資料類別"""
 
     id: str  # 模型 ID/名稱
-    provider: str  # 提供者(ollama, openai 等)
+    provider: str  # 提供者（如 openai、google、llamacpp）
     name: str = ""  # 顯示名稱(如不同於 ID)
     description: str = ""  # 模型描述
     context_length: int = 4096  # 上下文長度
@@ -132,12 +132,9 @@ class ModelManager:
         # 從配置載入模型設定
         self.config = self._load_config()
 
-        # Ollama 設定
-        self.base_url = self.config.get("ollama_url", "http://localhost:11434")
-        self.default_ollama_model: str = str(self.config.get("default_ollama_model", "llama3"))
-
         # llama.cpp 設定
         self.llamacpp_url = self.config.get("llamacpp_url", "http://localhost:8080")
+        self.default_llamacpp_model: str = str(self.config.get("default_llamacpp_model", "local-model"))
 
         # 常見模型模式，用於過濾
         self.model_patterns = self.config.get(
@@ -184,7 +181,7 @@ class ModelManager:
         # 載入 API 金鑰
         self._load_api_keys()
 
-        logger.info(f"ModelManager 初始化完成，預設 Ollama 模型: {self.default_ollama_model}")
+        logger.info(f"ModelManager 初始化完成，預設 llama.cpp 模型: {self.default_llamacpp_model}")
 
     def _load_config(self) -> dict[str, Any]:
         """從配置管理器載入設定"""
@@ -297,94 +294,6 @@ class ModelManager:
                 parallel=35,
                 tags=["balanced", "economic"],
                 capabilities={"translation": 0.85, "multilingual": 0.84, "context_handling": 0.82},
-            ),
-        }
-
-        # Ollama 常用模型資訊
-        ollama_models = {
-            "llama3": ModelInfo(
-                id="llama3",
-                provider="ollama",
-                name="Llama 3",
-                description="Meta 的最新開源大語言模型，適合多語言翻譯",
-                context_length=8192,
-                pricing="免費(本機執行)",
-                recommended_for="一般翻譯任務，具有良好的多語言能力",
-                parallel=2,
-                tags=["free", "local", "multilingual"],
-                capabilities={"translation": 0.82, "multilingual": 0.78, "context_handling": 0.80},
-            ),
-            "mixtral": ModelInfo(
-                id="mixtral",
-                provider="ollama",
-                name="Mixtral",
-                description="Mistral AI 的混合專家模型，具有優秀的多語言能力",
-                context_length=32768,
-                pricing="免費(本機執行)",
-                recommended_for="需要處理長上下文的翻譯任務",
-                parallel=1,
-                tags=["free", "local", "extended_context"],
-                capabilities={"translation": 0.84, "multilingual": 0.80, "context_handling": 0.88},
-            ),
-            "mistral": ModelInfo(
-                id="mistral",
-                provider="ollama",
-                name="Mistral",
-                description="輕量級高效能模型，適合快速翻譯",
-                context_length=8192,
-                pricing="免費(本機執行)",
-                recommended_for="需要快速處理的翻譯任務",
-                parallel=2,
-                tags=["free", "local", "fast"],
-                capabilities={"translation": 0.78, "multilingual": 0.75, "context_handling": 0.76},
-            ),
-            "qwen3.5": ModelInfo(
-                id="qwen3.5",
-                provider="ollama",
-                name="Qwen 3.5",
-                description="Qwen 3.5 系列模型，對繁體中文與多語字幕翻譯表現較佳",
-                context_length=262144,
-                pricing="免費(本機執行)",
-                recommended_for="高品質中日英字幕翻譯與長上下文任務",
-                parallel=1,
-                tags=["free", "local", "chinese", "multilingual", "long-context"],
-                capabilities={"translation": 0.9, "multilingual": 0.88, "context_handling": 0.92, "chinese": 0.95},
-            ),
-            "qwen3.6": ModelInfo(
-                id="qwen3.6",
-                provider="ollama",
-                name="Qwen 3.6",
-                description="Qwen 3.6 系列模型，沿用 3.5 hybrid 架構，預期翻譯品質再提升",
-                context_length=262144,
-                pricing="免費(本機執行)",
-                recommended_for="高品質中日英字幕翻譯與長上下文任務（待 benchmark 確認）",
-                parallel=1,
-                tags=["free", "local", "chinese", "multilingual", "long-context"],
-                capabilities={"translation": 0.92, "multilingual": 0.9, "context_handling": 0.92, "chinese": 0.95},
-            ),
-            "qwen": ModelInfo(
-                id="qwen",
-                provider="ollama",
-                name="Qwen",
-                description="阿里雲開發的模型，對中文支援較好",
-                context_length=8192,
-                pricing="免費(本機執行)",
-                recommended_for="中文翻譯任務",
-                parallel=2,
-                tags=["free", "local", "chinese"],
-                capabilities={"translation": 0.80, "multilingual": 0.75, "context_handling": 0.78, "chinese": 0.90},
-            ),
-            "deepseek": ModelInfo(
-                id="deepseek",
-                provider="ollama",
-                name="DeepSeek",
-                description="專注於深度理解的模型，適合文學翻譯",
-                context_length=8192,
-                pricing="免費(本機執行)",
-                recommended_for="文學或專業領域翻譯",
-                parallel=1,
-                tags=["free", "local", "specialized"],
-                capabilities={"translation": 0.83, "multilingual": 0.76, "context_handling": 0.85},
             ),
         }
 
@@ -501,9 +410,6 @@ class ModelManager:
         for model in openai_models.values():
             self.model_database[f"openai:{model.id}"] = model
 
-        for model in ollama_models.values():
-            self.model_database[f"ollama:{model.id}"] = model
-
         for model in google_models.values():
             self.model_database[f"google:{model.id}"] = model
 
@@ -565,7 +471,7 @@ class ModelManager:
         """非同步獲取模型列表
 
         參數:
-            llm_type: LLM類型 (如 "ollama" 或 "openai")
+            llm_type: LLM類型 (如 "llamacpp"、"openai" 或 "google")
             api_key: API金鑰 (可選)
 
         回傳:
@@ -585,9 +491,7 @@ class ModelManager:
                 api_key = self.api_keys.get(llm_type)
 
             # 根據不同 LLM 類型獲取模型列表
-            if llm_type == "ollama":
-                models = await self._get_ollama_models_async()
-            elif llm_type == "openai":
+            if llm_type == "openai":
                 models = await self._get_openai_models_async(api_key or "")
             elif llm_type == "llamacpp":
                 models = await self._get_llamacpp_models_async()
@@ -611,19 +515,18 @@ class ModelManager:
                 return self.cached_models[llm_type]
 
             # 返回預設模型
-            if llm_type == "ollama":
-                default_model = self._create_default_ollama_model()
-                return [default_model]
-            elif llm_type == "openai":
+            if llm_type == "openai":
                 default_model = self._create_default_openai_model()
                 return [default_model]
+            elif llm_type == "llamacpp":
+                return self._get_llamacpp_fallback_models()
             return []
 
     def get_model_list(self, llm_type: str, api_key: str | None = None) -> list[str]:
         """同步獲取模型列表(字串列表版本，向後相容)
 
         參數:
-            llm_type: LLM類型 (如 "ollama" 或 "openai")
+            llm_type: LLM類型 (如 "llamacpp"、"openai" 或 "google")
             api_key: API金鑰 (可選)
 
         回傳:
@@ -649,157 +552,6 @@ class ModelManager:
                 pass  # 不關閉正在運行的循環
             elif not loop.is_closed():
                 loop.close()
-
-    def _get_ollama_models_via_cli(self) -> dict[str, dict[str, Any]]:
-        """透過 ollama list 指令取得本地已安裝的模型，作為 API 呼叫失敗時的 fallback"""
-        import subprocess
-
-        models: dict[str, dict[str, Any]] = {}
-        try:
-            result = subprocess.run(
-                ["ollama", "list"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            if result.returncode == 0:
-                for line in result.stdout.strip().splitlines()[1:]:  # 跳過標題行
-                    parts = line.split()
-                    if parts:
-                        model_name = parts[0]  # e.g. qwen3.5-ud:latest
-                        models[model_name] = {}
-                if models:
-                    logger.info(f"透過 CLI 取得 {len(models)} 個 Ollama 模型: {list(models.keys())}")
-        except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
-            logger.warning(f"透過 CLI 獲取 Ollama 模型失敗: {e!s}")
-        return models
-
-    def _create_default_ollama_model(self) -> ModelInfo:
-        """建立預設 Ollama 模型"""
-        key = f"ollama:{self.default_ollama_model}"
-        if key in self.model_database:
-            model = self.model_database[key]
-        else:
-            model = self._build_dynamic_ollama_model_info(self.default_ollama_model)
-        return model
-
-    def _detect_ollama_model_family(self, model_id: str, details: dict[str, Any] | None = None) -> str:
-        """從模型名稱與 API 細節欄位推斷 Ollama 模型家族"""
-        detail_parts: list[str] = [model_id]
-        if details:
-            family = details.get("family")
-            if isinstance(family, str) and family:
-                detail_parts.append(family)
-
-            families = details.get("families")
-            if isinstance(families, list):
-                detail_parts.extend(str(item) for item in families if item)
-
-        normalized = " ".join(detail_parts).lower()
-
-        if re.search(r"(?:hunyuan[-_/\s]?mt|hy[-_/\s]?mt)", normalized):
-            return "hunyuan-mt"
-        if re.search(r"qwen(?:[-_/\s]?3\.6|36)", normalized):
-            return "qwen3.6"
-        if re.search(r"qwen(?:[-_/\s]?3\.5|35)", normalized):
-            return "qwen3.5"
-        if re.search(r"qwen[-_/\s]?3\b", normalized):
-            return "qwen3"
-        if "qwen" in normalized:
-            return "qwen"
-        if "llama" in normalized:
-            return "llama"
-        if re.search(r"gemma[-_/\s]?4\b", normalized):
-            return "gemma4"
-        if "gemma" in normalized:
-            return "gemma"
-        if "mistral" in normalized:
-            return "mistral"
-        return "default"
-
-    def _build_dynamic_ollama_model_info(self, model_id: str, details: dict[str, Any] | None = None) -> ModelInfo:
-        """根據模型家族與 API 細節建立動態 Ollama 模型資訊"""
-        details = details or {}
-        family = self._detect_ollama_model_family(model_id, details)
-        parameter_size = str(details.get("parameter_size", "")).strip()
-        quantization_level = str(details.get("quantization_level", "")).strip()
-
-        if family in {"qwen3.5", "qwen3.6"}:
-            label = "Qwen 3.6" if family == "qwen3.6" else "Qwen 3.5"
-            description = f"{label} 系列模型，對繁體中文與多語字幕翻譯表現較佳"
-            if parameter_size:
-                description += f"（{parameter_size}）"
-
-            tags = ["free", "local", "chinese", "multilingual", "long-context"]
-            if quantization_level:
-                tags.append(quantization_level.lower())
-
-            translation_score = 0.92 if family == "qwen3.6" else 0.9
-            multilingual_score = 0.9 if family == "qwen3.6" else 0.88
-
-            return ModelInfo(
-                id=model_id,
-                provider="ollama",
-                name=self._format_model_name(model_id),
-                description=description,
-                context_length=262144,
-                pricing="免費(本機執行)",
-                recommended_for="高品質中日英字幕翻譯與長上下文任務",
-                parallel=1,
-                tags=tags,
-                capabilities={
-                    "translation": translation_score,
-                    "multilingual": multilingual_score,
-                    "context_handling": 0.92,
-                    "chinese": 0.95,
-                },
-            )
-
-        if family in {"qwen3", "qwen"}:
-            return ModelInfo(
-                id=model_id,
-                provider="ollama",
-                name=self._format_model_name(model_id),
-                description="Qwen 系列模型，對中文翻譯支援較佳",
-                context_length=32768 if family == "qwen3" else 8192,
-                pricing="免費(本機執行)",
-                recommended_for="中文與多語翻譯任務",
-                parallel=2,
-                tags=["free", "local", "chinese"],
-                capabilities={"translation": 0.82, "multilingual": 0.78, "context_handling": 0.8, "chinese": 0.9},
-            )
-
-        if family == "gemma4":
-            description = "Google Gemma 4 系列模型（交替局部/全域注意力，128K context），支援 140+ 語言翻譯"
-            if parameter_size:
-                description += f"（{parameter_size}）"
-            tags = ["free", "local", "multilingual"]
-            if quantization_level:
-                tags.append(quantization_level.lower())
-            return ModelInfo(
-                id=model_id,
-                provider="ollama",
-                name=self._format_model_name(model_id),
-                description=description,
-                context_length=131072,
-                pricing="免費(本機執行)",
-                recommended_for="多語字幕翻譯",
-                parallel=2,
-                tags=tags,
-                capabilities={"translation": 0.85, "multilingual": 0.85, "context_handling": 0.85, "chinese": 0.83},
-            )
-
-        return ModelInfo(
-            id=model_id,
-            provider="ollama",
-            name=self._format_model_name(model_id),
-            description="Ollama 模型",
-            pricing="免費(本機執行)",
-            recommended_for="一般翻譯任務",
-            parallel=2,
-            tags=["free", "local"],
-            capabilities={"translation": 0.75, "multilingual": 0.7, "context_handling": 0.7},
-        )
 
     def _create_default_openai_model(self) -> ModelInfo:
         """建立預設 OpenAI 模型"""
@@ -934,7 +686,7 @@ class ModelManager:
         """返回預設模型，針對翻譯進行最佳化
 
         參數:
-            llm_type: LLM類型 (如 "ollama", "openai", "google" 或 "llamacpp")
+            llm_type: LLM類型 (如 "openai"、"google" 或 "llamacpp")
 
         回傳:
             預設模型名稱
@@ -944,14 +696,14 @@ class ModelManager:
             "google": "gemini-2.0-flash",  # 最快速且經濟的選擇
             "llamacpp": "local-model",  # llama-server 載入的模型
         }
-        return provider_defaults.get(llm_type, self.default_ollama_model)
+        return provider_defaults.get(llm_type, self.default_llamacpp_model)
 
     def get_model_info(self, model_name: str, provider: str | None = None) -> dict[str, Any]:
         """獲取模型的詳細資訊
 
         參數:
             model_name: 模型名稱
-            provider: 提供者 (如 "ollama" 或 "openai")
+            provider: 提供者 (如 "llamacpp"、"openai" 或 "google")
 
         回傳:
             模型資訊字典
@@ -1011,13 +763,13 @@ class ModelManager:
 
         參數:
             task_type: 任務類型 (如 "translation", "literary", "technical", "subtitle")
-            provider: 提供者 (如 "ollama", "openai", "google" 或 "llamacpp")
+            provider: 提供者 (如 "llamacpp"、"openai" 或 "google")
 
         回傳:
             推薦的模型資訊，若無適合的則回傳 None
         """
         available_providers = (
-            [provider] if provider else self.config.get("default_providers", ["ollama", "openai"])
+            [provider] if provider else self.config.get("default_providers", ["llamacpp", "openai"])
         )
 
         # 定義不同任務的能力權重
@@ -1059,11 +811,6 @@ class ModelManager:
             for capability, weight in weights.items():
                 if capability in model.capabilities:
                     score += model.capabilities[capability] * weight
-
-            # 根據提供者調整得分
-            # Ollama 是本機執行，在沒有指定提供者時降低評分以優先使用雲端服務
-            if model.provider == "ollama" and provider is None:
-                score *= 0.85
 
             scored_models.append((model, score))
 
@@ -1188,37 +935,13 @@ class ModelManager:
 
         參數:
             model_name: 模型名稱
-            provider: 提供者 (如 "ollama", "openai", "google" 或 "llamacpp")
+            provider: 提供者 (如 "openai"、"google" 或 "llamacpp")
             api_key: API 金鑰 (可選)
 
         回傳:
             測試結果字典，包含 success 和 message 欄位
         """
-        if provider == "ollama":
-            # 測試 Ollama 連線
-            try:
-                await self._init_async_session()
-                assert self.session is not None
-                url = f"{self.base_url}/api/chat"
-                payload = {
-                    "model": model_name,
-                    "messages": [{"role": "user", "content": "Hello"}],
-                    "stream": False,
-                }
-                async with self.session.post(url, json=payload, timeout=10) as response:
-                    if response.status == 200:
-                        return {"success": True, "message": "模型回應正常"}
-                    else:
-                        return {"success": False, "message": f"模型回應失敗: {response.status}"}
-            except asyncio.TimeoutError:
-                return {
-                    "success": False,
-                    "message": "連線逾時，請確認 Ollama 服務可用、模型已載入完成，或提高 request_timeout",
-                }
-            except Exception as e:
-                detail = str(e).strip() or e.__class__.__name__
-                return {"success": False, "message": f"連線失敗: {detail}"}
-        elif provider == "openai":
+        if provider == "openai":
             key = api_key or self.api_keys.get("openai", "")
             success, message = await self._test_openai_connection(model_name, key)
             return {"success": success, "message": message}
@@ -1238,22 +961,16 @@ class ModelManager:
         回傳:
             包含各提供者狀態的字典
         """
-        status = {"ollama": False, "openai": False, "google": False}
-
-        # 檢查 Ollama 連線
-        try:
-            await self._init_async_session()
-
-            url = f"{self.base_url}/api/version"
-            assert self.session is not None
-            async with self.session.get(url, timeout=2) as response:
-                status["ollama"] = response.status == 200
-        except Exception:
-            status["ollama"] = False
+        status = {"openai": False, "google": False, "llamacpp": False}
 
         # 其他提供者需要 API 金鑰，檢查是否有有效金鑰和客戶端庫
         status["openai"] = OPENAI_AVAILABLE and bool(self.api_keys.get("openai"))
         status["google"] = GOOGLE_AVAILABLE and bool(self.api_keys.get("google"))
+        try:
+            success, _message = await self._test_llamacpp_connection(self.default_llamacpp_model)
+            status["llamacpp"] = success
+        except Exception:
+            status["llamacpp"] = False
 
         return status
 
@@ -1265,110 +982,6 @@ class ModelManager:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """非同步上下文管理器退出"""
         await self._close_async_session()
-
-    async def _get_ollama_models_async(self) -> list[ModelInfo]:
-        """非同步獲取 Ollama 模型列表
-
-        回傳:
-            Ollama ModelInfo物件列表
-        """
-        try:
-            await self._init_async_session()
-
-            models: dict[str, dict[str, Any]] = {}
-
-            # 使用 Ollama 模型列表 API 端點
-            endpoints = ["/api/tags"]
-
-            for endpoint in endpoints:
-                try:
-                    url = f"{self.base_url}{endpoint}"
-                    logger.debug(f"嘗試從 {url} 獲取 Ollama 模型")
-
-                    assert self.session is not None
-                    async with self.session.get(url, timeout=self.request_timeout) as response:
-                        if response.status != 200:
-                            logger.warning(f"API 端點 {endpoint} 返回非 200 狀態碼: {response.status}")
-                            continue
-
-                        result = await response.json()
-
-                        # 處理不同的回應格式
-                        if "models" in result and isinstance(result["models"], list):
-                            for model in result["models"]:
-                                if isinstance(model, dict) and "name" in model:
-                                    models[model["name"]] = model.get("details", {})
-                        elif "models" in result and isinstance(result["models"], dict):
-                            for model_name, model_details in result["models"].items():
-                                models[model_name] = (
-                                    model_details.get("details", {})
-                                    if isinstance(model_details, dict)
-                                    else {}
-                                )
-                        elif isinstance(result, list):
-                            for item in result:
-                                if isinstance(item, dict) and "name" in item:
-                                    models[item["name"]] = item.get("details", {})
-
-                        # 如果成功獲取了模型，跳出循環
-                        if len(models) > 0:
-                            break
-
-                except Exception as e:
-                    logger.warning(f"從端點 {endpoint} 獲取模型失敗: {e!s}")
-                    continue
-
-            # 如果沒有找到模型，嘗試透過 ollama list 指令取得本地模型
-            if len(models) == 0:
-                models = self._get_ollama_models_via_cli()
-
-            # 若 CLI 也失敗，使用硬編碼預設清單
-            if len(models) == 0:
-                default_models = ["llama3.2", "qwen3.5", "qwen3", "gemma3", "mistral"]
-                for model in default_models:
-                    models[model] = {}
-                logger.warning(f"無法從 API 或 CLI 獲取模型，使用預設模型列表: {default_models}")
-
-            # 添加預設模型
-            models.setdefault(self.default_ollama_model, {})
-
-            # 過濾和排序
-            model_set = set(models)
-            if len(model_set) > 20:  # 只有當模型數量過多時才過濾
-                filtered_models = set()
-                for pattern in self.model_patterns:
-                    for model in model_set:
-                        if pattern in model.lower():
-                            filtered_models.add(model)
-
-                # 如果過濾後仍有足夠多的模型，使用過濾後的集合
-                if len(filtered_models) >= 3:
-                    model_set = filtered_models
-
-            # 建立 ModelInfo 物件列表
-            model_info_list = []
-            for model_id in sorted(model_set):
-                # 檢查是否有預定義的模型資訊
-                key = f"ollama:{model_id}"
-                if key in self.model_database:
-                    model_info = self.model_database[key]
-                else:
-                    model_info = self._build_dynamic_ollama_model_info(model_id, models.get(model_id))
-
-                model_info_list.append(model_info)
-
-            # 確保預設模型在首位
-            default_model_id = self.default_ollama_model
-            model_info_list.sort(key=lambda x: 0 if x.id == default_model_id else 1)
-
-            logger.info(f"檢測到 {len(model_info_list)} 個 Ollama 模型")
-            return model_info_list
-
-        except Exception as e:
-            logger.error(f"獲取 Ollama 模型列表失敗: {e!s}")
-            # 返回預設模型
-            default_model = self._create_default_ollama_model()
-            return [default_model]
 
     async def _get_llamacpp_models_async(self) -> list[ModelInfo]:
         """非同步獲取 llama.cpp server 載入的模型
@@ -1644,7 +1257,7 @@ class ModelManager:
             save_result = self._save_config()
 
             # 如果更新了重要設定，清除快取
-            important_keys = ["ollama_url", "default_ollama_model", "model_patterns"]
+            important_keys = ["llamacpp_url", "default_llamacpp_model", "model_patterns"]
             if any(key in new_config for key in important_keys):
                 self.cached_models.clear()
                 self.cache_time.clear()
@@ -1662,7 +1275,7 @@ def get_model_info(model_name: str, provider: str | None = None) -> dict[str, An
 
     參數:
         model_name: 模型名稱
-        provider: 提供者 (如 "ollama" 或 "openai")
+        provider: 提供者 (如 "llamacpp" 或 "openai")
 
     回傳:
         模型資訊字典
@@ -1676,7 +1289,7 @@ def get_recommended_model(task_type: str = "translation", provider: str | None =
 
     參數:
         task_type: 任務類型 (如 "translation" 或 "literary")
-        provider: 提供者 (如 "ollama" 或 "openai")
+        provider: 提供者 (如 "llamacpp" 或 "openai")
 
     回傳:
         推薦的模型名稱
@@ -1685,7 +1298,7 @@ def get_recommended_model(task_type: str = "translation", provider: str | None =
     model_info = manager.get_recommended_model(task_type, provider)
     if model_info:
         return model_info.id
-    return manager.get_default_model(provider or "ollama")
+    return manager.get_default_model(provider or "llamacpp")
 
 
 async def test_model_connection(model_name: str, provider: str, api_key: str | None = None) -> dict[str, Any]:
@@ -1693,7 +1306,7 @@ async def test_model_connection(model_name: str, provider: str, api_key: str | N
 
     參數:
         model_name: 模型名稱
-        provider: 提供者 (如 "ollama", "openai", "google" 或 "llamacpp")
+        provider: 提供者 (如 "llamacpp", "openai" 或 "google")
         api_key: API 金鑰 (可選)
 
     回傳:

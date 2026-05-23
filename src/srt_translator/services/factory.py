@@ -527,7 +527,7 @@ class TranslationService:
         參數:
             text: 要翻譯的文本
             context_texts: 上下文文本列表
-            llm_type: LLM類型 (如 "ollama" 或 "openai")
+            llm_type: LLM類型 (如 "llamacpp" 或 "openai")
             model_name: 模型名稱
 
         回傳:
@@ -646,7 +646,7 @@ class TranslationService:
 
         參數:
             texts_with_context: 文本和上下文的列表，格式為 [(text, context_texts), ...]
-            llm_type: LLM類型 (如 "ollama" 或 "openai")
+            llm_type: LLM類型 (如 "llamacpp" 或 "openai")
             model_name: 模型名稱
             concurrent_limit: 並行請求限制
 
@@ -759,7 +759,7 @@ class TranslationService:
             model_name: 模型名稱
             parallel_requests: 並行請求數
             display_mode: 顯示模式 (如 "雙語對照")
-            llm_type: LLM類型 (如 "ollama" 或 "openai")
+            llm_type: LLM類型 (如 "llamacpp" 或 "openai")
             progress_callback: 進度回調函數
             complete_callback: 完成回調函數
 
@@ -1409,7 +1409,7 @@ class ModelService:
         """獲取翻譯客戶端實例
 
         參數:
-            llm_type: LLM類型 (如 "ollama" 或 "openai")
+            llm_type: LLM類型 (如 "llamacpp" 或 "openai")
 
         回傳:
             翻譯客戶端實例
@@ -1452,7 +1452,7 @@ class ModelService:
         """獲取可用的模型列表
 
         參數:
-            llm_type: LLM類型 (如 "ollama" 或 "openai")
+            llm_type: LLM類型 (如 "llamacpp" 或 "openai")
 
         回傳:
             模型名稱列表
@@ -1469,7 +1469,7 @@ class ModelService:
 
         參數:
             model_name: 模型名稱
-            provider: 提供者 (如 "ollama" 或 "openai")
+            provider: 提供者 (如 "llamacpp" 或 "openai")
 
         回傳:
             模型資訊字典
@@ -1481,7 +1481,7 @@ class ModelService:
 
         參數:
             task_type: 任務類型 (如 "translation" 或 "literary")
-            provider: 提供者 (如 "ollama" 或 "openai")
+            provider: 提供者 (如 "llamacpp" 或 "openai")
 
         回傳:
             推薦的模型名稱
@@ -1489,14 +1489,14 @@ class ModelService:
         model_info = self.model_manager.get_recommended_model(task_type, provider)
         if model_info:
             return model_info.id
-        return self.model_manager.get_default_model(provider or "ollama")
+        return self.model_manager.get_default_model(provider or "llamacpp")
 
     async def test_model_connection(self, model_name: str, provider: str) -> dict[str, Any]:
         """測試與模型的連線
 
         參數:
             model_name: 模型名稱
-            provider: 提供者 (如 "ollama" 或 "openai")
+            provider: 提供者 (如 "llamacpp" 或 "openai")
 
         回傳:
             測試結果字典
@@ -2303,7 +2303,7 @@ if __name__ == "__main__":
             text = "こんにちは、世界"
             context = ["前の文", "こんにちは、世界", "次の文"]
 
-            result = await translation_service.translate_text(text, context, "ollama", "mistral")
+            result = await translation_service.translate_text(text, context, "llamacpp", "Hy-MT2-7B-Q4_K_M")
             print(f"翻譯結果: {result}")
 
             # 測試快取服務

@@ -134,7 +134,7 @@ class TestModelManagerInit:
         manager = ModelManager(temp_config_file)
 
         # 驗證預設值
-        assert manager.base_url is not None
+        assert manager.llamacpp_url is not None
         assert manager.cache_expiry > 0
         assert manager.connect_timeout > 0
         assert manager.request_timeout > 0
@@ -220,14 +220,14 @@ class TestModelManagerConfig:
         isolated_config_path.parent.mkdir(exist_ok=True)
 
         manager = ModelManager(str(isolated_config_path))
-        manager.update_config({"ollama_url": "http://newhost:11434"})
+        manager.update_config({"llamacpp_url": "http://newhost:8080"})
 
         isolated_after = json.loads(isolated_config_path.read_text(encoding="utf-8"))
         default_after = json.loads(Path(default_config_path).read_text(encoding="utf-8"))
 
-        assert isolated_after["ollama_url"] == "http://newhost:11434"
-        assert default_before["ollama_url"] == "http://localhost:11434"
-        assert default_after["ollama_url"] == "http://localhost:11434"
+        assert isolated_after["llamacpp_url"] == "http://newhost:8080"
+        assert default_before["llamacpp_url"] == "http://localhost:8080"
+        assert default_after["llamacpp_url"] == "http://localhost:8080"
 
 
 class TestModelManagerAPIKeys:
@@ -391,10 +391,10 @@ class TestModelManagerSelection:
         config_file.parent.mkdir(exist_ok=True)
         return ModelManager(str(config_file))
 
-    def test_default_ollama_model(self, manager):
-        """測試預設 Ollama 模型"""
-        assert manager.default_ollama_model is not None
-        assert isinstance(manager.default_ollama_model, str)
+    def test_default_llamacpp_model(self, manager):
+        """測試預設 llama.cpp 模型"""
+        assert manager.default_llamacpp_model is not None
+        assert isinstance(manager.default_llamacpp_model, str)
 
     def test_model_comparison_by_capabilities(self, manager):
         """測試基於能力評分比較模型"""
@@ -481,29 +481,6 @@ class TestModelManagerDefaultModels:
         config_file.parent.mkdir(exist_ok=True)
         return ModelManager(str(config_file))
 
-    def test_create_default_ollama_model(self, manager):
-        """測試建立預設 Ollama 模型"""
-        model = manager._create_default_ollama_model()
-
-        assert isinstance(model, ModelInfo)
-        assert model.provider == "ollama"
-        assert model.id is not None
-
-    def test_create_default_ollama_model_not_in_db(self, manager):
-        """測試建立不在資料庫中的 Ollama 預設模型"""
-        # 暫時修改預設模型名稱為不在資料庫中的
-        original = manager.default_ollama_model
-        manager.default_ollama_model = "nonexistent-model"
-
-        model = manager._create_default_ollama_model()
-
-        assert isinstance(model, ModelInfo)
-        assert model.provider == "ollama"
-        assert model.id == "nonexistent-model"
-
-        # 恢復
-        manager.default_ollama_model = original
-
     def test_create_default_openai_model(self, manager):
         """測試建立預設 OpenAI 模型"""
         model = manager._create_default_openai_model()
@@ -527,12 +504,11 @@ class TestModelManagerDefaultModels:
         assert isinstance(model, ModelInfo)
         assert model.id == "gpt-3.5-turbo"
 
-    def test_get_default_model_ollama(self, manager):
-        """測試獲取 Ollama 預設模型"""
-        model_name = manager.get_default_model("ollama")
+    def test_get_default_model_llamacpp(self, manager):
+        """測試獲取 llama.cpp 預設模型"""
+        model_name = manager.get_default_model("llamacpp")
 
-        assert isinstance(model_name, str)
-        assert len(model_name) > 0
+        assert model_name == "local-model"
 
     def test_get_default_model_openai(self, manager):
         """測試獲取 OpenAI 預設模型"""
@@ -704,24 +680,27 @@ class TestModelManagerSync:
         config_file.parent.mkdir(exist_ok=True)
         return ModelManager(str(config_file))
 
-    def test_get_model_list_ollama(self, manager):
-        """測試同步獲取 Ollama 模型列表"""
+    def test_get_model_list_llamacpp(self, manager):
+        """測試同步獲取 llama.cpp 模型列表"""
         # Mock 非同步方法
-        mock_models = [ModelInfo(id="llama3", provider="ollama"), ModelInfo(id="mistral", provider="ollama")]
+        mock_models = [
+            ModelInfo(id="local-model", provider="llamacpp"),
+            ModelInfo(id="Hy-MT2-7B-Q4_K_M", provider="llamacpp"),
+        ]
 
         # 使用 AsyncMock
         mock_coro = AsyncMock(return_value=mock_models)
 
         with patch.object(manager, "get_model_list_async", mock_coro):
             # 呼叫同步方法
-            result = manager.get_model_list("ollama")
+            result = manager.get_model_list("llamacpp")
 
             # 驗證結果是字串列表
             assert isinstance(result, list)
             # 應該包含模型 ID
             assert len(result) == 2
-            assert "llama3" in result
-            assert "mistral" in result
+            assert "local-model" in result
+            assert "Hy-MT2-7B-Q4_K_M" in result
 
     def test_get_model_list_invalid_type(self, manager):
         """測試無效的 LLM 類型"""
@@ -787,7 +766,7 @@ class TestModelManagerAsync:
         status = await manager.get_provider_status()
 
         assert isinstance(status, dict)
-        assert "ollama" in status
+        assert "llamacpp" in status
         assert "openai" in status
         assert "google" in status
 
@@ -797,13 +776,9 @@ class TestModelManagerAsync:
 
     @pytest.mark.asyncio
     async def test_test_model_connection_timeout_returns_readable_message(self, manager):
-        """測試 Ollama 連線逾時時回傳可讀訊息。"""
-        manager.session = MagicMock()
-        manager.session.closed = False
-        manager.session._loop = None
-        manager.session.post.side_effect = asyncio.TimeoutError()
-
-        result = await manager.test_model_connection("qwen3.5-ud:latest", "ollama")
+        """測試 llama.cpp 連線逾時時回傳可讀訊息。"""
+        with patch.object(manager, "_test_llamacpp_connection", AsyncMock(return_value=(False, "連線逾時"))):
+            result = await manager.test_model_connection("local-model", "llamacpp")
 
         assert result["success"] is False
         assert "連線逾時" in result["message"]
@@ -816,13 +791,13 @@ class TestModelManagerAsync:
         manager._close_async_session = AsyncMock()
 
         with patch("srt_translator.core.models.ModelManager.get_instance", return_value=manager):
-            result = await global_test_model_connection("qwen3.5-ud:latest", "ollama")
+            result = await global_test_model_connection("local-model", "llamacpp")
 
         assert result["success"] is True
         manager._close_async_session.assert_awaited_once()
 
     def test_test_model_connection_recreates_session_when_previous_loop_closed(self, manager):
-        """測試前一個 event loop 關閉後，會重建 HTTP session。"""
+        """測試 llama.cpp 連線檢查在舊 loop 關閉後仍可重建 session。"""
         closed_loop = asyncio.new_event_loop()
         closed_loop.close()
 
@@ -831,8 +806,8 @@ class TestModelManagerAsync:
         stale_session.closed = False
         manager.session = stale_session
 
-        response = MagicMock()
-        response.status = 200
+        response = MagicMock(status=200)
+        response.text = AsyncMock(return_value="")
         post_context = AsyncMock()
         post_context.__aenter__.return_value = response
         post_context.__aexit__.return_value = False
@@ -842,9 +817,9 @@ class TestModelManagerAsync:
         fresh_session.closed = False
 
         with patch("srt_translator.core.models.aiohttp.ClientSession", return_value=fresh_session):
-            result = asyncio.run(manager.test_model_connection("qwen3.5-ud:latest", "ollama"))
+            result = asyncio.run(manager._test_llamacpp_connection("local-model"))
 
-        assert result["success"] is True
+        assert result[0] is True
         assert manager.session is fresh_session
 
     @pytest.mark.asyncio
@@ -853,12 +828,12 @@ class TestModelManagerAsync:
         import time
 
         # 模擬快取
-        mock_models = [ModelInfo(id="test", provider="ollama")]
-        manager.cached_models["ollama"] = mock_models
-        manager.cache_time["ollama"] = time.time()
+        mock_models = [ModelInfo(id="test", provider="llamacpp")]
+        manager.cached_models["llamacpp"] = mock_models
+        manager.cache_time["llamacpp"] = time.time()
 
         # 應該返回快取的模型
-        result = await manager.get_model_list_async("ollama")
+        result = await manager.get_model_list_async("llamacpp")
 
         assert isinstance(result, list)
         assert len(result) == 1
@@ -874,12 +849,11 @@ class TestModelManagerAsync:
         import time
 
         # 設定過期的快取
-        manager.cached_models["ollama"] = []
-        manager.cache_time["ollama"] = time.time() - manager.cache_expiry - 100
+        manager.cached_models["llamacpp"] = []
+        manager.cache_time["llamacpp"] = time.time() - manager.cache_expiry - 100
 
-        # Mock _get_ollama_models_async 返回預設模型
-        with patch.object(manager, "_get_ollama_models_async", return_value=[]):
-            result = await manager.get_model_list_async("ollama")
+        with patch.object(manager, "_get_llamacpp_models_async", return_value=[]):
+            result = await manager.get_model_list_async("llamacpp")
 
             assert isinstance(result, list)
 
@@ -906,13 +880,12 @@ class TestModelManagerAsync:
         import time
 
         # 設定舊快取
-        mock_models = [ModelInfo(id="cached", provider="ollama")]
-        manager.cached_models["ollama"] = mock_models
-        manager.cache_time["ollama"] = time.time() - manager.cache_expiry - 10
+        mock_models = [ModelInfo(id="cached", provider="llamacpp")]
+        manager.cached_models["llamacpp"] = mock_models
+        manager.cache_time["llamacpp"] = time.time() - manager.cache_expiry - 10
 
-        # Mock 方法拋出錯誤
-        with patch.object(manager, "_get_ollama_models_async", side_effect=Exception("Network error")):
-            result = await manager.get_model_list_async("ollama")
+        with patch.object(manager, "_get_llamacpp_models_async", side_effect=Exception("Network error")):
+            result = await manager.get_model_list_async("llamacpp")
 
             # 應該返回過期的快取
             assert isinstance(result, list)
@@ -925,14 +898,13 @@ class TestModelManagerAsync:
 
     @pytest.mark.asyncio
     async def test_get_model_list_async_error_no_cache(self, manager):
-        """測試獲取模型時發生錯誤且無快取（Ollama）"""
-        # Mock 方法拋出錯誤
-        with patch.object(manager, "_get_ollama_models_async", side_effect=Exception("Network error")):
-            result = await manager.get_model_list_async("ollama")
+        """測試 llama.cpp 獲取模型失敗時回退到離線提示模型。"""
+        with patch.object(manager, "_get_llamacpp_models_async", side_effect=Exception("Network error")):
+            result = await manager.get_model_list_async("llamacpp")
 
-            # 應該返回預設模型
             assert isinstance(result, list)
             assert len(result) == 1
+            assert result[0].provider == "llamacpp"
 
         # 清理
         if manager.session:
@@ -999,7 +971,7 @@ class TestModelManagerEdgeCases:
     def test_get_default_model_unknown_type(self, manager):
         """測試未知類型的預設模型"""
         model = manager.get_default_model("unknown_type")
-        # 應該返回 Ollama 預設模型
+        # 應該返回 llama.cpp 預設模型
         assert isinstance(model, str)
 
     def test_get_recommended_model_unknown_task(self, manager):
@@ -1014,4 +986,4 @@ class TestModelManagerEdgeCases:
             assert ":" in key
             parts = key.split(":", 1)
             assert len(parts) == 2
-            assert parts[0] in ["ollama", "openai", "google", "llamacpp"]
+            assert parts[0] in ["openai", "google", "llamacpp"]
