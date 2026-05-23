@@ -431,18 +431,18 @@ class TestTranslationClientHelpers:
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
-    def test_detect_ollama_model_family_qwen35_custom_name(self, mock_prompt, mock_cache):
-        """Test Qwen3.5 family detection for custom Ollama model names."""
+    def test_detect_model_family_qwen35_custom_name(self, mock_prompt, mock_cache):
+        """Test Qwen3.5 family detection for custom local model names."""
         client = TranslationClient(llm_type="ollama")
-        family = client._detect_ollama_model_family("HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0")
+        family = client._detect_model_family("HauhauCS/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive:Q8_0")
         assert family == "qwen3.5"
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
-    def test_detect_ollama_model_family_gemma4_custom_name(self, mock_prompt, mock_cache):
+    def test_detect_model_family_gemma4_custom_name(self, mock_prompt, mock_cache):
         """Test Gemma 4 family detection for local GGUF file names."""
         client = TranslationClient(llm_type="ollama")
-        family = client._detect_ollama_model_family("gemma-4-E4B-it-UD-Q8_K_XL.gguf")
+        family = client._detect_model_family("gemma-4-E4B-it-UD-Q8_K_XL.gguf")
         assert family == "gemma4"
 
     @patch("srt_translator.translation.client.CacheManager")
@@ -592,9 +592,9 @@ class TestTranslationClientHelpers:
         """Test Hunyuan-MT2 翻譯專用模型的家族偵測（GGUF 檔名與 repo id）。"""
         client = TranslationClient(llm_type="ollama")
 
-        assert client._detect_ollama_model_family("Hy-MT2-1.8B-Q8_0.gguf") == "hunyuan-mt"
-        assert client._detect_ollama_model_family("hunyuan-mt2") == "hunyuan-mt"
-        assert client._detect_ollama_model_family("tencent/Hy-MT2-1.8B-GGUF") == "hunyuan-mt"
+        assert client._detect_model_family("Hy-MT2-1.8B-Q8_0.gguf") == "hunyuan-mt"
+        assert client._detect_model_family("hunyuan-mt2") == "hunyuan-mt"
+        assert client._detect_model_family("tencent/Hy-MT2-1.8B-GGUF") == "hunyuan-mt"
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")

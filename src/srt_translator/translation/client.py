@@ -271,7 +271,7 @@ class TranslationClient:
         (re.compile(r"約翰\s*[·•‧]?\s*威廉斯"), "約翰·威廉斯"),
         (re.compile(r"([\u4e00-\u9fff])\s*[·•‧]\s*([\u4e00-\u9fff])"), r"\1·\2"),
     )
-    OLLAMA_MODEL_PROFILES: ClassVar[dict[str, dict[str, Any]]] = {
+    LOCAL_MODEL_PROFILES: ClassVar[dict[str, dict[str, Any]]] = {
         "default": {
             "keep_alive": "10m",
             "batch_concurrency_limit": None,
@@ -646,8 +646,8 @@ class TranslationClient:
         self.concurrency_controller = AdaptiveConcurrencyController(initial=3, min_concurrent=2, max_concurrent=10)
         logger.info(f"自適應並發控制器已啟用: 初始並發數={self.concurrency_controller.get_current()}")
 
-    def _detect_ollama_model_family(self, model_name: str) -> str:
-        """根據模型名稱偵測 Ollama 模型家族"""
+    def _detect_model_family(self, model_name: str) -> str:
+        """根據模型名稱偵測本地模型家族"""
         normalized = self._normalize_model_name(model_name)
 
         if re.search(r"(?:hunyuan[-_/\s]?mt|hy[-_/\s]?mt)", normalized):
@@ -686,7 +686,7 @@ class TranslationClient:
 
     def _is_qwen_ud_model(self, model_name: str) -> bool:
         """判斷是否為 Qwen3.5 / Qwen3.6 的 UD 變體（含社群對照組）"""
-        if self._detect_ollama_model_family(model_name) not in self._QWEN_UD_FAMILIES:
+        if self._detect_model_family(model_name) not in self._QWEN_UD_FAMILIES:
             return False
 
         normalized = self._normalize_model_name(model_name)
@@ -715,7 +715,7 @@ class TranslationClient:
         if not self._is_qwen_ud_model(model_name):
             return []
 
-        family = self._detect_ollama_model_family(model_name)
+        family = self._detect_model_family(model_name)
         base = f"{family}-uncensored"
 
         tag = ""
@@ -730,12 +730,12 @@ class TranslationClient:
         candidates = [candidate for candidate in candidates if candidate != model_name]
         return self._dedupe_preserve_order(candidates)
 
-    def _get_ollama_model_profile(self, model_name: str) -> dict[str, Any]:
-        """取得 Ollama 模型的請求設定"""
-        family = self._detect_ollama_model_family(model_name)
+    def _get_local_model_profile(self, model_name: str) -> dict[str, Any]:
+        """取得本地模型的請求設定。"""
+        family = self._detect_model_family(model_name)
         profile_key = f"{family}-ud" if self._is_qwen_ud_model(model_name) else family
-        default_profile = self.OLLAMA_MODEL_PROFILES["default"]
-        family_profile = self.OLLAMA_MODEL_PROFILES.get(profile_key, {})
+        default_profile = self.LOCAL_MODEL_PROFILES["default"]
+        family_profile = self.LOCAL_MODEL_PROFILES.get(profile_key, {})
 
         return {
             "family": family,
@@ -751,7 +751,7 @@ class TranslationClient:
     def _get_llamacpp_model_profile(self, model_name: str) -> dict[str, Any]:
         """取得 llama.cpp 模型的請求設定"""
         effective_name = self._resolve_llamacpp_model_name(model_name)
-        family = self._detect_ollama_model_family(effective_name)
+        family = self._detect_model_family(effective_name)
         if effective_name != model_name and family != "default":
             logger.debug(f"llama.cpp 模型家族從 server model_path 偵測為: {family}")
         profile_key = f"{family}-ud" if self._is_qwen_ud_model(effective_name) else family
@@ -910,7 +910,7 @@ class TranslationClient:
     def _resolve_llamacpp_model_name(self, model_name: str) -> str:
         """若為 llamacpp 且有從 server 解析的實際模型名稱，優先使用之。"""
         if self.llm_type == "llamacpp" and self._llamacpp_resolved_model_name:
-            family = self._detect_ollama_model_family(model_name)
+            family = self._detect_model_family(model_name)
             if family == "default":
                 return self._llamacpp_resolved_model_name
         return model_name
@@ -926,7 +926,7 @@ class TranslationClient:
             return False
 
         effective_name = self._resolve_llamacpp_model_name(model_name)
-        if self._detect_ollama_model_family(effective_name) == "hunyuan-mt":
+        if self._detect_model_family(effective_name) == "hunyuan-mt":
             return True
         return (
             self._is_qwen_ud_model(effective_name)
@@ -1077,7 +1077,7 @@ class TranslationClient:
 
     def _build_ollama_payload(self, messages: list[dict[str, str]], model_name: str) -> dict[str, Any]:
         """建立 Ollama chat API 請求內容"""
-        profile = self._get_ollama_model_profile(model_name)
+        profile = self._get_local_model_profile(model_name)
 
         return {
             "model": model_name,
@@ -1133,7 +1133,7 @@ class TranslationClient:
     ) -> int:
         """根據模型家族調整 Ollama 批次並發數"""
         batch_size = min(concurrent_limit, adaptive_concurrency, pending)
-        profile = self._get_ollama_model_profile(model_name)
+        profile = self._get_local_model_profile(model_name)
         model_limit = profile.get("batch_concurrency_limit")
 
         if model_limit is not None:
@@ -1200,7 +1200,7 @@ class TranslationClient:
         fallback_options = provider_fallbacks.get(model_name, [])
 
         if self.llm_type == "ollama" and self._is_qwen_ud_model(model_name):
-            family = self._detect_ollama_model_family(model_name)
+            family = self._detect_model_family(model_name)
             qwen_ud_fallbacks = self._get_qwen_ud_fallback_candidates(model_name)
             return self._dedupe_preserve_order(
                 qwen_ud_fallbacks + fallback_options + provider_fallbacks.get(family, [])
@@ -1209,7 +1209,7 @@ class TranslationClient:
         if fallback_options or self.llm_type != "ollama":
             return fallback_options
 
-        family = self._detect_ollama_model_family(model_name)
+        family = self._detect_model_family(model_name)
         return provider_fallbacks.get(family, [])
 
     def _load_tokenizers(self):
