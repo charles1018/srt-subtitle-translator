@@ -5,7 +5,7 @@ import os
 import re
 import threading
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 # 從配置管理器導入
 from srt_translator.core.config import ConfigManager
@@ -87,6 +87,7 @@ class PromptManager:
             "日文→繁體中文": {"source": "日文", "target": "繁體中文"},
             "英文→繁體中文": {"source": "英文", "target": "繁體中文"},
             "繁體中文→英文": {"source": "繁體中文", "target": "英文"},
+            "繁體中文→日文": {"source": "繁體中文", "target": "日文"},
             "韓文→繁體中文": {"source": "韓文", "target": "繁體中文"},
             "法文→繁體中文": {"source": "法文", "target": "繁體中文"},
             "德文→繁體中文": {"source": "德文", "target": "繁體中文"},
@@ -779,19 +780,52 @@ Rules:
         """
         return llm_type == "llamacpp" and self._is_hunyuan_mt_model(model_name)
 
+    # 中文語言名稱 → (英文 system prompt 用名, 中文 user message 用名)
+    _HUNYUAN_LANG_NAMES: ClassVar[dict[str, tuple[str, str]]] = {
+        "日文": ("Japanese", "日文"),
+        "繁體中文": ("Taiwan Traditional Chinese (zh-TW)", "繁體中文（台灣）"),
+        "英文": ("English", "英文"),
+        "韓文": ("Korean", "韓文"),
+        "法文": ("French", "法文"),
+        "德文": ("German", "德文"),
+        "西班牙文": ("Spanish", "西班牙文"),
+        "俄文": ("Russian", "俄文"),
+    }
+
+    def _resolve_hunyuan_languages(self, language_pair: str | None = None) -> tuple[str, str, str, str]:
+        """解析當前語言對，回傳 (source_zh, target_zh, source_en, target_en)。
+
+        未知語言對時回退到「日文→繁體中文」以保留歷史行為。
+        """
+        pair = language_pair or self.current_language_pair
+        meta = self.language_pairs.get(pair) or self.language_pairs["日文→繁體中文"]
+        source_zh = meta["source"]
+        target_zh = meta["target"]
+        source_en = self._HUNYUAN_LANG_NAMES.get(source_zh, (source_zh, source_zh))[0]
+        target_en, _ = self._HUNYUAN_LANG_NAMES.get(target_zh, (target_zh, target_zh))
+        return source_zh, target_zh, source_en, target_en
+
     def _get_hunyuan_mt_prompt(self, content_type: str) -> str:
-        """取得 Hunyuan-MT 翻譯專用模型的精簡 system prompt"""
+        """取得 Hunyuan-MT 翻譯專用模型的精簡 system prompt（依當前語言對動態組）"""
+        source_zh, _target_zh, source_en, target_en = self._resolve_hunyuan_languages()
+
         rules = [
-            "You are a professional subtitle translator. Translate the user's text into natural "
-            "Taiwan Traditional Chinese (zh-TW).",
+            f"You are a professional subtitle translator. Translate the user's text from {source_en} into "
+            f"natural {target_en}.",
             "Output ONLY the translated text. No labels, quotes, romaji, pinyin, explanations, or extra notes.",
             "Translate ONLY the text given. Do not add, complete, or merge it with any other sentence.",
             "Keep the same number of lines as the source. Use concise wording suitable for spoken subtitles.",
-            "Keep Japanese personal names and nicknames in their original Japanese form; do not romanize or "
-            "sinicize them.",
-            "Do not end the output with 。 or ，. Question marks (？), exclamation marks (！), and ellipses (…) "
-            "are allowed.",
         ]
+        # 「保留日文名字」規則只在源語言是日文時才有意義
+        if source_zh == "日文":
+            rules.append(
+                "Keep Japanese personal names and nicknames in their original Japanese form; do not romanize "
+                "or sinicize them."
+            )
+        rules.append(
+            "Do not end the output with 。 or ，. Question marks (？), exclamation marks (！), and ellipses (…) "
+            "are allowed."
+        )
         if content_type == "adult":
             rules.extend(
                 [
@@ -828,9 +862,12 @@ Rules:
         prev = context_before[-1].strip() if context_before else ""
         nxt = context_after[0].strip() if context_after else ""
 
+        _source_zh, target_zh, _source_en, _target_en = self._resolve_hunyuan_languages()
+        target_display = self._HUNYUAN_LANG_NAMES.get(target_zh, (target_zh, target_zh))[1]
+
         if not prev and not nxt:
             return (
-                "將以下文本翻譯為繁體中文（台灣），"
+                f"將以下文本翻譯為{target_display}，"
                 "注意只需要輸出翻譯後的結果，不要額外解釋：\n\n"
                 f"{text}"
             )
@@ -845,7 +882,7 @@ Rules:
         return (
             "以下是字幕的相鄰句子，僅供理解語境，請勿翻譯這幾句：\n"
             f"{ref_block}\n\n"
-            "請將下面這一句翻譯為繁體中文（台灣），"
+            f"請將下面這一句翻譯為{target_display}，"
             "只輸出這一句的翻譯結果，不要附上前後句、不要加解釋、輸出僅一行：\n\n"
             f"{text}"
         )

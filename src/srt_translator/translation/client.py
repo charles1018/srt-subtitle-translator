@@ -459,12 +459,14 @@ class TranslationClient:
         },
         # Hunyuan-MT2：翻譯專用模型，官方建議 temp 0.7 / top_p 0.6 / top_k 20 /
         # repetition_penalty 1.05，且無 thinking 模式，需清除 default 的思考相關設定。
+        # max_tokens 256：原 128 對 X→繁中夠用，但繁中→日等反向方向 token 利用率較差，
+        # 長句會被截斷（log 觀察 [1300] truncated by max_tokens）。256 與 default/qwen3.6 對齊。
         "hunyuan-mt": {
             "batch_concurrency_limit": None,
             "options": {
                 "temperature": 0.7,
                 "top_p": 0.6,
-                "max_tokens": 128,
+                "max_tokens": 256,
             },
             "extra_body": {
                 "repetition_penalty": 1.05,
@@ -1211,6 +1213,12 @@ class TranslationClient:
             try:
                 await self.openai_client.close()
                 logger.debug("關閉 AsyncOpenAI 客戶端")
+            except RuntimeError as e:
+                # GUI 退出時 asyncio loop 已先關閉是已知競態，不影響資源回收
+                if "Event loop is closed" in str(e):
+                    logger.debug(f"OpenAI 客戶端關閉時 event loop 已關閉（shutdown 競態，可忽略）: {e!s}")
+                else:
+                    logger.warning(f"關閉 OpenAI 客戶端時發生錯誤: {e!s}")
             except Exception as e:
                 logger.warning(f"關閉 OpenAI 客戶端時發生錯誤: {e!s}")
             finally:
@@ -1221,6 +1229,11 @@ class TranslationClient:
             try:
                 self.google_client.close()
                 logger.debug("關閉 Google GenAI 客戶端")
+            except RuntimeError as e:
+                if "Event loop is closed" in str(e):
+                    logger.debug(f"Google 客戶端關閉時 event loop 已關閉（shutdown 競態，可忽略）: {e!s}")
+                else:
+                    logger.warning(f"關閉 Google 客戶端時發生錯誤: {e!s}")
             except Exception as e:
                 logger.warning(f"關閉 Google 客戶端時發生錯誤: {e!s}")
             finally:

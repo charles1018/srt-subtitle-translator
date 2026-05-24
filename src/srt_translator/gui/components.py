@@ -467,15 +467,19 @@ class GUIComponents:
 
         ttk.Label(lang_grid, text="來源語言:").grid(row=0, column=0, sticky=tk.W, pady=8)
         source_langs = ["日文", "英文", "韓文", "繁體中文"]
-        ttk.Combobox(
+        self.source_lang_combo = ttk.Combobox(
             lang_grid, textvariable=self.source_lang, values=source_langs, width=12, state="readonly"
-        ).grid(row=0, column=1, sticky=tk.W, pady=8, padx=(5, 0))
+        )
+        self.source_lang_combo.grid(row=0, column=1, sticky=tk.W, pady=8, padx=(5, 0))
+        self.source_lang_combo.bind("<<ComboboxSelected>>", self.on_source_target_lang_changed)
 
         ttk.Label(lang_grid, text="目標語言:").grid(row=1, column=0, sticky=tk.W, pady=8)
         target_langs = ["繁體中文", "英文", "日文", "韓文"]
-        ttk.Combobox(
+        self.target_lang_combo = ttk.Combobox(
             lang_grid, textvariable=self.target_lang, values=target_langs, width=12, state="readonly"
-        ).grid(row=1, column=1, sticky=tk.W, pady=8, padx=(5, 0))
+        )
+        self.target_lang_combo.grid(row=1, column=1, sticky=tk.W, pady=8, padx=(5, 0))
+        self.target_lang_combo.bind("<<ComboboxSelected>>", self.on_source_target_lang_changed)
 
         # ----- 中欄：LLM 設定 -----
         llm_frame = ttk.LabelFrame(settings_container, text="🤖 LLM 設定", padding=10)
@@ -920,6 +924,22 @@ class GUIComponents:
 
             # 保存設置到配置
             set_config("prompt", "current_style", style)
+
+    def on_source_target_lang_changed(self, event=None):
+        """來源/目標語言變更時，同步到 PromptManager 與 prompt_config"""
+        if not self.prompt_manager:
+            return
+        source = self.source_lang.get()
+        target = self.target_lang.get()
+        language_pair = f"{source}→{target}"
+        if self.prompt_manager.set_language_pair(language_pair):
+            logger.info(f"語言對已變更為: {language_pair}")
+            set_config("prompt", "current_language_pair", language_pair)
+        else:
+            logger.warning(
+                f"PromptManager 不支援的語言對組合: {language_pair}（prompt 仍會以舊語言對 "
+                f"{self.prompt_manager.current_language_pair} 生成）"
+            )
 
     def on_netflix_style_changed(self):
         """Netflix 風格選項變更時的處理函式"""

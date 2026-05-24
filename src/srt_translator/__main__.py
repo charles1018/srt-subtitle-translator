@@ -124,6 +124,9 @@ class App:
         # 設定 GUI 元件的初始值
         self.gui.source_lang.set(settings.get("source_lang", "日文"))
         self.gui.target_lang.set(settings.get("target_lang", "繁體中文"))
+        # 啟動時把儲存的 source/target 同步到 PromptManager，避免 user_settings 與
+        # prompt_config 漂移（後續使用者切下拉會經由 on_source_target_lang_changed 持續同步）
+        self.gui.on_source_target_lang_changed()
         self.gui.llm_type.set(settings.get("llm_type", "llamacpp"))
         self.gui.parallel_requests.set(str(settings.get("parallel_requests", "3")))
         self.gui.display_mode.set(settings.get("display_mode", "雙語對照"))
