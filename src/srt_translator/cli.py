@@ -400,6 +400,8 @@ def apply_translation_runtime_overrides(
     content_type: str | None,
     style: str | None,
     netflix_style: bool | None,
+    source_lang: str | None = None,
+    target_lang: str | None = None,
 ) -> None:
     """套用僅限本次 CLI 執行的翻譯選項覆寫。"""
     prompt_manager = getattr(translation_service, "prompt_manager", None)
@@ -410,6 +412,17 @@ def apply_translation_runtime_overrides(
         if style:
             prompt_manager.current_style = style
             prompt_manager.config_manager.set_value("current_style", style, auto_save=False)
+        if source_lang and target_lang:
+            language_pair = f"{source_lang}→{target_lang}"
+            if language_pair in prompt_manager.language_pairs:
+                prompt_manager.current_language_pair = language_pair
+                prompt_manager.config_manager.set_value(
+                    "current_language_pair", language_pair, auto_save=False
+                )
+            else:
+                logger.warning(
+                    f"未支援的語言對 {language_pair}，沿用 {prompt_manager.current_language_pair}"
+                )
 
     if netflix_style is not None:
         user_config = ConfigManager.get_instance("user")
@@ -440,6 +453,8 @@ async def cmd_translate(args: argparse.Namespace) -> int:
         args.content_type,
         args.style,
         args.netflix_style,
+        source_lang=args.source,
+        target_lang=args.target,
     )
 
     # 決定模型
