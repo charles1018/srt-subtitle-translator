@@ -64,3 +64,6 @@ config/
 
 # Serena MCP
 .serena/
+
+# Claude Code（本機設定與排程狀態）
+.claude/
