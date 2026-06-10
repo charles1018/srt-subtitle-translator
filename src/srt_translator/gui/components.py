@@ -82,6 +82,9 @@ class GUIComponents:
         # Netflix 風格選項
         self.netflix_style_enabled = tk.BooleanVar(value=False)
 
+        # 結構-文本分離批次翻譯（多句合併單一請求，降低 token 用量與 API 次數）
+        self.structure_text_enabled = tk.BooleanVar(value=False)
+
         # 獲取服務實例
         self.file_service = ServiceFactory.get_file_service()
         self.model_service = ServiceFactory.get_model_service()
@@ -142,7 +145,8 @@ class GUIComponents:
         style.theme_use("clam")
 
         # 配置整體框架背景
-        style.configure(".",
+        style.configure(
+            ".",
             background=self.colors["background"],
             foreground=self.colors["text"],
             fieldbackground=self.colors["surface"],
@@ -152,147 +156,140 @@ class GUIComponents:
             troughcolor=self.colors["surface"],
             selectbackground=self.colors["primary"],
             selectforeground="#FFFFFF",
-            font=("Microsoft JhengHei UI", 10)
+            font=("Microsoft JhengHei UI", 10),
         )
 
         # 框架樣式
         style.configure("TFrame", background=self.colors["background"])
-        style.configure("TLabelframe",
+        style.configure(
+            "TLabelframe",
             background=self.colors["background"],
             foreground=self.colors["text"],
-            bordercolor=self.colors["border"]
+            bordercolor=self.colors["border"],
         )
-        style.configure("TLabelframe.Label",
+        style.configure(
+            "TLabelframe.Label",
             background=self.colors["background"],
             foreground=self.colors["primary"],
-            font=("Microsoft JhengHei UI", 10, "bold")
+            font=("Microsoft JhengHei UI", 10, "bold"),
         )
 
         # 標籤樣式
-        style.configure("TLabel",
-            background=self.colors["background"],
-            foreground=self.colors["text"]
-        )
-        style.configure("Muted.TLabel",
-            background=self.colors["background"],
-            foreground=self.colors["muted"]
-        )
-        style.configure("Accent.TLabel",
-            background=self.colors["background"],
-            foreground=self.colors["accent"]
-        )
+        style.configure("TLabel", background=self.colors["background"], foreground=self.colors["text"])
+        style.configure("Muted.TLabel", background=self.colors["background"], foreground=self.colors["muted"])
+        style.configure("Accent.TLabel", background=self.colors["background"], foreground=self.colors["accent"])
 
         # 按鈕樣式
-        style.configure("TButton",
+        style.configure(
+            "TButton",
             background=self.colors["surface_elevated"],
             foreground=self.colors["text"],
             bordercolor=self.colors["border"],
             focuscolor=self.colors["primary"],
             padding=(12, 8),
-            font=("Microsoft JhengHei UI", 10)
+            font=("Microsoft JhengHei UI", 10),
         )
-        style.map("TButton",
+        style.map(
+            "TButton",
             background=[
                 ("active", self.colors["highlight"]),
                 ("pressed", self.colors["primary"]),
-                ("disabled", self.colors["surface"])
+                ("disabled", self.colors["surface"]),
             ],
-            foreground=[
-                ("disabled", self.colors["muted"])
-            ]
+            foreground=[("disabled", self.colors["muted"])],
         )
 
         # 主要按鈕樣式
-        style.configure("Primary.TButton",
+        style.configure(
+            "Primary.TButton",
             background=self.colors["button"],
             foreground="#FFFFFF",
             bordercolor=self.colors["button"],
-            padding=(12, 8)
+            padding=(12, 8),
         )
-        style.map("Primary.TButton",
+        style.map(
+            "Primary.TButton",
             background=[
                 ("active", self.colors["button_hover"]),
                 ("pressed", self.colors["primary"]),
-                ("disabled", self.colors["surface"])
-            ]
+                ("disabled", self.colors["surface"]),
+            ],
         )
 
         # 下拉選單樣式
-        style.configure("TCombobox",
+        style.configure(
+            "TCombobox",
             background=self.colors["surface"],
             foreground=self.colors["text"],
             fieldbackground=self.colors["surface"],
             bordercolor=self.colors["border"],
             arrowcolor=self.colors["primary"],
-            padding=6
+            padding=6,
         )
-        style.map("TCombobox",
+        style.map(
+            "TCombobox",
             fieldbackground=[("readonly", self.colors["surface"])],
             selectbackground=[("readonly", self.colors["primary"])],
-            background=[("active", self.colors["surface_elevated"])]
+            background=[("active", self.colors["surface_elevated"])],
         )
 
         # 進度條樣式
-        style.configure("TProgressbar",
+        style.configure(
+            "TProgressbar",
             background=self.colors["primary"],
             troughcolor=self.colors["surface"],
             bordercolor=self.colors["border"],
             lightcolor=self.colors["secondary"],
-            darkcolor=self.colors["primary"]
+            darkcolor=self.colors["primary"],
         )
 
         # 捲軸樣式
-        style.configure("TScrollbar",
+        style.configure(
+            "TScrollbar",
             background=self.colors["surface_elevated"],
             troughcolor=self.colors["surface"],
             bordercolor=self.colors["border"],
-            arrowcolor=self.colors["muted"]
+            arrowcolor=self.colors["muted"],
         )
-        style.map("TScrollbar",
-            background=[("active", self.colors["highlight"])]
-        )
+        style.map("TScrollbar", background=[("active", self.colors["highlight"])])
 
         # 核選框樣式
-        style.configure("TCheckbutton",
+        style.configure(
+            "TCheckbutton",
             background=self.colors["background"],
             foreground=self.colors["text"],
             indicatorcolor=self.colors["surface"],
-            indicatorrelief="flat"
+            indicatorrelief="flat",
         )
-        style.map("TCheckbutton",
-            indicatorcolor=[
-                ("selected", self.colors["primary"]),
-                ("active", self.colors["highlight"])
-            ],
-            background=[("active", self.colors["background"])]
+        style.map(
+            "TCheckbutton",
+            indicatorcolor=[("selected", self.colors["primary"]), ("active", self.colors["highlight"])],
+            background=[("active", self.colors["background"])],
         )
 
         # Notebook (分頁) 樣式
-        style.configure("TNotebook",
-            background=self.colors["background"],
-            bordercolor=self.colors["border"]
-        )
-        style.configure("TNotebook.Tab",
+        style.configure("TNotebook", background=self.colors["background"], bordercolor=self.colors["border"])
+        style.configure(
+            "TNotebook.Tab",
             background=self.colors["surface"],
             foreground=self.colors["text"],
             padding=(12, 6),
-            bordercolor=self.colors["border"]
+            bordercolor=self.colors["border"],
         )
-        style.map("TNotebook.Tab",
-            background=[
-                ("selected", self.colors["background"]),
-                ("active", self.colors["surface_elevated"])
-            ],
-            foreground=[("selected", self.colors["primary"])]
+        style.map(
+            "TNotebook.Tab",
+            background=[("selected", self.colors["background"]), ("active", self.colors["surface_elevated"])],
+            foreground=[("selected", self.colors["primary"])],
         )
 
         # 輸入框樣式
-        style.configure("TEntry",
+        style.configure(
+            "TEntry",
             fieldbackground=self.colors["surface"],
             foreground=self.colors["text"],
             bordercolor=self.colors["border"],
             insertcolor=self.colors["text"],
-            padding=6
+            padding=6,
         )
 
         # 設置根視窗背景色
@@ -313,7 +310,7 @@ class GUIComponents:
             activebackground=menu_active_bg,
             activeforeground=menu_active_fg,
             borderwidth=0,
-            relief=tk.FLAT
+            relief=tk.FLAT,
         )
 
         # 檔案選單
@@ -324,7 +321,7 @@ class GUIComponents:
             fg=menu_fg,
             activebackground=menu_active_bg,
             activeforeground=menu_active_fg,
-            borderwidth=0
+            borderwidth=0,
         )
         file_menu.add_command(label="選擇檔案", command=self.browse_files)
         file_menu.add_command(label="選擇資料夾", command=self.browse_folder)
@@ -342,7 +339,7 @@ class GUIComponents:
             fg=menu_fg,
             activebackground=menu_active_bg,
             activeforeground=menu_active_fg,
-            borderwidth=0
+            borderwidth=0,
         )
         settings_menu.add_command(label="提示詞編輯", command=self.open_prompt_editor)
         settings_menu.add_command(label="快取管理", command=self.open_cache_manager)
@@ -357,7 +354,7 @@ class GUIComponents:
             fg=menu_fg,
             activebackground=menu_active_bg,
             activeforeground=menu_active_fg,
-            borderwidth=0
+            borderwidth=0,
         )
         tools_menu.add_command(label="字幕格式轉換", command=self.open_subtitle_converter)
         tools_menu.add_command(label="從影片提取字幕", command=self.open_subtitle_extractor)
@@ -373,7 +370,7 @@ class GUIComponents:
             fg=menu_fg,
             activebackground=menu_active_bg,
             activeforeground=menu_active_fg,
-            borderwidth=0
+            borderwidth=0,
         )
         help_menu.add_command(label="使用說明", command=self.show_help)
         help_menu.add_command(label="關於", command=self.show_about)
@@ -430,14 +427,10 @@ class GUIComponents:
         ttk.Button(file_buttons_frame, text="選擇資料夾", command=self.browse_folder, width=12).pack(
             side=tk.LEFT, padx=(0, 5)
         )
-        ttk.Button(file_buttons_frame, text="清除選中", command=self.clear_selection, width=10).pack(
-            side=tk.LEFT
-        )
+        ttk.Button(file_buttons_frame, text="清除選中", command=self.clear_selection, width=10).pack(side=tk.LEFT)
 
         # 檔案計數標籤
-        self.file_count_label = ttk.Label(
-            file_buttons_frame, text="已選擇 0 個檔案", style="Muted.TLabel"
-        )
+        self.file_count_label = ttk.Label(file_buttons_frame, text="已選擇 0 個檔案", style="Muted.TLabel")
         self.file_count_label.pack(side=tk.RIGHT, padx=(10, 0))
 
         # 如果支援拖放，設置拖放目標
@@ -564,6 +557,16 @@ class GUIComponents:
         )
         self.netflix_checkbox.grid(row=3, column=1, sticky=tk.W, pady=8, padx=(5, 0))
 
+        # 批次翻譯選項（結構-文本分離）
+        ttk.Label(options_grid, text="批次翻譯:").grid(row=4, column=0, sticky=tk.W, pady=8)
+        self.structure_text_checkbox = ttk.Checkbutton(
+            options_grid,
+            text="啟用（多句合併請求，省 token）",
+            variable=self.structure_text_enabled,
+            command=self.on_structure_text_changed,
+        )
+        self.structure_text_checkbox.grid(row=4, column=1, sticky=tk.W, pady=8, padx=(5, 0))
+
         # ===== 下半部分 - 進度和控制 =====
         progress_frame = ttk.LabelFrame(main_frame, text="📊 翻譯進度", padding=15)
         progress_frame.pack(fill=tk.BOTH, expand=True)
@@ -573,16 +576,17 @@ class GUIComponents:
         progress_bar_frame.pack(fill=tk.X, pady=(0, 10))
 
         # 進度條
-        self.progress_bar = ttk.Progressbar(
-            progress_bar_frame, orient=tk.HORIZONTAL, mode="determinate", length=100
-        )
+        self.progress_bar = ttk.Progressbar(progress_bar_frame, orient=tk.HORIZONTAL, mode="determinate", length=100)
         self.progress_bar.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
 
         # 百分比標籤
         self.progress_percent_label = ttk.Label(
-            progress_bar_frame, text="0%", width=5, anchor=tk.E,
+            progress_bar_frame,
+            text="0%",
+            width=5,
+            anchor=tk.E,
             font=("Microsoft JhengHei UI", 10, "bold"),
-            foreground=self.colors["primary"]
+            foreground=self.colors["primary"],
         )
         self.progress_percent_label.pack(side=tk.RIGHT)
 
@@ -826,17 +830,11 @@ class GUIComponents:
         """切換暫停/繼續狀態"""
         current_text = self.pause_button.cget("text")
         if "暫停" in current_text:
-            self.pause_button.config(
-                text="▶ 繼續",
-                bg=self.colors["warning"],
-                activebackground="#D69E2E"
-            )
+            self.pause_button.config(text="▶ 繼續", bg=self.colors["warning"], activebackground="#D69E2E")
             self.update_status_with_state("已暫停", "paused")
         else:
             self.pause_button.config(
-                text="⏸ 暫停",
-                bg=self.colors["button"],
-                activebackground=self.colors["button_hover"]
+                text="⏸ 暫停", bg=self.colors["button"], activebackground=self.colors["button_hover"]
             )
             self.update_status_with_state("翻譯中...", "running")
 
@@ -872,11 +870,7 @@ class GUIComponents:
         self.start_button.config(state=tk.NORMAL, bg=self.colors["success"])
 
         # 禁用暫停和停止按鈕
-        self.pause_button.config(
-            state=tk.DISABLED,
-            text="⏸ 暫停",
-            bg=self.colors["surface"]
-        )
+        self.pause_button.config(state=tk.DISABLED, text="⏸ 暫停", bg=self.colors["surface"])
         self.stop_button.config(state=tk.DISABLED, bg=self.colors["surface"])
 
         # 啟用設定按鈕
@@ -949,6 +943,14 @@ class GUIComponents:
         # 保存設置到配置
         set_config("user", "netflix_style_enabled", enabled)
 
+    def on_structure_text_changed(self):
+        """批次翻譯（結構-文本分離）選項變更時的處理函式"""
+        enabled = self.structure_text_enabled.get()
+        logger.info(f"批次翻譯（結構-文本分離）已{'啟用' if enabled else '停用'}")
+
+        # 保存設置到配置
+        set_config("user", "structure_text_enabled", enabled)
+
     def set_model_list(self, models: list[str], default_model: str = "") -> None:
         """設置模型列表"""
         if isinstance(models, list) and models:
@@ -991,7 +993,7 @@ class GUIComponents:
                 title_frame,
                 text="翻譯快取管理",
                 font=("Microsoft JhengHei UI", 14, "bold"),
-                foreground=self.colors["primary"]
+                foreground=self.colors["primary"],
             )
             title_label.pack()
 
@@ -1014,7 +1016,7 @@ class GUIComponents:
                 selectforeground="#FFFFFF",
                 font=("Microsoft JhengHei UI", 10),
                 relief=tk.FLAT,
-                borderwidth=0
+                borderwidth=0,
             )
             stats_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
@@ -1100,7 +1102,7 @@ class GUIComponents:
                 cursor="hand2",
                 bd=0,
                 padx=12,
-                pady=6
+                pady=6,
             )
             clear_btn.pack(side=tk.LEFT, padx=(0, 10))
 
@@ -1118,7 +1120,7 @@ class GUIComponents:
                 cursor="hand2",
                 bd=0,
                 padx=12,
-                pady=6
+                pady=6,
             )
             refresh_btn.pack(side=tk.LEFT, padx=(0, 10))
 
@@ -1136,7 +1138,7 @@ class GUIComponents:
                 cursor="hand2",
                 bd=0,
                 padx=12,
-                pady=6
+                pady=6,
             )
             close_btn.pack(side=tk.RIGHT)
 
@@ -1160,11 +1162,7 @@ class GUIComponents:
         dialog.configure(bg=self.colors["background"])
 
         # 建立界面元素
-        title_label = ttk.Label(
-            dialog,
-            text="選擇要轉換的字幕檔案:",
-            font=("Microsoft JhengHei UI", 11)
-        )
+        title_label = ttk.Label(dialog, text="選擇要轉換的字幕檔案:", font=("Microsoft JhengHei UI", 11))
         title_label.pack(pady=(20, 5))
 
         # 檔案選擇框
@@ -1180,7 +1178,7 @@ class GUIComponents:
             fg=self.colors["text"],
             insertbackground=self.colors["text"],
             relief=tk.FLAT,
-            font=("Microsoft JhengHei UI", 10)
+            font=("Microsoft JhengHei UI", 10),
         )
         file_entry.pack(side=tk.LEFT, padx=(0, 5), ipady=4)
 
@@ -1197,7 +1195,7 @@ class GUIComponents:
             cursor="hand2",
             bd=0,
             padx=12,
-            pady=4
+            pady=4,
         )
         browse_btn.pack(side=tk.LEFT)
 
@@ -1230,7 +1228,7 @@ class GUIComponents:
             bd=0,
             padx=16,
             pady=6,
-            width=15
+            width=15,
         )
         convert_btn.pack(side=tk.RIGHT, padx=5)
 
@@ -1248,7 +1246,7 @@ class GUIComponents:
             bd=0,
             padx=16,
             pady=6,
-            width=15
+            width=15,
         )
         cancel_btn.pack(side=tk.RIGHT, padx=5)
 
@@ -1291,11 +1289,7 @@ class GUIComponents:
         dialog.configure(bg=self.colors["background"])
 
         # 建立界面元素
-        title_label = ttk.Label(
-            dialog,
-            text="選擇要提取字幕的影片檔案:",
-            font=("Microsoft JhengHei UI", 11)
-        )
+        title_label = ttk.Label(dialog, text="選擇要提取字幕的影片檔案:", font=("Microsoft JhengHei UI", 11))
         title_label.pack(pady=(20, 5))
 
         # 檔案選擇框
@@ -1311,7 +1305,7 @@ class GUIComponents:
             fg=self.colors["text"],
             insertbackground=self.colors["text"],
             relief=tk.FLAT,
-            font=("Microsoft JhengHei UI", 10)
+            font=("Microsoft JhengHei UI", 10),
         )
         file_entry.pack(side=tk.LEFT, padx=(0, 5), ipady=4)
 
@@ -1328,7 +1322,7 @@ class GUIComponents:
             cursor="hand2",
             bd=0,
             padx=12,
-            pady=4
+            pady=4,
         )
         browse_btn.pack(side=tk.LEFT)
 
@@ -1361,7 +1355,7 @@ class GUIComponents:
             bd=0,
             padx=16,
             pady=6,
-            width=15
+            width=15,
         )
         extract_btn.pack(side=tk.RIGHT, padx=5)
 
@@ -1379,7 +1373,7 @@ class GUIComponents:
             bd=0,
             padx=16,
             pady=6,
-            width=15
+            width=15,
         )
         cancel_btn.pack(side=tk.RIGHT, padx=5)
 
@@ -1484,7 +1478,7 @@ class GUIComponents:
                 selectforeground="#FFFFFF",
                 font=("Microsoft JhengHei UI", 10),
                 relief=tk.FLAT,
-                borderwidth=0
+                borderwidth=0,
             )
             trans_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
@@ -1508,7 +1502,7 @@ class GUIComponents:
                 selectforeground="#FFFFFF",
                 font=("Microsoft JhengHei UI", 10),
                 relief=tk.FLAT,
-                borderwidth=0
+                borderwidth=0,
             )
             cache_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
@@ -1541,7 +1535,7 @@ class GUIComponents:
                 cursor="hand2",
                 bd=0,
                 padx=12,
-                pady=6
+                pady=6,
             )
             clean_btn.pack(side=tk.LEFT, padx=10)
 
@@ -1558,7 +1552,7 @@ class GUIComponents:
                 cursor="hand2",
                 bd=0,
                 padx=12,
-                pady=6
+                pady=6,
             )
             close_btn.pack(side=tk.RIGHT, padx=10)
 
@@ -1642,16 +1636,19 @@ class PromptEditorWindow:
         # 載入主題顏色
         try:
             theme_config = ConfigManager.get_instance("theme")
-            self.colors = theme_config.get_value("colors", default={
-                "background": "#1A1B26",
-                "surface": "#24283B",
-                "surface_elevated": "#2A2E42",
-                "text": "#C0CAF5",
-                "primary": "#7DCFFF",
-                "accent": "#BB9AF7",
-                "border": "#3B4261",
-                "highlight": "#414868",
-            })
+            self.colors = theme_config.get_value(
+                "colors",
+                default={
+                    "background": "#1A1B26",
+                    "surface": "#24283B",
+                    "surface_elevated": "#2A2E42",
+                    "text": "#C0CAF5",
+                    "primary": "#7DCFFF",
+                    "accent": "#BB9AF7",
+                    "border": "#3B4261",
+                    "highlight": "#414868",
+                },
+            )
         except Exception:
             self.colors = {
                 "background": "#1A1B26",
@@ -1717,7 +1714,7 @@ class PromptEditorWindow:
             selectbackground=self.colors["primary"],
             selectforeground="#FFFFFF",
             relief=tk.FLAT,
-            borderwidth=0
+            borderwidth=0,
         )
         self.prompt_text.pack(fill=tk.BOTH, expand=True)
 
@@ -1742,7 +1739,7 @@ class PromptEditorWindow:
             bd=0,
             padx=12,
             pady=6,
-            width=10
+            width=10,
         )
         save_btn.pack(side=tk.RIGHT, padx=(5, 0))
 
@@ -1760,7 +1757,7 @@ class PromptEditorWindow:
             bd=0,
             padx=12,
             pady=6,
-            width=12
+            width=12,
         )
         reset_btn.pack(side=tk.RIGHT, padx=(5, 0))
 
@@ -1778,7 +1775,7 @@ class PromptEditorWindow:
             bd=0,
             padx=12,
             pady=6,
-            width=10
+            width=10,
         )
         export_btn.pack(side=tk.RIGHT, padx=(5, 0))
 
@@ -1796,7 +1793,7 @@ class PromptEditorWindow:
             bd=0,
             padx=12,
             pady=6,
-            width=10
+            width=10,
         )
         import_btn.pack(side=tk.RIGHT, padx=(5, 0))
 
@@ -1814,7 +1811,7 @@ class PromptEditorWindow:
             bd=0,
             padx=12,
             pady=6,
-            width=12
+            width=12,
         )
         analyze_btn.pack(side=tk.LEFT)
 

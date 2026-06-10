@@ -1310,8 +1310,8 @@ class TestTranslationService:
         mock_config.get_instance.return_value = MagicMock()
 
         service = TranslationService()
-        service.config_manager.get_value.side_effect = (
-            lambda key, default=None: 999 if key == "translation.batch_size" else default
+        service.config_manager.get_value.side_effect = lambda key, default=None: (
+            999 if key == "translation.batch_size" else default
         )
 
         settings = service._get_translation_runtime_settings()
@@ -1334,16 +1334,19 @@ class TestTranslationService:
         service = TranslationService()
 
         assert service._text_needs_context("Do you?") is True
-        assert service._get_context_window_for_text(
-            "Do you?",
-            {
-                "batch_size": 10,
-                "max_context_items": 2,
-                "smart_context_enabled": True,
-                "compact_prompt_enabled": True,
-                "terminology_enabled": True,
-            },
-        ) == 2
+        assert (
+            service._get_context_window_for_text(
+                "Do you?",
+                {
+                    "batch_size": 10,
+                    "max_context_items": 2,
+                    "smart_context_enabled": True,
+                    "compact_prompt_enabled": True,
+                    "terminology_enabled": True,
+                },
+            )
+            == 2
+        )
 
     @pytest.mark.asyncio
     @patch("srt_translator.services.factory.pysrt.open")
@@ -1376,7 +1379,7 @@ class TestTranslationService:
         service.file_service.get_subtitle_info.return_value = {}
         service.file_service.get_output_path.return_value = "/tmp/output.srt"
         service._translate_batch_structure_text = AsyncMock(return_value=["錯誤批次結果 1", "錯誤批次結果 2"])
-        service.translate_batch = AsyncMock(side_effect=[[ "覺得這已經過時了" ], [ "你覺得呢？" ]])
+        service.translate_batch = AsyncMock(side_effect=[["覺得這已經過時了"], ["你覺得呢？"]])
 
         success, result = await service.translate_subtitle_file(
             "input.srt",
@@ -1392,7 +1395,9 @@ class TestTranslationService:
         assert result == "/tmp/output.srt"
         service._translate_batch_structure_text.assert_not_awaited()
         assert service.translate_batch.await_count == 2
-        assert service.translate_batch.await_args_list[0].args[0] == [("Thinks it's outdated.", ["Thinks it's outdated."])]
+        assert service.translate_batch.await_args_list[0].args[0] == [
+            ("Thinks it's outdated.", ["Thinks it's outdated."])
+        ]
         assert service.translate_batch.await_args_list[1].args[0] == [("Do you?", ["Thinks it's outdated.", "Do you?"])]
         assert subs[0].text == "覺得這已經過時了"
         assert subs[1].text == "你覺得呢？"
@@ -1612,10 +1617,8 @@ class TestTranslationService:
     ):
         """oil shock 應避免被翻成過重的 crisis 類詞彙。"""
         mock_config.get_instance.return_value = MagicMock()
-        mock_get_config.side_effect = (
-            lambda section, key, default=None: True
-            if (section, key) == ("user", "preserve_punctuation")
-            else default
+        mock_get_config.side_effect = lambda section, key, default=None: (
+            True if (section, key) == ("user", "preserve_punctuation") else default
         )
 
         service = TranslationService()
@@ -1636,10 +1639,8 @@ class TestTranslationService:
     ):
         """translation.terminology_enabled 目前命名代表 glossary 開關，不關閉字幕詞彙正規化。"""
         mock_config.get_instance.return_value = MagicMock()
-        mock_get_config.side_effect = (
-            lambda section, key, default=None: True
-            if (section, key) == ("user", "preserve_punctuation")
-            else default
+        mock_get_config.side_effect = lambda section, key, default=None: (
+            True if (section, key) == ("user", "preserve_punctuation") else default
         )
 
         service = TranslationService()
@@ -1661,10 +1662,8 @@ class TestTranslationService:
     ):
         """Straight ahead 作為節目串場語不應直譯成動作句。"""
         mock_config.get_instance.return_value = MagicMock()
-        mock_get_config.side_effect = (
-            lambda section, key, default=None: True
-            if (section, key) == ("user", "preserve_punctuation")
-            else default
+        mock_get_config.side_effect = lambda section, key, default=None: (
+            True if (section, key) == ("user", "preserve_punctuation") else default
         )
 
         service = TranslationService()
@@ -1685,10 +1684,8 @@ class TestTranslationService:
     ):
         """Much more with ... 應收斂為自然的節目預告語。"""
         mock_config.get_instance.return_value = MagicMock()
-        mock_get_config.side_effect = (
-            lambda section, key, default=None: True
-            if (section, key) == ("user", "preserve_punctuation")
-            else default
+        mock_get_config.side_effect = lambda section, key, default=None: (
+            True if (section, key) == ("user", "preserve_punctuation") else default
         )
 
         service = TranslationService()
@@ -1712,10 +1709,8 @@ class TestTranslationService:
     ):
         """Much more with ... 應移除殘留的「更多內容」尾巴。"""
         mock_config.get_instance.return_value = MagicMock()
-        mock_get_config.side_effect = (
-            lambda section, key, default=None: True
-            if (section, key) == ("user", "preserve_punctuation")
-            else default
+        mock_get_config.side_effect = lambda section, key, default=None: (
+            True if (section, key) == ("user", "preserve_punctuation") else default
         )
 
         service = TranslationService()
@@ -1739,10 +1734,8 @@ class TestTranslationService:
     ):
         """聯邦儲備應收斂為聯準會，但聯邦儲備銀行名稱需保留。"""
         mock_config.get_instance.return_value = MagicMock()
-        mock_get_config.side_effect = (
-            lambda section, key, default=None: True
-            if (section, key) == ("user", "preserve_punctuation")
-            else default
+        mock_get_config.side_effect = lambda section, key, default=None: (
+            True if (section, key) == ("user", "preserve_punctuation") else default
         )
 
         service = TranslationService()
@@ -1766,10 +1759,8 @@ class TestTranslationService:
     ):
         """Much more with ... 應移除冗長的「接下來我們將深入探討」前綴。"""
         mock_config.get_instance.return_value = MagicMock()
-        mock_get_config.side_effect = (
-            lambda section, key, default=None: True
-            if (section, key) == ("user", "preserve_punctuation")
-            else default
+        mock_get_config.side_effect = lambda section, key, default=None: (
+            True if (section, key) == ("user", "preserve_punctuation") else default
         )
 
         service = TranslationService()
@@ -1796,6 +1787,36 @@ class TestTranslationTaskManager:
         manager = TranslationTaskManager()
         assert manager.tasks == {}
         assert manager.get_active_task_count() == 0
+
+    def test_start_translation_forwards_use_structure_text(self):
+        """start_translation 將 use_structure_text 傳遞給 TranslationTask。"""
+        manager = TranslationTaskManager()
+
+        created_tasks = []
+
+        class FakeTask:
+            def __init__(self, *args, **kwargs):
+                self.kwargs = kwargs
+                created_tasks.append(self)
+
+            def start(self):
+                pass
+
+        with patch("srt_translator.services.factory.TranslationTask", FakeTask):
+            result = manager.start_translation(
+                ["fake.srt"],
+                "英文",
+                "繁體中文",
+                "gpt-4.1-mini",
+                3,
+                "僅顯示翻譯",
+                "openai",
+                use_structure_text=True,
+            )
+
+        assert result is True
+        assert len(created_tasks) == 1
+        assert created_tasks[0].kwargs.get("use_structure_text") is True
 
     def test_is_any_running_empty(self):
         """Test is_any_running with no tasks."""

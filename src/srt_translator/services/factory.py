@@ -456,9 +456,7 @@ class TranslationService:
                 translated_text
             )
             if question_mismatch or exclamation_mismatch:
-                mismatched_lines.append(
-                    f"{index + 1}: {source_text[:40]!r} -> {translated_text[:40]!r}"
-                )
+                mismatched_lines.append(f"{index + 1}: {source_text[:40]!r} -> {translated_text[:40]!r}")
 
         if mismatched_lines:
             logger.warning("智慧批次翻譯句型對齊檢查失敗，問題行: %s", mismatched_lines)
@@ -2014,6 +2012,7 @@ class TranslationTask(threading.Thread):
         llm_type: str,
         progress_callback: Callable[..., Any] | None = None,
         complete_callback: Callable[..., Any] | None = None,
+        use_structure_text: bool = False,
     ) -> None:
         """初始化翻譯任務
 
@@ -2027,6 +2026,7 @@ class TranslationTask(threading.Thread):
             llm_type: LLM類型
             progress_callback: 進度回調函數
             complete_callback: 完成回調函數
+            use_structure_text: 是否使用結構-文本分離批次翻譯
         """
         threading.Thread.__init__(self)
         self.daemon = True  # 設置為守護執行緒，主程式退出時自動結束
@@ -2040,6 +2040,7 @@ class TranslationTask(threading.Thread):
         self.llm_type = llm_type
         self.progress_callback = progress_callback
         self.complete_callback = complete_callback
+        self.use_structure_text = use_structure_text
 
         self._is_running = True
         self._is_paused = False
@@ -2075,6 +2076,7 @@ class TranslationTask(threading.Thread):
                 self.llm_type,
                 self._progress_wrapper,
                 self._complete_wrapper,
+                use_structure_text=self.use_structure_text,
             )
 
         # 建立新的事件循環
@@ -2164,6 +2166,7 @@ class TranslationTaskManager:
         llm_type: str,
         progress_callback: Callable[..., Any] | None = None,
         complete_callback: Callable[..., Any] | None = None,
+        use_structure_text: bool = False,
     ) -> bool:
         """開始翻譯多個檔案
 
@@ -2177,6 +2180,7 @@ class TranslationTaskManager:
             llm_type: LLM類型
             progress_callback: 進度回調函數
             complete_callback: 完成回調函數
+            use_structure_text: 是否使用結構-文本分離批次翻譯
 
         回傳:
             是否成功啟動翻譯
@@ -2201,6 +2205,7 @@ class TranslationTaskManager:
                 llm_type,
                 progress_callback,
                 self._complete_wrapper(file_path, complete_callback),
+                use_structure_text=use_structure_text,
             )
 
             self.tasks[file_path] = task

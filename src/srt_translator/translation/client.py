@@ -187,6 +187,22 @@ class AdaptiveConcurrencyController:
 
             return self.current
 
+    async def penalize(self) -> int:
+        """遇到速率限制（429）時主動降低並發（執行緒安全）
+
+        update() 只在請求成功時被呼叫，無法感知 429；
+        速率限制代表整體請求壓力過大，直接砍半比逐步 -1 更快脫離限流。
+
+        回傳:
+            調整後的並發數
+        """
+        async with self._lock:
+            previous = self.current
+            self.current = max(self.current // 2, self.min)
+            if self.current != previous:
+                logger.info(f"偵測到速率限制，並發數降低: {previous} -> {self.current}")
+            return self.current
+
     def get_current(self) -> int:
         """獲取當前並發數（快速讀取，無鎖）
 
@@ -1554,6 +1570,8 @@ class TranslationClient:
 
                 # 根據錯誤類型決定等待時間
                 if error_type == ApiErrorType.RATE_LIMIT:
+                    # update() 只在成功時被呼叫，429 需主動降併發減壓
+                    await self.concurrency_controller.penalize()
                     wait_time = self._get_rate_limit_wait_time(e, tries)
                     logger.info(f"速率限制錯誤，等待 {wait_time:.1f} 秒後重試")
                     await asyncio.sleep(wait_time)

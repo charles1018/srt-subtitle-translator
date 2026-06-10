@@ -133,6 +133,27 @@ class TestAdaptiveConcurrencyController:
         assert controller.current <= 5
 
     @pytest.mark.asyncio
+    async def test_penalize_halves_concurrency(self):
+        """429 懲罰：並發數砍半。"""
+        controller = AdaptiveConcurrencyController(initial=8, min_concurrent=2, max_concurrent=10)
+
+        result = await controller.penalize()
+
+        assert result == 4
+        assert controller.current == 4
+
+    @pytest.mark.asyncio
+    async def test_penalize_respects_min_limit(self):
+        """429 懲罰不會低於最小並發數。"""
+        controller = AdaptiveConcurrencyController(initial=3, min_concurrent=2, max_concurrent=10)
+
+        await controller.penalize()
+        result = await controller.penalize()
+
+        assert result == 2
+        assert controller.current == 2
+
+    @pytest.mark.asyncio
     async def test_update_respects_max_limit(self):
         """Test concurrency doesn't exceed max limit."""
         controller = AdaptiveConcurrencyController(initial=10, min_concurrent=2, max_concurrent=10)

@@ -134,6 +134,9 @@ class App:
         # Netflix 風格選項
         self.gui.netflix_style_enabled.set(settings.get("netflix_style_enabled", False))
 
+        # 批次翻譯選項（結構-文本分離）
+        self.gui.structure_text_enabled.set(settings.get("structure_text_enabled", False))
+
         # 更新模型列表
         self.update_model_list()
 
@@ -257,7 +260,10 @@ class App:
 
             if not result.get("success", False):
                 detail = str(result.get("message", "未知錯誤"))
-                return False, f"{provider_label} 連線失敗。請確認網路、API 金鑰與模型名稱設定是否正確。詳細原因: {detail}"
+                return (
+                    False,
+                    f"{provider_label} 連線失敗。請確認網路、API 金鑰與模型名稱設定是否正確。詳細原因: {detail}",
+                )
 
             return True, ""
 
@@ -300,6 +306,7 @@ class App:
         parallel_requests = int(self.gui.parallel_requests.get())
         display_mode = self.gui.display_mode.get()
         llm_type = self.gui.llm_type.get()
+        use_structure_text = self.gui.structure_text_enabled.get()
 
         is_valid, validation_message = self._validate_translation_request(llm_type, model_name)
         if not is_valid:
@@ -320,6 +327,7 @@ class App:
             llm_type,
             self._update_progress,
             self._translation_completed,
+            use_structure_text=use_structure_text,
         )
 
         if not success:
@@ -453,6 +461,8 @@ class App:
     def run(self):
         """啟動應用程式主迴圈"""
         self.root.mainloop()
+
+
 def _ensure_utf8_stdio() -> None:
     """Reconfigure stdout/stderr to UTF-8 when the active encoding can't represent
     non-ASCII characters (e.g. Windows console defaulting to cp950/cp1252). On POSIX
