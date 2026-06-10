@@ -939,7 +939,11 @@ class TranslationService:
                 return False, last_error or "所有字幕翻譯失敗"
 
             # 取得輸出路徑
-            output_path = self.file_service.get_output_path(file_path, target_lang)
+            output_path = self.file_service.get_output_path(
+                file_path,
+                target_lang,
+                progress_callback=progress_callback,
+            )
             if not output_path:
                 return False, "無法建立輸出路徑"
 

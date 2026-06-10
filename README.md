@@ -433,16 +433,20 @@ uv run mypy src/srt_translator
 2. 搜尋 [已知問題](https://github.com/charles1018/srt-subtitle-translator/issues)
 3. 建立新的 [Issue](https://github.com/charles1018/srt-subtitle-translator/issues/new)
 
-## 🗺️ 未來規劃
+## 🗺️ 後續方向
 
-- [ ] 支援更多字幕格式
-- [ ] 語音識別功能
-- [ ] 批量時間軸調整
-- [ ] 更完整的使用者字典 / 術語表工作流（例如更細緻的 UI 與協作整理流程）
-- [ ] Web 介面版本
-- [ ] 更多主題和自訂選項
-- [x] 翻譯品質評估（QA 結構比對 + CPS 可讀性審計）
-- [ ] 多人協作翻譯
+> 以下為產品 backlog / 長期探索方向，不代表已排入近期版本承諾。實際優先順序以 `src/` 現況、Issue 與維護成本為準。
+
+- 支援更多字幕格式
+- 語音識別工作流
+- 批量時間軸調整
+- 更完整的使用者字典 / 術語表工作流（例如更細緻的 UI 與整理流程）
+- Web 介面版本
+- 更多主題和自訂選項
+- 多人協作翻譯
+
+已落地的相關能力：
+- 翻譯品質評估（QA 結構比對 + CPS 可讀性審計）
 
 ## 📊 專案統計
 

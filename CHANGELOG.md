@@ -7,6 +7,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- GUI 與 CLI 的輸出檔名衝突處理現在會在儲存前實際提示使用者選擇覆蓋、重新命名或跳過；非互動式 CLI 執行則預設自動重新命名，避免同名輸出被靜默覆蓋
+
 ### Removed
 
 - 移除 `ollama` provider 的翻譯執行路徑、模型清單、CLI / GUI provider 選項與相關文件

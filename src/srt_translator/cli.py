@@ -378,6 +378,35 @@ def collect_files(paths: list[str]) -> list[str]:
 
 def print_progress(current: int, total: int, extra_data: dict | None = None) -> None:
     """在終端顯示翻譯進度"""
+    if extra_data and extra_data.get("type") == "file_conflict":
+        conflict_path = extra_data["path"]
+        queue = extra_data["queue"]
+
+        if not sys.stdin.isatty():
+            logger.warning(f"輸出檔案已存在，非互動環境自動改名: {conflict_path}")
+            queue.put("rename")
+            return
+
+        print(f"\n輸出檔案已存在: {conflict_path}")
+        print("請選擇動作: [o] 覆蓋  [r] 重新命名  [s] 跳過")
+        while True:
+            try:
+                choice = input("請輸入 o/r/s（預設 r）: ").strip().lower()
+            except EOFError:
+                choice = ""
+
+            if choice in {"", "r"}:
+                queue.put("rename")
+                return
+            if choice == "o":
+                queue.put("overwrite")
+                return
+            if choice == "s":
+                queue.put("skip")
+                return
+
+            print("無效選項，請輸入 o、r 或 s。")
+
     if total <= 0:
         return
 

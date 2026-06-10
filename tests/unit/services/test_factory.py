@@ -990,6 +990,53 @@ class TestTranslationService:
     @patch("srt_translator.services.factory.ModelManager")
     @patch("srt_translator.services.factory.CacheManager")
     @patch("srt_translator.services.factory.FileHandler")
+    async def test_translate_subtitle_file_passes_progress_callback_to_output_path(
+        self, mock_file, mock_cache, mock_model, mock_prompt, mock_config, mock_pysrt_open
+    ):
+        """儲存輸出前應傳遞 progress callback，讓 GUI/CLI 可處理同名檔衝突。"""
+        mock_config.get_instance.return_value = MagicMock()
+
+        class FakeSubs(list):
+            def __init__(self, items):
+                super().__init__(items)
+                self.save = MagicMock()
+
+        subs = FakeSubs([SimpleNamespace(text="hello")])
+        mock_pysrt_open.return_value = subs
+
+        service = TranslationService()
+        service.file_service = MagicMock()
+        service.file_service.get_subtitle_info.return_value = {}
+        service.file_service.get_output_path.return_value = "/tmp/output.srt"
+        service.translate_batch = AsyncMock(return_value=["你好"])
+        progress_callback = MagicMock()
+
+        success, result = await service.translate_subtitle_file(
+            "input.srt",
+            "英文",
+            "繁體中文",
+            "Hy-MT2-7B-Q4_K_M",
+            1,
+            "僅顯示翻譯",
+            "llamacpp",
+            progress_callback=progress_callback,
+        )
+
+        assert success is True
+        assert result == "/tmp/output.srt"
+        service.file_service.get_output_path.assert_called_once_with(
+            "input.srt",
+            "繁體中文",
+            progress_callback=progress_callback,
+        )
+
+    @pytest.mark.asyncio
+    @patch("srt_translator.services.factory.pysrt.open")
+    @patch("srt_translator.services.factory.ConfigManager")
+    @patch("srt_translator.services.factory.PromptManager")
+    @patch("srt_translator.services.factory.ModelManager")
+    @patch("srt_translator.services.factory.CacheManager")
+    @patch("srt_translator.services.factory.FileHandler")
     async def test_translate_subtitle_file_uses_original_snapshot_for_later_batch_context(
         self, mock_file, mock_cache, mock_model, mock_prompt, mock_config, mock_pysrt_open
     ):
