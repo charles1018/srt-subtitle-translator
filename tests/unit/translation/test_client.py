@@ -1813,3 +1813,35 @@ class TestOpenAIPricing:
             assert model in client.pricing
             assert client.pricing[model]["input"] > 0
             assert client.pricing[model]["output"] > client.pricing[model]["input"]
+
+
+class TestNetflixStyleBatchResponse:
+    """Tests for 批次回應的 Netflix 逐行後處理（行數必須保持 1:1）."""
+
+    def _make_client(self):
+        client = TranslationClient(
+            llm_type="test",
+            netflix_style_config={"enabled": True, "auto_fix": True, "max_chars_per_line": 16, "max_lines": 2},
+        )
+        return client
+
+    def test_batch_response_line_count_preserved_with_long_lines(self):
+        """長句被智慧斷行後以 literal \\n 跳脫，批次行數不變。"""
+        client = self._make_client()
+        long_line = "這是一句非常長的中文翻譯字幕內容應該會被智慧斷行處理"
+        batch_text = f"短句一\n{long_line}\n短句二"
+
+        result = client._apply_netflix_style_to_batch_response(batch_text)
+
+        assert len(result.split("\n")) == 3
+        # 斷行結果以 literal \n 跳脫保留在單一批次行內
+        assert "\\n" in result.split("\n")[1]
+
+    def test_batch_response_short_lines_unchanged(self):
+        """全短句批次不受影響。"""
+        client = self._make_client()
+        batch_text = "哈囉，世界\n這是測試字幕\n歡迎使用"
+
+        result = client._apply_netflix_style_to_batch_response(batch_text)
+
+        assert len(result.split("\n")) == 3

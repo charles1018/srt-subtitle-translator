@@ -31,6 +31,7 @@ except ImportError:
 from srt_translator.core.cache import CacheManager
 from srt_translator.core.config import get_config
 from srt_translator.core.prompt import PromptManager
+from srt_translator.tools.srt_tools import _decode_text_record, _encode_text_record
 from srt_translator.utils.errors import TranslationError, ValidationError
 from srt_translator.utils.logging_config import setup_logger
 from srt_translator.utils.post_processor import NetflixStylePostProcessor
@@ -1679,17 +1680,23 @@ class TranslationClient:
             # Netflix 風格後處理（如果啟用）
             if self.enable_netflix_style and self.post_processor:
                 try:
-                    processing_result = self.post_processor.process(result)
-                    result = processing_result.text
+                    batch_line_count = self._extract_batch_line_count([{"role": "user", "content": text}])
+                    if batch_line_count and batch_line_count > 1:
+                        # 批次回應每行對應一個字幕，整串處理會被智慧斷行
+                        # 插入真實換行，導致下游 1:1 行數驗證失敗，必須逐行處理
+                        result = self._apply_netflix_style_to_batch_response(result)
+                    else:
+                        processing_result = self.post_processor.process(result)
+                        result = processing_result.text
 
-                    # 記錄警告和自動修正
-                    if processing_result.warnings:
-                        logger.debug(f"Netflix 風格處理警告: {len(processing_result.warnings)} 個")
-                        for warning in processing_result.warnings:
-                            logger.debug(f"  [{warning.code}] {warning.message}")
+                        # 記錄警告和自動修正
+                        if processing_result.warnings:
+                            logger.debug(f"Netflix 風格處理警告: {len(processing_result.warnings)} 個")
+                            for warning in processing_result.warnings:
+                                logger.debug(f"  [{warning.code}] {warning.message}")
 
-                    if processing_result.auto_fixed > 0:
-                        logger.debug(f"Netflix 風格自動修正: {processing_result.auto_fixed} 個問題")
+                        if processing_result.auto_fixed > 0:
+                            logger.debug(f"Netflix 風格自動修正: {processing_result.auto_fixed} 個問題")
 
                 except Exception as e:
                     logger.warning(f"Netflix 風格後處理失敗，使用原始翻譯: {e}")
@@ -1727,6 +1734,27 @@ class TranslationClient:
             elapsed_time = time.time() - start_time
             logger.error(f"翻譯失敗: {e!s}，耗時: {elapsed_time:.2f} 秒")
             raise
+
+    def _apply_netflix_style_to_batch_response(self, batch_text: str) -> str:
+        """對批次翻譯回應逐行套用 Netflix 後處理，保持行數 1:1 不變
+
+        批次字串每行對應一個字幕、字幕內部換行以 literal \\n 跳脫。
+        逐行解碼 → 後處理 → 重新跳脫，智慧斷行產生的換行不會增加批次行數。
+        """
+        processed_lines: list[str] = []
+        auto_fixed_total = 0
+        for line in batch_text.split("\n"):
+            if not line.strip():
+                processed_lines.append(line)
+                continue
+            decoded = _decode_text_record(line)
+            processing_result = self.post_processor.process(decoded)
+            auto_fixed_total += processing_result.auto_fixed
+            processed_lines.append(_encode_text_record(processing_result.text))
+
+        if auto_fixed_total > 0:
+            logger.debug(f"Netflix 風格批次逐行自動修正: {auto_fixed_total} 個問題")
+        return "\n".join(processed_lines)
 
     def _clean_single_line_translation(self, original_text: str, translated_text: str) -> str:
         """
