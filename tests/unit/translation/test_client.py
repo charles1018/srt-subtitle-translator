@@ -1791,3 +1791,25 @@ class TestOpenAIRateLimitConfig:
 
         assert client.max_requests_per_minute == 1000
         assert client.max_tokens_per_minute == 450000
+
+
+class TestOpenAIPricing:
+    """Tests for OpenAI 費用表完整性."""
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    def test_pricing_covers_default_and_common_models(self, mock_openai, mock_prompt, mock_cache):
+        """預設模型與常用模型必須在 pricing 表內，否則費用統計會靜默失效。"""
+        from srt_translator.core.models import ModelManager
+
+        client = TranslationClient(llm_type="openai", api_key="sk-test")
+
+        default_model = ModelManager.get_instance().get_default_model("openai")
+        assert default_model in client.pricing
+
+        for model in ("gpt-4.1-mini", "gpt-4.1", "gpt-4o"):
+            assert model in client.pricing
+            assert client.pricing[model]["input"] > 0
+            assert client.pricing[model]["output"] > client.pricing[model]["input"]

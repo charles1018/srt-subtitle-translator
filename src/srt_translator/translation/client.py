@@ -628,11 +628,16 @@ class TranslationClient:
             logger.info(f"OpenAI 速率限制: {self.max_requests_per_minute} RPM / {self.max_tokens_per_minute} TPM")
             self.token_usage = []  # 用於追蹤 token 使用量
 
-            # 價格計算
+            # 價格計算（每 token 單價，註解為每百萬 token 牌價）
             self.pricing = {
-                "gpt-3.5-turbo": {"input": 0.0000005, "output": 0.0000015},  # $0.0005 / 1K input, $0.0015 / 1K output
-                "gpt-4": {"input": 0.00003, "output": 0.00006},  # $0.03 / 1K input, $0.06 / 1K output
-                "gpt-4-turbo": {"input": 0.00001, "output": 0.00003},  # $0.01 / 1K input, $0.03 / 1K output
+                "gpt-4.1-mini": {"input": 0.0000004, "output": 0.0000016},  # $0.40 / $1.60 per 1M
+                "gpt-4.1": {"input": 0.000002, "output": 0.000008},  # $2.00 / $8.00 per 1M
+                "gpt-4.1-nano": {"input": 0.0000001, "output": 0.0000004},  # $0.10 / $0.40 per 1M
+                "gpt-4o": {"input": 0.0000025, "output": 0.00001},  # $2.50 / $10.00 per 1M
+                "gpt-4o-mini": {"input": 0.00000015, "output": 0.0000006},  # $0.15 / $0.60 per 1M
+                "gpt-3.5-turbo": {"input": 0.0000005, "output": 0.0000015},  # $0.50 / $1.50 per 1M
+                "gpt-4": {"input": 0.00003, "output": 0.00006},  # $30 / $60 per 1M
+                "gpt-4-turbo": {"input": 0.00001, "output": 0.00003},  # $10 / $30 per 1M
             }
         else:
             self.openai_client = None
