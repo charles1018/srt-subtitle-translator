@@ -7,9 +7,27 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-11
+
+OpenAI 路徑全面最佳化：同一集美劇實測從「10 分鐘、~$1.00、533 次 429 限流」改善為「4 分半、~$0.07、零限流」。
+
+### Added
+
+- **GUI「批次翻譯」勾選框**：接上既有結構-文本分離批次模式（多句合併單一 API 請求，攤提 system prompt token），設定持久化於 `user_settings.json` 的 `structure_text_enabled`
+- **OpenAI 速率限額可設定**：`model_config.json` 新增 `openai_max_requests_per_minute` / `openai_max_tokens_per_minute`（預設 500 RPM / 200K TPM，對應 Tier 1 帳戶 mini 系列模型），取代原寫死且與實際帳戶脫節的 3500 RPM / 180K TPM
+- **併發控制器 429 感知**：`AdaptiveConcurrencyController.penalize()` 在速率限制時將並發數砍半快速減壓（原本只在成功回應時調整，對 429 無感知）
+
 ### Changed
 
+- **OpenAI 預設模型升級為 `gpt-4.1-mini`**：費用約為 gpt-4o 的 1/6（$0.40/$1.60 vs $2.50/$10 每百萬 tokens）、Tier 1 TPM 限額 200K（gpt-4o 僅 30K）；模型資料庫新增 GPT-4.1 家族（mini / 標準 / nano），gpt-4o 標註 legacy
+- **429 重試遵循 OpenAI `retry-after`**：優先讀取 `retry-after-ms` / `retry-after` header，其次解析錯誤訊息中的重試時間，最後才退回指數退避加抖動；取代原固定 `2^tries` 秒（遠低於官方要求的 60~75 秒，失敗請求也計入限額，過早重試只會惡化限流）
+- tokenizer 表新增 o200k_base 系列（gpt-4.1-mini / gpt-4.1 / gpt-4o），token 估算對新模型更準確
 - GUI 與 CLI 的輸出檔名衝突處理現在會在儲存前實際提示使用者選擇覆蓋、重新命名或跳過；非互動式 CLI 執行則預設自動重新命名，避免同名輸出被靜默覆蓋
+
+### Fixed
+
+- **批次翻譯被 Netflix 後處理破壞**：Netflix 智慧斷行把批次回應整串當單一字幕處理，超過 16 字的譯文被插入真實換行導致 1:1 行數驗證必然失敗（實測 97/126 批次退回逐句）；改為逐行解碼 → 後處理 → 重新跳脫，批次群組成功率提升至 82%
+- **OpenAI 費用統計失效**：pricing 表補齊 gpt-4.1 家族 / gpt-4o / gpt-4o-mini 現行牌價（原表只有 gpt-3.5-turbo / gpt-4 / gpt-4-turbo，gpt-4o 的費用完全沒算到），並新增守門測試確保預設模型必在表內
 
 ### Removed
 

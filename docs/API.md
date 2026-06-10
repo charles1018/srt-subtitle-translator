@@ -244,7 +244,7 @@ cache_manager = CacheManager(db_path="data/translation_cache.db")
 translation = cache_manager.get_cached_translation(
     "Hello, world!",
     ["Previous subtitle"],
-    "gpt-4o-mini"
+    "gpt-4.1-mini"
 )
 ```
 
@@ -266,7 +266,7 @@ cache_manager.store_translation(
     "Hello, world!",
     "你好，世界！",
     ["Previous subtitle"],
-    "gpt-4o-mini"
+    "gpt-4.1-mini"
 )
 ```
 
@@ -420,7 +420,7 @@ model_manager = ModelManager()
 models = await model_manager.get_model_list_async("openai")
 model_ids = [model.id for model in models]
 
-# ['gpt-4o', 'gpt-4o-mini', ...]
+# ['gpt-4.1', 'gpt-4.1-mini', ...]
 ```
 
 ##### `get_model_list(llm_type: str, api_key: str | None = None) -> list[str]`
@@ -457,7 +457,7 @@ if model:
 
 **範例**：
 ```python
-result = await model_manager.test_model_connection("gpt-4o", "openai")
+result = await model_manager.test_model_connection("gpt-4.1", "openai")
 print(result["success"], result["message"])
 ```
 
@@ -643,7 +643,7 @@ client = TranslationClient(
 translation = await client.translate_text(
     "Hello, world!",
     ["Previous subtitle here"],
-    "gpt-4o"
+    "gpt-4.1"
 )
 # '你好，世界！'
 ```
@@ -674,7 +674,7 @@ texts = [
 ]
 translations = await client.translate_batch(
     texts,
-    "gpt-4o",
+    "gpt-4.1",
     concurrent_limit=3
 )
 # ['你好', '世界', '你好嗎？']
@@ -702,7 +702,7 @@ manager = TranslationManager(
     file_path="input.srt",
     source_lang="日文",
     target_lang="繁體中文",
-    model_name="gpt-4o",
+    model_name="gpt-4.1",
     parallel_requests=3,
     progress_callback=None,
     complete_callback=None,
@@ -1103,7 +1103,7 @@ async def translate_file():
         subtitle_info.subtitles[0].text,
         ["Previous context"],
         "openai",
-        "gpt-4o-mini"
+        "gpt-4.1-mini"
     )
 
     print(f"翻譯結果: {translated}")
@@ -1123,7 +1123,7 @@ cache_manager = CacheManager()
 cached = cache_manager.get_cached_translation(
     "Hello",
     [],
-    "gpt-4o-mini"
+    "gpt-4.1-mini"
 )
 
 if cached:
@@ -1135,7 +1135,7 @@ else:
         "Hello",
         translation,
         [],
-        "gpt-4o-mini"
+        "gpt-4.1-mini"
     )
 ```
 
@@ -1173,7 +1173,7 @@ async def batch_translate():
 
     results = await client.translate_batch(
         texts,
-        "gpt-4o-mini",
+        "gpt-4.1-mini",
         concurrent_limit=3
     )
 
@@ -1208,7 +1208,7 @@ from srt_translator.utils import safe_execute, format_exception
 from srt_translator.utils.errors import TranslationError
 
 try:
-    result = await client.translate_text(text, [], "gpt-4o-mini")
+    result = await client.translate_text(text, [], "gpt-4.1-mini")
 except TranslationError as e:
     logger.error(format_exception(e))
 ```
@@ -1219,10 +1219,10 @@ except TranslationError as e:
 
 ```python
 # ✅ 正確
-translation = await client.translate_text(text, context_texts, "gpt-4o-mini")
+translation = await client.translate_text(text, context_texts, "gpt-4.1-mini")
 
 # ❌ 錯誤
-translation = client.translate_text(text, context_texts, "gpt-4o-mini")
+translation = client.translate_text(text, context_texts, "gpt-4.1-mini")
 ```
 
 ### 4. 資源清理
@@ -1259,5 +1259,5 @@ uv run mypy src/srt_translator
 
 ---
 
-**最後更新**：2026-03-12
-**版本**：1.2.0
+**最後更新**：2026-06-11
+**版本**：1.3.0

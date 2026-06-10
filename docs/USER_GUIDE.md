@@ -230,7 +230,7 @@ srt-translator translate video.srt -s 日文 -t 繁體中文
 srt-translator translate ./subtitles/ -s 英文 -t 繁體中文
 
 # 使用特定模型
-srt-translator translate video.srt -s 日文 -t 繁體中文 -p openai -m gpt-4o
+srt-translator translate video.srt -s 日文 -t 繁體中文 -p openai -m gpt-4.1-mini
 
 # 使用 llama.cpp 本地模型（需先啟動 llama-server）
 # 建議：目前本地翻譯主力為 Hy-MT2-7B，並顯式指定 -m 以套用正確模型家族策略
@@ -267,7 +267,7 @@ srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
 
 ### 結構-文本分離翻譯模式
 
-使用 `--structure-text` 旗標啟用實驗性的結構-文本分離翻譯模式。此模式將多個字幕合併為單一批次字串以單一 API 呼叫翻譯，可以：
+使用 `--structure-text` 旗標（GUI 對應「批次翻譯」勾選框）啟用結構-文本分離翻譯模式。此模式將多個字幕合併為單一批次字串以單一 API 呼叫翻譯，可以：
 
 - 減少 API 呼叫次數，降低 token 消耗
 - 消除 LLM 損壞字幕結構（timestamp、index）的風險
@@ -278,10 +278,10 @@ srt-translator translate video.srt -s 日文 -t 繁體中文 -g anime
 srt-translator translate video.srt -s 英文 -t 繁體中文 --structure-text
 
 # 搭配指定模型使用
-srt-translator translate video.srt -s 英文 -t 繁體中文 -p openai -m gpt-4o --structure-text
+srt-translator translate video.srt -s 英文 -t 繁體中文 -p openai -m gpt-4.1-mini --structure-text
 ```
 
-> **注意**：此為實驗性功能。若批次翻譯的行數不匹配，系統會自動重試，最終退回標準逐條翻譯模式。
+> **注意**：若批次翻譯的行數不匹配或句型對齊檢查失敗，系統會自動重試，最終退回標準逐條翻譯模式，品質有保護網。
 
 ### 模型管理
 
@@ -600,6 +600,8 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja -c 2048 --parall
 | **模型** | 選擇要使用的 AI 模型 |
 | **並發數** | 設定同時翻譯的字幕數量 |
 | **顯示模式** | 選擇輸出字幕的顯示方式 |
+| **Netflix 風格** | 啟用 Netflix 繁體中文字幕規範後處理（智慧斷行、標點規範） |
+| **批次翻譯** | 啟用結構-文本分離批次模式：多句合併單一 API 請求，大幅降低 token 消耗與請求數（對應 CLI 的 `--structure-text`） |
 | **開始翻譯** | 開始翻譯處理 |
 | **暫停** | 暫停/繼續翻譯 |
 | **停止** | 停止翻譯並清理資源 |
@@ -617,7 +619,7 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja -c 2048 --parall
    - 源語言：日文
    - 目標語言：繁體中文
    - LLM 類型：openai
-   - 模型：gpt-4o-mini
+   - 模型：gpt-4.1-mini
    - 並發數：5
    - 顯示模式：雙語對照
 5. **開始翻譯**：點擊「開始翻譯」
@@ -659,7 +661,7 @@ llama-server -m ~/dev/model/your-model.gguf --port 8080 --jinja -c 2048 --parall
      -s 英文 \
      -t 繁體中文 \
      -p openai \
-     -m gpt-4o \
+     -m gpt-4.1-mini \
      --structure-text
    ```
 
@@ -1158,5 +1160,5 @@ find data/ -name "*.db" -mtime +90 -delete
 
 ---
 
-**最後更新**：2026-03-12
-**版本**：1.2.0
+**最後更新**：2026-06-11
+**版本**：1.3.0
