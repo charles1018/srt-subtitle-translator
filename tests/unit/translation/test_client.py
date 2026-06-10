@@ -318,7 +318,9 @@ class TestTranslationClientHelpers:
             "紐約聯邦儲備銀行、約翰 威廉姆斯都提到通貨膨脹。"
         )
 
-        assert result == "通膨、聯準會、執行長、成長、威廉斯、東部時間、聯準會、紐約聯邦儲備銀行、約翰·威廉斯都提到通膨。"
+        assert (
+            result == "通膨、聯準會、執行長、成長、威廉斯、東部時間、聯準會、紐約聯邦儲備銀行、約翰·威廉斯都提到通膨。"
+        )
 
     @patch("srt_translator.translation.client.CacheManager")
     @patch("srt_translator.translation.client.PromptManager")
@@ -1286,9 +1288,7 @@ class TestTranslationClientAsync:
     @patch("srt_translator.translation.client.PromptManager")
     @patch("srt_translator.translation.client.AsyncOpenAI")
     @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
-    async def test_translate_with_openai_rejects_length_finish_reason(
-        self, mock_openai_cls, mock_prompt, mock_cache
-    ):
+    async def test_translate_with_openai_rejects_length_finish_reason(self, mock_openai_cls, mock_prompt, mock_cache):
         """Test truncated OpenAI output is not treated as a successful translation."""
         mock_cache_instance = MagicMock()
         mock_cache.return_value = mock_cache_instance
@@ -1674,3 +1674,99 @@ class TestTranslationClientApiAvailability:
         result = await client.is_api_available()
 
         assert result is True
+
+
+class TestRateLimitWaitTime:
+    """Tests for _get_rate_limit_wait_time (429 retry-after 解析)."""
+
+    def test_wait_time_from_retry_after_ms_header(self):
+        """retry-after-ms header 優先使用。"""
+        error = MagicMock(spec=Exception)
+        error.response = MagicMock()
+        error.response.headers = {"retry-after-ms": "1500", "retry-after": "60"}
+
+        wait = TranslationClient._get_rate_limit_wait_time(error, tries=1)
+        assert wait == pytest.approx(2.0)  # 1.5s + 0.5s buffer
+
+    def test_wait_time_from_retry_after_header(self):
+        """retry-after（秒）header 次之。"""
+        error = MagicMock(spec=Exception)
+        error.response = MagicMock()
+        error.response.headers = {"retry-after": "62"}
+
+        wait = TranslationClient._get_rate_limit_wait_time(error, tries=1)
+        assert wait == pytest.approx(62.5)
+
+    def test_wait_time_from_message_seconds(self):
+        """無 header 時解析錯誤訊息中的 'try again in 62s'。"""
+        error = Exception(
+            "Error code: 429 - Rate limit reached for gpt-4o on tokens per min (TPM): "
+            "Limit 30000, Used 29872, Requested 440. Please try again in 62s."
+        )
+
+        wait = TranslationClient._get_rate_limit_wait_time(error, tries=1)
+        assert wait == pytest.approx(62.5)
+
+    def test_wait_time_from_message_milliseconds(self):
+        """解析 'try again in 250ms'。"""
+        error = Exception("Rate limit reached. Please try again in 250ms.")
+
+        wait = TranslationClient._get_rate_limit_wait_time(error, tries=1)
+        assert wait == pytest.approx(0.75)
+
+    def test_wait_time_from_message_minutes_and_seconds(self):
+        """解析 'try again in 1m2.5s'。"""
+        error = Exception("Rate limit reached. Please try again in 1m2.5s.")
+
+        wait = TranslationClient._get_rate_limit_wait_time(error, tries=1)
+        assert wait == pytest.approx(63.0)
+
+    def test_wait_time_capped_at_max(self):
+        """超長等待（如日限額）截斷在上限。"""
+        error = Exception("Rate limit reached. Please try again in 6m0s.")
+
+        wait = TranslationClient._get_rate_limit_wait_time(error, tries=1)
+        assert wait == TranslationClient.RATE_LIMIT_MAX_WAIT
+
+    def test_wait_time_fallback_exponential_backoff(self):
+        """無任何提示時退回指數退避加抖動。"""
+        error = Exception("Some opaque rate limit error")
+
+        wait1 = TranslationClient._get_rate_limit_wait_time(error, tries=1)
+        wait3 = TranslationClient._get_rate_limit_wait_time(error, tries=3)
+        assert 2.0 <= wait1 <= 3.0  # 2^1 + jitter
+        assert 8.0 <= wait3 <= 9.0  # 2^3 + jitter
+
+
+class TestOpenAIRateLimitConfig:
+    """Tests for 可設定的 OpenAI RPM/TPM 限額."""
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    def test_default_rate_limits(self, mock_openai, mock_prompt, mock_cache):
+        """未設定時使用 Tier 1 mini 系列預設值。"""
+        client = TranslationClient(llm_type="openai", api_key="sk-test")
+        assert client.max_requests_per_minute == 500
+        assert client.max_tokens_per_minute == 200000
+
+    @patch("srt_translator.translation.client.CacheManager")
+    @patch("srt_translator.translation.client.PromptManager")
+    @patch("srt_translator.translation.client.AsyncOpenAI")
+    @patch("srt_translator.translation.client.OPENAI_AVAILABLE", True)
+    def test_rate_limits_from_config(self, mock_openai, mock_prompt, mock_cache):
+        """model_config.json 中的設定值會覆寫預設。"""
+        config_values = {
+            "openai_max_requests_per_minute": 1000,
+            "openai_max_tokens_per_minute": 450000,
+        }
+
+        def fake_get_config(config_type, key=None, default=None):
+            return config_values.get(key, default)
+
+        with patch("srt_translator.translation.client.get_config", side_effect=fake_get_config):
+            client = TranslationClient(llm_type="openai", api_key="sk-test")
+
+        assert client.max_requests_per_minute == 1000
+        assert client.max_tokens_per_minute == 450000

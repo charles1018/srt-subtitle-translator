@@ -1,5 +1,6 @@
 import asyncio
 import json
+import random
 import re
 import time
 from collections.abc import Sequence
@@ -28,6 +29,7 @@ except ImportError:
 
 # 從本地模組導入
 from srt_translator.core.cache import CacheManager
+from srt_translator.core.config import get_config
 from srt_translator.core.prompt import PromptManager
 from srt_translator.utils.errors import TranslationError, ValidationError
 from srt_translator.utils.logging_config import setup_logger
@@ -601,9 +603,13 @@ class TranslationClient:
             self._load_tokenizers()
 
             # 速率限制追蹤
+            # 限額依帳戶 tier 與模型而異，可在 model_config.json 設定
+            # openai_max_requests_per_minute / openai_max_tokens_per_minute
+            # 預設值對應 Tier 1 帳戶的 mini 系列模型（500 RPM / 200K TPM）
             self.request_timestamps = []  # 用於追蹤 API 請求時間
-            self.max_requests_per_minute = 3500  # OpenAI API 預設限制
-            self.max_tokens_per_minute = 180000  # OpenAI API 預設限制
+            self.max_requests_per_minute = int(get_config("model", "openai_max_requests_per_minute", 500))
+            self.max_tokens_per_minute = int(get_config("model", "openai_max_tokens_per_minute", 200000))
+            logger.info(f"OpenAI 速率限制: {self.max_requests_per_minute} RPM / {self.max_tokens_per_minute} TPM")
             self.token_usage = []  # 用於追蹤 token 使用量
 
             # 價格計算
@@ -1453,6 +1459,48 @@ class TranslationClient:
         else:  # UNKNOWN
             return base_strategy
 
+    # 429 等待時間上限：OpenAI TPM 限制的 retry-after 通常 ≤ 75 秒，
+    # 超過此值多半是 RPD/TPD 等日限額，重試也無法在合理時間內成功
+    RATE_LIMIT_MAX_WAIT: ClassVar[float] = 120.0
+
+    @classmethod
+    def _get_rate_limit_wait_time(cls, error: Exception, tries: int) -> float:
+        """計算 429 後的等待秒數
+
+        OpenAI 官方建議優先使用回應提供的重試時間（失敗請求也計入限額，
+        過早重試只會惡化狀況）：
+        1. HTTP header：retry-after-ms / retry-after
+        2. 錯誤訊息中的 "Please try again in 1m2.5s" 等字樣
+        3. 都沒有時退回指數退避加抖動
+        """
+        headers = getattr(getattr(error, "response", None), "headers", None)
+        if headers is not None:
+            retry_after_ms = headers.get("retry-after-ms")
+            if retry_after_ms:
+                try:
+                    return min(float(retry_after_ms) / 1000.0 + 0.5, cls.RATE_LIMIT_MAX_WAIT)
+                except ValueError:
+                    pass
+            retry_after = headers.get("retry-after")
+            if retry_after:
+                try:
+                    return min(float(retry_after) + 0.5, cls.RATE_LIMIT_MAX_WAIT)
+                except ValueError:
+                    pass
+
+        # 訊息格式可能為 "in 250ms"、"in 62s"、"in 1m2.5s"、"in 6m0s"
+        match = re.search(r"try again in (?:(\d+)m(?!s))?\s*(?:([\d.]+)\s*(ms|s))?", str(error), re.IGNORECASE)
+        if match and (match.group(1) or match.group(2)):
+            seconds = float(match.group(1) or 0) * 60.0
+            if match.group(2):
+                value = float(match.group(2))
+                seconds += value / 1000.0 if match.group(3) == "ms" else value
+            if seconds > 0:
+                return min(seconds + 0.5, cls.RATE_LIMIT_MAX_WAIT)
+
+        # 指數退避 + 抖動（避免並行任務同時重試）
+        return min(2.0**tries, 60.0) + random.uniform(0.0, 1.0)
+
     async def translate_with_retry(
         self,
         text: str,
@@ -1506,8 +1554,8 @@ class TranslationClient:
 
                 # 根據錯誤類型決定等待時間
                 if error_type == ApiErrorType.RATE_LIMIT:
-                    wait_time = 2.0**tries
-                    logger.info(f"速率限制錯誤，等待 {wait_time} 秒後重試")
+                    wait_time = self._get_rate_limit_wait_time(e, tries)
+                    logger.info(f"速率限制錯誤，等待 {wait_time:.1f} 秒後重試")
                     await asyncio.sleep(wait_time)
                 elif error_type == ApiErrorType.TIMEOUT or error_type == ApiErrorType.CONNECTION:
                     wait_time = min(1.0 * tries, 5.0)
@@ -1749,7 +1797,9 @@ class TranslationClient:
                 openai_params["top_p"] = options["top_p"]
         else:
             # GPT-5.x 與 o-series 推理模型把 max_tokens 改成 max_completion_tokens
-            max_tokens_key = "max_completion_tokens" if self._openai_uses_completion_tokens(model_name) else "max_tokens"
+            max_tokens_key = (
+                "max_completion_tokens" if self._openai_uses_completion_tokens(model_name) else "max_tokens"
+            )
             openai_params = {
                 "model": model_name,
                 "messages": messages,
@@ -1763,7 +1813,9 @@ class TranslationClient:
             tokens_key = "max_completion_tokens" if "max_completion_tokens" in openai_params else "max_tokens"
             openai_params[tokens_key] = max(int(openai_params[tokens_key]), dynamic_max_tokens)
             openai_params["temperature"] = 0.0
-            logger.debug("偵測到批次翻譯請求: %d 行，調整 %s=%d", batch_line_count, tokens_key, openai_params[tokens_key])
+            logger.debug(
+                "偵測到批次翻譯請求: %d 行，調整 %s=%d", batch_line_count, tokens_key, openai_params[tokens_key]
+            )
 
         # 添加 response_format 參數（適用於較新的模型）
         if not is_llamacpp and ("gpt-4" in model_name or "gpt-3.5-turbo" in model_name):
