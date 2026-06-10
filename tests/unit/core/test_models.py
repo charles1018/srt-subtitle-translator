@@ -487,7 +487,7 @@ class TestModelManagerDefaultModels:
 
         assert isinstance(model, ModelInfo)
         assert model.provider == "openai"
-        assert model.id == "gpt-3.5-turbo"
+        assert model.id == "gpt-4.1-mini"
 
     def test_create_default_openai_model_not_in_db(self, temp_dir):
         """測試建立不在資料庫中的 OpenAI 預設模型"""
@@ -495,14 +495,14 @@ class TestModelManagerDefaultModels:
         config_file.parent.mkdir(exist_ok=True)
         manager = ModelManager(str(config_file))
 
-        # 清空資料庫中的 openai:gpt-3.5-turbo
-        if "openai:gpt-3.5-turbo" in manager.model_database:
-            del manager.model_database["openai:gpt-3.5-turbo"]
+        # 清空資料庫中的 openai:gpt-4.1-mini
+        if "openai:gpt-4.1-mini" in manager.model_database:
+            del manager.model_database["openai:gpt-4.1-mini"]
 
         model = manager._create_default_openai_model()
 
         assert isinstance(model, ModelInfo)
-        assert model.id == "gpt-3.5-turbo"
+        assert model.id == "gpt-4.1-mini"
 
     def test_get_default_model_llamacpp(self, manager):
         """測試獲取 llama.cpp 預設模型"""
@@ -514,7 +514,7 @@ class TestModelManagerDefaultModels:
         """測試獲取 OpenAI 預設模型"""
         model_name = manager.get_default_model("openai")
 
-        assert model_name == "gpt-3.5-turbo"
+        assert model_name == "gpt-4.1-mini"
 
 class TestModelManagerModelInfo:
     """測試模型資訊獲取"""

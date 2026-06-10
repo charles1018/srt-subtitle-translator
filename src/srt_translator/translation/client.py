@@ -1170,6 +1170,9 @@ class TranslationClient:
                 return  # 已經載入
 
             models = {
+                "gpt-4.1-mini": "o200k_base",  # GPT-4.1 系列與 GPT-4o 都使用 o200k_base
+                "gpt-4.1": "o200k_base",
+                "gpt-4o": "o200k_base",
                 "gpt-3.5-turbo": "cl100k_base",  # 適用於 gpt-3.5-turbo 和 gpt-4
                 "gpt-4": "cl100k_base",
                 "gpt-4-turbo": "cl100k_base",
@@ -1251,8 +1254,8 @@ class TranslationClient:
             if model in self.tokenizers:
                 tokenizer = self.tokenizers[model]
             else:
-                # 尋找相容的 tokenizer
-                for m in ["gpt-4", "gpt-3.5-turbo"]:
+                # 尋找相容的 tokenizer（新模型多為 o200k_base，優先用 gpt-4.1-mini 的）
+                for m in ["gpt-4.1-mini", "gpt-4", "gpt-3.5-turbo"]:
                     if m in self.tokenizers:
                         tokenizer = self.tokenizers[m]
                         break

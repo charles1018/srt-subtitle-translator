@@ -235,17 +235,53 @@ class ModelManager:
 
         # OpenAI 模型資訊
         openai_models = {
+            "gpt-4.1-mini": ModelInfo(
+                id="gpt-4.1-mini",
+                provider="openai",
+                name="GPT-4.1 Mini",
+                description="高性價比翻譯首選：指令遵循佳、速度快，費用約為 GPT-4o 的 1/6",
+                context_length=1047576,
+                pricing="低",
+                recommended_for="字幕翻譯與日常翻譯，最具成本效益",
+                parallel=30,
+                tags=["recommended", "fast", "economic", "accurate"],
+                capabilities={"translation": 0.95, "multilingual": 0.96, "context_handling": 0.96},
+            ),
+            "gpt-4.1": ModelInfo(
+                id="gpt-4.1",
+                provider="openai",
+                name="GPT-4.1",
+                description="OpenAI 旗艦級指令模型，術語遵循與長文件一致性最佳",
+                context_length=1047576,
+                pricing="高",
+                recommended_for="專業翻譯，需要最高品質與術語一致性",
+                parallel=25,
+                tags=["advanced", "accurate"],
+                capabilities={"translation": 0.98, "multilingual": 0.98, "context_handling": 0.98},
+            ),
+            "gpt-4.1-nano": ModelInfo(
+                id="gpt-4.1-nano",
+                provider="openai",
+                name="GPT-4.1 Nano",
+                description="最便宜最快的輕量模型，適合大量低難度翻譯",
+                context_length=1047576,
+                pricing="低",
+                recommended_for="大批量簡單翻譯，速度與成本優先",
+                parallel=35,
+                tags=["fast", "economic"],
+                capabilities={"translation": 0.88, "multilingual": 0.88, "context_handling": 0.90},
+            ),
             "gpt-4o": ModelInfo(
                 id="gpt-4o",
                 provider="openai",
                 name="GPT-4o",
-                description="OpenAI 最新最強大的模型，速度快且精確度高",
+                description="上一代旗艦模型（legacy），品質佳但費用高、速率限額較緊",
                 context_length=128000,
                 pricing="高",
-                recommended_for="專業翻譯，需要最高品質",
+                recommended_for="既有工作流相容性，新工作建議改用 GPT-4.1 系列",
                 parallel=25,
-                tags=["advanced", "fast", "accurate"],
-                capabilities={"translation": 0.98, "multilingual": 0.99, "context_handling": 0.98},
+                tags=["legacy", "fast", "accurate"],
+                capabilities={"translation": 0.96, "multilingual": 0.97, "context_handling": 0.96},
             ),
             "gpt-4-turbo": ModelInfo(
                 id="gpt-4-turbo",
@@ -555,15 +591,15 @@ class ModelManager:
 
     def _create_default_openai_model(self) -> ModelInfo:
         """建立預設 OpenAI 模型"""
-        key = "openai:gpt-3.5-turbo"
+        key = "openai:gpt-4.1-mini"
         if key in self.model_database:
             model = self.model_database[key]
         else:
             model = ModelInfo(
-                id="gpt-3.5-turbo",
+                id="gpt-4.1-mini",
                 provider="openai",
-                name="GPT-3.5 Turbo",
-                description="OpenAI 的經濟型模型",
+                name="GPT-4.1 Mini",
+                description="OpenAI 的高性價比模型",
                 pricing="低",
                 recommended_for="一般翻譯任務",
             )
@@ -692,7 +728,7 @@ class ModelManager:
             預設模型名稱
         """
         provider_defaults = {
-            "openai": "gpt-3.5-turbo",  # 最經濟的選擇
+            "openai": "gpt-4.1-mini",  # 品質/成本/速率限額最平衡的選擇
             "google": "gemini-2.0-flash",  # 最快速且經濟的選擇
             "llamacpp": "local-model",  # llama-server 載入的模型
         }
@@ -721,10 +757,28 @@ class ModelManager:
 
         # 嘗試在 OpenAI 預設模型中查找
         openai_models = {
-            "gpt-4o": {
-                "description": "OpenAI 最強大的翻譯模型，速度快且精確",
+            "gpt-4.1-mini": {
+                "description": "高性價比翻譯首選，指令遵循佳、速度快",
+                "pricing": "低",
+                "recommended_for": "字幕翻譯與日常翻譯，最具成本效益",
+                "parallel": 30,
+            },
+            "gpt-4.1": {
+                "description": "OpenAI 旗艦級指令模型，術語遵循與長文件一致性最佳",
                 "pricing": "高",
                 "recommended_for": "專業翻譯，需要最高品質",
+                "parallel": 25,
+            },
+            "gpt-4.1-nano": {
+                "description": "最便宜最快的輕量模型",
+                "pricing": "低",
+                "recommended_for": "大批量簡單翻譯",
+                "parallel": 35,
+            },
+            "gpt-4o": {
+                "description": "上一代旗艦模型（legacy），品質佳但費用高",
+                "pricing": "高",
+                "recommended_for": "既有工作流相容性，新工作建議改用 GPT-4.1 系列",
                 "parallel": 20,
             },
             "gpt-4-turbo": {
@@ -1178,11 +1232,14 @@ class ModelManager:
 
             # 優先推薦適合翻譯的模型
             translation_priority = {
-                "gpt-4o": 1,
-                "gpt-4-turbo": 2,
-                "gpt-4": 3,
-                "gpt-3.5-turbo-16k": 4,
-                "gpt-3.5-turbo": 5,
+                "gpt-4.1-mini": 1,
+                "gpt-4.1": 2,
+                "gpt-4.1-nano": 3,
+                "gpt-4o": 4,
+                "gpt-4-turbo": 5,
+                "gpt-4": 6,
+                "gpt-3.5-turbo-16k": 7,
+                "gpt-3.5-turbo": 8,
                 "gpt-4-vision-preview": 999,
             }
 
@@ -1212,7 +1269,7 @@ class ModelManager:
             model_list.sort(key=lambda x: translation_priority.get(x.id, 900))
 
             # 確保列表中有最常用的模型
-            essential_models = ["gpt-3.5-turbo", "gpt-4"]
+            essential_models = ["gpt-4.1-mini", "gpt-4.1"]
             for model_id in essential_models:
                 if not any(m.id == model_id for m in model_list):
                     key = f"openai:{model_id}"

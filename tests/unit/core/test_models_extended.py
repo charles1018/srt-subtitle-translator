@@ -408,7 +408,7 @@ class TestModelManagerOpenAIModelsAsync:
         assert isinstance(result, list)
         assert len(result) == 1
         assert result[0].provider == "openai"
-        assert result[0].id == "gpt-3.5-turbo"
+        assert result[0].id == "gpt-4.1-mini"
 
     @pytest.mark.asyncio
     async def test_get_openai_models_sorting(self, manager):
@@ -464,4 +464,4 @@ class TestModelManagerOpenAIModelsAsync:
                 # 應該返回預設模型
                 assert isinstance(result, list)
                 assert len(result) == 1
-                assert result[0].id == "gpt-3.5-turbo"
+                assert result[0].id == "gpt-4.1-mini"

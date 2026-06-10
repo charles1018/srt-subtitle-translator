@@ -570,7 +570,7 @@ class TestTranslationClientHelpers:
         assert profile["family"] == "hunyuan-mt"
         assert profile["options"]["temperature"] == 0.7
         assert profile["options"]["top_p"] == 0.6
-        assert profile["options"]["max_tokens"] == 128
+        assert profile["options"]["max_tokens"] == 256
         assert profile["extra_body"]["repetition_penalty"] == 1.05
         assert profile["extra_body"]["top_k"] == 20
         assert profile["extra_body"]["reasoning_format"] == "none"
