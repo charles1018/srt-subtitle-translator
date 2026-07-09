@@ -7,6 +7,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`GlossaryManager` 專屬單元測試**：新增 `tests/unit/core/test_glossary.py`（20 個測試），補上先前只有間接覆蓋的缺口；重點鎖定 `apply_glossaries` 語言篩選行為（不帶語言參數時一律套用，對應 `-g` 顯式啟用的輸出端字面替換設計）、長來源優先替換、大小寫敏感與匯出/匯入往返
+
 ### Removed
 
 - **sdist 不再納入 `CLAUDE.md`**：`CLAUDE.md` 為本地開發指引、未納入 git 追蹤，卻列在 `pyproject.toml` 的 sdist `include`，導致乾淨 clone 打包時來源不一致；移除該項使打包只納入實際追蹤的檔案
