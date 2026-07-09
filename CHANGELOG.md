@@ -9,6 +9,7 @@
 
 ### Removed
 
+- **sdist 不再納入 `CLAUDE.md`**：`CLAUDE.md` 為本地開發指引、未納入 git 追蹤，卻列在 `pyproject.toml` 的 sdist `include`，導致乾淨 clone 打包時來源不一致；移除該項使打包只納入實際追蹤的檔案
 - **刪除死碼 `translation/manager.py`（1,129 行）**：`TranslationManager` / `TranslationThread` 自 provider 重構後已無任何正式程式碼引用（正式翻譯流程走 `services/factory.py` 的 `TranslationService`），僅測試在引用。連同其唯一測試檔 `tests/unit/translation/test_manager.py` 與 `test_batch_integration.py` 內對應的死檔測試類別一併移除，並移除不再使用的 `checkpoints_dir` 設定與 `data/checkpoints` 目錄建立。**影響**：中斷後的持久化續傳（checkpoint）原本就只存在於這支未被使用的模組、實際已無作用，故移除不改變現行行為
 
 ### Added
