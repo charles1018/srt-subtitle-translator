@@ -7,6 +7,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **mypy 型別檢查恢復全綠**：`translation/client.py` 的 `_apply_netflix_style_to_batch_response` 補上 `post_processor is None` 防護（呼叫端本已保證非 None，此處僅收斂型別、行為不變），消除唯一的 `union-attr` 既有錯誤
+
+### Changed
+
+- **文件測試基線同步**：README badge、`README.md`、`docs/TESTING.md`、`docs/CLEANUP_STATUS.md` 的非 GUI 測試基線由 `955 passed` 更新為實測 `971 passed`
+- **`.env.example` 移除 Ollama 殘留**：runtime 說明改為 `OpenAI / Google / llama.cpp`（Ollama 已於 v1.3.0 完整移除）
+
 ## [1.3.0] - 2026-06-11
 
 OpenAI 路徑全面最佳化：同一集美劇實測從「10 分鐘、~$1.00、533 次 429 限流」改善為「4 分半、~$0.07、零限流」。

@@ -17,7 +17,7 @@
 
 ### 測試統計
 
-- **目前非 GUI 基線**: 955 passed / 0 skipped / 0 warnings（2026-05-23）
+- **目前非 GUI 基線**: 971 passed / 0 skipped / 0 warnings（2026-07-10）
 - **測試類型**: unit / integration / e2e / gui marker
 - **覆蓋率報告**: 正常執行 `uv run pytest -v` 會產生終端機摘要與 `htmlcov/`
 

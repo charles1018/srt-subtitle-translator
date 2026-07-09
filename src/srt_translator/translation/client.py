@@ -1741,6 +1741,11 @@ class TranslationClient:
         批次字串每行對應一個字幕、字幕內部換行以 literal \\n 跳脫。
         逐行解碼 → 後處理 → 重新跳脫，智慧斷行產生的換行不會增加批次行數。
         """
+        # 呼叫端已保證 post_processor 存在（見 _apply_netflix_style_to_batch_response 的唯一呼叫點），
+        # 此處防護僅為型別收斂與 defense-in-depth，未啟用後處理時原樣返回不改變行為。
+        if self.post_processor is None:
+            return batch_text
+
         processed_lines: list[str] = []
         auto_fixed_total = 0
         for line in batch_text.split("\n"):
