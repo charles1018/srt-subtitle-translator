@@ -7,6 +7,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **GitHub Actions CI**：新增 `.github/workflows/ci.yml`，於 push / PR 到 `main` 時在 Python 3.10 與 3.12 上跑 `ruff check`、`mypy src/srt_translator`、`pytest -m "not gui"`（排除需顯示器的 GUI 測試，保持 headless 可跑）
+
 ### Fixed
 
 - **mypy 型別檢查恢復全綠**：`translation/client.py` 的 `_apply_netflix_style_to_batch_response` 補上 `post_processor is None` 防護（呼叫端本已保證非 None，此處僅收斂型別、行為不變），消除唯一的 `union-attr` 既有錯誤
