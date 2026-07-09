@@ -2,7 +2,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-971%20passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-921%20passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-htmlcov-lightgrey.svg)](htmlcov/)
 
 基於 Python 的 SRT 字幕檔自動翻譯工具。目前支援 `llamacpp`、`openai`、`google`；Anthropic 與 OpenRouter 已不在目前支援範圍內。
@@ -341,7 +341,7 @@ uv run mypy src/srt_translator
 
 本專案擁有完整的測試體系。以目前非 GUI 基線為準：
 
-- **非 GUI 基線**：971 passed / 0 skipped / 0 warnings
+- **非 GUI 基線**：921 passed / 0 skipped / 0 warnings
 - **測試類型**：unit / integration / e2e / gui marker
 - **覆蓋率報告**：`pytest` 預設會產生 `htmlcov/`
 

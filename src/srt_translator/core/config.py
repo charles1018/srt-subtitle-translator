@@ -127,7 +127,6 @@ class ConfigManager:
                 "version": app_version,
                 "debug_mode": False,
                 "data_dir": "data",
-                "checkpoints_dir": "data/checkpoints",
                 "logs_dir": "logs",
                 "cache_expiry": 30,  # 天數
                 "last_update": datetime.now().isoformat(),
@@ -639,7 +638,7 @@ class ConfigManager:
             errors["version"] = ["版本號必須符合 'x.y.z' 格式"]
 
         # 目錄路徑
-        for path_key in ["data_dir", "checkpoints_dir", "logs_dir"]:
+        for path_key in ["data_dir", "logs_dir"]:
             path = config.get(path_key, "")
             if not isinstance(path, str) or not path:
                 errors[path_key] = ["必須為有效的目錄路徑"]

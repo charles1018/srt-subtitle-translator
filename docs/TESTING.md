@@ -17,7 +17,7 @@
 
 ### 測試統計
 
-- **目前非 GUI 基線**: 971 passed / 0 skipped / 0 warnings（2026-07-10）
+- **目前非 GUI 基線**: 921 passed / 0 skipped / 0 warnings（2026-07-10）
 - **測試類型**: unit / integration / e2e / gui marker
 - **覆蓋率報告**: 正常執行 `uv run pytest -v` 會產生終端機摘要與 `htmlcov/`
 
@@ -42,8 +42,7 @@ tests/
 │   │   └── test_batch_integration.py  # 結構-文本分離模式整合測試
 │   │
 │   ├── translation/         # 翻譯模組測試
-│   │   ├── test_client.py   # 翻譯客戶端測試
-│   │   └── test_manager.py  # 翻譯管理器測試
+│   │   └── test_client.py   # 翻譯客戶端測試
 │   │
 │   ├── services/            # 服務層測試
 │   │   └── test_factory.py  # 服務工廠測試

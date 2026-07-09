@@ -16,7 +16,7 @@
 
 - provider/runtime cleanup 已完成
 - 文件、測試與目前 shipped behavior 已對齊到 `llamacpp` / `openai` / `google`
-- 非 GUI 基線目前為 `971 passed / 0 skipped / 0 warnings`
+- 非 GUI 基線目前為 `921 passed / 0 skipped / 0 warnings`
 
 ## 本輪完成重點
 
@@ -37,7 +37,7 @@ uv run ruff check .
 最近確認結果：
 
 - targeted 單元測試：`126 passed`
-- 非 GUI 全量基線：`971 passed / 0 skipped / 0 warnings`
+- 非 GUI 全量基線：`921 passed / 0 skipped / 0 warnings`
 - `ruff check .`：通過
 
 ## 封存文件

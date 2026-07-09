@@ -84,7 +84,7 @@ class App:
 
     def _ensure_directories(self) -> None:
         """確保必要的目錄存在"""
-        directories = ["data", "data/checkpoints", "config", "logs", "data/terms_dictionaries"]
+        directories = ["data", "config", "logs", "data/terms_dictionaries"]
 
         for directory in directories:
             os.makedirs(directory, exist_ok=True)
