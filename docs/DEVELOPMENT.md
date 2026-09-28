@@ -460,7 +460,7 @@ uv run mypy src/srt_translator/core/config.py
 
 ### Pre-commit Hooks
 
-專案已附 `.pre-commit-config.yaml`，commit 前自動執行 `ruff format`（CI 也會以 `ruff format --check` 檢查）。clone 後執行一次安裝：
+專案已附 `.pre-commit-config.yaml`，commit 前依序自動執行 `ruff check --fix` 與 `ruff format`（CI 也會以 `ruff check` / `ruff format --check` 檢查）。clone 後執行一次安裝：
 
 ```bash
 uv sync --all-extras --dev
@@ -468,7 +468,8 @@ uv run pre-commit install
 ```
 
 - hook 透過 `uv run` 執行，ruff 版本與 `uv.lock`、CI 一致
-- 若檔案被重新排版，該次 commit 會中止；檢查變更後重新 `git add` 再 commit 即可
+- 若檔案被自動修正或重新排版，該次 commit 會中止；檢查變更後重新 `git add` 再 commit 即可
+- 無法自動修正的 lint 錯誤（如未定義名稱）會列出位置並擋下 commit，需手動修正
 - 手動對全 repo 執行：`uv run pre-commit run --all-files`
 
 ---

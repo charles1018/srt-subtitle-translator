@@ -153,7 +153,7 @@ git remote add upstream https://github.com/charles1018/srt-subtitle-translator.g
 # 4. 安裝依賴
 uv sync --all-extras --dev
 
-# 5. 啟用 pre-commit hook（commit 前自動 ruff format）
+# 5. 啟用 pre-commit hook（commit 前自動 ruff check --fix + ruff format）
 uv run pre-commit install
 
 # 6. 執行測試確認環境正常
