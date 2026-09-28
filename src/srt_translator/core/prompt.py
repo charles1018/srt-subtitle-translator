@@ -866,11 +866,7 @@ Rules:
         target_display = self._HUNYUAN_LANG_NAMES.get(target_zh, (target_zh, target_zh))[1]
 
         if not prev and not nxt:
-            return (
-                f"將以下文本翻譯為{target_display}，"
-                "注意只需要輸出翻譯後的結果，不要額外解釋：\n\n"
-                f"{text}"
-            )
+            return f"將以下文本翻譯為{target_display}，注意只需要輸出翻譯後的結果，不要額外解釋：\n\n{text}"
 
         ref_lines = []
         if prev:
@@ -1251,7 +1247,9 @@ Rules:
 
             if ends_with_conjunction:
                 detected_conj = next(conj for conj in conjunctions if text_lower.endswith(f" {conj}"))
-                user_content_parts.extend(["", f"NOTE: preserve the trailing conjunction '{detected_conj}' in translation."])
+                user_content_parts.extend(
+                    ["", f"NOTE: preserve the trailing conjunction '{detected_conj}' in translation."]
+                )
             if ends_with_incomplete_punctuation:
                 user_content_parts.extend(
                     [

@@ -445,13 +445,9 @@ def apply_translation_runtime_overrides(
             language_pair = f"{source_lang}→{target_lang}"
             if language_pair in prompt_manager.language_pairs:
                 prompt_manager.current_language_pair = language_pair
-                prompt_manager.config_manager.set_value(
-                    "current_language_pair", language_pair, auto_save=False
-                )
+                prompt_manager.config_manager.set_value("current_language_pair", language_pair, auto_save=False)
             else:
-                logger.warning(
-                    f"未支援的語言對 {language_pair}，沿用 {prompt_manager.current_language_pair}"
-                )
+                logger.warning(f"未支援的語言對 {language_pair}，沿用 {prompt_manager.current_language_pair}")
 
     if netflix_style is not None:
         user_config = ConfigManager.get_instance("user")

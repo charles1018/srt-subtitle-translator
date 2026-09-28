@@ -563,9 +563,7 @@ class TestPromptManagerOptimizedMessage:
         text = "上機嫌じゃん"
         context = ["前文參考", text, "後文參考"]
 
-        messages = manager.get_optimized_message(
-            text, context, "llamacpp", "Hy-MT2-1.8B-Q8_0", current_index=1
-        )
+        messages = manager.get_optimized_message(text, context, "llamacpp", "Hy-MT2-1.8B-Q8_0", current_index=1)
 
         assert len(messages) == 2
         user_content = messages[1]["content"]
@@ -591,9 +589,7 @@ class TestPromptManagerOptimizedMessage:
         text = "上機嫌じゃん"
 
         # context_texts 僅含當前句，沒有前後文
-        messages = manager.get_optimized_message(
-            text, [text], "llamacpp", "Hy-MT2-1.8B-Q8_0", current_index=0
-        )
+        messages = manager.get_optimized_message(text, [text], "llamacpp", "Hy-MT2-1.8B-Q8_0", current_index=0)
 
         user_content = messages[1]["content"]
         assert text in user_content
@@ -1021,7 +1017,10 @@ class TestPromptManagerFileOperations:
     def test_save_prompt_template(self, manager):
         """測試儲存提示詞模板"""
         # 設置自訂提示詞
-        manager.custom_prompts["test_type"] = {"llamacpp": "Test prompt for llamacpp", "openai": "Test prompt for openai"}
+        manager.custom_prompts["test_type"] = {
+            "llamacpp": "Test prompt for llamacpp",
+            "openai": "Test prompt for openai",
+        }
 
         # 儲存模板
         result = manager._save_prompt_template("test_type")

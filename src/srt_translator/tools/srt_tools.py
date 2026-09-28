@@ -186,12 +186,14 @@ def extract(srt_path: str, output_prefix: str | None = None) -> tuple[str, str]:
         lines = text.split("\n")
         line_count = len(lines)
 
-        structure.append({
-            "index": sub.index,
-            "start": str(sub.start),
-            "end": str(sub.end),
-            "line_count": line_count,
-        })
+        structure.append(
+            {
+                "index": sub.index,
+                "start": str(sub.start),
+                "end": str(sub.end),
+                "line_count": line_count,
+            }
+        )
 
         text_lines.append(_encode_text_record(text))
 
@@ -251,8 +253,7 @@ def assemble(
     if len(structure) != len(translated_lines):
         diff = len(translated_lines) - len(structure)
         error_msg = (
-            f"行數不匹配: 結構有 {len(structure)} 個字幕，"
-            f"翻譯文本有 {len(translated_lines)} 行 (差異: {diff:+d})"
+            f"行數不匹配: 結構有 {len(structure)} 個字幕，翻譯文本有 {len(translated_lines)} 行 (差異: {diff:+d})"
         )
 
         # 顯示錯誤上下文（與 subtitle-workbench 相同的診斷方式）
@@ -332,9 +333,7 @@ def qa(source_srt_path: str, target_srt_path: str) -> QAResult:
 
     # 1. 字幕數量比對
     if len(src_subs) != len(tgt_subs):
-        errors.append(
-            f"字幕數量不匹配: 來源 {len(src_subs)} 個，目標 {len(tgt_subs)} 個"
-        )
+        errors.append(f"字幕數量不匹配: 來源 {len(src_subs)} 個，目標 {len(tgt_subs)} 個")
         return QAResult(
             is_valid=False,
             source_count=len(src_subs),
@@ -349,17 +348,13 @@ def qa(source_srt_path: str, target_srt_path: str) -> QAResult:
         if src.index != tgt.index:
             idx_mismatches += 1
             if idx_mismatches <= 5:
-                warnings.append(
-                    f"Index 不匹配 #{i + 1}: 來源={src.index}, 目標={tgt.index}"
-                )
+                warnings.append(f"Index 不匹配 #{i + 1}: 來源={src.index}, 目標={tgt.index}")
 
         if str(src.start) != str(tgt.start) or str(src.end) != str(tgt.end):
             ts_mismatches += 1
             if ts_mismatches <= 5:
                 warnings.append(
-                    f"Timestamp 不匹配 #{src.index}: "
-                    f"來源={src.start} --> {src.end}, "
-                    f"目標={tgt.start} --> {tgt.end}"
+                    f"Timestamp 不匹配 #{src.index}: 來源={src.start} --> {src.end}, 目標={tgt.start} --> {tgt.end}"
                 )
 
     if ts_mismatches > 5:
@@ -475,16 +470,18 @@ def cps_audit(
             summary["short_duration"] += 1
 
         if issues:
-            problematic.append(SubtitleAuditEntry(
-                index=sub.index,
-                text=plain[:60],
-                duration_ms=duration_ms,
-                char_count=char_count,
-                cps=round(cps, 2),
-                line_count=line_count,
-                max_line_length=max_len,
-                issues=issues,
-            ))
+            problematic.append(
+                SubtitleAuditEntry(
+                    index=sub.index,
+                    text=plain[:60],
+                    duration_ms=duration_ms,
+                    char_count=char_count,
+                    cps=round(cps, 2),
+                    line_count=line_count,
+                    max_line_length=max_len,
+                    issues=issues,
+                )
+            )
 
     avg_cps = sum(all_cps) / len(all_cps) if all_cps else 0.0
     max_cps_val = max(all_cps) if all_cps else 0.0

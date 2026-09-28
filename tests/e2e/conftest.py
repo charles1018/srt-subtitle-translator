@@ -198,9 +198,7 @@ def mock_translation_client(mock_translation_responses: dict[str, str]):
     """
     client = AsyncMock()
 
-    async def mock_translate(
-        text: str, context: list[str], model_name: str, current_index: int | None = None
-    ) -> str:
+    async def mock_translate(text: str, context: list[str], model_name: str, current_index: int | None = None) -> str:
         """Mock 翻譯函數"""
         # 返回預定義的翻譯或原文
         return mock_translation_responses.get(text, f"[Mock翻譯] {text}")

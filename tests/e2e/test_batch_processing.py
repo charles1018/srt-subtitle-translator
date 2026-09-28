@@ -38,9 +38,7 @@ def mock_all_services_for_batch(mock_translation_client, mock_translation_respon
     async def mock_translate_text(text, context, llm_type, model, current_index=None):
         return mock_translation_responses.get(text, f"[Mock翻譯] {text}")
 
-    async def mock_translate_batch(
-        texts_with_context, llm_type, model, concurrent_limit=5, current_indices=None
-    ):
+    async def mock_translate_batch(texts_with_context, llm_type, model, concurrent_limit=5, current_indices=None):
         return [mock_translation_responses.get(item[0], f"[Mock翻譯] {item[0]}") for item in texts_with_context]
 
     # 建立 Mock TranslationService

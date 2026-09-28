@@ -345,9 +345,7 @@ class GlossaryManager(SingletonMixin):
                     writer = csv.writer(f)
                     writer.writerow(["source", "target", "category", "notes", "case_sensitive"])
                     for entry in glossary.entries.values():
-                        writer.writerow(
-                            [entry.source, entry.target, entry.category, entry.notes, entry.case_sensitive]
-                        )
+                        writer.writerow([entry.source, entry.target, entry.category, entry.notes, entry.case_sensitive])
 
             elif format == "txt":
                 with open(file_path, "w", encoding="utf-8") as f:

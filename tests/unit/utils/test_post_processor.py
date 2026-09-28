@@ -182,7 +182,7 @@ class TestNetflixStylePostProcessorQuotations:
         """Test fixing curly quotes."""
         processor = NetflixStylePostProcessor()
         # Using curly quotes (U+201C and U+201D)
-        result = processor.process('他說\u201c你好\u201d')
+        result = processor.process("他說\u201c你好\u201d")
         assert "「" in result.text
         assert "」" in result.text
         assert "\u201c" not in result.text

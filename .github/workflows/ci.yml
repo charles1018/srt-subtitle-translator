@@ -38,6 +38,9 @@ jobs:
       - name: Ruff lint
         run: uv run ruff check
 
+      - name: Ruff format
+        run: uv run ruff format --check
+
       - name: Mypy type check
         run: uv run mypy src/srt_translator
 

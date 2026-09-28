@@ -241,11 +241,7 @@ cache_manager = CacheManager(db_path="data/translation_cache.db")
 
 **範例**：
 ```python
-translation = cache_manager.get_cached_translation(
-    "Hello, world!",
-    ["Previous subtitle"],
-    "gpt-4.1-mini"
-)
+translation = cache_manager.get_cached_translation("Hello, world!", ["Previous subtitle"], "gpt-4.1-mini")
 ```
 
 ##### `store_translation(source_text: str, target_text: str, context_texts: List[str], model_name: str, style: str = "standard", prompt_version: str = "") -> bool`
@@ -262,12 +258,7 @@ translation = cache_manager.get_cached_translation(
 
 **範例**：
 ```python
-cache_manager.store_translation(
-    "Hello, world!",
-    "你好，世界！",
-    ["Previous subtitle"],
-    "gpt-4.1-mini"
-)
+cache_manager.store_translation("Hello, world!", "你好，世界！", ["Previous subtitle"], "gpt-4.1-mini")
 ```
 
 ##### `get_cache_stats() -> Dict[str, Any]`
@@ -598,11 +589,7 @@ class TranslationClient:
 ```python
 from srt_translator.translation.client import TranslationClient
 
-client = TranslationClient(
-    llm_type="openai",
-    api_key="your-api-key",
-    cache_db_path="data/translation_cache.db"
-)
+client = TranslationClient(llm_type="openai", api_key="your-api-key", cache_db_path="data/translation_cache.db")
 ```
 
 > `TranslationClient` 目前的翻譯執行路徑實作為 `llamacpp`、`openai`、`google`。
@@ -640,11 +627,7 @@ client = TranslationClient(
 
 **範例**：
 ```python
-translation = await client.translate_text(
-    "Hello, world!",
-    ["Previous subtitle here"],
-    "gpt-4.1"
-)
+translation = await client.translate_text("Hello, world!", ["Previous subtitle here"], "gpt-4.1")
 # '你好，世界！'
 ```
 
@@ -672,11 +655,7 @@ texts = [
     ("World", ["Hello"]),
     ("How are you?", ["Hello", "World"]),
 ]
-translations = await client.translate_batch(
-    texts,
-    "gpt-4.1",
-    concurrent_limit=3
-)
+translations = await client.translate_batch(texts, "gpt-4.1", concurrent_limit=3)
 # ['你好', '世界', '你好嗎？']
 ```
 
@@ -783,11 +762,7 @@ print(f"檔案格式: {subtitle_info.format}")
 
 **範例**：
 ```python
-success = file_handler.write_subtitle_file(
-    "output.srt",
-    translated_subtitles,
-    format="srt"
-)
+success = file_handler.write_subtitle_file("output.srt", translated_subtitles, format="srt")
 ```
 
 ##### `detect_encoding(file_path: str) -> str`
@@ -985,6 +960,7 @@ texts = batch_string_to_texts("你好\\n世界\n再見", 2)
 ```python
 from srt_translator.utils.errors import AppError
 
+
 class AppError(Exception):
     """應用程式基礎錯誤"""
 ```
@@ -995,6 +971,7 @@ class AppError(Exception):
 
 ```python
 from srt_translator.utils.errors import TranslationError
+
 
 class TranslationError(AppError):
     """翻譯過程錯誤"""
@@ -1007,6 +984,7 @@ class TranslationError(AppError):
 ```python
 from srt_translator.utils.errors import FileHandlingError
 
+
 class FileHandlingError(AppError):
     """檔案處理錯誤"""
 ```
@@ -1017,6 +995,7 @@ API 呼叫錯誤。
 
 ```python
 from srt_translator.utils.errors import APIError
+
 
 class APIError(AppError):
     """API 呼叫錯誤"""
@@ -1090,6 +1069,7 @@ if not check_internet_connection():
 import asyncio
 from srt_translator.services.factory import ServiceFactory
 
+
 async def translate_file():
     # 獲取服務
     translation_service = ServiceFactory.get_translation_service()
@@ -1100,13 +1080,11 @@ async def translate_file():
 
     # 翻譯
     translated = await translation_service.translate_text(
-        subtitle_info.subtitles[0].text,
-        ["Previous context"],
-        "openai",
-        "gpt-4.1-mini"
+        subtitle_info.subtitles[0].text, ["Previous context"], "openai", "gpt-4.1-mini"
     )
 
     print(f"翻譯結果: {translated}")
+
 
 # 執行
 asyncio.run(translate_file())
@@ -1120,23 +1098,14 @@ from srt_translator.core.cache import CacheManager
 cache_manager = CacheManager()
 
 # 嘗試從快取獲取
-cached = cache_manager.get_cached_translation(
-    "Hello",
-    [],
-    "gpt-4.1-mini"
-)
+cached = cache_manager.get_cached_translation("Hello", [], "gpt-4.1-mini")
 
 if cached:
     print(f"快取命中: {cached}")
 else:
     # 翻譯並儲存到快取
     translation = "你好"
-    cache_manager.store_translation(
-        "Hello",
-        translation,
-        [],
-        "gpt-4.1-mini"
-    )
+    cache_manager.store_translation("Hello", translation, [], "gpt-4.1-mini")
 ```
 
 ### 範例 3：自訂配置
@@ -1162,6 +1131,7 @@ config.save_config()
 import asyncio
 from srt_translator.translation.client import TranslationClient
 
+
 async def batch_translate():
     client = TranslationClient("openai", api_key="your-api-key")
 
@@ -1171,14 +1141,11 @@ async def batch_translate():
         ("Nice to meet you.", ["Hello, world!", "How are you?"]),
     ]
 
-    results = await client.translate_batch(
-        texts,
-        "gpt-4.1-mini",
-        concurrent_limit=3
-    )
+    results = await client.translate_batch(texts, "gpt-4.1-mini", concurrent_limit=3)
 
     for (original, _), translated in zip(texts, results):
         print(f"{original} → {translated}")
+
 
 asyncio.run(batch_translate())
 ```
@@ -1241,6 +1208,7 @@ ServiceFactory.reset_services()
 ```python
 # ✅ 正確
 from srt_translator.core.config import get_config
+
 theme = get_config("user", "theme", "default")
 
 # ❌ 錯誤（硬編碼）

@@ -102,10 +102,7 @@ class TestSubtitleInfoLanguageDetection:
     def test_detect_language_chinese(self, temp_dir):
         """Test detecting Chinese language."""
         srt_file = temp_dir / "test.srt"
-        srt_file.write_text(
-            "1\n00:00:01,000 --> 00:00:02,000\n這是中文字幕測試\n",
-            encoding="utf-8"
-        )
+        srt_file.write_text("1\n00:00:01,000 --> 00:00:02,000\n這是中文字幕測試\n", encoding="utf-8")
 
         info = SubtitleInfo(str(srt_file))
         assert "中文" in info.languages
@@ -113,10 +110,7 @@ class TestSubtitleInfoLanguageDetection:
     def test_detect_language_english(self, temp_dir):
         """Test detecting English language."""
         srt_file = temp_dir / "test.srt"
-        srt_file.write_text(
-            "1\n00:00:01,000 --> 00:00:02,000\nThis is an English subtitle test\n",
-            encoding="utf-8"
-        )
+        srt_file.write_text("1\n00:00:01,000 --> 00:00:02,000\nThis is an English subtitle test\n", encoding="utf-8")
 
         info = SubtitleInfo(str(srt_file))
         assert "英文" in info.languages
@@ -124,10 +118,7 @@ class TestSubtitleInfoLanguageDetection:
     def test_detect_language_japanese(self, temp_dir):
         """Test detecting Japanese language."""
         srt_file = temp_dir / "test.srt"
-        srt_file.write_text(
-            "1\n00:00:01,000 --> 00:00:02,000\nこれはテストです\n",
-            encoding="utf-8"
-        )
+        srt_file.write_text("1\n00:00:01,000 --> 00:00:02,000\nこれはテストです\n", encoding="utf-8")
 
         info = SubtitleInfo(str(srt_file))
         assert "日文" in info.languages
@@ -171,10 +162,7 @@ class TestSubtitleInfoSummary:
     def test_get_summary(self, temp_dir):
         """Test getting subtitle summary."""
         srt_file = temp_dir / "test.srt"
-        srt_file.write_text(
-            "1\n00:00:01,000 --> 00:00:02,000\nTest\n",
-            encoding="utf-8"
-        )
+        srt_file.write_text("1\n00:00:01,000 --> 00:00:02,000\nTest\n", encoding="utf-8")
 
         info = SubtitleInfo(str(srt_file))
         summary = info.get_summary()
@@ -354,10 +342,7 @@ class TestFileHandlerSubtitleInfo:
         FileHandler._instance = None
 
         srt_file = temp_dir / "test.srt"
-        srt_file.write_text(
-            "1\n00:00:01,000 --> 00:00:02,000\nTest\n",
-            encoding="utf-8"
-        )
+        srt_file.write_text("1\n00:00:01,000 --> 00:00:02,000\nTest\n", encoding="utf-8")
 
         with patch("srt_translator.file_handling.handler.ConfigManager"):
             handler = FileHandler.get_instance()
@@ -385,10 +370,7 @@ class TestFileHandlerSubtitleInfo:
         FileHandler._instance = None
 
         srt_file = temp_dir / "test.srt"
-        srt_file.write_text(
-            "1\n00:00:01,000 --> 00:00:02,000\nTest\n",
-            encoding="utf-8"
-        )
+        srt_file.write_text("1\n00:00:01,000 --> 00:00:02,000\nTest\n", encoding="utf-8")
 
         with patch("srt_translator.file_handling.handler.ConfigManager"):
             handler = FileHandler.get_instance()
@@ -408,10 +390,7 @@ class TestFileHandlerSubtitleInfo:
         FileHandler._instance = None
 
         srt_file = temp_dir / "test.srt"
-        srt_file.write_text(
-            "1\n00:00:01,000 --> 00:00:02,000\nTest\n",
-            encoding="utf-8"
-        )
+        srt_file.write_text("1\n00:00:01,000 --> 00:00:02,000\nTest\n", encoding="utf-8")
 
         with patch("srt_translator.file_handling.handler.ConfigManager"):
             handler = FileHandler.get_instance()
@@ -421,9 +400,8 @@ class TestFileHandlerSubtitleInfo:
 
             # Modify file
             srt_file.write_text(
-                "1\n00:00:01,000 --> 00:00:02,000\nModified\n\n"
-                "2\n00:00:03,000 --> 00:00:04,000\nNew line\n",
-                encoding="utf-8"
+                "1\n00:00:01,000 --> 00:00:02,000\nModified\n\n2\n00:00:03,000 --> 00:00:04,000\nNew line\n",
+                encoding="utf-8",
             )
 
             # Force refresh should get updated info
@@ -466,10 +444,7 @@ class TestFileHandlerBatchSettings:
             mock_config.get_instance.return_value = mock_instance
 
             handler = FileHandler.get_instance()
-            handler.set_batch_settings({
-                "overwrite_mode": "skip",
-                "preserve_folder_structure": False
-            })
+            handler.set_batch_settings({"overwrite_mode": "skip", "preserve_folder_structure": False})
 
             assert handler.batch_settings["overwrite_mode"] == "skip"
             assert handler.batch_settings["preserve_folder_structure"] is False

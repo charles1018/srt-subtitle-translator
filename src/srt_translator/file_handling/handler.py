@@ -400,31 +400,37 @@ class FileHandler:
         self.config_manager = ConfigManager.get_instance(config_section)
 
         # Language suffix mapping
-        self.lang_suffix: dict[str, str] = self.config_manager.get_value(
-            "lang_suffix",
-            default={
-                "繁體中文": ".zh_tw",
-                "英文": ".en",
-                "日文": ".jp",
-                "韓文": ".kr",
-                "法文": ".fr",
-                "德文": ".de",
-                "西班牙文": ".es",
-                "俄文": ".ru",
-            },
-        ) or {}
+        self.lang_suffix: dict[str, str] = (
+            self.config_manager.get_value(
+                "lang_suffix",
+                default={
+                    "繁體中文": ".zh_tw",
+                    "英文": ".en",
+                    "日文": ".jp",
+                    "韓文": ".kr",
+                    "法文": ".fr",
+                    "德文": ".de",
+                    "西班牙文": ".es",
+                    "俄文": ".ru",
+                },
+            )
+            or {}
+        )
 
         # Supported subtitle formats
-        self.supported_formats: list[tuple[str, str]] = self.config_manager.get_value(
-            "supported_formats",
-            default=[
-                (".srt", "SRT subtitle file"),
-                (".vtt", "WebVTT subtitle file"),
-                (".ass", "ASS subtitle file"),
-                (".ssa", "SSA subtitle file"),
-                (".sub", "SUB subtitle file"),
-            ],
-        ) or []
+        self.supported_formats: list[tuple[str, str]] = (
+            self.config_manager.get_value(
+                "supported_formats",
+                default=[
+                    (".srt", "SRT subtitle file"),
+                    (".vtt", "WebVTT subtitle file"),
+                    (".ass", "ASS subtitle file"),
+                    (".ssa", "SSA subtitle file"),
+                    (".sub", "SUB subtitle file"),
+                ],
+            )
+            or []
+        )
 
         # Cache for subtitle file information
         self.subtitle_info_cache: dict[str, SubtitleInfo] = {}
@@ -433,15 +439,18 @@ class FileHandler:
         self.last_directory: str = str(self.config_manager.get_value("last_directory", default="") or "")
 
         # Batch settings
-        self.batch_settings: dict[str, Any] = self.config_manager.get_value(
-            "batch_settings",
-            default={
-                "name_pattern": "{filename}_{language}{ext}",
-                "overwrite_mode": "ask",  # ask, overwrite, rename, skip
-                "output_directory": "",
-                "preserve_folder_structure": True,
-            },
-        ) or {}
+        self.batch_settings: dict[str, Any] = (
+            self.config_manager.get_value(
+                "batch_settings",
+                default={
+                    "name_pattern": "{filename}_{language}{ext}",
+                    "overwrite_mode": "ask",  # ask, overwrite, rename, skip
+                    "output_directory": "",
+                    "preserve_folder_structure": True,
+                },
+            )
+            or {}
+        )
 
         # Thread lock for thread safety (instance lock, separate from class lock)
         self._lock = threading.RLock()  # type: ignore[assignment]
@@ -672,7 +681,9 @@ class FileHandler:
                 self.config_manager.set_value("batch_settings", self.batch_settings)
                 logger.debug(f"Updated batch settings: {self.batch_settings}")
 
-    def get_output_path(self, file_path: str, target_lang: str, progress_callback: Callable[..., Any] | None = None) -> str | None:
+    def get_output_path(
+        self, file_path: str, target_lang: str, progress_callback: Callable[..., Any] | None = None
+    ) -> str | None:
         """Get output file path and handle conflicts
 
         Args:

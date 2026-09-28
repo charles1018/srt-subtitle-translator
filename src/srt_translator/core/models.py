@@ -810,9 +810,7 @@ class ModelManager:
             return {"id": model_name, "name": model_name, "provider": "openai", **openai_models[model_name]}
         return {}
 
-    def get_recommended_model(
-        self, task_type: str = "translation", provider: str | None = None
-    ) -> ModelInfo | None:
+    def get_recommended_model(self, task_type: str = "translation", provider: str | None = None) -> ModelInfo | None:
         """根據任務類型獲取推薦模型
 
         參數:
@@ -822,9 +820,7 @@ class ModelManager:
         回傳:
             推薦的模型資訊，若無適合的則回傳 None
         """
-        available_providers = (
-            [provider] if provider else self.config.get("default_providers", ["llamacpp", "openai"])
-        )
+        available_providers = [provider] if provider else self.config.get("default_providers", ["llamacpp", "openai"])
 
         # 定義不同任務的能力權重
         task_weights = {
@@ -982,9 +978,7 @@ class ModelManager:
         except Exception as e:
             return False, f"連線失敗: {e!s}"
 
-    async def test_model_connection(
-        self, model_name: str, provider: str, api_key: str | None = None
-    ) -> dict[str, Any]:
+    async def test_model_connection(self, model_name: str, provider: str, api_key: str | None = None) -> dict[str, Any]:
         """測試與指定模型的連線
 
         參數:
@@ -1076,9 +1070,7 @@ class ModelManager:
 
             default_generation_settings = props_data.get("default_generation_settings", {})
             slot_n_ctx = (
-                default_generation_settings.get("n_ctx")
-                if isinstance(default_generation_settings, dict)
-                else None
+                default_generation_settings.get("n_ctx") if isinstance(default_generation_settings, dict) else None
             )
             if (not isinstance(slot_n_ctx, int) or slot_n_ctx <= 0) and slots_data and isinstance(slots_data[0], dict):
                 slot_n_ctx = slots_data[0].get("n_ctx")
@@ -1101,7 +1093,9 @@ class ModelManager:
             for model_data in models:
                 model_id = str(model_data.get("id") or Path(model_path).name or "unknown")
                 display_source = model_path if isinstance(model_path, str) and model_path else model_id
-                display_name = Path(display_source).stem if "/" in display_source or "\\" in display_source else display_source
+                display_name = (
+                    Path(display_source).stem if "/" in display_source or "\\" in display_source else display_source
+                )
 
                 meta = model_data.get("meta", {})
                 n_params = meta.get("n_params", 0) if isinstance(meta, dict) else 0

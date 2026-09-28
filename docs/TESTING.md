@@ -192,6 +192,7 @@ def test_clean_text_with_multiple_spaces_returns_single_space():
 ```python
 import pytest
 
+
 @pytest.fixture
 def sample_config():
     """提供範例配置資料"""
@@ -199,6 +200,7 @@ def sample_config():
         "model": "llama3.2",
         "timeout": 300,
     }
+
 
 def test_config_loading(sample_config):
     """測試配置載入"""
@@ -210,6 +212,7 @@ def test_config_loading(sample_config):
 ```python
 import pytest
 from srt_translator.utils.errors import ConfigError
+
 
 def test_invalid_config_raises_error():
     """測試無效配置應拋出錯誤"""
@@ -223,6 +226,7 @@ def test_invalid_config_raises_error():
 
 ```python
 import pytest
+
 
 @pytest.mark.asyncio
 async def test_async_translation():
@@ -241,7 +245,7 @@ async def test_async_translation():
 def test_api_call_with_mock(mocker):
     """測試 API 呼叫（使用 mock）"""
     # 模擬 HTTP 請求
-    mock_get = mocker.patch('requests.get')
+    mock_get = mocker.patch("requests.get")
     mock_get.return_value.json.return_value = {"result": "success"}
 
     result = call_api()

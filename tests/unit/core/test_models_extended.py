@@ -47,6 +47,7 @@ class TestModelManagerAPIKeyOperations:
         assert manager.api_keys == {}
         mock_open.assert_not_called()
 
+
 class TestModelManagerConfigOperations:
     """測試配置操作"""
 

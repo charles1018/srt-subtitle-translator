@@ -353,12 +353,14 @@ xdg-open htmlcov/index.html
 import pytest
 from srt_translator.core.config import ConfigManager
 
+
 def test_config_manager_singleton():
     """測試 ConfigManager 單例模式"""
     config1 = ConfigManager.get_instance("app")
     config2 = ConfigManager.get_instance("app")
 
     assert config1 is config2
+
 
 def test_get_config_value():
     """測試獲取配置值"""
@@ -375,6 +377,7 @@ def test_get_config_value():
 ```python
 import pytest
 from srt_translator.translation.client import TranslationClient
+
 
 @pytest.mark.asyncio
 async def test_translate_text(mock_openai_client):
@@ -397,6 +400,7 @@ async def test_translate_text(mock_openai_client):
 import pytest
 from srt_translator.core.cache import CacheManager
 
+
 @pytest.fixture
 def cache_manager(tmp_path):
     """快取管理器 fixture"""
@@ -406,22 +410,14 @@ def cache_manager(tmp_path):
     # 清理
     db_path.unlink(missing_ok=True)
 
+
 def test_cache_save_and_get(cache_manager):
     """測試快取儲存與讀取"""
     # 儲存
-    cache_manager.store_translation(
-        "Hello",
-        "你好",
-        [],
-        "test-model"
-    )
+    cache_manager.store_translation("Hello", "你好", [], "test-model")
 
     # 讀取
-    cached = cache_manager.get_cached_translation(
-        "Hello",
-        [],
-        "test-model"
-    )
+    cached = cache_manager.get_cached_translation("Hello", [], "test-model")
 
     assert cached == "你好"
 ```
@@ -556,7 +552,9 @@ logger.error(f"發生錯誤: {e}")
 
 ```python
 # 在想要中斷的地方加入
-import pdb; pdb.set_trace()
+import pdb
+
+pdb.set_trace()
 
 # 或使用 Python 3.7+ 的 breakpoint()
 breakpoint()

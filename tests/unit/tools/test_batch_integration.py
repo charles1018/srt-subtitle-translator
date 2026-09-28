@@ -35,13 +35,9 @@ class TestTranslationServiceStructureText:
             service.config_manager = MagicMock()
             service.config_manager.get_value.side_effect = lambda _key, default=None: default
             service.prompt_manager = MagicMock()
-            service.prompt_manager.get_batch_line_mapping_instruction.return_value = (
-                "Translate each line 1:1."
-            )
+            service.prompt_manager.get_batch_line_mapping_instruction.return_value = "Translate each line 1:1."
             service.cache_service = None
-            service._post_process_translation = MagicMock(
-                side_effect=lambda orig, trans: trans
-            )
+            service._post_process_translation = MagicMock(side_effect=lambda orig, trans: trans)
             service.translate_text = AsyncMock()
             service.translate_batch = AsyncMock()
             return service
@@ -56,9 +52,7 @@ class TestTranslationServiceStructureText:
         # Mock translate_text to return correct 3-line translation
         service.translate_text.return_value = "你好\n世界\n再見"
 
-        result = await service._translate_batch_structure_text(
-            subs, batch_indices, "llamacpp", "test-model", 5
-        )
+        result = await service._translate_batch_structure_text(subs, batch_indices, "llamacpp", "test-model", 5)
 
         assert result == ["你好", "世界", "再見"]
         service.translate_text.assert_called_once()
@@ -78,9 +72,7 @@ class TestTranslationServiceStructureText:
         # Translation should also use literal \n
         service.translate_text.return_value = "你好\\n世界\n再見\\n朋友"
 
-        result = await service._translate_batch_structure_text(
-            subs, batch_indices, "llamacpp", "test-model", 5
-        )
+        result = await service._translate_batch_structure_text(subs, batch_indices, "llamacpp", "test-model", 5)
 
         assert result == ["你好\n世界", "再見\n朋友"]
 
@@ -97,9 +89,7 @@ class TestTranslationServiceStructureText:
         # Fallback should use translate_batch
         service.translate_batch.return_value = ["你好", "世界", "再見"]
 
-        result = await service._translate_batch_structure_text(
-            subs, batch_indices, "llamacpp", "test-model", 5
-        )
+        result = await service._translate_batch_structure_text(subs, batch_indices, "llamacpp", "test-model", 5)
 
         # Should have fallen back to translate_batch
         assert service.translate_text.call_count == 2  # 2 retries
@@ -118,9 +108,7 @@ class TestTranslationServiceStructureText:
 
         service.translate_batch.return_value = ["你好", "世界"]
 
-        await service._translate_batch_structure_text(
-            subs, batch_indices, "llamacpp", "test-model", 5
-        )
+        await service._translate_batch_structure_text(subs, batch_indices, "llamacpp", "test-model", 5)
 
         assert service.translate_text.call_count == 2
         service.translate_batch.assert_called_once()
@@ -135,9 +123,7 @@ class TestTranslationServiceStructureText:
         service.translate_text.return_value = ""
         service.translate_batch.return_value = ["你好"]
 
-        result = await service._translate_batch_structure_text(
-            subs, batch_indices, "llamacpp", "test-model", 5
-        )
+        result = await service._translate_batch_structure_text(subs, batch_indices, "llamacpp", "test-model", 5)
 
         assert result == ["你好"]
 
@@ -151,9 +137,7 @@ class TestTranslationServiceStructureText:
         service.translate_text.side_effect = RuntimeError("API error")
         service.translate_batch.return_value = ["你好", "世界"]
 
-        result = await service._translate_batch_structure_text(
-            subs, batch_indices, "llamacpp", "test-model", 5
-        )
+        result = await service._translate_batch_structure_text(subs, batch_indices, "llamacpp", "test-model", 5)
 
         assert result == ["你好", "世界"]
 
@@ -161,17 +145,13 @@ class TestTranslationServiceStructureText:
     async def test_post_process_called(self):
         """Test that post-processing is applied to each translation."""
         service = self._make_service()
-        service._post_process_translation = MagicMock(
-            side_effect=lambda orig, trans: f"[{trans}]"
-        )
+        service._post_process_translation = MagicMock(side_effect=lambda orig, trans: f"[{trans}]")
         subs = self._make_mock_subs(["Hello", "World"])
         batch_indices = [0, 1]
 
         service.translate_text.return_value = "你好\n世界"
 
-        result = await service._translate_batch_structure_text(
-            subs, batch_indices, "llamacpp", "test-model", 5
-        )
+        result = await service._translate_batch_structure_text(subs, batch_indices, "llamacpp", "test-model", 5)
 
         assert result == ["[你好]", "[世界]"]
         assert service._post_process_translation.call_count == 2
@@ -189,9 +169,7 @@ class TestTranslationServiceStructureText:
             "你好\n世界",  # correct 2 lines
         ]
 
-        result = await service._translate_batch_structure_text(
-            subs, batch_indices, "llamacpp", "test-model", 5
-        )
+        result = await service._translate_batch_structure_text(subs, batch_indices, "llamacpp", "test-model", 5)
 
         assert result == ["你好", "世界"]
         assert service.translate_text.call_count == 2
@@ -205,9 +183,6 @@ class TestTranslationServiceStructureText:
 
         service.translate_text.return_value = "\n你好\n\n"
 
-        result = await service._translate_batch_structure_text(
-            subs, [0, 1, 2], "llamacpp", "test-model", 5
-        )
+        result = await service._translate_batch_structure_text(subs, [0, 1, 2], "llamacpp", "test-model", 5)
 
         assert result == ["", "你好", ""]
-

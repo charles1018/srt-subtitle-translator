@@ -37,9 +37,7 @@ def mock_all_services_for_performance(mock_translation_client, mock_translation_
     async def mock_translate_text(text, context, llm_type, model, current_index=None):
         return mock_translation_responses.get(text, f"[Mock翻譯] {text}")
 
-    async def mock_translate_batch(
-        texts_with_context, llm_type, model, concurrent_limit=5, current_indices=None
-    ):
+    async def mock_translate_batch(texts_with_context, llm_type, model, concurrent_limit=5, current_indices=None):
         return [mock_translation_responses.get(item[0], f"[Mock翻譯] {item[0]}") for item in texts_with_context]
 
     # 建立 Mock TranslationService
@@ -150,9 +148,7 @@ async def test_translation_speed(sample_srt_path: Path, mock_all_services_for_pe
     texts_with_context = [(sub.text, [sub.text]) for sub in input_subs]
 
     start_time = time.time()
-    await translation_service.translate_batch(
-        texts_with_context, "openai", "test-model", concurrent_limit=3
-    )
+    await translation_service.translate_batch(texts_with_context, "openai", "test-model", concurrent_limit=3)
     batch_time = time.time() - start_time
 
     # 驗證批量翻譯速度

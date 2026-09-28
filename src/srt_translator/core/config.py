@@ -71,9 +71,7 @@ class ConfigManager:
             )
         instance_key = cls._build_instance_key(config_type, config_dir=config_dir, config_path=config_path)
         if instance_key not in cls._instances:
-            cls._instances[instance_key] = ConfigManager(
-                config_type, config_dir=config_dir, config_path=config_path
-            )
+            cls._instances[instance_key] = ConfigManager(config_type, config_dir=config_dir, config_path=config_path)
         return cls._instances[instance_key]
 
     def __init__(self, config_type: str = "app", config_dir: str | None = None, config_path: str | None = None):

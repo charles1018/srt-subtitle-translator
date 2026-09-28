@@ -230,10 +230,13 @@ class TestAssemble:
     def test_roundtrip_preserves_literal_backslash_n(self, temp_dir: Path):
         """字面 \\n 不應在 roundtrip 後被轉成真實換行。"""
         source = temp_dir / "literal.srt"
-        source.write_text("""1
+        source.write_text(
+            """1
 00:00:01,000 --> 00:00:03,000
 Type \\n literally
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
 
         prefix = str(source.with_suffix(""))
         extract(str(source))
@@ -279,10 +282,13 @@ class TestQA:
     def test_qa_count_mismatch(self, temp_dir: Path, sample_srt_file: Path):
         """字幕數量不匹配 QA 失敗"""
         short_srt = temp_dir / "short.srt"
-        short_srt.write_text("""1
+        short_srt.write_text(
+            """1
 00:00:01,000 --> 00:00:03,000
 Hello
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
 
         result = qa(str(sample_srt_file), str(short_srt))
         assert result.is_valid is False
@@ -291,7 +297,8 @@ Hello
     def test_qa_timestamp_mismatch(self, temp_dir: Path, sample_srt_file: Path):
         """timestamp 不匹配產生錯誤"""
         modified_srt = temp_dir / "modified.srt"
-        modified_srt.write_text("""1
+        modified_srt.write_text(
+            """1
 00:00:01,000 --> 00:00:03,000
 Hello, world!
 
@@ -302,7 +309,9 @@ This is a test subtitle.
 3
 00:00:07,000 --> 00:00:09,000
 Testing SRT translation.
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
 
         result = qa(str(sample_srt_file), str(modified_srt))
         assert result.is_valid is False
@@ -346,10 +355,13 @@ class TestCpsAudit:
         """高 CPS 字幕被標記"""
         # 0.5 秒顯示 20 個字 → CPS = 40
         srt = temp_dir / "fast.srt"
-        srt.write_text("""1
+        srt.write_text(
+            """1
 00:00:00,000 --> 00:00:00,500
 這是一段非常長的字幕文字用來測試每秒字元數的計算是否正確
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
 
         report = cps_audit(str(srt), max_cps=17.0)
         assert report.problematic_count >= 1
@@ -358,10 +370,13 @@ class TestCpsAudit:
     def test_flags_long_lines(self, temp_dir: Path):
         """過長行被標記"""
         srt = temp_dir / "long.srt"
-        srt.write_text("""1
+        srt.write_text(
+            """1
 00:00:00,000 --> 00:00:05,000
 這是一段超過二十二個字元的非常非常非常非常長的字幕文字行
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
 
         report = cps_audit(str(srt), max_line_length=22)
         assert report.problematic_count >= 1
@@ -370,12 +385,15 @@ class TestCpsAudit:
     def test_flags_too_many_lines(self, temp_dir: Path):
         """超過行數上限被標記"""
         srt = temp_dir / "lines.srt"
-        srt.write_text("""1
+        srt.write_text(
+            """1
 00:00:00,000 --> 00:00:05,000
 第一行
 第二行
 第三行
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
 
         report = cps_audit(str(srt), max_lines=2)
         assert report.problematic_count >= 1
@@ -384,10 +402,13 @@ class TestCpsAudit:
     def test_flags_short_duration(self, temp_dir: Path):
         """過短持續時間被標記"""
         srt = temp_dir / "short.srt"
-        srt.write_text("""1
+        srt.write_text(
+            """1
 00:00:00,000 --> 00:00:00,500
 Hi
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
 
         report = cps_audit(str(srt), min_duration_ms=1000)
         assert report.problematic_count >= 1
@@ -407,14 +428,17 @@ Hi
     def test_report_summary_counts(self, temp_dir: Path):
         """summary 統計正確"""
         srt = temp_dir / "mixed.srt"
-        srt.write_text("""1
+        srt.write_text(
+            """1
 00:00:00,000 --> 00:00:05,000
 正常字幕
 
 2
 00:00:05,500 --> 00:00:06,000
 這是一段非常長的字幕文字用來測試每秒字元數的計算
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
 
         report = cps_audit(str(srt))
         total_issues = sum(report.summary.values())
@@ -423,11 +447,14 @@ Hi
     def test_multiline_newlines_not_counted_in_cps(self, temp_dir: Path):
         """CPS 計算不應把換行符算成可見字元。"""
         srt = temp_dir / "multiline.srt"
-        srt.write_text("""1
+        srt.write_text(
+            """1
 00:00:00,000 --> 00:00:02,000
 第一行
 第二行
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
 
         report = cps_audit(str(srt), max_cps=999.0)
         assert report.avg_cps == 3.0

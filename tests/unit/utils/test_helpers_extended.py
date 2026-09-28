@@ -634,7 +634,9 @@ class TestSystemInfo:
 
         with (
             patch.object(helpers_module, "metadata", mock_metadata),
-            patch.object(helpers_module.importlib, "import_module", side_effect=import_module_side_effect) as mock_import,
+            patch.object(
+                helpers_module.importlib, "import_module", side_effect=import_module_side_effect
+            ) as mock_import,
         ):
             packages = check_python_packages()
 

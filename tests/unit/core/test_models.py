@@ -516,6 +516,7 @@ class TestModelManagerDefaultModels:
 
         assert model_name == "gpt-4.1-mini"
 
+
 class TestModelManagerModelInfo:
     """測試模型資訊獲取"""
 

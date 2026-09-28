@@ -244,6 +244,7 @@ from openai import OpenAI
 from srt_translator.core.config import ConfigManager
 from srt_translator.utils import safe_execute
 
+
 class TranslationManager:
     """翻譯管理器類別"""
 
@@ -254,6 +255,7 @@ class TranslationManager:
     def translate_text(self, text: str, context: List[str]) -> str:
         """翻譯文本"""
         pass
+
 
 # ❌ 錯誤
 class translationManager:  # 類別名稱應為 PascalCase
@@ -268,11 +270,8 @@ class translationManager:  # 類別名稱應為 PascalCase
 ```python
 from typing import List, Optional, Dict, Any
 
-def get_translation(
-    text: str,
-    context: List[str],
-    model: str = "gpt-4o-mini"
-) -> Optional[str]:
+
+def get_translation(text: str, context: List[str], model: str = "gpt-4o-mini") -> Optional[str]:
     """獲取翻譯結果
 
     參數:
@@ -291,11 +290,7 @@ def get_translation(
 使用 Google 風格的文檔字串：
 
 ```python
-def translate_batch(
-    texts: List[str],
-    source_lang: str,
-    target_lang: str
-) -> List[str]:
+def translate_batch(texts: List[str], source_lang: str, target_lang: str) -> List[str]:
     """批量翻譯文本
 
     Args:
@@ -357,6 +352,7 @@ uv run pytest --cov=src/srt_translator --cov-report=html
 import pytest
 from srt_translator.core.config import ConfigManager
 
+
 def test_get_config_value():
     """測試獲取配置值"""
     config = ConfigManager.get_instance("app")
@@ -374,6 +370,7 @@ def test_get_config_value():
 import pytest
 from srt_translator.services.factory import ServiceFactory
 
+
 @pytest.mark.asyncio
 async def test_translation_integration():
     """測試翻譯整合流程"""
@@ -381,19 +378,10 @@ async def test_translation_integration():
     cache_service = ServiceFactory.get_cache_service()
 
     # 測試翻譯和快取整合
-    result = await translation_service.translate_text(
-        "Hello",
-        [],
-        "openai",
-        "gpt-4o-mini"
-    )
+    result = await translation_service.translate_text("Hello", [], "openai", "gpt-4o-mini")
 
     # 驗證結果被快取
-    cached = cache_service.get_cached_translation(
-        "Hello",
-        [],
-        "gpt-4o-mini"
-    )
+    cached = cache_service.get_cached_translation("Hello", [], "gpt-4o-mini")
 
     assert cached == result
 ```
@@ -406,6 +394,7 @@ async def test_translation_integration():
 import pytest
 from pathlib import Path
 
+
 @pytest.mark.asyncio
 async def test_file_translation_e2e(tmp_path):
     """測試完整檔案翻譯流程"""
@@ -416,12 +405,7 @@ async def test_file_translation_e2e(tmp_path):
     input_file.write_text("1\n00:00:01,000 --> 00:00:03,000\nHello")
 
     # 執行翻譯
-    success = await translate_file(
-        str(input_file),
-        str(output_file),
-        "English",
-        "Chinese"
-    )
+    success = await translate_file(str(input_file), str(output_file), "English", "Chinese")
 
     assert success
     assert output_file.exists()
