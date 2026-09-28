@@ -14,7 +14,7 @@
 ### Changed
 
 - **依賴升級並重建 `uv.lock`**：runtime `openai` 2.41→**3.19.2**（major）、`google-genai` 2.8→2.25、`aiohttp` 3.14.1→3.14.3、`tiktoken` 0.13→0.14、`tkinterdnd2` 0.5→0.6.3、`python-dotenv` 1.2.3；dev `ruff` 0.16.9、`mypy` 2.3.1、`pytest` 9.1.1、`pytest-mock` 3.16.0；`pyproject.toml` / `requirements.txt` 下限同步。openai 3.x 經假 server 實測確認 `AsyncOpenAI` 建構、`extra_body` 轉送、`model_extra.reasoning_content` 與例外類別皆相容，程式碼無需修改
-- **CI 工作流更新**：`actions/checkout` v4→v7、`astral-sh/setup-uv` v5→v10（改用 Node 24 runtime，脫離已淘汰的 Node 20）；測試矩陣加入 Python 3.13（對應 classifiers 宣告的支援版本），現為 3.10 / 3.12 / 3.13
+- **CI 工作流更新**：`actions/checkout` v4→v7、`astral-sh/setup-uv` v5→v10.2.0（上游已不發布浮動 major tag，須寫完整版本）（改用 Node 24 runtime，脫離已淘汰的 Node 20）；測試矩陣加入 Python 3.13（對應 classifiers 宣告的支援版本），現為 3.10 / 3.12 / 3.13
 - **`chardet` 仍維持 `<6`，但理由更新**：`requests` 2.34 已支援 chardet `<8`，原相容性警告理由不再成立；改因 chardet 7 實測對 Shift-JIS / Big5 / GBK 信心值降至 0.34–0.66（會觸發低信心警告），且 cp1252 誤判為 Windows-1251
 
 ### Removed
