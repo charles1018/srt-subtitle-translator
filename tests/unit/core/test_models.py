@@ -764,10 +764,12 @@ class TestModelManagerAsync:
     @pytest.mark.asyncio
     async def test_get_provider_status(self, manager):
         """測試獲取提供者狀態"""
-        status = await manager.get_provider_status()
+        # mock 掉 llama.cpp 連線探測，避免測試真的連到 localhost（沙箱中可能卡住）
+        with patch.object(manager, "_test_llamacpp_connection", AsyncMock(return_value=(True, "ok"))):
+            status = await manager.get_provider_status()
 
         assert isinstance(status, dict)
-        assert "llamacpp" in status
+        assert status["llamacpp"] is True
         assert "openai" in status
         assert "google" in status
 
