@@ -84,7 +84,7 @@ uv run pytest tests/unit/file_handling tests/unit/tools/test_srt_tools.py tests/
 
 目前 `chardet` 維持在 `<6`：
 
-- 現行實測中，較新的 `chardet` 版本會與 `requests` 的支援範圍產生相容性警告。
+- `requests` 2.34 起已支援 chardet `<8`，原本的相容性警告理由已不成立；但 2026-09-28 實測 chardet 7.6 對 Shift-JIS / Big5 / GBK 的信心值降到 0.34–0.66（低於 handler 的 0.7 警告門檻），且 cp1252 會誤判為 Windows-1251，編碼偵測行為退化。
 - 這個專案主要把 `chardet` 用在字幕編碼偵測，沒有必要為了追最新版本去承擔額外噪音。
 - 若未來要重新放寬版本，請先驗證：
   - `uv run pytest -m "not gui"`
