@@ -1,0 +1,11 @@
+# Git pre-commit hooks（安裝：uv run pre-commit install）
+# 使用 local hook 經 uv 執行，ruff 版本與 uv.lock / CI 一致
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format --force-exclude
+        language: system
+        types_or: [python, pyi, markdown]
+        require_serial: true

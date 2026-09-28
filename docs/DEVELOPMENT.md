@@ -458,34 +458,18 @@ uv run mypy --strict src/srt_translator
 uv run mypy src/srt_translator/core/config.py
 ```
 
-### Pre-commit Hooks（可選）
+### Pre-commit Hooks
 
-安裝 pre-commit：
+專案已附 `.pre-commit-config.yaml`，commit 前自動執行 `ruff format`（CI 也會以 `ruff format --check` 檢查）。clone 後執行一次安裝：
 
 ```bash
-pip install pre-commit
-pre-commit install
+uv sync --all-extras --dev
+uv run pre-commit install
 ```
 
-建立 `.pre-commit-config.yaml`：
-
-```yaml
-repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.9
-    hooks:
-      - id: ruff
-        args: [--fix]
-      - id: ruff-format
-
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
-    hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-yaml
-      - id: check-added-large-files
-```
+- hook 透過 `uv run` 執行，ruff 版本與 `uv.lock`、CI 一致
+- 若檔案被重新排版，該次 commit 會中止；檢查變更後重新 `git add` 再 commit 即可
+- 手動對全 repo 執行：`uv run pre-commit run --all-files`
 
 ---
 
