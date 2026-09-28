@@ -25,6 +25,18 @@ sys.path.insert(0, str(SRC_DIR))
 # ============================================================
 
 
+@pytest.fixture(autouse=True)
+def isolated_config_dir(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """每個測試使用獨立的 CONFIG_DIR，避免寫入 repo 的真實 config/ 或讓設定值在測試間洩漏
+
+    未明確指定 config_dir 的 ConfigManager 會落在此暫存目錄；
+    需要自訂目錄的測試仍可自行覆寫 CONFIG_DIR。
+    """
+    config_dir = tmp_path_factory.mktemp("config")
+    monkeypatch.setenv("CONFIG_DIR", str(config_dir))
+    return config_dir
+
+
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
     """提供臨時目錄，測試結束後自動清理

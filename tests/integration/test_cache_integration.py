@@ -4,6 +4,7 @@
 """
 
 from srt_translator.core.cache import CacheManager
+from srt_translator.core.config import ConfigManager
 
 
 class TestCacheConfigIntegration:
@@ -29,8 +30,9 @@ class TestCacheConfigIntegration:
         initial_cache_size = len(cache_manager.memory_cache)
         assert initial_cache_size > 0
 
-        # 更新配置（降低記憶體快取限制）
-        cache_manager.max_memory_cache = 5
+        # 更新配置（降低記憶體快取限制）：update_config 會從 ConfigManager 重新讀值，
+        # 因此必須寫入配置，而非直接改 cache_manager 屬性
+        ConfigManager.get_instance("cache").set_value("max_memory_cache", 5)
         cache_manager.update_config()
 
         # 驗證記憶體快取被清理

@@ -11,6 +11,12 @@
 
 - **`GlossaryManager` 專屬單元測試**：新增 `tests/unit/core/test_glossary.py`（20 個測試），補上先前只有間接覆蓋的缺口；重點鎖定 `apply_glossaries` 語言篩選行為（不帶語言參數時一律套用，對應 `-g` 顯式啟用的輸出端字面替換設計）、長來源優先替換、大小寫敏感與匯出/匯入往返
 
+### Changed
+
+- **依賴升級並重建 `uv.lock`**：runtime `openai` 2.41→**3.19.2**（major）、`google-genai` 2.8→2.25、`aiohttp` 3.14.1→3.14.3、`tiktoken` 0.13→0.14、`tkinterdnd2` 0.5→0.6.3、`python-dotenv` 1.2.3；dev `ruff` 0.16.9、`mypy` 2.3.1、`pytest` 9.1.1、`pytest-mock` 3.16.0；`pyproject.toml` / `requirements.txt` 下限同步。openai 3.x 經假 server 實測確認 `AsyncOpenAI` 建構、`extra_body` 轉送、`model_extra.reasoning_content` 與例外類別皆相容，程式碼無需修改
+- **CI 工作流更新**：`actions/checkout` v4→v7、`astral-sh/setup-uv` v5→v10（改用 Node 24 runtime，脫離已淘汰的 Node 20）；測試矩陣加入 Python 3.13（對應 classifiers 宣告的支援版本），現為 3.10 / 3.12 / 3.13
+- **`chardet` 仍維持 `<6`，但理由更新**：`requests` 2.34 已支援 chardet `<8`，原相容性警告理由不再成立；改因 chardet 7 實測對 Shift-JIS / Big5 / GBK 信心值降至 0.34–0.66（會觸發低信心警告），且 cp1252 誤判為 Windows-1251
+
 ### Removed
 
 - **sdist 不再納入 `CLAUDE.md`**：`CLAUDE.md` 為本地開發指引、未納入 git 追蹤，卻列在 `pyproject.toml` 的 sdist `include`，導致乾淨 clone 打包時來源不一致；移除該項使打包只納入實際追蹤的檔案
@@ -21,6 +27,9 @@
 - **GitHub Actions CI**：新增 `.github/workflows/ci.yml`，於 push / PR 到 `main` 時在 Python 3.10 與 3.12 上跑 `ruff check`、`mypy src/srt_translator`、`pytest -m "not gui"`（排除需顯示器的 GUI 測試，保持 headless 可跑）
 
 ### Fixed
+
+- **測試會改寫使用者真實設定檔**：`test_cache.py` 的 `test_update_config*` 透過 `ConfigManager.set_value()` 寫入 repo 的 `config/cache_config.json`（把本機 `max_memory_cache` 改成 5、`auto_cleanup_days` 改成 15）。`tests/conftest.py` 新增 autouse fixture `isolated_config_dir`，每個測試都把 `CONFIG_DIR` 指向獨立暫存目錄，測試不再碰觸真實 `config/`
+- **CI 自建立以來持續失敗**：`test_cache_config_update_triggers_cleanup` 直接改 `cache_manager.max_memory_cache` 屬性，但 `update_config()` 會從配置重新讀值並覆蓋；本機只因上述污染剛好讀到 5 才通過，乾淨的 CI 環境讀到預設 1000 而失敗。改為透過 `ConfigManager` 設值，測試真正驗證「配置更新觸發清理」
 
 - **mypy 型別檢查恢復全綠**：`translation/client.py` 的 `_apply_netflix_style_to_batch_response` 補上 `post_processor is None` 防護（呼叫端本已保證非 None，此處僅收斂型別、行為不變），消除唯一的 `union-attr` 既有錯誤
 
