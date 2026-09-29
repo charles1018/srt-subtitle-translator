@@ -89,3 +89,34 @@ jobs:
         run: |
           uv sync --dev --python 3.12
           uv run python tools/gen_golden.py --check
+
+  rust-windows:
+    name: Rust port (Windows tests)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: rust
+    steps:
+      # golden 測試會讀 repo 內的字幕 fixture，不可轉成 CRLF
+      - name: Disable CRLF conversion
+        working-directory: .
+        run: git config --global core.autocrlf false
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('rust/Cargo.lock') }}
+
+      - name: Tests
+        run: cargo test --locked

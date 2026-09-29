@@ -15,7 +15,12 @@ pub enum Error {
     File { message: String, details: Details },
     #[error("[1900] {message}")]
     Validation { message: String, details: Details },
+    /// 使用者停止翻譯任務（見 `service::TaskControl`）。
+    #[error("[1300] 翻譯已停止")]
+    Cancelled,
 }
+
+static EMPTY_DETAILS: std::sync::LazyLock<Details> = std::sync::LazyLock::new(Details::new);
 
 impl Error {
     pub fn file(message: impl Into<String>) -> Self {
@@ -33,7 +38,7 @@ impl Error {
     pub fn error_code(&self) -> u32 {
         match self {
             Self::Config { .. } => 1100,
-            Self::Translation { .. } => 1300,
+            Self::Translation { .. } | Self::Cancelled => 1300,
             Self::File { .. } => 1400,
             Self::Validation { .. } => 1900,
         }
@@ -45,6 +50,7 @@ impl Error {
             | Self::Translation { details, .. }
             | Self::File { details, .. }
             | Self::Validation { details, .. } => details,
+            Self::Cancelled => &EMPTY_DETAILS,
         }
     }
 }

@@ -105,7 +105,14 @@ Python → Rust 對應：
   - 與 Python 的刻意差異：`-o/--output-dir` 不寫回 `file_handler_config.json`（Python 會永久寫入）；Google 模型列表不額外送請求驗證金鑰；目錄掃描結果依路徑排序
   - 既有限制（與 Python 相同）：.vtt/.ass 以 SRT 解析器讀取；structure-text 模式會把空白字幕也送進批次並套上譯文；`glossary activate` 只在單次執行有效（翻譯時用 `translate -g`）
   - 實機觀察：llama.cpp b11286（CUDA）在 `-np 3` 並行解碼時曾發生一次 `CUDA error: an illegal instruction`（dmesg NVRM Xid 13/43）導致 server 崩潰，重啟後同負載未重現；與 client 無關，但若頻繁發生可考慮退回 skill 記載的已驗證 build
-- [ ] 階段 5：GUI（另案評估）、打包發佈；可選：日誌寫檔、`translate` 進度與 Python GUI 的互動介面
+- [x] **階段 5a**（2026-09-29）：打包發佈 + GUI 前置 API（決策：先打包 Linux/Windows，GUI 採 Tauri v2＋純 HTML/JS 前端，理由為中文輸入法/CJK 排版/原生拖放）
+  - release profile（fat LTO、codegen-units 1、strip）：17.2MB → Linux 12.2MB / Windows 10.4MB；Windows MSVC 以 `rust/.cargo/config.toml` 靜態連結 CRT
+  - `.github/workflows/rust-release.yml`：推 `rust-v*` 標籤（須與 Cargo 版本一致）→ 兩平台先跑 `cargo test` → Linux 以 cargo-zigbuild 連結 glibc 2.28、Windows MSVC → 冒煙 → tar.gz / zip＋sha256 → **草稿** Release；`workflow_dispatch` 只產 artifact。`ci.yml` 新增 `rust-windows` 測試 job（checkout 前關閉 autocrlf，golden 會讀 repo 內字幕 fixture）
+  - 驗證：zig＋LTO 建置的 Linux 測試二進位 90 項全過；Windows GNU 交叉編譯（主程式＋測試）通過（本機無 wine，**Windows 上的測試尚未實際執行，待首次推送由 CI 驗證**）；actionlint 通過；打包內容解壓後於空目錄執行正常；打包的執行檔實機（Hy-MT2-7B，`-c 1 --no-cache`）日文 adult＋Netflix、英文雙語輸出與 Python **逐位元相同**
+  - `service::TaskControl`（暫停/繼續/停止）與 `translate_subtitle_file_with_control`：每批送出前檢查暫停（進行中批次會完成）、停止時中止進行中的請求且不寫輸出檔、回傳 `Error::Cancelled`；6 項行為測試，4 項變異（移除批次前檢查／寫檔前檢查／逐句路徑／structure-text 路徑不可中止）皆被抓到
+  - 與 Python 的刻意差異：Python 的 stop 只停止回報，背景仍跑完並寫出檔案；Python 的暫停卡在逐句進度回呼內，Rust 先回報完該批進度再於下一批前暫停
+  - 使用者須知（Python 既有行為）：`-o` 目錄不存在時默默輸出到輸入檔旁（已寫入 `packaging/README.txt`）
+- [ ] 階段 5b：Tauri v2 GUI（純 HTML/JS，無 npm）
 
 ## 6. 開發指令
 
@@ -115,4 +122,9 @@ cargo test                                   # 單元 + golden parity
 cargo clippy --all-targets -- -D warnings
 cargo fmt
 ../.venv/bin/python tools/gen_golden.py      # Python 行為改變後重新產生 golden（加 --local 納入 data/*.srt）
+
+# 發佈：更新 Cargo.toml version 後推標籤 rust-vX.Y.Z，CI 建立草稿 Release
+# 本機交叉編譯（需 zig：uv 裝 ziglang 後加進 PATH）
+cargo zigbuild --release --locked --target x86_64-unknown-linux-gnu.2.28
+cargo zigbuild --release --locked --target x86_64-pc-windows-gnu
 ```

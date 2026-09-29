@@ -5,7 +5,10 @@
 //!
 //! 已知限制（與 Python 相同）：所有格式都以 SRT 解析器讀取，.vtt/.ass 只有符合 SRT 區塊結構的部分會被翻譯。
 
+mod control;
 pub mod heuristics;
+
+pub use control::TaskControl;
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -387,6 +390,23 @@ impl TranslationService {
         progress: &(dyn Fn(usize, usize) + Sync),
         ask: Option<&dyn Fn(&Path) -> ConflictChoice>,
     ) -> Result<FileOutcome> {
+        self.translate_subtitle_file_with_control(path, job, output, progress, ask, None).await
+    }
+
+    /// 同 [`Self::translate_subtitle_file`]，可由 `control` 暫停/停止。
+    ///
+    /// 每個批次送出前檢查暫停（進行中的批次會完成）；停止時中止進行中的請求、
+    /// 不寫出輸出檔並回傳 [`Error::Cancelled`]。
+    pub async fn translate_subtitle_file_with_control(
+        &self,
+        path: &Path,
+        job: &FileJob,
+        output: &OutputSettings,
+        progress: &(dyn Fn(usize, usize) + Sync),
+        ask: Option<&dyn Fn(&Path) -> ConflictChoice>,
+        control: Option<&TaskControl>,
+    ) -> Result<FileOutcome> {
+        let control = control.cloned().unwrap_or_default();
         let started = Instant::now();
         *self.stats.lock().unwrap() = TranslationStats::default();
         let mut subs = SubRipFile::open(path)?;
@@ -416,17 +436,18 @@ impl TranslationService {
         let mut cursor = 0;
         progress(0, total);
         while cursor < total {
+            control.checkpoint().await?;
             let (batch_indices, translations): (Vec<usize>, Vec<String>) = if job.use_structure_text {
                 let indices: Vec<usize> = (cursor..(cursor + batch_size).min(total)).collect();
                 cursor += indices.len();
-                let t = self.translate_batch_structure_text(&snapshot, &indices, job).await;
+                let t = control.run(self.translate_batch_structure_text(&snapshot, &indices, job)).await?;
                 (indices, t)
             } else {
                 let run = heuristics::count_consecutive_batchable(cursor, &batchable, batch_size);
                 if run >= 2 {
                     let indices: Vec<usize> = (cursor..cursor + run).collect();
                     cursor += run;
-                    let t = self.translate_batch_structure_text(&snapshot, &indices, job).await;
+                    let t = control.run(self.translate_batch_structure_text(&snapshot, &indices, job)).await?;
                     (indices, t)
                 } else {
                     let mut indices = Vec::new();
@@ -445,9 +466,15 @@ impl TranslationService {
                         items.push((snapshot[idx].clone(), context));
                         current.push(Some(ci));
                     }
-                    let t = self
-                        .translate_batch(&items, &job.model_name, job.parallel_requests, &current, job.use_cache)
-                        .await;
+                    let t = control
+                        .run(self.translate_batch(
+                            &items,
+                            &job.model_name,
+                            job.parallel_requests,
+                            &current,
+                            job.use_cache,
+                        ))
+                        .await?;
                     (indices, t)
                 }
             };
@@ -477,6 +504,7 @@ impl TranslationService {
             }
         }
 
+        control.checkpoint().await?;
         let elapsed = format_elapsed(started.elapsed().as_secs_f64());
         if successful == 0 && failed > 0 {
             return Err(Error::Translation {
