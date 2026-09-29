@@ -131,6 +131,14 @@ Python → Rust 對應：
   - `rust-release.yml` 新增 `build-gui`：Linux（ubuntu-22.04）`.deb` + AppImage、Windows NSIS 安裝程式（currentUser、繁中介面、WebView2 下載啟動器）；檔名統一為 `srt-translator-gui_<版本>_*`＋sha256；標籤版號須與 CLI/GUI Cargo.toml 與 tauri.conf.json 一致；PR 改到 `rust/gui/**`、`rust/packaging/**` 或此 workflow 時也會建置（只產 artifact）
   - GUI 資料目錄（`app::gui_workdir`）：有 `CONFIG_DIR` 或目前目錄有 `config/` → 目前目錄（與 Python 共用）；執行檔旁有 `config/` → 可攜式；否則使用者資料目錄 `srt-subtitle-translator/`。GUI **不切換工作目錄**，改以絕對基準路徑解析快取/術語表/`.env`（`TranslateOptions.base_dir`、`open_cache_in`；CLI 基準為空路徑，行為不變）——實測切換目錄會使 AppImage 的 WebKitNetworkProcess（以相對路徑啟動）找不到而崩潰；AppImage 以 `OWD` 取回使用者原本的目錄
   - 驗證（本機 tauri-cli 2.12）：.deb 6.8MB（Depends: libwebkit2gtk-4.1-0, libgtk-3-0）、AppImage 84MB；AppImage 於空目錄啟動→設定建在 XDG 資料目錄且不寫入目前目錄、於含 config/ 的目錄啟動→沿用該設定；.deb 解出的執行檔同樣正確；Windows 安裝程式只由 CI 驗證
+- [x] **0.1.1**（2026-09-29）：發佈上述選資料夾輸出路徑修正；另修正 Windows 上測試以字串比較路徑分隔符的誤判
+
+### 下一步（建議順序，動手前先與使用者確認）
+
+1. 使用者回報 GUI 中文輸入法實測、Windows 版實際執行結果 → 有問題優先修，修完發 0.1.2
+2. PR #1 轉為正式並以 **merge commit**（非 squash，發佈標籤指向分支上的 commit）合併進 main；之後每項功能開獨立 PR
+3. 移植 Python 選單尚未移植的功能：快取管理（lib/CLI 已有，最便宜）→ 提示詞匯入/匯出/分析（需補 `analyze_prompt` golden）→ 統計報告 → 字幕格式轉換（可能需真正的 VTT/ASS 讀寫，先盤點）→ 從影片提取字幕（外部依賴，打包風險最高）
+4. Python 既有問題（兩版一起改）：Gemini `429 RESOURCE_EXHAUSTED` 錯誤分類（`client.py` `_classify_error` / Rust `client` 錯誤分類）
 
 ## 6. 開發指令
 
