@@ -483,6 +483,184 @@ def default_prompts_asset() -> dict:
     return manager._get_default_prompts()
 
 
+# ─── Translation client ─────────────────────────────────────
+
+CLIENT_MODEL_NAMES = [
+    "",
+    "Hy-MT2-7B-Q4_K_M.gguf",
+    "hunyuan-mt-1.8b",
+    "Qwen3.6-27B-UD-Q4_K_XL",
+    "qwen3.6-27b",
+    "Qwen3.5-9B-heretic",
+    "qwen3.5-9b@q4",
+    "qwen3-8b",
+    "qwen2.5-7b",
+    "Llama-3.1-8B",
+    "gemma-4-12b",
+    "gemma-3-4b",
+    "mistral-7b",
+    "some-model",
+]
+
+CLIENT_OPENAI_MODELS = ["gpt-4.1-mini", "gpt-5", "gpt-5.1-mini", "o3-mini", "o1", "gpt-4o", "chatgpt-4o-latest"]
+
+RATE_LIMIT_MESSAGES = [
+    "Rate limit reached. Please try again in 250ms.",
+    "Please try again in 62s",
+    "please try again in 1m2.5s",
+    "Please try again in 6m0s",
+    "no hint here",
+]
+
+ERROR_MESSAGES = [
+    "Rate limit exceeded",
+    "Error code: 429 - too many requests",
+    "Request timeout",
+    "Unauthorized: invalid api key",
+    "blocked by content_filter",
+    "Error code: 503 - Service Unavailable",
+    "Connection error.",
+    "Request timed out.",
+    "something else",
+]
+
+
+class _FakeCompletions:
+    def __init__(self, responses: list[dict]):
+        self.responses = list(responses)
+        self.calls: list[dict] = []
+
+    async def create(self, **kwargs):
+        from types import SimpleNamespace
+
+        params = dict(kwargs)
+        params.pop("timeout", None)
+        extra = params.pop("extra_body", None) or {}
+        body = {**params, **extra}
+        self.calls.append(json.loads(json.dumps(body, ensure_ascii=False)))
+        response = self.responses.pop(0) if self.responses else {"content": ""}
+        message = SimpleNamespace(
+            content=response.get("content"),
+            reasoning_content=response.get("reasoning_content"),
+            model_extra=None,
+        )
+        choice = SimpleNamespace(finish_reason=response.get("finish_reason", "stop"), message=message)
+        return SimpleNamespace(choices=[choice], usage=None)
+
+
+def _make_client(llm_type: str, content_type: str, netflix: bool):
+    from types import SimpleNamespace
+
+    client = TranslationClient.__new__(TranslationClient)
+    client.llm_type = llm_type
+    client.base_url = "http://localhost:8080"
+    client.api_key = "sk-test"
+    client._llamacpp_resolved_model_name = None
+    client.request_timestamps = []
+    client.token_usage = []
+    client.max_requests_per_minute = 500
+    client.max_tokens_per_minute = 200000
+    client.tokenizers = {}
+    client.pricing = {}
+    client.metrics = __import__("srt_translator.translation.client", fromlist=["ApiMetrics"]).ApiMetrics()
+    client.concurrency_controller = __import__(
+        "srt_translator.translation.client", fromlist=["AdaptiveConcurrencyController"]
+    ).AdaptiveConcurrencyController()
+    client.enable_netflix_style = netflix
+    client.post_processor = NetflixStylePostProcessor() if netflix else None
+    manager = new_prompt_manager("日文→繁體中文", True)
+    manager.set_content_type(content_type)
+    client.prompt_manager = manager
+    client.cache_manager = None
+    client.openai_client = SimpleNamespace(chat=SimpleNamespace(completions=None))
+    return client
+
+
+PIPELINE_CASES: list[dict] = [
+    {
+        "text": "メアちゃん、こっち来て",
+        "context": ["え？", "メアちゃん、こっち来て", "うん"],
+        "responses": [{"content": "[[JN0]]，過來吧。"}],
+    },
+    {"text": "メアちゃん、こっち来て", "context": [], "responses": [{"content": "JN0，過來"}]},
+    {"text": "こんにちは", "context": ["こんにちは"], "responses": [{"content": "こんにちは"}, {"content": "你好。"}]},
+    {"text": "こんにちは", "context": [], "responses": [{"content": "こんにちは"}, {"content": ""}]},
+    {"text": "こんにちは", "context": [], "responses": [{"content": '{"translation": "你好。"}'}]},
+    {"text": "こんにちは", "context": [], "responses": [{"content": "<think>推理中</think>你好"}]},
+    {
+        "text": "I went there when",
+        "context": ["Hi.", "I went there when", "it rained."],
+        "responses": [{"content": "我去那裡的時候"}],
+    },
+    {"text": "Hello there", "context": [], "responses": [{"content": "你好\n那邊"}]},
+    {"text": "The CEO spoke", "context": [], "responses": [{"content": "首席執行官說通脹增長了..."}]},
+    {
+        "text": "[BATCH: 2 lines]\nline1\nline2",
+        "context": [],
+        "responses": [{"content": "第一行，這是一句非常非常非常非常非常長的字幕內容。\n第二行。"}],
+    },
+    {"text": "Wait,", "context": [], "responses": [{"content": "等等，"}]},
+    {
+        "text": "Long line",
+        "context": [],
+        "responses": [{"content": "", "reasoning_content": '{"translation":"從推理取得"}'}],
+    },
+    {"text": "Cut", "context": [], "responses": [{"content": "截斷", "finish_reason": "length"}]},
+    {"text": "   ", "context": [], "responses": []},
+]
+
+
+def client_cases() -> dict:
+    import asyncio
+
+    client = _make_client("llamacpp", "general", False)
+    profiles = {name: client._get_llamacpp_model_profile(name) for name in CLIENT_MODEL_NAMES}
+    families = {name: client._detect_model_family(name) for name in CLIENT_MODEL_NAMES}
+    qwen_ud = {name: client._is_qwen_ud_model(name) for name in CLIENT_MODEL_NAMES}
+    completion_tokens = {name: TranslationClient._openai_uses_completion_tokens(name) for name in CLIENT_OPENAI_MODELS}
+    batch_tokens = {str(n): TranslationClient._get_openai_batch_max_tokens(n) for n in [1, 2, 5, 10, 30, 40]}
+    rate_waits = {m: TranslationClient._get_rate_limit_wait_time(Exception(m), 1) for m in RATE_LIMIT_MESSAGES[:-1]}
+    errors = {m: client._classify_error(Exception(m))[0].value for m in ERROR_MESSAGES}
+
+    pipelines = []
+    runs = [("llamacpp", m) for m in ["Hy-MT2-7B-Q4_K_M.gguf", "Qwen3.6-27B-UD-Q4_K_XL", "gemma-4-12b", "some-model"]]
+    runs += [("openai", m) for m in ["gpt-4.1-mini", "gpt-5-mini"]]
+    for llm_type, model in runs:
+        for content_type in ["general", "adult"]:
+            for netflix in (False, True):
+                for case in PIPELINE_CASES:
+                    client = _make_client(llm_type, content_type, netflix)
+                    fake = _FakeCompletions(case["responses"])
+                    client.openai_client.chat.completions = fake
+                    entry = {
+                        "llm_type": llm_type,
+                        "model": model,
+                        "content_type": content_type,
+                        "netflix": netflix,
+                        "text": case["text"],
+                        "context": case["context"],
+                        "responses": case["responses"],
+                    }
+                    try:
+                        entry["result"] = asyncio.run(
+                            client.translate_text(case["text"], case["context"], model, use_cache=False)
+                        )
+                    except Exception as e:
+                        entry["error"] = str(e)
+                    entry["calls"] = fake.calls
+                    pipelines.append(entry)
+    return {
+        "profiles": profiles,
+        "families": families,
+        "qwen_ud": qwen_ud,
+        "completion_tokens": completion_tokens,
+        "batch_tokens": batch_tokens,
+        "rate_waits": rate_waits,
+        "errors": errors,
+        "pipelines": pipelines,
+    }
+
+
 # ─── Config ─────────────────────────────────────────────────
 
 
@@ -572,6 +750,7 @@ def main() -> None:
     write(GOLDEN_DIR / "prompt.json.gz", prompt_cases())
     write(GOLDEN_DIR / "cache.json", cache_cases())
     write(GOLDEN_DIR / "config.json", config_cases())
+    write(GOLDEN_DIR / "client.json.gz", client_cases())
     write(PROMPT_ASSET, default_prompts_asset())
 
     if args.local:

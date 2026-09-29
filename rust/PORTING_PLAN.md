@@ -91,8 +91,13 @@ Python → Rust 對應：
   - 內建預設 prompt 由 Python 匯出為 `src/prompt/default_prompts.json`（不要手改），`gen_golden.py --check` 於 CI 檢查是否過期
   - 未移植（Python 版正式流程無呼叫端）：config 備份/匯出/匯入/listener、`analyze_prompt`、prompt 版本歷史瀏覽/還原
   - 與 Python 的刻意差異：`cache --stats` 顯示正確的總筆數（Python 讀不存在的 `total_entries` 恆為 0）；`import_cache` 以實際新增列數計數
-- [ ] 階段 3：翻譯 client（下一步從 `translation/client.py` 的 OpenAI 相容請求組裝與 model profiles 開始，需 tokio + reqwest + wiremock）
-- [ ] 階段 4
+- [x] **階段 3**（2026-09-29）：`client/`（profiles、錯誤分類與 429 等待、自適應並行、RPM/TPM 限制、OpenAI 相容請求、Gemini REST、llama.cpp 診斷、translate_text/with_retry/batch）
+  - 驗證：golden 336 組完整流水線（6 模型 × 2 內容類型 × Netflix 開關 × 14 情境）逐一比對「送出的請求 body + 最終結果」全數一致；profile/家族/錯誤分類/429 等待時間一致；6 項變異測試皆被抓到；wiremock 行為測試 6 項（SDK 式重試、401 錯誤標記、429、批次順序＋快取、slots 回退、Gemini）
+  - 實機（Hy-MT2-7B-Q4_K_M、llama.cpp b11286）：逐句模式日文 30/30、英文 30/30、英文＋Netflix 30/30 與 Python **輸出完全相同**（排除 server 冷啟動第一輪）；並行批次模式差異與 Python 自身重跑的變異同級（llama.cpp 多 slot 推論非決定性）；IPZZ-810 466 條兩版皆 0 失敗，速度相同（GPU 瓶頸），RSS 11.7MB vs 83MB
+  - 對照工具：`cargo run --release --example live_client` 與 `rust/tools/live_client.py`（參數相同）
+  - 與 Python 的刻意差異（不影響翻譯內容）：連線/逾時錯誤依來源分類（Python 落入 unknown、重試前不等待）；OpenAI token 用估算法（Python 用 tiktoken，僅影響速率限制）；最後一次重試失敗後不再多等一輪
+  - 觀察（Python 既有行為，未改動）：日文名字保護的正則會把 おじさん／おばあちゃん／おねえさん 等親屬稱謂當成名字保留成日文；若要調整需先跑 benchmark
+- [ ] 階段 4：TranslationService 檔案流水線（下一步從 `services/factory.py` 的 `translate_subtitle_file` 與 structure-text 批次開始）
 - [ ] 階段 5
 
 ## 6. 開發指令

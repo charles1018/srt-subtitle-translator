@@ -18,13 +18,18 @@ chrono = { version = "0.4.45", default-features = false, features = ["clock", "s
 clap = { version = "4", features = ["derive"] }
 encoding_rs = "0.8"
 fancy-regex = "0.14"
+futures = "0.3.34"
 indexmap = { version = "2", features = ["serde"] }
 md-5 = "0.11.0"
+rand = "0.10.3"
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "http2", "system-proxy"] }
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 thiserror = "2"
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "time", "sync"] }
 
 [dev-dependencies]
 flate2 = "1.1.10"
 tempfile = "3"
+wiremock = "0.6.5"
