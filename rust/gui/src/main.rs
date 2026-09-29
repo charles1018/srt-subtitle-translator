@@ -365,11 +365,14 @@ fn save_and_quit(app: AppHandle, state: State<'_, AppState>, settings: Option<Gu
 fn resolve_dirs() -> AppState {
     // AppImage 啟動腳本會 cd 到掛載目錄，使用者原本的目錄在 OWD
     let cwd = std::env::var_os("OWD").map(PathBuf::from).or_else(|| std::env::current_dir().ok()).unwrap_or_default();
-    let exe_dir = std::env::current_exe().ok().and_then(|p| p.parent().map(Path::to_path_buf));
+    // AppImage 內 current_exe 指向掛載區，AppImage 檔案本身的路徑在 APPIMAGE
+    let exe = std::env::var_os("APPIMAGE").map(PathBuf::from).or_else(|| std::env::current_exe().ok());
+    let exe_dir = exe.and_then(|p| p.parent().map(Path::to_path_buf));
     let has_env = std::env::var("CONFIG_DIR").is_ok_and(|v| !v.trim().is_empty());
     let base = app::gui_workdir(&cwd, exe_dir.as_deref(), dirs::data_dir().as_deref(), has_env);
     let base = std::path::absolute(&base).unwrap_or(base);
-    let config_dir = if has_env { resolve_config_dir(None) } else { base.join("config") };
+    // 相對的 CONFIG_DIR 以使用者原本的目錄為準（AppImage 的實際工作目錄是唯讀的掛載區）
+    let config_dir = if has_env { base.join(resolve_config_dir(None)) } else { base.join("config") };
     models::load_dotenv_in(&base);
     AppState { base_dir: base, config_dir, run: Mutex::new(None), conflict: Mutex::new(None) }
 }
