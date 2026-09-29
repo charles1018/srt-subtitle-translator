@@ -1,0 +1,253 @@
+name: Rust release
+
+# 推送 rust-v* 標籤時建置 CLI（Linux / Windows 執行檔）與 GUI（.deb / AppImage / Windows 安裝程式）
+# 並建立草稿 Release；手動觸發或 PR 改到打包相關檔案時只建置並上傳 artifact，不建立 Release。
+on:
+  push:
+    tags: ['rust-v*']
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/rust-release.yml'
+      - 'rust/gui/**'
+      - 'rust/packaging/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          # 以 zig 連結舊版 glibc，讓執行檔可在 Ubuntu 20.04 / Debian 10 以上執行
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            build_target: x86_64-unknown-linux-gnu.2.28
+            exe: srt-translator-rs
+          # crt-static 由 rust/.cargo/config.toml 設定
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            build_target: x86_64-pc-windows-msvc
+            exe: srt-translator-rs.exe
+    defaults:
+      run:
+        shell: bash
+        working-directory: rust
+    steps:
+      # golden 測試會讀 repo 內的字幕 fixture，Windows 不可轉成 CRLF
+      - name: Disable CRLF conversion
+        working-directory: .
+        run: git config --global core.autocrlf false
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Read version
+        id: version
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF_NAME" != "rust-v$version" ]]; then
+            echo "::error::標籤 $GITHUB_REF_NAME 與 Cargo.toml 版本 $version 不符"
+            exit 1
+          fi
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Cache cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: release-${{ matrix.target }}-${{ hashFiles('rust/Cargo.lock') }}
+
+      - name: Tests
+        run: cargo test --locked
+
+      - name: Install uv
+        if: runner.os == 'Linux'
+        uses: astral-sh/setup-uv@v10.2.0
+
+      - name: Install zig + cargo-zigbuild
+        if: runner.os == 'Linux'
+        run: |
+          uv venv "$RUNNER_TEMP/zig"
+          uv pip install --python "$RUNNER_TEMP/zig/bin/python" ziglang==0.16.0
+          echo "$RUNNER_TEMP/zig/bin" >> "$GITHUB_PATH"
+          cargo install --locked cargo-zigbuild --version 0.23.4
+
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          rustup target add ${{ matrix.target }}
+          cargo zigbuild --release --locked --target ${{ matrix.build_target }}
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          rustup target add ${{ matrix.target }}
+          cargo build --release --locked --target ${{ matrix.build_target }}
+
+      - name: Smoke test
+        run: target/${{ matrix.target }}/release/${{ matrix.exe }} version
+
+      - name: Package
+        id: package
+        run: |
+          name="srt-translator-rs-${{ steps.version.outputs.version }}-${{ matrix.target }}"
+          mkdir -p "dist-out/$name/THIRD-PARTY"
+          cp "target/${{ matrix.target }}/release/${{ matrix.exe }}" packaging/README.txt ../LICENSE "dist-out/$name/"
+          # 執行檔內嵌 OpenCC 字典（Apache 2.0）
+          cp assets/opencc/NOTICE.md "dist-out/$name/THIRD-PARTY/OpenCC-NOTICE.md"
+          cp assets/opencc/LICENSE.txt "dist-out/$name/THIRD-PARTY/OpenCC-LICENSE.txt"
+          cd dist-out
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            7z a -tzip "$name.zip" "$name" > /dev/null
+            archive="$name.zip"
+          else
+            tar czf "$name.tar.gz" "$name"
+            archive="$name.tar.gz"
+          fi
+          sha256sum "$archive" > "$archive.sha256"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.target }}
+          path: |
+            rust/dist-out/${{ steps.package.outputs.archive }}
+            rust/dist-out/${{ steps.package.outputs.archive }}.sha256
+          if-no-files-found: error
+
+  build-gui:
+    name: Build GUI (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          # 22.04 的 glibc 較舊，AppImage 可在較多發行版執行（.deb 需 libwebkit2gtk-4.1-0，Ubuntu 22.04 以上）
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: deb,appimage
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: nsis
+    defaults:
+      run:
+        shell: bash
+        working-directory: rust
+    env:
+      # 不依賴 FUSE 執行 linuxdeploy
+      APPIMAGE_EXTRACT_AND_RUN: 1
+    steps:
+      - name: Disable CRLF conversion
+        working-directory: .
+        run: git config --global core.autocrlf false
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Read version
+        id: version
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          gui=$(sed -n 's/^version = "\(.*\)"/\1/p' gui/Cargo.toml | head -1)
+          conf=$(sed -n 's/^  "version": "\(.*\)",/\1/p' gui/tauri.conf.json | head -1)
+          if [[ "$gui" != "$version" || "$conf" != "$version" ]]; then
+            echo "::error::版本不一致：Cargo.toml=$version gui/Cargo.toml=$gui tauri.conf.json=$conf"
+            exit 1
+          fi
+          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF_NAME" != "rust-v$version" ]]; then
+            echo "::error::標籤 $GITHUB_REF_NAME 與版本 $version 不符"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev patchelf file
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Cache cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-tauri*
+            rust/target
+          key: release-gui-${{ matrix.target }}-${{ hashFiles('rust/Cargo.lock') }}
+
+      - name: Install tauri-cli
+        run: command -v cargo-tauri || cargo install tauri-cli --version 2.12.0 --locked
+
+      - name: Build bundles
+        working-directory: rust/gui
+        run: cargo tauri build --bundles ${{ matrix.bundles }} -- --locked
+
+      # 統一成不含空格的檔名並附 sha256
+      - name: Collect
+        id: collect
+        run: |
+          v=${{ steps.version.outputs.version }}
+          mkdir -p gui-out
+          b=target/release/bundle
+          # Tauri 產出的檔名含空格（productName），以 glob 陣列取得
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            setup=("$b"/nsis/*-setup.exe)
+            cp "${setup[0]}" "gui-out/srt-translator-gui_${v}_x64-setup.exe"
+          else
+            deb=("$b"/deb/*.deb)
+            appimage=("$b"/appimage/*.AppImage)
+            cp "${deb[0]}" "gui-out/srt-translator-gui_${v}_amd64.deb"
+            cp "${appimage[0]}" "gui-out/srt-translator-gui_${v}_x86_64.AppImage"
+          fi
+          cd gui-out
+          for f in *; do sha256sum "$f" > "$f.sha256"; done
+          ls -la
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: gui-${{ matrix.target }}
+          path: rust/gui-out/*
+          if-no-files-found: error
+
+  release:
+    name: Draft GitHub Release
+    needs: [build, build-gui]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: out
+          merge-multiple: true
+
+      # 建立草稿，確認內容後再手動發佈
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" out/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft \
+            --title "SRT Subtitle Translator (Rust) ${GITHUB_REF_NAME#rust-v}" \
+            --notes "Rust 移植版。CLI：單一執行檔壓縮檔（Linux / Windows x86_64，使用說明見 README.txt）。GUI：Linux .deb（Ubuntu 22.04 以上）/ AppImage、Windows 安裝程式（setup.exe）；安裝版的設定與快取存放在使用者資料目錄。"

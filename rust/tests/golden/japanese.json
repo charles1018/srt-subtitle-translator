@@ -1,0 +1,1769 @@
+{
+ "names": [
+  {
+   "input": "メアちゃん、こっち来て",
+   "candidates": [
+    "メアちゃん"
+   ],
+   "protected": "[[JN0]]、こっち来て",
+   "contexts": [
+    "[[JN0]]、こっち来て？",
+    "無關"
+   ],
+   "restore_map": [
+    [
+     "[[JN0]]",
+     "メアちゃん"
+    ]
+   ],
+   "restored": "メアちゃん、こっち来て",
+   "mangled": "[ JN0 ]、こっち来て",
+   "mangled_restored": "メアちゃん、こっち来て"
+  },
+  {
+   "input": "「ゆいさんの」とメアちゃん",
+   "candidates": [
+    "ゆいさん"
+   ],
+   "protected": "「[[JN0]]の」とメアちゃん",
+   "contexts": [
+    "「[[JN0]]の」とメアちゃん？",
+    "無關"
+   ],
+   "restore_map": [
+    [
+     "[[JN0]]",
+     "ゆいさん"
+    ]
+   ],
+   "restored": "「ゆいさんの」とメアちゃん",
+   "mangled": "「[ JN0 ]の」とメアちゃん",
+   "mangled_restored": "「ゆいさんの」とメアちゃん"
+  },
+  {
+   "input": "ゆいちゃんってさ、かわいいね",
+   "candidates": [
+    "ゆいちゃん"
+   ],
+   "protected": "[[JN0]]ってさ、かわいいね",
+   "contexts": [
+    "[[JN0]]ってさ、かわいいね？",
+    "無關"
+   ],
+   "restore_map": [
+    [
+     "[[JN0]]",
+     "ゆいちゃん"
+    ]
+   ],
+   "restored": "ゆいちゃんってさ、かわいいね",
+   "mangled": "[ JN0 ]ってさ、かわいいね",
+   "mangled_restored": "ゆいちゃんってさ、かわいいね"
+  },
+  {
+   "input": "タナカ先生が来た",
+   "candidates": [
+    "タナカ先生"
+   ],
+   "protected": "[[JN0]]が来た",
+   "contexts": [
+    "[[JN0]]が来た？",
+    "無關"
+   ],
+   "restore_map": [
+    [
+     "[[JN0]]",
+     "タナカ先生"
+    ]
+   ],
+   "restored": "タナカ先生が来た",
+   "mangled": "[ JN0 ]が来た",
+   "mangled_restored": "タナカ先生が来た"
+  },
+  {
+   "input": "お兄ちゃん",
+   "candidates": [],
+   "protected": "お兄ちゃん",
+   "contexts": [
+    "お兄ちゃん？",
+    "無關"
+   ],
+   "restore_map": [],
+   "restored": "お兄ちゃん",
+   "mangled": "お兄ちゃん",
+   "mangled_restored": "お兄ちゃん"
+  },
+  {
+   "input": "さくら先輩！待って",
+   "candidates": [
+    "さくら先輩"
+   ],
+   "protected": "[[JN0]]！待って",
+   "contexts": [
+    "[[JN0]]！待って？",
+    "無關"
+   ],
+   "restore_map": [
+    [
+     "[[JN0]]",
+     "さくら先輩"
+    ]
+   ],
+   "restored": "さくら先輩！待って",
+   "mangled": "[ JN0 ]！待って",
+   "mangled_restored": "さくら先輩！待って"
+  },
+  {
+   "input": "メアちゃんとゆいちゃんとメアちゃん",
+   "candidates": [
+    "メアちゃん"
+   ],
+   "protected": "[[JN0]]とゆいちゃんと[[JN0]]",
+   "contexts": [
+    "[[JN0]]とゆいちゃんと[[JN0]]？",
+    "無關"
+   ],
+   "restore_map": [
+    [
+     "[[JN0]]",
+     "メアちゃん"
+    ]
+   ],
+   "restored": "メアちゃんとゆいちゃんとメアちゃん",
+   "mangled": "[ JN0 ]とゆいちゃんと[ JN0 ]",
+   "mangled_restored": "メアちゃんとゆいちゃんとメアちゃん"
+  },
+  {
+   "input": "アイ様のこと好き",
+   "candidates": [
+    "アイ様"
+   ],
+   "protected": "[[JN0]]のこと好き",
+   "contexts": [
+    "[[JN0]]のこと好き？",
+    "無關"
+   ],
+   "restore_map": [
+    [
+     "[[JN0]]",
+     "アイ様"
+    ]
+   ],
+   "restored": "アイ様のこと好き",
+   "mangled": "[ JN0 ]のこと好き",
+   "mangled_restored": "アイ様のこと好き"
+  },
+  {
+   "input": "ハナコさんはどこ？",
+   "candidates": [
+    "ハナコさん"
+   ],
+   "protected": "[[JN0]]はどこ？",
+   "contexts": [
+    "[[JN0]]はどこ？？",
+    "無關"
+   ],
+   "restore_map": [
+    [
+     "[[JN0]]",
+     "ハナコさん"
+    ]
+   ],
+   "restored": "ハナコさんはどこ？",
+   "mangled": "[ JN0 ]はどこ？",
+   "mangled_restored": "ハナコさんはどこ？"
+  },
+  {
+   "input": "こんにちは",
+   "candidates": [],
+   "protected": "こんにちは",
+   "contexts": [
+    "こんにちは？",
+    "無關"
+   ],
+   "restore_map": [],
+   "restored": "こんにちは",
+   "mangled": "こんにちは",
+   "mangled_restored": "こんにちは"
+  },
+  {
+   "input": "今日は天気がいい",
+   "candidates": [],
+   "protected": "今日は天気がいい",
+   "contexts": [
+    "今日は天気がいい？",
+    "無關"
+   ],
+   "restore_map": [],
+   "restored": "今日は天気がいい",
+   "mangled": "今日は天気がいい",
+   "mangled_restored": "今日は天気がいい"
+  },
+  {
+   "input": "東京",
+   "candidates": [],
+   "protected": "東京",
+   "contexts": [
+    "東京？",
+    "無關"
+   ],
+   "restore_map": [],
+   "restored": "東京",
+   "mangled": "東京",
+   "mangled_restored": "東京"
+  },
+  {
+   "input": "Hello there",
+   "candidates": [],
+   "protected": "Hello there",
+   "contexts": [
+    "Hello there？",
+    "無關"
+   ],
+   "restore_map": [],
+   "restored": "Hello there",
+   "mangled": "Hello there",
+   "mangled_restored": "Hello there"
+  },
+  {
+   "input": "ユウキくん、ユウキくんってば",
+   "candidates": [
+    "ユウキくん"
+   ],
+   "protected": "[[JN0]]、[[JN0]]ってば",
+   "contexts": [
+    "[[JN0]]、[[JN0]]ってば？",
+    "無關"
+   ],
+   "restore_map": [
+    [
+     "[[JN0]]",
+     "ユウキくん"
+    ]
+   ],
+   "restored": "ユウキくん、ユウキくんってば",
+   "mangled": "[ JN0 ]、[ JN0 ]ってば",
+   "mangled_restored": "ユウキくん、ユウキくんってば"
+  },
+  {
+   "input": " カナさん",
+   "candidates": [
+    "カナさん"
+   ],
+   "protected": " [[JN0]]",
+   "contexts": [
+    " [[JN0]]？",
+    "無關"
+   ],
+   "restore_map": [
+    [
+     "[[JN0]]",
+     "カナさん"
+    ]
+   ],
+   "restored": " カナさん",
+   "mangled": " [ JN0 ]",
+   "mangled_restored": " カナさん"
+  },
+  {
+   "input": "（リンちゃん）",
+   "candidates": [],
+   "protected": "（リンちゃん）",
+   "contexts": [
+    "（リンちゃん）？",
+    "無關"
+   ],
+   "restore_map": [],
+   "restored": "（リンちゃん）",
+   "mangled": "（リンちゃん）",
+   "mangled_restored": "（リンちゃん）"
+  },
+  {
+   "input": "ミサキ氏に",
+   "candidates": [
+    "ミサキ氏"
+   ],
+   "protected": "[[JN0]]に",
+   "contexts": [
+    "[[JN0]]に？",
+    "無關"
+   ],
+   "restore_map": [
+    [
+     "[[JN0]]",
+     "ミサキ氏"
+    ]
+   ],
+   "restored": "ミサキ氏に",
+   "mangled": "[ JN0 ]に",
+   "mangled_restored": "ミサキ氏に"
+  },
+  {
+   "input": "あーちゃんね",
+   "candidates": [
+    "あーちゃん"
+   ],
+   "protected": "[[JN0]]ね",
+   "contexts": [
+    "[[JN0]]ね？",
+    "無關"
+   ],
+   "restore_map": [
+    [
+     "[[JN0]]",
+     "あーちゃん"
+    ]
+   ],
+   "restored": "あーちゃんね",
+   "mangled": "[ JN0 ]ね",
+   "mangled_restored": "あーちゃんね"
+  },
+  {
+   "input": "ゆいさんの",
+   "candidates": [
+    "ゆいさん"
+   ],
+   "protected": "[[JN0]]の",
+   "contexts": [
+    "[[JN0]]の？",
+    "無關"
+   ],
+   "restore_map": [
+    [
+     "[[JN0]]",
+     "ゆいさん"
+    ]
+   ],
+   "restored": "ゆいさんの",
+   "mangled": "[ JN0 ]の",
+   "mangled_restored": "ゆいさんの"
+  }
+ ],
+ "rejections": [
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "メアちゃん，過來",
+   "reason": null
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "メアちゃん、こっち来て",
+   "translated": "メアちゃん、こっち来て",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "「ゆいさんの」とメアちゃん",
+   "translated": "「ゆいさんの」とメアちゃん",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "ゆいちゃんってさ、かわいいね",
+   "translated": "ゆいちゃんってさ、かわいいね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "タナカ先生が来た",
+   "translated": "タナカ先生が来た",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "お兄ちゃん",
+   "translated": "お兄ちゃん",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "さくら先輩！待って",
+   "translated": "さくら先輩！待って",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "メアちゃん，過來",
+   "reason": null
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "メアちゃんとゆいちゃんとメアちゃん",
+   "translated": "メアちゃんとゆいちゃんとメアちゃん",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "アイ様のこと好き",
+   "translated": "アイ様のこと好き",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "ハナコさんはどこ？",
+   "translated": "ハナコさんはどこ？",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "こんにちは",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "こんにちは",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "こんにちは",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "こんにちは",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "こんにちは",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "こんにちは",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "こんにちは",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "こんにちは",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "こんにちは",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "こんにちは",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "こんにちは",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "こんにちは",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "こんにちは",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "こんにちは",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "こんにちは",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "今日は天気がいい",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "東京",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "東京",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "東京",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "東京",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "東京",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "東京",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "東京",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "東京",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "東京",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "東京",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "東京",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "東京",
+   "translated": "タナカ",
+   "reason": null
+  },
+  {
+   "source": "東京",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "東京",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "東京",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "Hello there",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "Hello there",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "Hello there",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "Hello there",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "Hello there",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "Hello there",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "Hello there",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "Hello there",
+   "translated": "こんにちは",
+   "reason": null
+  },
+  {
+   "source": "Hello there",
+   "translated": "你好ね",
+   "reason": null
+  },
+  {
+   "source": "Hello there",
+   "translated": "メアちゃん，過來",
+   "reason": null
+  },
+  {
+   "source": "Hello there",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "Hello there",
+   "translated": "タナカ",
+   "reason": null
+  },
+  {
+   "source": "Hello there",
+   "translated": "今日は天気がいい",
+   "reason": null
+  },
+  {
+   "source": "Hello there",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "Hello there",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "ユウキくん、ユウキくんってば",
+   "translated": "ユウキくん、ユウキくんってば",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": " カナさん",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": " カナさん",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": " カナさん",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": " カナさん",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": " カナさん",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": " カナさん",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": " カナさん",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": " カナさん",
+   "translated": "こんにちは",
+   "reason": null
+  },
+  {
+   "source": " カナさん",
+   "translated": "你好ね",
+   "reason": null
+  },
+  {
+   "source": " カナさん",
+   "translated": "メアちゃん，過來",
+   "reason": null
+  },
+  {
+   "source": " カナさん",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": " カナさん",
+   "translated": "タナカ",
+   "reason": null
+  },
+  {
+   "source": " カナさん",
+   "translated": "今日は天気がいい",
+   "reason": null
+  },
+  {
+   "source": " カナさん",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": " カナさん",
+   "translated": " カナさん",
+   "reason": null
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "（リンちゃん）",
+   "translated": "（リンちゃん）",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "ミサキ氏に",
+   "translated": "ミサキ氏に",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "あーちゃんね",
+   "translated": "あーちゃんね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "  ",
+   "reason": "empty_translation"
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "你好",
+   "reason": null
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "[[JN0]]，過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "JN0過來",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "[ JN1 ]好可愛",
+   "reason": "leaked_name_placeholder"
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "ABCJN0",
+   "reason": null
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "こんにちは",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "你好ね",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "メアちゃん，過來",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "東京",
+   "reason": null
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "タナカ",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "今日は天気がいい",
+   "reason": "untranslated_japanese"
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "Hello there",
+   "reason": null
+  },
+  {
+   "source": "ゆいさんの",
+   "translated": "ゆいさんの",
+   "reason": "untranslated_japanese"
+  }
+ ]
+}

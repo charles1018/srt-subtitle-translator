@@ -1,0 +1,22 @@
+[
+ {
+  "input": "call the fire department, fire! CPR cpr",
+  "output": "call the 消防局, 火! 心肺復甦術 cpr"
+ },
+ {
+  "input": "FIRE DEPARTMENT",
+  "output": "消防局"
+ },
+ {
+  "input": "école and École",
+  "output": "學校 and 學校"
+ },
+ {
+  "input": "a.b axb",
+  "output": "點 axb"
+ },
+ {
+  "input": "",
+  "output": ""
+ }
+]

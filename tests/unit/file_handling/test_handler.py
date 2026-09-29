@@ -509,6 +509,83 @@ class TestFileHandlerOutputPath:
         FileHandler._instance = None
 
 
+class TestFileHandlerFolderSelection:
+    """選擇資料夾與保留目錄結構的基準：不同子資料夾的同名字幕不得輸出到同一路徑。"""
+
+    @staticmethod
+    def _handler(stored: dict):
+        FileHandler._instance = None
+        patcher = patch("srt_translator.file_handling.handler.ConfigManager")
+        mock_config = patcher.start()
+        mock_instance = MagicMock()
+        mock_instance.get_value.side_effect = lambda key, default=None: stored.get(key, default)
+        mock_instance.set_value.side_effect = lambda key, value: stored.__setitem__(key, value)
+        mock_config.get_instance.return_value = mock_instance
+        try:
+            return FileHandler.get_instance()
+        finally:
+            patcher.stop()
+
+    @staticmethod
+    def _same_name_tree(temp_dir):
+        root = temp_dir / "season"
+        files = []
+        for sub in ("A", "B"):
+            (root / sub).mkdir(parents=True)
+            f = root / sub / "ep1.srt"
+            f.write_text("test", encoding="utf-8")
+            files.append(str(f))
+        return root, files
+
+    def test_select_directory_keeps_output_directory_and_sets_base(self, temp_dir):
+        root, files = self._same_name_tree(temp_dir)
+        stored: dict = {}
+        handler = self._handler(stored)
+        with patch("srt_translator.file_handling.handler.filedialog.askdirectory", return_value=str(root)):
+            assert handler.select_directory() == str(root)
+
+        assert handler.batch_settings["output_directory"] == ""
+        assert handler.last_directory == str(root)
+        assert stored["last_directory"] == str(root)
+        outputs = [handler.get_output_path(f, "繁體中文") for f in files]
+        assert outputs == [str(root / "A" / "ep1_繁體中文.srt"), str(root / "B" / "ep1_繁體中文.srt")]
+        FileHandler._instance = None
+
+    def test_existing_output_directory_preserves_subfolders(self, temp_dir):
+        root, files = self._same_name_tree(temp_dir)
+        out = temp_dir / "out"
+        out.mkdir()
+        stored: dict = {
+            "batch_settings": {
+                "name_pattern": "{filename}_{language}{ext}",
+                "overwrite_mode": "ask",
+                "output_directory": str(out),
+                "preserve_folder_structure": True,
+            }
+        }
+        handler = self._handler(stored)
+        with patch("srt_translator.file_handling.handler.filedialog.askdirectory", return_value=str(root)) as ask:
+            handler.select_directory()
+            assert ask.call_args.kwargs["initialdir"] == str(out)
+            # 再次選擇時從上次選的來源資料夾開啟，而非輸出目錄
+            handler.select_directory()
+            assert ask.call_args.kwargs["initialdir"] == str(root)
+
+        outputs = [handler.get_output_path(f, "繁體中文") for f in files]
+        assert outputs == [str(out / "A" / "ep1_繁體中文.srt"), str(out / "B" / "ep1_繁體中文.srt")]
+        FileHandler._instance = None
+
+    def test_dropped_files_use_common_parent_as_base(self, temp_dir):
+        root, files = self._same_name_tree(temp_dir)
+        handler = self._handler({})
+        handler._remember_base_directory(files)
+        assert handler.last_directory == str(root)
+
+        handler._remember_base_directory([files[1]])
+        assert handler.last_directory == str(root / "B")
+        FileHandler._instance = None
+
+
 # ============================================================
 # Integration Tests
 # ============================================================
