@@ -136,18 +136,14 @@ struct AddResult {
 }
 
 /// 展開拖放/選取的路徑：資料夾遞迴掃描、檔案依副檔名過濾（Python `handle_drop` / `scan_directory`），
-/// 並記住最後使用的目錄。
+/// 並記住最後使用的目錄（`from_folder`：來自「選擇資料夾」）。
 #[tauri::command]
-fn add_paths(state: State<'_, AppState>, paths: Vec<String>) -> CmdResult<AddResult> {
+fn add_paths(state: State<'_, AppState>, paths: Vec<String>, from_folder: bool) -> CmdResult<AddResult> {
     let dir = &state.config_dir;
     let extensions = app::supported_extensions(&ConfigFile::load(dir, ConfigKind::File).map_err(err)?);
     let inputs: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
     let (files, unsupported) = app::expand_paths(&inputs, &extensions);
-    if let Some(parent) = files.first().and_then(|f| f.parent()) {
-        let last = Value::from(parent.to_string_lossy().into_owned());
-        set_user_value(dir, "last_directory", last.clone()).map_err(err)?;
-        ConfigFile::load(dir, ConfigKind::File).map_err(err)?.set_and_save("last_directory", last).map_err(err)?;
-    }
+    app::remember_added_files(dir, &files, from_folder).map_err(err)?;
     let text = |v: &[PathBuf]| v.iter().map(|p| p.to_string_lossy().into_owned()).collect();
     Ok(AddResult { files: text(&files), unsupported: text(&unsupported) })
 }

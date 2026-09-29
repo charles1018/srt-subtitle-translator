@@ -122,9 +122,9 @@ function renderFiles() {
 }
 
 /** 展開路徑（資料夾遞迴）並加入列表，回傳新加入的數量。 */
-async function addPaths(paths) {
+async function addPaths(paths, fromFolder = false) {
   if (!paths.length) return { added: 0, found: 0 };
-  const result = await invoke("add_paths", { paths });
+  const result = await invoke("add_paths", { paths, fromFolder });
   let added = 0;
   for (const f of result.files) {
     if (!state.files.includes(f)) {
@@ -149,7 +149,7 @@ async function pickFolder() {
   if (state.running) return;
   const folder = await invoke("pick_folder");
   if (!folder) return;
-  const { found } = await addPaths([folder]);
+  const { found } = await addPaths([folder], true);
   toast(found ? `在資料夾中找到 ${found} 個字幕檔案` : "在選中的資料夾中未找到任何字幕檔案", !found);
 }
 

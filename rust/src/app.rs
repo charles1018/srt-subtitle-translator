@@ -89,6 +89,20 @@ pub fn remember_selected_folder(config_dir: &Path, folder: &Path) -> Result<()> 
     file_config.set_and_save("batch_settings.output_directory", folder.to_string_lossy().into_owned().into())
 }
 
+/// 加入檔案後記住目錄（Python 依來源而不同）：
+/// - 一律寫 user 設定的 `last_directory`（`GUIComponents.add_files`）
+/// - 選檔/拖放另寫 file 設定的 `last_directory`（`FileHandler.select_files` / `handle_drop`，
+///   也是保留目錄結構時的基準）；「選擇資料夾」不寫，基準維持不變
+pub fn remember_added_files(config_dir: &Path, files: &[PathBuf], from_folder: bool) -> Result<()> {
+    let Some(parent) = files.first().and_then(|f| f.parent()) else { return Ok(()) };
+    let last = serde_json::Value::from(parent.to_string_lossy().into_owned());
+    set_user_value(config_dir, "last_directory", last.clone())?;
+    if !from_folder {
+        ConfigFile::load(config_dir, ConfigKind::File)?.set_and_save("last_directory", last)?;
+    }
+    Ok(())
+}
+
 /// 「選擇資料夾」對話框的起始目錄：輸出目錄存在時優先，否則最後使用的目錄（Python `select_directory`）。
 pub fn folder_dialog_start(config_dir: &Path) -> Option<PathBuf> {
     let output = OutputSettings::from_config(&ConfigFile::load(config_dir, ConfigKind::File).ok()?);
@@ -524,6 +538,24 @@ mod tests {
         let output = OutputSettings::from_config(&ConfigFile::load(&cfg, ConfigKind::File).unwrap());
         assert_eq!(output.output_directory, picked.to_string_lossy());
         assert_eq!(folder_dialog_start(&cfg), Some(picked));
+    }
+
+    #[test]
+    fn added_files_update_last_directory_by_source() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = dir.path().join("config");
+        let last = |kind| ConfigFile::load(&cfg, kind).unwrap().get_str("last_directory").unwrap_or("").to_string();
+        let file_before = last(ConfigKind::File);
+
+        remember_added_files(&cfg, &[PathBuf::from("/x/a/1.srt"), PathBuf::from("/x/2.srt")], true).unwrap();
+        assert_eq!(last(ConfigKind::User), "/x/a");
+        assert_eq!(last(ConfigKind::File), file_before, "選擇資料夾不改保留目錄結構的基準");
+
+        remember_added_files(&cfg, &[PathBuf::from("/y/3.srt")], false).unwrap();
+        assert_eq!((last(ConfigKind::User), last(ConfigKind::File)), ("/y".to_string(), "/y".to_string()));
+
+        remember_added_files(&cfg, &[], false).unwrap();
+        assert_eq!(last(ConfigKind::User), "/y");
     }
 
     #[test]
