@@ -14,13 +14,17 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1"
 chardetng = "1"
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
 clap = { version = "4", features = ["derive"] }
 encoding_rs = "0.8"
 fancy-regex = "0.14"
 indexmap = { version = "2", features = ["serde"] }
+md-5 = "0.11.0"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 thiserror = "2"
 
 [dev-dependencies]
+flate2 = "1.1.10"
 tempfile = "3"

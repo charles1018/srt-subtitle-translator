@@ -7,14 +7,19 @@ Rust 測試（rust/tests/golden_parity.rs）讀同一份 JSON 逐項比對。
 用法（於 repo 根目錄）：
     .venv/bin/python rust/tools/gen_golden.py            # 產生 rust/tests/golden/*.json（進 git）
     .venv/bin/python rust/tools/gen_golden.py --local    # 另以 data/*.srt 產生 rust/tests/golden/local/（不進 git）
+    .venv/bin/python rust/tools/gen_golden.py --check    # 只檢查是否過期（CI 用）
 """
 
 from __future__ import annotations
 
 import argparse
 import dataclasses
+import gzip
+import hashlib
 import json
+import os
 import shutil
+import sqlite3
 import sys
 import tempfile
 from pathlib import Path
@@ -22,7 +27,12 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 
+# 隔離設定目錄，避免 ConfigManager / PromptManager 讀寫真實的 config/
+os.environ["CONFIG_DIR"] = tempfile.mkdtemp(prefix="golden-config-")
+
+from srt_translator.core.cache import CacheManager  # noqa: E402
 from srt_translator.core.glossary import Glossary  # noqa: E402
+from srt_translator.core.prompt import PromptManager  # noqa: E402
 from srt_translator.services.factory import TranslationService  # noqa: E402
 from srt_translator.tools import srt_tools  # noqa: E402
 from srt_translator.translation.client import TranslationClient  # noqa: E402
@@ -30,6 +40,7 @@ from srt_translator.utils.errors import AppError  # noqa: E402
 from srt_translator.utils.post_processor import NetflixStylePostProcessor  # noqa: E402
 
 GOLDEN_DIR = REPO / "rust" / "tests" / "golden"
+PROMPT_ASSET = REPO / "rust" / "src" / "prompt" / "default_prompts.json"
 FIXTURES = REPO / "tests" / "e2e" / "fixtures"
 
 # ─── 手寫語料：涵蓋每條規則與邊界 ────────────────────────────
@@ -327,16 +338,229 @@ def srt_cases(paths: list[Path]) -> list[dict]:
     return [srt_file_case(p, p.name) for p in paths]
 
 
+# ─── Prompt ─────────────────────────────────────────────────
+
+PROMPT_LLM_TYPES = ["llamacpp", "openai", "google"]
+PROMPT_CONTENT_TYPES = ["general", "adult", "anime", "movie", "english_drama"]
+PROMPT_STYLES = ["standard", "literal", "localized", "specialized"]
+PROMPT_MODELS = ["", "Hy-MT2-7B-Q4_K_M.gguf", "Qwen3.6-27B-UD-Q4_K_XL", "qwen3.5-9b", "gpt-4.1-mini"]
+PROMPT_LANGUAGE_PAIRS = ["日文→繁體中文", "英文→繁體中文", "繁體中文→日文", "韓文→繁體中文"]
+
+MESSAGE_CASES: list[tuple[str, list[str], int | None]] = [
+    ("こんにちは", ["前の文", "こんにちは", "次の文"], None),
+    ("I went there when", ["Hi.", "I went there when", "it rained."], None),
+    ("Wait,", ["Okay.", "Wait,", "what?"], None),
+    ("Something is off...", ["Something is off..."], None),
+    ("はい", ["はい", "舐めて", "はい", "もっと"], 2),
+    ("はい", ["はい", "x", "はい"], None),
+    ("はい", ["はい", "x", "はい"], 7),
+    ("missing", ["a", "b"], None),
+    ("舐めて", ["前", "舐めて", "後"], None),
+    ("[BATCH: 2 lines]\nline1\nline2", [], None),
+    ("single", ["single"], None),
+    ("メアちゃん、こっち", ["うん", "メアちゃん、こっち", "え？"], None),
+    ("Line one\nline two", ["prev", "Line one\nline two"], None),
+    ("行くよ？", ["イク", "行くよ？", "うん"], None),
+    ("あ", ["どう？", "あ", "ね"], None),
+]
+
+
+def md5(text: str) -> str:
+    return hashlib.md5(text.encode()).hexdigest()
+
+
+def new_prompt_manager(language_pair: str, compact: bool) -> PromptManager:
+    config_dir = Path(tempfile.mkdtemp(prefix="golden-prompt-"))
+    manager = PromptManager(config_file=str(config_dir / "prompt_config.json"))
+    manager.user_config_manager.set_value("translation.compact_prompt_enabled", compact)
+    manager.set_language_pair(language_pair)
+    return manager
+
+
+def prompt_cases() -> dict:
+    texts: dict[str, str] = {}
+
+    def ref(text: str) -> str:
+        key = md5(text)
+        texts[key] = text
+        return key
+
+    cases = []
+    for language_pair in PROMPT_LANGUAGE_PAIRS:
+        for compact in (True, False):
+            manager = new_prompt_manager(language_pair, compact)
+            for content_type in PROMPT_CONTENT_TYPES:
+                manager.set_content_type(content_type)
+                for style in PROMPT_STYLES:
+                    manager.set_translation_style(style)
+                    for llm_type in PROMPT_LLM_TYPES:
+                        for model in PROMPT_MODELS:
+                            cases.append(
+                                {
+                                    "language_pair": language_pair,
+                                    "compact": compact,
+                                    "content_type": content_type,
+                                    "style": style,
+                                    "llm_type": llm_type,
+                                    "model": model,
+                                    "prompt": ref(manager.get_prompt(llm_type, model_name=model)),
+                                    "version": manager.get_prompt_version(llm_type, model_name=model),
+                                    "batch_prompt": ref(
+                                        manager.get_batch_translation_prompt(llm_type, model_name=model)
+                                    ),
+                                    "batch_version": manager.get_prompt_version(
+                                        llm_type, model_name=model, batch_request=True
+                                    ),
+                                }
+                            )
+
+    messages = []
+    for language_pair in ["日文→繁體中文", "英文→繁體中文"]:
+        for compact in (True, False):
+            manager = new_prompt_manager(language_pair, compact)
+            for content_type in ["general", "adult"]:
+                manager.set_content_type(content_type)
+                for llm_type in PROMPT_LLM_TYPES:
+                    for model in PROMPT_MODELS:
+                        for text, context, index in MESSAGE_CASES:
+                            result = manager.get_optimized_message(text, context, llm_type, model, current_index=index)
+                            messages.append(
+                                {
+                                    "language_pair": language_pair,
+                                    "compact": compact,
+                                    "content_type": content_type,
+                                    "llm_type": llm_type,
+                                    "model": model,
+                                    "text": text,
+                                    "context": context,
+                                    "current_index": index,
+                                    "system": ref(result[0]["content"]),
+                                    "roles": [m["role"] for m in result],
+                                    "user": result[1]["content"],
+                                    "effective_context": manager.get_effective_context_texts(
+                                        text, context, llm_type, model, current_index=index
+                                    ),
+                                    "cache_context": manager.get_effective_cache_context_texts(
+                                        text, context, llm_type, model, current_index=index
+                                    ),
+                                }
+                            )
+    return {"texts": texts, "cases": cases, "messages": messages, "custom": custom_prompt_case()}
+
+
+def custom_prompt_case() -> dict:
+    """自訂 prompt、模板檔載入、重置與設定檔寫出格式。"""
+    config_dir = Path(tempfile.mkdtemp(prefix="golden-custom-"))
+    templates = config_dir / "prompt_templates"
+    templates.mkdir()
+    (templates / "anime_template.json").write_text(
+        json.dumps({"openai": "ANIME TEMPLATE"}, ensure_ascii=False), encoding="utf-8"
+    )
+    manager = PromptManager(config_file=str(config_dir / "prompt_config.json"))
+    result = {"after_load": {"anime_openai": manager.get_prompt("openai", "anime", "standard")}}
+    manager.set_prompt("CUSTOM ONE\n", "openai", "adult")
+    manager.set_prompt("CUSTOM TWO", "openai", "adult")
+    result["after_set"] = {
+        "adult_openai": manager.get_prompt("openai", "adult", "literal"),
+        "adult_google": manager.get_prompt("google", "adult", "standard"),
+        "version": manager.get_prompt_version("openai", "adult", "standard"),
+    }
+    manager.reset_to_default("openai", "adult")
+    result["after_reset"] = {"adult_openai": md5(manager.get_prompt("openai", "adult", "standard"))}
+    config = json.loads((config_dir / "prompt_config.json").read_text(encoding="utf-8"))
+    config.pop("last_updated", None)
+    for history in config.get("version_history", {}).values():
+        for entries in history.values():
+            for entry in entries:
+                entry.pop("timestamp", None)
+    result["config"] = config
+    result["adult_template"] = (templates / "adult_template.json").read_text(encoding="utf-8")
+    return result
+
+
+def default_prompts_asset() -> dict:
+    manager = new_prompt_manager("日文→繁體中文", True)
+    return manager._get_default_prompts()
+
+
+# ─── Config ─────────────────────────────────────────────────
+
+
+def config_cases() -> dict:
+    """各設定檔的預設內容原文（app 的 last_update 以固定值取代）。"""
+    from srt_translator.core.config import ConfigManager
+
+    config_dir = Path(tempfile.mkdtemp(prefix="golden-defaults-"))
+    files = {}
+    for config_type in ["app", "user", "model", "prompt", "file", "cache", "theme"]:
+        manager = ConfigManager(config_type, config_dir=str(config_dir))
+        path = Path(manager.get_config_path())
+        text = path.read_text(encoding="utf-8")
+        if config_type == "app":
+            data = json.loads(text)
+            data["last_update"] = "FIXED"
+            text = json.dumps(data, ensure_ascii=False, indent=4)
+        files[path.name] = text
+    user = ConfigManager("user", config_dir=str(config_dir))
+    user.set_value("translation.batch_size", 5)
+    user.set_value("llm_type.nested", 1)
+    files["user_after_set"] = (config_dir / "user_settings.json").read_text(encoding="utf-8")
+    return files
+
+
+# ─── Cache ──────────────────────────────────────────────────
+
+
+def cache_cases() -> dict:
+    contexts = [[], ["", "  "], ["前の文", "こんにちは", "次の文"], [" 日本 ", "ab"], ["[CURRENT_INDEX]1", "a", "b"]]
+    with tempfile.TemporaryDirectory() as tmp:
+        cache = CacheManager(str(Path(tmp) / "c.db"))
+        hashes = [{"context": c, "hash": cache._compute_context_hash(tuple(c))} for c in contexts]
+        cache.store_translation("こんにちは", "你好", contexts[2], "model-x", "standard", "abcd1234")
+        with sqlite3.connect(str(Path(tmp) / "c.db")) as conn:
+            schema = sorted(row[0] for row in conn.execute("SELECT sql FROM sqlite_master WHERE sql IS NOT NULL"))
+            rows = [
+                list(r)
+                for r in conn.execute(
+                    "SELECT source_text, target_text, context_hash, model_name, style, prompt_version, usage_count FROM translations"
+                )
+            ]
+    return {"hashes": hashes, "schema": schema, "rows": rows}
+
+
+STALE: list[str] = []
+CHECK_ONLY = False
+
+
+def read_existing(path: Path) -> str | None:
+    if not path.exists():
+        return None
+    raw = path.read_bytes()
+    return (gzip.decompress(raw) if path.suffix == ".gz" else raw).decode("utf-8")
+
+
 def write(path: Path, data: object) -> None:
+    """寫出 golden；`--check` 模式下只比對內容（gzip 以解壓後文字比對，避免 zlib 版本差異誤報）。"""
+    text = json.dumps(data, ensure_ascii=False, indent=1) + "\n"
+    if CHECK_ONLY:
+        if read_existing(path) != text:
+            STALE.append(str(path.relative_to(REPO)))
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    if path.suffix == ".gz":
+        path.write_bytes(gzip.compress(text.encode("utf-8"), mtime=0))
+    else:
+        path.write_text(text, encoding="utf-8")
     print(f"寫入 {path.relative_to(REPO)}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--local", action="store_true", help="另以 data/*.srt（gitignored）產生本地 golden")
+    parser.add_argument("--check", action="store_true", help="只檢查 golden 是否與 Python 目前行為一致（CI 用）")
     args = parser.parse_args()
+    global CHECK_ONLY
+    CHECK_ONLY = args.check
 
     write(GOLDEN_DIR / "post_processor.json", post_processor_cases())
     write(GOLDEN_DIR / "japanese.json", japanese_cases())
@@ -345,6 +569,10 @@ def main() -> None:
     fixture_paths = sorted(p for p in FIXTURES.glob("*.srt") if p.name != "very_large.srt")
     fixture_paths += sorted((FIXTURES / "batch").glob("*.srt"))
     write(GOLDEN_DIR / "srt_files.json", srt_cases(fixture_paths))
+    write(GOLDEN_DIR / "prompt.json.gz", prompt_cases())
+    write(GOLDEN_DIR / "cache.json", cache_cases())
+    write(GOLDEN_DIR / "config.json", config_cases())
+    write(PROMPT_ASSET, default_prompts_asset())
 
     if args.local:
         local_paths = sorted((REPO / "data").glob("*.srt"))
@@ -357,6 +585,12 @@ def main() -> None:
             GOLDEN_DIR / "local" / "post_processor.json",
             [{"input": t, "text": processor.process(t).text} for t in texts],
         )
+
+    if STALE:
+        print("golden 已過期（Python 行為已變更），請執行 rust/tools/gen_golden.py 並同步 Rust 實作：")
+        for path in STALE:
+            print(f"  - {path}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

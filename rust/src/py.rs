@@ -115,6 +115,47 @@ pub fn round(x: f64, ndigits: usize) -> f64 {
     format!("{x:.ndigits$}").parse().unwrap_or(x)
 }
 
+/// Python `repr()` of a JSON 值（dict/list/str/bool/None/數字），用於與 Python 版相同的顯示輸出。
+pub fn repr(value: &serde_json::Value) -> String {
+    use serde_json::Value;
+    match value {
+        Value::Null => "None".into(),
+        Value::Bool(b) => if *b { "True" } else { "False" }.into(),
+        Value::Number(n) => match n.as_f64() {
+            Some(f) if !n.is_i64() && !n.is_u64() => float_repr(f),
+            _ => n.to_string(),
+        },
+        Value::String(s) => str_repr(s),
+        Value::Array(items) => format!("[{}]", items.iter().map(repr).collect::<Vec<_>>().join(", ")),
+        Value::Object(map) => {
+            let items: Vec<String> = map.iter().map(|(k, v)| format!("{}: {}", str_repr(k), repr(v))).collect();
+            format!("{{{}}}", items.join(", "))
+        }
+    }
+}
+
+/// Python `repr(str)`：預設單引號；含單引號且不含雙引號時改用雙引號。
+fn str_repr(s: &str) -> String {
+    let quote = if s.contains('\'') && !s.contains('"') { '"' } else { '\'' };
+    let mut out = String::from(quote);
+    for c in s.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c == quote => {
+                out.push('\\');
+                out.push(c);
+            }
+            c if (c as u32) < 0x20 || c as u32 == 0x7f => out.push_str(&format!("\\x{:02x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push(quote);
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -136,6 +177,12 @@ mod tests {
     fn slicing_by_code_point() {
         assert_eq!(prefix("日本語テキスト", 3), "日本語");
         assert_eq!(slice("日本語", 1, 10), "本語");
+    }
+
+    #[test]
+    fn repr_matches_python() {
+        let v = serde_json::json!({"a": [1, 2.5, true, null], "b": "it's", "c": "x\ny", "d": 3.0});
+        assert_eq!(repr(&v), r#"{'a': [1, 2.5, True, None], 'b': "it's", 'c': 'x\ny', 'd': 3.0}"#);
     }
 
     #[test]

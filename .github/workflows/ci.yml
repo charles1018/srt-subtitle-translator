@@ -88,5 +88,4 @@ jobs:
       - name: Golden freshness
         run: |
           uv sync --dev --python 3.12
-          uv run python tools/gen_golden.py
-          git diff --exit-code -- tests/golden
+          uv run python tools/gen_golden.py --check

@@ -1,10 +1,14 @@
-//! CLI 入口（對等 Python `cli.py`）。目前已移植：extract / assemble / qa / cps-audit / version。
+//! CLI 入口（對等 Python `cli.py`）。目前已移植：extract / assemble / qa / cps-audit / cache / config / prompt / version。
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use clap::{Parser, Subcommand};
+use clap::builder::PossibleValuesParser;
+use clap::{Args, Parser, Subcommand};
 use serde_json::Value;
+use srt_translator::cache::CacheManager;
+use srt_translator::config::{resolve_config_dir, ConfigFile, ConfigKind};
+use srt_translator::prompt::{PromptManager, CONTENT_TYPES, SUPPORTED_LLM_TYPES};
 use srt_translator::py;
 use srt_translator::tools::srt_tools::{self, CpsAuditOptions, CpsAuditReport};
 
@@ -74,6 +78,88 @@ enum Command {
         #[arg(long = "min-duration", default_value_t = 1000)]
         min_duration_ms: i64,
     },
+    /// 管理翻譯快取
+    Cache(CacheArgs),
+    /// 顯示或設定配置
+    Config {
+        /// 顯示目前配置
+        #[arg(long)]
+        show: bool,
+        /// 設定配置值
+        #[arg(long, num_args = 2, value_names = ["KEY", "VALUE"])]
+        set: Option<Vec<String>>,
+    },
+    /// 管理翻譯提示詞
+    Prompt {
+        #[command(subcommand)]
+        command: Option<PromptCommand>,
+    },
+}
+
+#[derive(Args)]
+#[group(required = true, multiple = false)]
+struct CacheArgs {
+    /// 顯示快取統計資訊
+    #[arg(long)]
+    stats: bool,
+    /// 清除所有快取
+    #[arg(long)]
+    clear: bool,
+    /// 最佳化快取資料庫
+    #[arg(long)]
+    optimize: bool,
+    /// 匯出快取到指定檔案
+    #[arg(long, value_name = "FILE")]
+    export: Option<PathBuf>,
+    /// 從指定檔案匯入快取
+    #[arg(long = "import", value_name = "FILE")]
+    import_file: Option<PathBuf>,
+}
+
+#[derive(Args)]
+struct PromptTarget {
+    /// 提示詞 provider
+    #[arg(short, long, default_value = "llamacpp", value_parser = PossibleValuesParser::new(SUPPORTED_LLM_TYPES))]
+    provider: String,
+    /// 內容類型（未指定則使用目前 prompt 設定）
+    #[arg(long, value_parser = PossibleValuesParser::new(CONTENT_TYPES))]
+    content_type: Option<String>,
+}
+
+#[derive(Subcommand)]
+enum PromptCommand {
+    /// 顯示指定 provider/content type 的提示詞
+    Show(PromptTarget),
+    /// 設定指定 provider/content type 的提示詞
+    Set {
+        #[command(flatten)]
+        target: PromptTarget,
+        /// 直接指定提示詞文字
+        #[arg(long, conflicts_with = "file", required_unless_present = "file")]
+        text: Option<String>,
+        /// 從 UTF-8 文字檔讀取提示詞
+        #[arg(long)]
+        file: Option<PathBuf>,
+    },
+    /// 將提示詞重置為預設值
+    Reset(PromptTarget),
+    /// 匯出提示詞到 JSON
+    Export {
+        /// 只匯出指定 provider；未指定則匯出所有支援 provider
+        #[arg(short, long, value_parser = PossibleValuesParser::new(SUPPORTED_LLM_TYPES))]
+        provider: Option<String>,
+        /// 內容類型（未指定則使用目前 prompt 設定）
+        #[arg(long, value_parser = PossibleValuesParser::new(CONTENT_TYPES))]
+        content_type: Option<String>,
+        /// 輸出 JSON 路徑
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    /// 從 JSON 匯入提示詞
+    Import {
+        /// 提示詞 JSON 路徑
+        file: PathBuf,
+    },
 }
 
 fn main() -> ExitCode {
@@ -112,6 +198,9 @@ fn main() -> ExitCode {
                 },
             )
         }
+        Command::Cache(args) => cmd_cache(&args),
+        Command::Config { show, set } => cmd_config(show, set.as_deref()),
+        Command::Prompt { command } => cmd_prompt(command),
     };
     match result {
         Ok(true) => ExitCode::SUCCESS,
@@ -121,6 +210,138 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+fn ensure_runtime_dirs() {
+    for dir in ["data", "config", "logs"] {
+        let _ = std::fs::create_dir_all(dir);
+    }
+}
+
+fn open_cache(config_dir: &std::path::Path) -> srt_translator::Result<CacheManager> {
+    let config = ConfigFile::load(config_dir, ConfigKind::Cache)?;
+    let db_path = config.get_str("db_path").unwrap_or("data/translation_cache.db").to_string();
+    let max_memory = config.get_i64("max_memory_cache").filter(|v| *v > 0).unwrap_or(1000) as usize;
+    let cleanup_days = config.get_i64("auto_cleanup_days").filter(|v| *v > 0).unwrap_or(30);
+    CacheManager::open(db_path, max_memory, cleanup_days)
+}
+
+fn cmd_cache(args: &CacheArgs) -> srt_translator::Result<bool> {
+    ensure_runtime_dirs();
+    let cache = open_cache(&resolve_config_dir(None))?;
+    if args.stats {
+        let report = cache.stats()?;
+        println!("\n快取統計:");
+        println!("{}", "-".repeat(40));
+        println!("  總筆數: {}", report.total_records);
+        println!("  資料庫大小: {:.2} MB", report.db_size_mb);
+        for (model, count) in &report.models {
+            println!("  {model}: {count} 筆");
+        }
+        println!();
+    } else if args.clear {
+        print!("確定要清除所有快取嗎？(y/N): ");
+        use std::io::Write;
+        let _ = std::io::stdout().flush();
+        let mut answer = String::new();
+        let _ = std::io::stdin().read_line(&mut answer);
+        if answer.trim().eq_ignore_ascii_case("y") {
+            cache.clear_all(false)?;
+            println!("快取已清除");
+        } else {
+            println!("取消操作");
+        }
+    } else if args.optimize {
+        cache.optimize()?;
+        println!("快取資料庫已最佳化");
+    } else if let Some(path) = &args.export {
+        let count = cache.export(path)?;
+        println!("快取已匯出至: {} ({count} 筆)", path.display());
+    } else if let Some(path) = &args.import_file {
+        let count = cache.import(path)?;
+        println!("快取已從 {} 匯入 ({count} 筆)", path.display());
+    }
+    Ok(true)
+}
+
+/// Python 版 `--set` 的型別轉換：純數字 → int，true/false → bool，其餘為字串。
+fn parse_config_value(raw: &str) -> Value {
+    if !raw.is_empty() && raw.chars().all(|c| c.is_ascii_digit()) {
+        if let Ok(n) = raw.parse::<i64>() {
+            return Value::from(n);
+        }
+    }
+    match raw.to_lowercase().as_str() {
+        "true" => Value::Bool(true),
+        "false" => Value::Bool(false),
+        _ => Value::from(raw),
+    }
+}
+
+fn cmd_config(show: bool, set: Option<&[String]>) -> srt_translator::Result<bool> {
+    ensure_runtime_dirs();
+    let mut user = ConfigFile::load(&resolve_config_dir(None), ConfigKind::User)?;
+    if show {
+        println!("\n目前配置:");
+        println!("{}", "-".repeat(40));
+        for (key, value) in &user.data {
+            let shown = match value {
+                Value::String(s) => s.clone(),
+                other => py::repr(other),
+            };
+            println!("  {key}: {shown}");
+        }
+        println!();
+    } else if let Some([key, raw]) = set {
+        let value = parse_config_value(raw);
+        let shown = match &value {
+            Value::String(s) => s.clone(),
+            other => py::repr(other),
+        };
+        user.set_and_save(key, value)?;
+        println!("已設定 {key} = {shown}");
+    }
+    Ok(true)
+}
+
+fn cmd_prompt(command: Option<PromptCommand>) -> srt_translator::Result<bool> {
+    let Some(command) = command else {
+        println!("請指定提示詞操作，使用 --help 查看可用選項");
+        return Ok(false);
+    };
+    ensure_runtime_dirs();
+    let mut pm = PromptManager::open(&resolve_config_dir(None))?;
+    match command {
+        PromptCommand::Show(t) => println!("{}", pm.get_prompt(&t.provider, t.content_type.as_deref(), None, None)),
+        PromptCommand::Set { target, text, file } => {
+            let text = match (text, file) {
+                (Some(t), _) => t,
+                (None, Some(f)) => std::fs::read_to_string(&f)
+                    .map_err(|e| srt_translator::Error::file(format!("無法讀取提示詞檔案: {} ({e})", f.display())))?,
+                (None, None) => unreachable!("clap 保證二擇一"),
+            };
+            pm.set_prompt(&text, &target.provider, target.content_type.as_deref())?;
+            let ct = target.content_type.unwrap_or_else(|| pm.current_content_type.clone());
+            println!("已更新 {ct}/{} 提示詞", target.provider);
+        }
+        PromptCommand::Reset(t) => {
+            if !pm.reset_to_default(Some(&t.provider), t.content_type.as_deref())? {
+                println!("錯誤: 提示詞重置失敗");
+                return Ok(false);
+            }
+            let ct = t.content_type.unwrap_or_else(|| pm.current_content_type.clone());
+            println!("已重置 {ct}/{} 提示詞為預設值", t.provider);
+        }
+        PromptCommand::Export { provider, content_type, output } => {
+            let path = pm.export_prompt(content_type.as_deref(), provider.as_deref(), Some(&output))?;
+            println!("提示詞已匯出到: {}", path.display());
+        }
+        PromptCommand::Import { file } => {
+            pm.import_prompt(&file)?;
+            println!("已匯入提示詞: {}", file.display());
+        }
+    }
+    Ok(true)
 }
 
 fn cmd_qa(

@@ -85,8 +85,13 @@ Python → Rust 對應：
 - [x] **階段 1**（2026-09-29）：`subtitle/`（pysrt 對等解析輸出 + 編碼偵測）、`tools/srt_tools.rs`、`text/post_processor.rs`、`text/japanese.rs`、`text/normalize.rs`、`glossary.rs`；CLI `extract` / `assemble` / `qa` / `cps-audit` / `version`
   - 驗證：golden 7 組全數一致（後處理 219 案例、13 個 SRT 檔含 466 條實際字幕、本地 526 條後處理）；CLI 輸出與產出檔案與 Python 逐位元相同；變異測試確認 golden 能抓到行為偏差
   - 尚未涵蓋：glossary 的 CLI 子命令（併入階段 4）
-- [ ] 階段 2：config → cache → prompt（下一步從 `core/config.py` 的預設值與 JSON 合併邏輯開始）
-- [ ] 階段 3
+- [x] **階段 2**（2026-09-29）：`config.rs`、`cache.rs`、`prompt/`；CLI `cache` / `config` / `prompt`
+  - 驗證：golden 5 組全數一致——7 個預設設定檔原文、快取 schema 與 context hash、2400 組 prompt/版本雜湊（3 provider × 5 內容類型 × 4 風格 × 5 模型 × 4 語言對 × compact 開關）、1800 組訊息結構與快取上下文、自訂 prompt/模板/重置流程；4 項變異測試皆被抓到
+  - 實測：以真實 `config/` 複本比對 `prompt show`（15 組）與 `config --show/--set` 寫回結果完全相同；快取雙向互通（Python 寫 → Rust 讀、Rust 寫 → Python 命中）
+  - 內建預設 prompt 由 Python 匯出為 `src/prompt/default_prompts.json`（不要手改），`gen_golden.py --check` 於 CI 檢查是否過期
+  - 未移植（Python 版正式流程無呼叫端）：config 備份/匯出/匯入/listener、`analyze_prompt`、prompt 版本歷史瀏覽/還原
+  - 與 Python 的刻意差異：`cache --stats` 顯示正確的總筆數（Python 讀不存在的 `total_entries` 恆為 0）；`import_cache` 以實際新增列數計數
+- [ ] 階段 3：翻譯 client（下一步從 `translation/client.py` 的 OpenAI 相容請求組裝與 model profiles 開始，需 tokio + reqwest + wiremock）
 - [ ] 階段 4
 - [ ] 階段 5
 
