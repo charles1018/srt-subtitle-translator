@@ -997,6 +997,90 @@ def config_cases() -> dict:
     return files
 
 
+def gui_settings_cases() -> dict:
+    """GUI 設定讀寫：依 `__main__.py` / `gui/components.py` 事件處理器的實際呼叫順序重現。"""
+    from srt_translator.core.config import ConfigManager, get_config, set_config
+
+    def load_initial() -> dict:
+        # App._apply_user_settings 的讀取規則
+        settings = ConfigManager.get_instance("user").get_config()
+        return {
+            "source_lang": settings.get("source_lang", "日文"),
+            "target_lang": settings.get("target_lang", "繁體中文"),
+            "llm_type": settings.get("llm_type", "llamacpp"),
+            "model_name": get_config("user", "model_name") or "",
+            "parallel_requests": str(settings.get("parallel_requests", "3")),
+            "display_mode": settings.get("display_mode", "雙語對照"),
+            "netflix_style_enabled": settings.get("netflix_style_enabled", False),
+            "structure_text_enabled": settings.get("structure_text_enabled", False),
+        }
+
+    previous = os.environ["CONFIG_DIR"]
+    config_dir = Path(tempfile.mkdtemp(prefix="golden-gui-"))
+    os.environ["CONFIG_DIR"] = str(config_dir)
+    try:
+        initial = load_initial()
+        prompt = PromptManager()
+
+        def change_language(source: str, target: str) -> bool:
+            # GUIComponents.on_source_target_lang_changed
+            pair = f"{source}→{target}"
+            if prompt.set_language_pair(pair):
+                set_config("prompt", "current_language_pair", pair)
+                return True
+            return False
+
+        pair_results = [
+            change_language(initial["source_lang"], initial["target_lang"]),  # 啟動時同步
+            change_language("英文", "繁體中文"),
+            change_language("韓文", "韓文"),  # 不支援：不寫入
+        ]
+        # on_content_type_changed / on_style_changed
+        prompt.set_content_type("english_drama")
+        set_config("prompt", "current_content_type", "english_drama")
+        prompt.set_translation_style("localized")
+        set_config("prompt", "current_style", "localized")
+        # on_display_mode_changed / on_netflix_style_changed / on_structure_text_changed / add_files
+        set_config("user", "display_mode", "僅顯示翻譯")
+        set_config("user", "netflix_style_enabled", True)
+        set_config("user", "structure_text_enabled", True)
+        set_config("user", "last_directory", "/tmp/subs")
+        # App._save_user_settings（開始翻譯與關閉視窗時）
+        values = {
+            "source_lang": "英文",
+            "target_lang": "繁體中文",
+            "llm_type": "openai",
+            "model_name": "gpt-4.1-mini",
+            "parallel_requests": int("5"),
+            "display_mode": "僅顯示翻譯",
+        }
+        for key, value in values.items():
+            set_config("user", key, value, auto_save=False)
+        ConfigManager.get_instance("user").save_config()
+
+        prompt_config = json.loads((config_dir / "prompt_config.json").read_text(encoding="utf-8"))
+        prompt_config.pop("last_updated", None)
+
+        result = {
+            "initial": initial,
+            "language_pair_results": pair_results,
+            "reloaded": load_initial(),
+            "user_settings": (config_dir / "user_settings.json").read_text(encoding="utf-8"),
+            "prompt_config": prompt_config,
+        }
+
+        # 只有部分鍵的舊設定檔：缺的鍵由設定預設值補上
+        partial_dir = Path(tempfile.mkdtemp(prefix="golden-gui-partial-"))
+        (partial_dir / "user_settings.json").write_text(
+            '{"source_lang": "韓文", "parallel_requests": 10}', encoding="utf-8"
+        )
+        os.environ["CONFIG_DIR"] = str(partial_dir)
+        result["partial_initial"] = load_initial()
+        return result
+    finally:
+        os.environ["CONFIG_DIR"] = previous
+
+
 # ─── Cache ──────────────────────────────────────────────────
 
 
@@ -1061,6 +1145,7 @@ def main() -> None:
     write(GOLDEN_DIR / "prompt.json.gz", prompt_cases())
     write(GOLDEN_DIR / "cache.json", cache_cases())
     write(GOLDEN_DIR / "config.json", config_cases())
+    write(GOLDEN_DIR / "gui_settings.json", gui_settings_cases())
     write(GOLDEN_DIR / "client.json.gz", client_cases())
     write(GOLDEN_DIR / "opencc.json.gz", opencc_cases())
     write(GOLDEN_DIR / "service.json.gz", service_cases())

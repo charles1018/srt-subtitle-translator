@@ -507,9 +507,13 @@ impl TranslationService {
         control.checkpoint().await?;
         let elapsed = format_elapsed(started.elapsed().as_secs_f64());
         if successful == 0 && failed > 0 {
+            // details 供 GUI 組出 Python 的「翻譯失敗 | 0/N 句字幕成功」訊息
+            let mut details = crate::error::Details::new();
+            details.insert("all_failed_total".into(), total.into());
+            details.insert("last_error".into(), last_error.clone().into());
             return Err(Error::Translation {
                 message: if last_error.is_empty() { "所有字幕翻譯失敗".into() } else { last_error },
-                details: Default::default(),
+                details,
             });
         }
         let output_path = resolve_output_path(path, &job.target_lang, output, ask)?

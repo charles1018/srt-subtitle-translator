@@ -2,6 +2,7 @@
 //!
 //! 移植計畫與進度見 `rust/PORTING_PLAN.md`。Python 版（`src/srt_translator/`）為行為規格。
 
+pub mod app;
 pub mod cache;
 pub mod client;
 pub mod config;

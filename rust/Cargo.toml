@@ -7,6 +7,11 @@ description = "SRT Subtitle Translator（Rust 移植版）"
 license = "MIT"
 publish = false
 
+# GUI（Tauri）在獨立 crate；預設只建置 CLI，避免 CLI 建置需要 WebKitGTK
+[workspace]
+members = [".", "gui"]
+default-members = ["."]
+
 [[bin]]
 name = "srt-translator-rs"
 path = "src/main.rs"

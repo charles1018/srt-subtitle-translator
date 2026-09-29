@@ -56,7 +56,7 @@ Python → Rust 對應：
 | `services/factory.py` `TranslationService`（上下文視窗、批次安全判斷、structure-text 批次、OpenCC s2twp） | `service.rs` | 4 |
 | `file_handling/handler.py`（VTT/ASS、衝突處理） | `subtitle/vtt.rs`, `ass.rs`, `output.rs` | 4 |
 | `cli.py` | `main.rs` | 1（工具子命令）→ 4（translate 等） |
-| `gui/components.py` | 待定（egui / Slint / Tauri） | 5 |
+| `__main__.py` + `gui/components.py` | `app.rs`（規則）+ `gui/`（Tauri） | 5 |
 
 主要相依：`clap`、`serde`/`serde_json`、`fancy-regex`（Python 正則的 lookaround）、`encoding_rs` + `chardetng`、`thiserror`、`indexmap`；之後 `rusqlite`（bundled）、`md-5`、`tokio`、`reqwest`（rustls）、`tiktoken-rs`、OpenCC 純 Rust 實作（候選 `ferrous-opencc`，需以 golden 驗證 s2twp 對等）。
 
@@ -113,7 +113,14 @@ Python → Rust 對應：
   - 與 Python 的刻意差異：Python 的 stop 只停止回報，背景仍跑完並寫出檔案；Python 的暫停卡在逐句進度回呼內，Rust 先回報完該批進度再於下一批前暫停
   - 使用者須知（Python 既有行為）：`-o` 目錄不存在時默默輸出到輸入檔旁（已寫入 `packaging/README.txt`）
   - 推送前 Codex 審查（`codex review --base main`）：已修——發佈包附 OpenCC 授權（`THIRD-PARTY/`）、目錄掃描不進入指向目錄的符號連結（對齊 Python `os.walk`，原本會重複或越界收檔）；未改——錯誤分類只看訊息字串，Gemini `429 RESOURCE_EXHAUSTED` 不含 rate limit 字樣時會判成 unknown、不等 retry-after，**Python 版同樣如此**（`client.py` `_classify_error`），要改需兩版一起改
-- [ ] 階段 5b：Tauri v2 GUI（純 HTML/JS，無 npm）
+- [x] **階段 5b**（2026-09-29）：Tauri v2 桌面 GUI（`gui/` 子 crate，前端 `gui/ui/` 為純 HTML/CSS/JS、無 npm；workspace `default-members` 只含 CLI，CLI 建置不需 WebKitGTK）
+  - 與畫面無關的規則移到 lib `app.rs`，CLI 與 GUI 共用：`prepare_session`（原 CLI 服務組裝）、`GuiSettings` 讀寫、語言對同步、模型下拉選擇、開始前預檢（新增 `models::test_model_connection` / `check_internet_connection`）、完成訊息與狀態文字、`run_files` 多檔排程（`RunEvents` trait）、`expand_paths`
+  - 功能：檔案清單（原生選檔/選資料夾、拖放檔案或資料夾、單筆移除）、語言/LLM/模型/並行/內容類型/風格/顯示模式/Netflix/批次翻譯、開始/暫停/繼續/停止、進度與逐檔結果、檔名衝突詢問、提示詞編輯器（載入/儲存/重置）、使用說明/關於、關閉時存設定（翻譯中需確認）、Ctrl+O / Ctrl+Enter / Esc
+  - 驗證：GUI 設定寫回 golden（依 Python 事件處理器實際呼叫順序重現 user_settings.json / prompt_config.json 與部分設定檔補預設值）；`run_files` 4 項、連線預檢 4 項 wiremock 行為測試；10 項變異中 9 項被抓到，未抓到的 1 項（GUI 讀取預設值）因兩版載入時都會合併設定預設值而屬等價變異
+  - 實機（Hy-MT2-7B，X11 以 XTEST 操作真實視窗）：GUI 翻譯 MIKR 30 條（adult＋Netflix、並行 1）與 Rust CLI、Python CLI **三方逐位元相同**；暫停期間進度不動、繼續後恢復、停止後不寫檔；衝突對話框「重新命名」產生 `.zh_tw_1.srt` 且原檔不變；llama-server 未啟動時預檢訊息與 Python 相同；關閉視窗時寫回設定
+  - 與 Python 的刻意差異：多檔改為逐檔翻譯（Python 每檔一個執行緒同時翻、進度互蓋）；停止真正中止且不寫檔；完成後保留最後訊息（Python `reset_ui` 立即蓋成「準備就緒」）；翻譯中鎖住所有設定（Python 只鎖 LLM/模型/顯示模式，但改動會即時影響進行中的翻譯）；衝突選「略過」時回報並計入總進度（Python 不回報、總進度停住）；提示音改用 WebAudio；主題跟隨系統淺色/深色；加入檔案的結果以非模態提示顯示；「清除選中」更名為「清除列表」（Python 實際也是清除全部）；預檢的 OpenAI/Google 錯誤細節取自 HTTP 回應本文、不做 SDK 自動重試
+  - 尚未移植（Python 選單項目）：快取管理、進階設定（Python 本身為「開發中」）、字幕格式轉換、從影片提取字幕、統計報告、提示詞匯入/匯出/分析、theme_settings.json 主題
+  - 限制：本機無 mingw `windres`，GUI 的 Windows 編譯只由 CI（MSVC）驗證；發佈流程尚未納入 GUI 執行檔
 
 ## 6. 開發指令
 
@@ -128,4 +135,8 @@ cargo fmt
 # 本機交叉編譯（需 zig：uv 裝 ziglang 後加進 PATH）
 cargo zigbuild --release --locked --target x86_64-unknown-linux-gnu.2.28
 cargo zigbuild --release --locked --target x86_64-pc-windows-gnu
+
+# GUI（Linux 需 libwebkit2gtk-4.1-dev 等，見 ci.yml rust-gui job）；在含 config/ 的目錄執行
+cargo run -p srt-translator-gui
+cargo clippy -p srt-translator-gui --all-targets -- -D warnings
 ```

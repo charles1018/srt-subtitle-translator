@@ -4,20 +4,16 @@ pub mod logger;
 
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use log::{error, info, warn};
-use srt_translator::cache::CacheManager;
-use srt_translator::client::{ClientOptions, LlmType, NetflixStyleConfig, TranslationClient};
+use srt_translator::app::{self, prepare_session, Session, TranslateOptions, GLOSSARY_DIR};
+pub use srt_translator::app::{ensure_runtime_dirs, open_cache};
 use srt_translator::config::{resolve_config_dir, ConfigFile, ConfigKind};
 use srt_translator::glossary::GlossaryManager;
 use srt_translator::models;
-use srt_translator::output::{ConflictChoice, OutputSettings};
-use srt_translator::prompt::{PromptManager, LANGUAGE_PAIRS};
-use srt_translator::service::{DisplayMode, FileJob, ServiceSettings, TranslationService};
+use srt_translator::output::ConflictChoice;
 use srt_translator::Result;
 
-pub const GLOSSARY_DIR: &str = "data/glossaries";
 const SUPPORTED_EXTENSIONS: [&str; 4] = ["srt", "vtt", "ass", "ssa"];
 
 /// `translate` 子命令參數。
@@ -39,25 +35,12 @@ pub struct TranslateArgs {
     pub structure_text: bool,
 }
 
-fn is_supported(path: &Path) -> bool {
-    path.extension().is_some_and(|e| SUPPORTED_EXTENSIONS.contains(&e.to_string_lossy().to_lowercase().as_str()))
+fn supported_extensions() -> Vec<String> {
+    SUPPORTED_EXTENSIONS.iter().map(|e| e.to_string()).collect()
 }
 
-fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
-    let mut paths: Vec<PathBuf> = entries.filter_map(|e| e.ok().map(|e| e.path())).collect();
-    paths.sort();
-    for p in paths {
-        // 與 Python `os.walk`（followlinks=False）相同：不進入指向目錄的符號連結
-        if p.is_symlink() && p.is_dir() {
-            continue;
-        }
-        if p.is_dir() {
-            walk(&p, out);
-        } else if is_supported(&p) {
-            out.push(std::path::absolute(&p).unwrap_or(p));
-        }
-    }
+fn is_supported(path: &Path) -> bool {
+    app::has_extension(path, &supported_extensions())
 }
 
 /// 收集要翻譯的檔案（目錄遞迴，依路徑排序）。
@@ -71,7 +54,7 @@ pub fn collect_files(inputs: &[PathBuf]) -> Vec<PathBuf> {
                 warn!("不支援的檔案格式: {}", input.display());
             }
         } else if input.is_dir() {
-            walk(input, &mut files);
+            files.extend(app::walk_subtitles(input, &supported_extensions()));
         } else {
             warn!("路徑不存在: {}", input.display());
         }
@@ -114,20 +97,6 @@ fn ask_conflict(path: &Path) -> ConflictChoice {
     }
 }
 
-pub fn open_cache(config_dir: &Path) -> Result<CacheManager> {
-    let config = ConfigFile::load(config_dir, ConfigKind::Cache)?;
-    let db_path = config.get_str("db_path").unwrap_or("data/translation_cache.db").to_string();
-    let max_memory = config.get_i64("max_memory_cache").filter(|v| *v > 0).unwrap_or(1000) as usize;
-    let cleanup_days = config.get_i64("auto_cleanup_days").filter(|v| *v > 0).unwrap_or(30);
-    CacheManager::open(db_path, max_memory, cleanup_days)
-}
-
-pub fn ensure_runtime_dirs() {
-    for dir in ["data", "config", "logs"] {
-        let _ = std::fs::create_dir_all(dir);
-    }
-}
-
 /// 執行翻譯；回傳是否全部成功。
 ///
 /// 與 Python 的差異：`-o/--output-dir` 只作用於本次執行，不會寫回 `file_handler_config.json`。
@@ -140,75 +109,22 @@ pub async fn cmd_translate(args: TranslateArgs) -> Result<bool> {
     }
     info!("找到 {} 個檔案待翻譯", files.len());
 
-    let config_dir = resolve_config_dir(None);
-    let user = ConfigFile::load(&config_dir, ConfigKind::User)?;
-    let model_config = ConfigFile::load(&config_dir, ConfigKind::Model)?;
-    let file_config = ConfigFile::load(&config_dir, ConfigKind::File)?;
-
-    // 本次執行的覆寫（不寫回設定檔）
-    let mut prompt = PromptManager::open(&config_dir)?;
-    if let Some(ct) = &args.content_type {
-        prompt.current_content_type = ct.clone();
-    }
-    if let Some(style) = &args.style {
-        prompt.current_style = style.clone();
-    }
-    let pair = format!("{}→{}", args.source, args.target);
-    if LANGUAGE_PAIRS.iter().any(|(name, _, _)| *name == pair) {
-        prompt.current_language_pair = pair;
-    } else {
-        warn!("未支援的語言對 {pair}，沿用 {}", prompt.current_language_pair);
-    }
-    let prompt = Arc::new(prompt);
-
-    let model_name = args.model.clone().unwrap_or_else(|| {
-        let m = models::recommended_model(&args.provider).to_string();
-        info!("使用推薦模型: {m}");
-        m
-    });
-
-    let mut output = OutputSettings::from_config(&file_config);
-    if let Some(dir) = &args.output_dir {
-        output.output_directory = dir.to_string_lossy().into_owned();
-    }
-
-    let mut glossary = GlossaryManager::open(GLOSSARY_DIR)?;
-    for name in &args.glossaries {
-        if glossary.activate(name) {
-            info!("已啟用術語表: {name}");
-        } else {
-            warn!("找不到術語表: {name}");
-        }
-    }
-
-    let cache = Arc::new(open_cache(&config_dir)?);
-    let llm_type = LlmType::parse(&args.provider).expect("clap 已驗證 provider");
-    let mut options = ClientOptions::new(llm_type);
-    if llm_type == LlmType::Llamacpp {
-        options.base_url = model_config.get_str("llamacpp_url").map(str::to_string);
-    }
-    options.api_key = models::load_api_key(&args.provider);
-    options.openai_max_requests_per_minute =
-        model_config.get_i64("openai_max_requests_per_minute").filter(|v| *v > 0).unwrap_or(500) as u64;
-    options.openai_max_tokens_per_minute =
-        model_config.get_i64("openai_max_tokens_per_minute").filter(|v| *v > 0).unwrap_or(200_000) as u64;
-    options.netflix_style = NetflixStyleConfig {
-        enabled: args.netflix_style.unwrap_or_else(|| user.get_bool("netflix_style_enabled", false)),
-        ..Default::default()
-    };
-    let client = TranslationClient::new(options, prompt.clone(), Some(cache.clone()));
-    let service =
-        TranslationService::new(client, prompt, Some(cache), Some(glossary), ServiceSettings::from_user_config(&user));
-
-    let job = FileJob {
-        source_lang: args.source.clone(),
-        target_lang: args.target.clone(),
-        model_name,
-        parallel_requests: args.concurrency,
-        display_mode: DisplayMode::parse(&args.display_mode),
-        use_structure_text: args.structure_text,
+    let options = TranslateOptions {
+        source: args.source.clone(),
+        target: args.target.clone(),
+        provider: args.provider.clone(),
+        model: args.model.clone(),
+        content_type: args.content_type.clone(),
+        style: args.style.clone(),
+        display_mode: args.display_mode.clone(),
+        concurrency: args.concurrency,
+        output_dir: args.output_dir.clone(),
         use_cache: !args.no_cache,
+        netflix_style: args.netflix_style,
+        glossaries: args.glossaries.clone(),
+        structure_text: args.structure_text,
     };
+    let Session { service, job, output } = prepare_session(&resolve_config_dir(None), &options)?;
     let quiet_progress = |_: usize, _: usize| {};
     let progress: &(dyn Fn(usize, usize) + Sync) = if args.quiet { &quiet_progress } else { &print_progress };
     let ask: Option<&dyn Fn(&Path) -> ConflictChoice> = if args.quiet { None } else { Some(&ask_conflict) };
@@ -390,30 +306,4 @@ pub fn cmd_glossary(command: Option<GlossaryCommand>) -> Result<bool> {
         }
     }
     Ok(true)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// 與 Python `os.walk` 相同：不進入指向目錄的符號連結，但保留指向檔案的連結。
-    #[cfg(unix)]
-    #[test]
-    fn walk_skips_directory_symlinks() {
-        let root = tempfile::tempdir().unwrap();
-        let outside = tempfile::tempdir().unwrap();
-        let input = root.path().join("subs");
-        std::fs::create_dir_all(input.join("season1")).unwrap();
-        std::fs::write(input.join("season1/ep01.srt"), "").unwrap();
-        std::fs::write(outside.path().join("secret.srt"), "").unwrap();
-        std::os::unix::fs::symlink(root.path(), input.join("loop")).unwrap();
-        std::os::unix::fs::symlink(outside.path(), input.join("elsewhere")).unwrap();
-        std::os::unix::fs::symlink(outside.path().join("secret.srt"), input.join("linked.srt")).unwrap();
-
-        let names: Vec<String> = collect_files(std::slice::from_ref(&input))
-            .iter()
-            .map(|p| p.strip_prefix(&input).unwrap().to_string_lossy().into_owned())
-            .collect();
-        assert_eq!(names, ["linked.srt", "season1/ep01.srt"]);
-    }
 }
