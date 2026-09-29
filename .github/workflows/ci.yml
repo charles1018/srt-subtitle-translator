@@ -47,3 +47,46 @@ jobs:
       # tkinter/顯示器在裸 runner 上不保證存在，排除 gui marker 保持 headless 安全
       - name: Pytest (non-GUI)
         run: uv run pytest -q -m "not gui"
+
+  rust:
+    name: Rust port (fmt / clippy / tests / golden freshness)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install stable --profile minimal --component rustfmt,clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('rust/Cargo.lock') }}
+
+      - name: Rustfmt
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Tests
+        run: cargo test --locked
+
+      # Python 版是行為規格：重新產生 golden，若與 commit 內容不同代表 Python 行為已變但 Rust 未同步
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+
+      - name: Golden freshness
+        run: |
+          uv sync --dev --python 3.12
+          uv run python tools/gen_golden.py
+          git diff --exit-code -- tests/golden
