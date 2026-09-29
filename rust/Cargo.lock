@@ -3752,6 +3752,7 @@ dependencies = [
 name = "srt-translator-gui"
 version = "0.1.0"
 dependencies = [
+ "dirs",
  "log",
  "serde",
  "serde_json",

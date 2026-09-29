@@ -1,10 +1,16 @@
 name: Rust release
 
-# 推送 rust-v* 標籤時建置 Linux / Windows 執行檔並建立草稿 Release；
-# 手動觸發（workflow_dispatch）只建置並上傳 artifact，不建立 Release。
+# 推送 rust-v* 標籤時建置 CLI（Linux / Windows 執行檔）與 GUI（.deb / AppImage / Windows 安裝程式）
+# 並建立草稿 Release；手動觸發或 PR 改到打包相關檔案時只建置並上傳 artifact，不建立 Release。
 on:
   push:
     tags: ['rust-v*']
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/rust-release.yml'
+      - 'rust/gui/**'
+      - 'rust/packaging/**'
   workflow_dispatch:
 
 permissions:
@@ -122,9 +128,108 @@ jobs:
             rust/dist-out/${{ steps.package.outputs.archive }}.sha256
           if-no-files-found: error
 
+  build-gui:
+    name: Build GUI (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          # 22.04 的 glibc 較舊，AppImage 可在較多發行版執行（.deb 需 libwebkit2gtk-4.1-0，Ubuntu 22.04 以上）
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: deb,appimage
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: nsis
+    defaults:
+      run:
+        shell: bash
+        working-directory: rust
+    env:
+      # 不依賴 FUSE 執行 linuxdeploy
+      APPIMAGE_EXTRACT_AND_RUN: 1
+    steps:
+      - name: Disable CRLF conversion
+        working-directory: .
+        run: git config --global core.autocrlf false
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Read version
+        id: version
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          gui=$(sed -n 's/^version = "\(.*\)"/\1/p' gui/Cargo.toml | head -1)
+          conf=$(sed -n 's/^  "version": "\(.*\)",/\1/p' gui/tauri.conf.json | head -1)
+          if [[ "$gui" != "$version" || "$conf" != "$version" ]]; then
+            echo "::error::版本不一致：Cargo.toml=$version gui/Cargo.toml=$gui tauri.conf.json=$conf"
+            exit 1
+          fi
+          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF_NAME" != "rust-v$version" ]]; then
+            echo "::error::標籤 $GITHUB_REF_NAME 與版本 $version 不符"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev patchelf file
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Cache cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-tauri*
+            rust/target
+          key: release-gui-${{ matrix.target }}-${{ hashFiles('rust/Cargo.lock') }}
+
+      - name: Install tauri-cli
+        run: command -v cargo-tauri || cargo install tauri-cli --version 2.12.0 --locked
+
+      - name: Build bundles
+        working-directory: rust/gui
+        run: cargo tauri build --bundles ${{ matrix.bundles }} -- --locked
+
+      # 統一成不含空格的檔名並附 sha256
+      - name: Collect
+        id: collect
+        run: |
+          v=${{ steps.version.outputs.version }}
+          mkdir -p gui-out
+          b=target/release/bundle
+          # Tauri 產出的檔名含空格（productName），以 glob 陣列取得
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            setup=("$b"/nsis/*-setup.exe)
+            cp "${setup[0]}" "gui-out/srt-translator-gui_${v}_x64-setup.exe"
+          else
+            deb=("$b"/deb/*.deb)
+            appimage=("$b"/appimage/*.AppImage)
+            cp "${deb[0]}" "gui-out/srt-translator-gui_${v}_amd64.deb"
+            cp "${appimage[0]}" "gui-out/srt-translator-gui_${v}_x86_64.AppImage"
+          fi
+          cd gui-out
+          for f in *; do sha256sum "$f" > "$f.sha256"; done
+          ls -la
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: gui-${{ matrix.target }}
+          path: rust/gui-out/*
+          if-no-files-found: error
+
   release:
     name: Draft GitHub Release
-    needs: build
+    needs: [build, build-gui]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
@@ -145,4 +250,4 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --draft \
             --title "SRT Subtitle Translator (Rust) ${GITHUB_REF_NAME#rust-v}" \
-            --notes "Rust 移植版 CLI 單一執行檔（Linux x86_64 / Windows x86_64）。使用說明見壓縮檔內 README.txt。"
+            --notes "Rust 移植版。CLI：單一執行檔壓縮檔（Linux / Windows x86_64，使用說明見 README.txt）。GUI：Linux .deb（Ubuntu 22.04 以上）/ AppImage、Windows 安裝程式（setup.exe）；安裝版的設定與快取存放在使用者資料目錄。"

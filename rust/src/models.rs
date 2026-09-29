@@ -2,9 +2,15 @@
 //!
 //! 與 Python 的差異：Google 模型列表在有金鑰時直接回傳靜態清單，不額外送一次 generate_content 驗證金鑰。
 
+use std::path::Path;
 use std::time::Duration;
 
 use serde_json::Value;
+
+/// 載入指定目錄的 `.env`（不覆寫既有環境變數）；GUI 啟動時以資料目錄呼叫。
+pub fn load_dotenv_in(dir: &Path) {
+    let _ = dotenvy::from_path(dir.join(".env"));
+}
 
 /// 載入 API 金鑰：環境變數優先，其次為目前目錄的 `.env`（不覆寫既有環境變數）。
 pub fn load_api_key(provider: &str) -> Option<String> {

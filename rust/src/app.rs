@@ -20,15 +20,29 @@ use crate::service::{DisplayMode, FileJob, FileOutcome, ServiceSettings, Transla
 
 pub const GLOSSARY_DIR: &str = "data/glossaries";
 
+/// 以基準目錄解析相對路徑；CLI 的基準為空路徑（= 目前目錄，與 Python 相同），GUI 為資料目錄的絕對路徑。
+pub fn in_base(base: &Path, path: impl AsRef<Path>) -> PathBuf {
+    base.join(path)
+}
+
 pub fn ensure_runtime_dirs() {
+    ensure_runtime_dirs_in(Path::new(""));
+}
+
+pub fn ensure_runtime_dirs_in(base: &Path) {
     for dir in ["data", "config", "logs"] {
-        let _ = std::fs::create_dir_all(dir);
+        let _ = std::fs::create_dir_all(in_base(base, dir));
     }
 }
 
 pub fn open_cache(config_dir: &Path) -> Result<CacheManager> {
+    open_cache_in(Path::new(""), config_dir)
+}
+
+/// 快取設定的 `db_path` 為相對路徑時相對於 `base`。
+pub fn open_cache_in(base: &Path, config_dir: &Path) -> Result<CacheManager> {
     let config = ConfigFile::load(config_dir, ConfigKind::Cache)?;
-    let db_path = config.get_str("db_path").unwrap_or("data/translation_cache.db").to_string();
+    let db_path = in_base(base, config.get_str("db_path").unwrap_or("data/translation_cache.db"));
     let max_memory = config.get_i64("max_memory_cache").filter(|v| *v > 0).unwrap_or(1000) as usize;
     let cleanup_days = config.get_i64("auto_cleanup_days").filter(|v| *v > 0).unwrap_or(30);
     CacheManager::open(db_path, max_memory, cleanup_days)
@@ -127,6 +141,21 @@ pub fn supported_extensions(file_config: &ConfigFile) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// GUI 的資料基準目錄（`config/`、`data/`、`logs/`、`.env` 都在它底下；CLI 一律用目前目錄）。
+/// GUI 不切換工作目錄：AppImage 啟動腳本會 cd 到唯讀的掛載目錄，WebKit 子程序也以相對路徑啟動。
+/// 1. 有設 `CONFIG_DIR`，或目前目錄已有 `config/`（在專案目錄啟動，與 Python 版共用）→ 目前目錄
+/// 2. 執行檔旁有 `config/`（可攜式擺放）→ 執行檔目錄
+/// 3. 否則使用者資料目錄下的 `srt-subtitle-translator/`（從選單啟動的安裝版；目前目錄可能唯讀或是家目錄）
+pub fn gui_workdir(cwd: &Path, exe_dir: Option<&Path>, user_data: Option<&Path>, config_dir_env: bool) -> PathBuf {
+    if config_dir_env || cwd.join("config").is_dir() {
+        return cwd.to_path_buf();
+    }
+    if let Some(exe) = exe_dir.filter(|d| d.join("config").is_dir()) {
+        return exe.to_path_buf();
+    }
+    user_data.map_or_else(|| cwd.to_path_buf(), |d| d.join("srt-subtitle-translator"))
+}
+
 /// 一次翻譯工作的參數（CLI 旗標 / GUI 表單）。
 #[derive(Debug, Clone)]
 pub struct TranslateOptions {
@@ -146,6 +175,8 @@ pub struct TranslateOptions {
     pub netflix_style: Option<bool>,
     pub glossaries: Vec<String>,
     pub structure_text: bool,
+    /// 相對路徑（快取、術語表）的基準目錄；空路徑表示目前目錄。
+    pub base_dir: PathBuf,
 }
 
 /// 組裝完成、可直接翻譯檔案的工作階段。
@@ -192,7 +223,7 @@ pub fn prepare_session(config_dir: &Path, opts: &TranslateOptions) -> Result<Ses
         output.output_directory = dir.to_string_lossy().into_owned();
     }
 
-    let mut glossary = GlossaryManager::open(GLOSSARY_DIR)?;
+    let mut glossary = GlossaryManager::open(in_base(&opts.base_dir, GLOSSARY_DIR))?;
     for name in &opts.glossaries {
         if glossary.activate(name) {
             info!("已啟用術語表: {name}");
@@ -201,7 +232,7 @@ pub fn prepare_session(config_dir: &Path, opts: &TranslateOptions) -> Result<Ses
         }
     }
 
-    let cache = Arc::new(open_cache(config_dir)?);
+    let cache = Arc::new(open_cache_in(&opts.base_dir, config_dir)?);
     let mut options = ClientOptions::new(llm_type);
     if llm_type == LlmType::Llamacpp {
         options.base_url = model_config.get_str("llamacpp_url").map(str::to_string);
@@ -556,6 +587,23 @@ mod tests {
 
         remember_added_files(&cfg, &[], false).unwrap();
         assert_eq!(last(ConfigKind::User), "/y");
+    }
+
+    #[test]
+    fn gui_workdir_prefers_existing_config_then_user_data() {
+        let root = tempfile::tempdir().unwrap();
+        let (cwd, exe, data) = (root.path().join("cwd"), root.path().join("exe"), root.path().join("data"));
+        for d in [&cwd, &exe, &data] {
+            std::fs::create_dir(d).unwrap();
+        }
+        let app_data = data.join("srt-subtitle-translator");
+        assert_eq!(gui_workdir(&cwd, Some(&exe), Some(&data), false), app_data);
+        assert_eq!(gui_workdir(&cwd, Some(&exe), Some(&data), true), cwd, "有設 CONFIG_DIR");
+        assert_eq!(gui_workdir(&cwd, Some(&exe), None, false), cwd, "無使用者資料目錄時退回目前目錄");
+        std::fs::create_dir(exe.join("config")).unwrap();
+        assert_eq!(gui_workdir(&cwd, Some(&exe), Some(&data), false), exe, "可攜式");
+        std::fs::create_dir(cwd.join("config")).unwrap();
+        assert_eq!(gui_workdir(&cwd, Some(&exe), Some(&data), false), cwd, "專案目錄");
     }
 
     #[test]

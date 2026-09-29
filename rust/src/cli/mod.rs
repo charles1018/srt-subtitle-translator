@@ -123,6 +123,7 @@ pub async fn cmd_translate(args: TranslateArgs) -> Result<bool> {
         netflix_style: args.netflix_style,
         glossaries: args.glossaries.clone(),
         structure_text: args.structure_text,
+        base_dir: PathBuf::new(),
     };
     let Session { service, job, output } = prepare_session(&resolve_config_dir(None), &options)?;
     let quiet_progress = |_: usize, _: usize| {};

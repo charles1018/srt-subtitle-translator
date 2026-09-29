@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "srt-translator-gui",
+  "productName": "SRT Subtitle Translator",
   "version": "0.1.0",
   "identifier": "io.github.charles1018.srt-translator",
   "build": {
@@ -24,7 +24,40 @@
     }
   },
   "bundle": {
-    "active": false,
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.png", "icons/icon.ico"]
-  }
+    "active": true,
+    "targets": [
+      "deb",
+      "appimage",
+      "nsis"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.png",
+      "icons/icon.ico"
+    ],
+    "category": "Utility",
+    "shortDescription": "SRT 字幕翻譯器",
+    "longDescription": "以大型語言模型（llama.cpp / OpenAI / Google Gemini）翻譯 SRT/VTT/ASS 字幕的桌面工具。",
+    "license": "MIT",
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "TradChinese",
+          "English"
+        ],
+        "displayLanguageSelector": false
+      }
+    }
+  },
+  "mainBinaryName": "srt-translator-gui"
 }

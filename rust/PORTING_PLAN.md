@@ -123,6 +123,10 @@ Python → Rust 對應：
   - 既有限制（與 Python 相同，已實測 Python `get_output_path`）：全新設定下 file 的 `last_directory` 為空，選資料夾翻譯時不同子資料夾的同名字幕會輸出到同一路徑（ask 模式會詢問、overwrite 模式會覆寫）；要修需兩版一起改
   - 限制：本機無 mingw `windres`，GUI 的 Windows 編譯只由 CI（MSVC）驗證；發佈流程尚未納入 GUI 執行檔
   - 推送前 Codex 審查修正：前端在 invoke 前就進入執行狀態（避免 run-finished 先到而卡在「翻譯中」）；衝突對話框開著時按停止回報為停止而非檔案失敗；「選擇資料夾」依 Python `select_directory` 把所選資料夾寫入 `batch_settings.output_directory`（Python 既有怪行為：選來源資料夾同時改掉輸出目錄，為共用設定一致而照搬）；加入檔案時 file 設定的 `last_directory`（保留目錄結構的基準）只在選檔/拖放時更新，選資料夾不動（與 Python 相同，原本兩者都寫會讓子資料夾同名檔輸出衝突）
+- [x] **階段 5c**（2026-09-29）：GUI 納入發佈流程
+  - `rust-release.yml` 新增 `build-gui`：Linux（ubuntu-22.04）`.deb` + AppImage、Windows NSIS 安裝程式（currentUser、繁中介面、WebView2 下載啟動器）；檔名統一為 `srt-translator-gui_<版本>_*`＋sha256；標籤版號須與 CLI/GUI Cargo.toml 與 tauri.conf.json 一致；PR 改到 `rust/gui/**`、`rust/packaging/**` 或此 workflow 時也會建置（只產 artifact）
+  - GUI 資料目錄（`app::gui_workdir`）：有 `CONFIG_DIR` 或目前目錄有 `config/` → 目前目錄（與 Python 共用）；執行檔旁有 `config/` → 可攜式；否則使用者資料目錄 `srt-subtitle-translator/`。GUI **不切換工作目錄**，改以絕對基準路徑解析快取/術語表/`.env`（`TranslateOptions.base_dir`、`open_cache_in`；CLI 基準為空路徑，行為不變）——實測切換目錄會使 AppImage 的 WebKitNetworkProcess（以相對路徑啟動）找不到而崩潰；AppImage 以 `OWD` 取回使用者原本的目錄
+  - 驗證（本機 tauri-cli 2.12）：.deb 6.8MB（Depends: libwebkit2gtk-4.1-0, libgtk-3-0）、AppImage 84MB；AppImage 於空目錄啟動→設定建在 XDG 資料目錄且不寫入目前目錄、於含 config/ 的目錄啟動→沿用該設定；.deb 解出的執行檔同樣正確；Windows 安裝程式只由 CI 驗證
 
 ## 6. 開發指令
 
@@ -141,4 +145,5 @@ cargo zigbuild --release --locked --target x86_64-pc-windows-gnu
 # GUI（Linux 需 libwebkit2gtk-4.1-dev 等，見 ci.yml rust-gui job）；在含 config/ 的目錄執行
 cargo run -p srt-translator-gui
 cargo clippy -p srt-translator-gui --all-targets -- -D warnings
+(cd gui && cargo tauri build --bundles deb,appimage)   # 打包（需 cargo install tauri-cli --version 2.12.0）
 ```

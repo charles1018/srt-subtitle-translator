@@ -55,6 +55,8 @@ llamacpp_url 修改。
 
 與 Python 版的差異
 ------------------
-  - 沒有圖形介面（GUI 開發中）
+  - 圖形介面另外提供：Linux .deb / AppImage、Windows 安裝程式（srt-translator-gui_*）。
+    安裝版的設定與快取放在使用者資料目錄（Linux ~/.local/share/srt-subtitle-translator、
+    Windows %APPDATA%\srt-subtitle-translator）；若從含 config/ 的目錄啟動則沿用該目錄
   - -o/--output-dir 只作用於該次執行，不會寫回設定檔
   - 新建的文字檔一律使用 LF 換行（讀取既有 SRT 時保留原換行）

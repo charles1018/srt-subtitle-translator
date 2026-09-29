@@ -30,6 +30,8 @@ const DISPLAY_MODES: [&str; 4] = ["雙語對照", "僅顯示翻譯", "翻譯在�
 const INSTANT_OPTIONS: [&str; 3] = ["display_mode", "netflix_style_enabled", "structure_text_enabled"];
 
 struct AppState {
+    /// 資料基準目錄（絕對路徑，見 `app::gui_workdir`）
+    base_dir: PathBuf,
     config_dir: PathBuf,
     run: Mutex<Option<TaskControl>>,
     conflict: Mutex<Option<mpsc::Sender<ConflictChoice>>>,
@@ -61,7 +63,7 @@ struct InitData {
 /// 載入設定並把儲存的語言對同步到 prompt 設定（Python `_apply_user_settings`）。
 #[tauri::command]
 fn init(state: State<'_, AppState>) -> CmdResult<InitData> {
-    app::ensure_runtime_dirs();
+    app::ensure_runtime_dirs_in(&state.base_dir);
     let dir = &state.config_dir;
     let settings = GuiSettings::load(dir).map_err(err)?;
     if !sync_language_pair(dir, &settings.source_lang, &settings.target_lang).map_err(err)? {
@@ -267,6 +269,7 @@ async fn start_translation(
         netflix_style: Some(settings.netflix_style_enabled),
         glossaries: Vec::new(),
         structure_text: settings.structure_text_enabled,
+        base_dir: state.base_dir.clone(),
     };
     let files: Vec<PathBuf> = files.into_iter().map(PathBuf::from).collect();
     std::thread::spawn(move || {
@@ -358,10 +361,23 @@ fn save_and_quit(app: AppHandle, state: State<'_, AppState>, settings: Option<Gu
     saved
 }
 
+/// 決定資料基準目錄與設定目錄（絕對路徑；不切換工作目錄，原因見 `app::gui_workdir`），並載入其中的 `.env`。
+fn resolve_dirs() -> AppState {
+    // AppImage 啟動腳本會 cd 到掛載目錄，使用者原本的目錄在 OWD
+    let cwd = std::env::var_os("OWD").map(PathBuf::from).or_else(|| std::env::current_dir().ok()).unwrap_or_default();
+    let exe_dir = std::env::current_exe().ok().and_then(|p| p.parent().map(Path::to_path_buf));
+    let has_env = std::env::var("CONFIG_DIR").is_ok_and(|v| !v.trim().is_empty());
+    let base = app::gui_workdir(&cwd, exe_dir.as_deref(), dirs::data_dir().as_deref(), has_env);
+    let base = std::path::absolute(&base).unwrap_or(base);
+    let config_dir = if has_env { resolve_config_dir(None) } else { base.join("config") };
+    models::load_dotenv_in(&base);
+    AppState { base_dir: base, config_dir, run: Mutex::new(None), conflict: Mutex::new(None) }
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .manage(AppState { config_dir: resolve_config_dir(None), run: Mutex::new(None), conflict: Mutex::new(None) })
+        .manage(resolve_dirs())
         .on_window_event(|window, event| match event {
             // 交給前端確認（翻譯中需確認）並儲存設定後再結束
             WindowEvent::CloseRequested { api, .. } => {
