@@ -446,7 +446,7 @@ pub fn with_total_progress(message: &str, completed: usize, total: usize) -> Str
 
 /// 翻譯中的狀態列文字與百分比（Python `_update_progress`）。
 pub fn progress_status(current: usize, total: usize) -> (String, usize) {
-    let percentage = if total > 0 { current * 100 / total } else { 0 };
+    let percentage = (current * 100).checked_div(total).unwrap_or(0);
     (format!("正在翻譯第 {current}/{total} 句字幕 ({percentage}%)"), percentage)
 }
 
