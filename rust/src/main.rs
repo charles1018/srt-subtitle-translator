@@ -1,12 +1,14 @@
-//! CLI 入口（對等 Python `cli.py`）。目前已移植：extract / assemble / qa / cps-audit / cache / config / prompt / version。
+//! CLI 入口（對等 Python `cli.py`）：translate / models / cache / config / glossary / prompt / extract / assemble / qa / cps-audit / version。
+
+mod cli;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::builder::PossibleValuesParser;
 use clap::{Args, Parser, Subcommand};
+use cli::{ensure_runtime_dirs, open_cache, GlossaryCommand, TranslateArgs};
 use serde_json::Value;
-use srt_translator::cache::CacheManager;
 use srt_translator::config::{resolve_config_dir, ConfigFile, ConfigKind};
 use srt_translator::prompt::{PromptManager, CONTENT_TYPES, SUPPORTED_LLM_TYPES};
 use srt_translator::py;
@@ -78,6 +80,19 @@ enum Command {
         #[arg(long = "min-duration", default_value_t = 1000)]
         min_duration_ms: i64,
     },
+    /// 翻譯字幕檔案
+    Translate(TranslateCli),
+    /// 列出可用模型
+    Models {
+        /// LLM 提供者
+        #[arg(short, long, default_value = "llamacpp", value_parser = PossibleValuesParser::new(SUPPORTED_LLM_TYPES))]
+        provider: String,
+    },
+    /// 管理術語表
+    Glossary {
+        #[command(subcommand)]
+        command: Option<GlossaryCli>,
+    },
     /// 管理翻譯快取
     Cache(CacheArgs),
     /// 顯示或設定配置
@@ -94,6 +109,163 @@ enum Command {
         #[command(subcommand)]
         command: Option<PromptCommand>,
     },
+}
+
+#[derive(Args)]
+struct TranslateCli {
+    /// 輸入檔案或目錄路徑
+    #[arg(required = true)]
+    input: Vec<PathBuf>,
+    /// 來源語言 (如: 日文, 英文)
+    #[arg(short, long)]
+    source: String,
+    /// 目標語言 (如: 繁體中文)
+    #[arg(short, long)]
+    target: String,
+    /// LLM 提供者
+    #[arg(short, long, default_value = "llamacpp", value_parser = PossibleValuesParser::new(SUPPORTED_LLM_TYPES))]
+    provider: String,
+    /// 模型名稱 (未指定則使用推薦模型)
+    #[arg(short, long)]
+    model: Option<String>,
+    /// 內容類型
+    #[arg(long, value_parser = PossibleValuesParser::new(CONTENT_TYPES))]
+    content_type: Option<String>,
+    /// 翻譯風格
+    #[arg(long, value_parser = PossibleValuesParser::new(["standard", "literal", "localized", "specialized"]))]
+    style: Option<String>,
+    /// 顯示模式
+    #[arg(short, long, default_value = "僅顯示翻譯",
+          value_parser = PossibleValuesParser::new(["僅顯示翻譯", "雙語對照", "翻譯在上", "原文在上", "僅譯文"]))]
+    display_mode: String,
+    /// 並行請求數
+    #[arg(short, long, default_value_t = 3)]
+    concurrency: usize,
+    /// 輸出目錄 (預設: 與輸入檔案同目錄)
+    #[arg(short, long)]
+    output_dir: Option<PathBuf>,
+    /// 不使用翻譯快取
+    #[arg(long)]
+    no_cache: bool,
+    /// 啟用 Netflix 風格後處理
+    #[arg(long, conflicts_with = "no_netflix_style")]
+    netflix_style: bool,
+    /// 停用 Netflix 風格後處理
+    #[arg(long)]
+    no_netflix_style: bool,
+    /// 使用指定術語表 (可多次指定)
+    #[arg(short, long = "glossary")]
+    glossary: Vec<String>,
+    /// 安靜模式，僅顯示錯誤
+    #[arg(short, long, conflicts_with = "verbose")]
+    quiet: bool,
+    /// 詳細輸出模式
+    #[arg(short, long)]
+    verbose: bool,
+    /// 使用結構-文本分離翻譯模式（將多個字幕合併為單一批次，減少 API 呼叫）
+    #[arg(long)]
+    structure_text: bool,
+}
+
+#[derive(Subcommand)]
+enum GlossaryCli {
+    /// 列出所有術語表
+    List,
+    /// 建立新術語表
+    Create {
+        /// 術語表名稱
+        name: String,
+        /// 來源語言
+        #[arg(short, long, default_value = "")]
+        source: String,
+        /// 目標語言
+        #[arg(short, long, default_value = "")]
+        target: String,
+        /// 說明
+        #[arg(short, long, default_value = "")]
+        description: String,
+    },
+    /// 顯示術語表內容
+    Show {
+        /// 術語表名稱
+        name: String,
+    },
+    /// 新增術語
+    Add {
+        /// 術語表名稱
+        glossary: String,
+        /// 來源術語
+        source: String,
+        /// 目標翻譯
+        target: String,
+        /// 分類
+        #[arg(short, long, default_value = "")]
+        category: String,
+        /// 備註
+        #[arg(short, long, default_value = "")]
+        notes: String,
+    },
+    /// 移除術語
+    Remove {
+        /// 術語表名稱
+        glossary: String,
+        /// 來源術語
+        source: String,
+    },
+    /// 刪除術語表
+    Delete {
+        /// 術語表名稱
+        name: String,
+    },
+    /// 匯入術語表 (支援 .json, .csv, .txt)
+    Import {
+        /// 檔案路徑
+        file: PathBuf,
+        /// 術語表名稱 (預設使用檔案名稱)
+        #[arg(short, long)]
+        name: Option<String>,
+    },
+    /// 匯出術語表
+    Export {
+        /// 術語表名稱
+        name: String,
+        /// 輸出檔案路徑
+        file: PathBuf,
+        /// 輸出格式
+        #[arg(short, long, default_value = "json", value_parser = PossibleValuesParser::new(["json", "csv", "txt"]))]
+        format: String,
+    },
+    /// 啟用術語表（僅本次執行有效，翻譯時請用 translate -g）
+    Activate {
+        /// 術語表名稱
+        name: String,
+    },
+    /// 停用術語表
+    Deactivate {
+        /// 術語表名稱
+        name: String,
+    },
+}
+
+impl From<GlossaryCli> for GlossaryCommand {
+    fn from(c: GlossaryCli) -> Self {
+        match c {
+            GlossaryCli::List => Self::List,
+            GlossaryCli::Create { name, source, target, description } => {
+                Self::Create { name, source, target, description }
+            }
+            GlossaryCli::Show { name } => Self::Show { name },
+            GlossaryCli::Add { glossary, source, target, category, notes } => {
+                Self::Add { glossary, source, target, category, notes }
+            }
+            GlossaryCli::Remove { glossary, source } => Self::Remove { glossary, source },
+            GlossaryCli::Delete { name } => Self::Delete { name },
+            GlossaryCli::Import { file, name } => Self::Import { file, name },
+            GlossaryCli::Export { name, file, format } => Self::Export { name, file, format },
+            GlossaryCli::Activate { name } => Self::Activate { name },
+            GlossaryCli::Deactivate { name } => Self::Deactivate { name },
+        }
+    }
 }
 
 #[derive(Args)]
@@ -162,8 +334,19 @@ enum PromptCommand {
     },
 }
 
+fn runtime() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_multi_thread().enable_all().build().expect("無法建立 tokio runtime")
+}
+
 fn main() -> ExitCode {
-    let Some(command) = Cli::parse().command else {
+    let cli = Cli::parse();
+    let level = match &cli.command {
+        Some(Command::Translate(t)) if t.quiet => log::LevelFilter::Error,
+        Some(Command::Translate(t)) if t.verbose => log::LevelFilter::Debug,
+        _ => log::LevelFilter::Info,
+    };
+    cli::logger::init(level);
+    let Some(command) = cli.command else {
         use clap::CommandFactory;
         let _ = Cli::command().print_help();
         return ExitCode::SUCCESS;
@@ -198,6 +381,35 @@ fn main() -> ExitCode {
                 },
             )
         }
+        Command::Translate(t) => {
+            let netflix_style = if t.netflix_style {
+                Some(true)
+            } else if t.no_netflix_style {
+                Some(false)
+            } else {
+                None
+            };
+            let args = TranslateArgs {
+                inputs: t.input,
+                source: t.source,
+                target: t.target,
+                provider: t.provider,
+                model: t.model,
+                content_type: t.content_type,
+                style: t.style,
+                display_mode: t.display_mode,
+                concurrency: t.concurrency,
+                output_dir: t.output_dir,
+                no_cache: t.no_cache,
+                netflix_style,
+                glossaries: t.glossary,
+                quiet: t.quiet,
+                structure_text: t.structure_text,
+            };
+            runtime().block_on(cli::cmd_translate(args))
+        }
+        Command::Models { provider } => runtime().block_on(cli::cmd_models(&provider)),
+        Command::Glossary { command } => cli::cmd_glossary(command.map(Into::into)),
         Command::Cache(args) => cmd_cache(&args),
         Command::Config { show, set } => cmd_config(show, set.as_deref()),
         Command::Prompt { command } => cmd_prompt(command),
@@ -210,20 +422,6 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
-}
-
-fn ensure_runtime_dirs() {
-    for dir in ["data", "config", "logs"] {
-        let _ = std::fs::create_dir_all(dir);
-    }
-}
-
-fn open_cache(config_dir: &std::path::Path) -> srt_translator::Result<CacheManager> {
-    let config = ConfigFile::load(config_dir, ConfigKind::Cache)?;
-    let db_path = config.get_str("db_path").unwrap_or("data/translation_cache.db").to_string();
-    let max_memory = config.get_i64("max_memory_cache").filter(|v| *v > 0).unwrap_or(1000) as usize;
-    let cleanup_days = config.get_i64("auto_cleanup_days").filter(|v| *v > 0).unwrap_or(30);
-    CacheManager::open(db_path, max_memory, cleanup_days)
 }
 
 fn cmd_cache(args: &CacheArgs) -> srt_translator::Result<bool> {

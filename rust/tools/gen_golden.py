@@ -661,6 +661,317 @@ def client_cases() -> dict:
     }
 
 
+# ─── OpenCC ─────────────────────────────────────────────────
+
+SIMPLIFIED_CASES = [
+    "软件和网络",
+    "这是一个测试。",
+    "美联储宣布通胀增长，首席执行官表示担忧。",
+    "我们今天一起去超市买东西吧！",
+    "他的程序员朋友在硅谷工作，写了很多代码。",
+    "出租车司机说：「这条路很堵。」",
+    "请把鼠标和键盘放在桌子上……",
+    "信息、数据与软件——这些都很重要",
+    "干燥的天气里头发会干",
+    "这个视频的分辨率是1080p，帧率60",
+    "后来他们发现了一只老鼠",
+    "你還好嗎？這已經是繁體",
+    "Mixed 中英文 text with 简体字",
+]
+
+
+def opencc_cases() -> list[dict]:
+    import random
+
+    import opencc
+
+    converter = opencc.OpenCC("s2twp")
+    dict_dir = Path(opencc.__file__).parent / "dictionary"
+    keys: list[str] = []
+    for name in ["STPhrases.txt", "TWPhrases.txt", "STCharacters.txt"]:
+        with open(dict_dir / name, encoding="utf-8") as f:
+            keys.extend(line.split("\t")[0] for line in f)
+    rng = random.Random(42)
+    separators = ["", "", "", "，", " ", "。", "的", "了"]
+    stress = ["".join(rng.choice(keys) + rng.choice(separators) for _ in range(rng.randint(1, 8))) for _ in range(400)]
+    corpus = SIMPLIFIED_CASES + ZH_CASES + JA_CASES + stress
+    return [{"input": t, "output": converter.convert(t)} for t in corpus]
+
+
+# ─── Translation service ────────────────────────────────────
+
+HEURISTIC_TEXTS = [
+    "",
+    "   ",
+    "The car.",
+    "A house",
+    "My dog is here.",
+    "and then he left",
+    "But why?",
+    "Is it?",
+    "Do they know?",
+    "What happened to the truck?",
+    "He did it.",
+    "Look at this, she said",
+    "We need to go when",
+    "10:30 PM",
+    "2024.",
+    "Ladder 81, respond to the fire on Main Street immediately.",
+    "Firefighters.",
+    "Go!",
+    "Don't.",
+    "it's fine",
+    "Line one\nline two",
+    "Engine 51 is on scene",
+    "こんにちは",
+    "メアちゃん、こっち来て",
+    "Mixed 日本語 text",
+    "Also, bring the kit",
+    "asleep at the wheel",
+    "Something is off...",
+    "Captain Boden wants the report by tomorrow morning, no excuses.",
+    "The",
+    "Your book is here",
+    "We saw him at the store",
+    "We saw him at the big store",
+    "Where are we going?",
+    "Can we go now?",
+    "Abcdefghijklmnopqrstuvwx",
+    "Abcdefghijklmnopqrstuvwxy",
+    "Seven brave firefighters saved the old building",
+]
+
+POST_PROCESS_PAIRS = [
+    ("Hello", "  这是一个测试。  "),
+    ("Straight ahead.", "直走"),
+    ("The oil shock", "石油危机"),
+    ("Much more with John", "接下来我们将探讨约翰的更多观点。"),
+    ("CEO", "首席执行官说通胀增长"),
+    ("Fire Department", "fire department 与 CPR"),
+    ("Punct", "你好，世界！「測試」(test) [x] <y> a-b_c \\ 結束…"),
+    ("Empty", ""),
+    ("Spaces", "多  個   空白"),
+]
+
+
+def _fake_line(src: str) -> str:
+    digest = hashlib.md5(src.encode()).hexdigest()[:4]
+    mood = ("？" if ("?" in src or "？" in src) else "") + ("！" if ("!" in src or "！" in src) else "")
+    return f"这是译文{digest}{mood}。"
+
+
+def fake_reply(body: dict) -> str:
+    """假模型：依 user 訊息內容決定性產生回應（Rust 測試以相同規則實作）。"""
+    user = body["messages"][-1]["content"]
+    if user.startswith("[BATCH:"):
+        lines = user.split("\n")[1:]
+        out = [_fake_line(line) for line in lines]
+        if any("BADBATCH" in line for line in lines):
+            out = out[:-1]
+        return "\n".join(out)
+    return _fake_line(user)
+
+
+class _ReplyCompletions:
+    def __init__(self):
+        self.calls: list[dict] = []
+
+    async def create(self, **kwargs):
+        from types import SimpleNamespace
+
+        params = dict(kwargs)
+        params.pop("timeout", None)
+        extra = params.pop("extra_body", None) or {}
+        body = json.loads(json.dumps({**params, **extra}, ensure_ascii=False))
+        self.calls.append(body)
+        message = SimpleNamespace(content=fake_reply(body), reasoning_content=None, model_extra=None)
+        return SimpleNamespace(choices=[SimpleNamespace(finish_reason="stop", message=message)], usage=None)
+
+
+JA_FIXTURE = [
+    "上機嫌じゃん",
+    "ナイトプール行くの?そんな楽しみ?",
+    "",
+    "メアちゃん、こっち来て",
+    "うん。夜の照明めっちゃ綺麗なんだって",
+    "BADBATCH ここは失敗する",
+    "えっ、本当に!",
+    "一行目\n二行目",
+    "ありがとう",
+    "また明日ね",
+]
+
+EN_FIXTURE = [
+    "The car.",
+    "A house.",
+    "My dog.",
+    "Your book is here.",
+    "What happened?",
+    "and then he left",
+    "Engine 51 is on scene.",
+    "The ladder.",
+    "The hose.",
+    "BADBATCH The truck.",
+    "Go!",
+    "Ladder 81, respond to the fire on Main Street immediately.",
+]
+
+
+def _fixture_srt(texts: list[str]) -> str:
+    blocks = []
+    for i, text in enumerate(texts, 1):
+        blocks.append(f"{i}\n00:00:{i:02d},000 --> 00:00:{i:02d},900\n{text}\n")
+    return "\n".join(blocks)
+
+
+SERVICE_SCENARIOS = [
+    # (llm_type, model, content_type, language_pair, source, fixture, structure, batch_size, display, netflix)
+    ("llamacpp", "Hy-MT2-7B-Q4_K_M.gguf", "adult", "日文→繁體中文", "日文", "ja", False, 10, "僅顯示翻譯", True),
+    ("llamacpp", "Hy-MT2-7B-Q4_K_M.gguf", "adult", "日文→繁體中文", "日文", "ja", True, 4, "雙語對照", True),
+    ("llamacpp", "some-model", "general", "日文→繁體中文", "日文", "ja", True, 3, "翻譯在上", False),
+    ("openai", "gpt-4.1-mini", "english_drama", "英文→繁體中文", "英文", "en", False, 10, "僅顯示翻譯", True),
+    ("openai", "gpt-4.1-mini", "english_drama", "英文→繁體中文", "英文", "en", True, 5, "原文在上", False),
+]
+
+
+def service_cases() -> dict:
+    from srt_translator.core.config import ConfigManager
+    from srt_translator.core.glossary import get_glossary_manager
+    from srt_translator.services.factory import ServiceFactory
+
+    original_cwd = os.getcwd()
+    work = Path(tempfile.mkdtemp(prefix="golden-service-"))
+    os.chdir(work)
+    try:
+        user_config = ConfigManager.get_instance("user")
+        service = TranslationService.__new__(TranslationService)
+        service.config_manager = user_config
+        settings = service._get_translation_runtime_settings()
+        heuristics = []
+        for text in HEURISTIC_TEXTS:
+            heuristics.append(
+                {
+                    "text": text,
+                    "ascii_ratio": service._ascii_letter_ratio(text),
+                    "needs_context": service._text_needs_context(text),
+                    "context_free": service._is_context_free_short_text(text),
+                    "batch_safe_en": service._is_batch_safe_short_text(text, source_lang="英文"),
+                    "batch_safe_none": service._is_batch_safe_short_text(text),
+                    "batch_safe_ja": service._is_batch_safe_short_text(text, source_lang="日文"),
+                    "window_en": service._get_context_window_for_text(text, settings, source_lang="英文"),
+                    "window_ja": service._get_context_window_for_text(text, settings, source_lang="日文"),
+                    "window_no_smart": service._get_context_window_for_text(
+                        text, {**settings, "smart_context_enabled": False}
+                    ),
+                }
+            )
+
+        glossary_manager = get_glossary_manager()
+        glossary_manager.create_glossary("golden", "", "")
+        glossary_manager.add_entry_to_glossary("golden", "Fire Department", "消防局")
+        glossary_manager.add_entry_to_glossary("golden", "CPR", "心肺復甦術", case_sensitive=True)
+        post = []
+        for active in (False, True):
+            if active:
+                glossary_manager.activate_glossary("golden")
+            for preserve in (True, False):
+                user_config.set_value("preserve_punctuation", preserve)
+                for original, translated in POST_PROCESS_PAIRS:
+                    post.append(
+                        {
+                            "glossary": active,
+                            "preserve_punctuation": preserve,
+                            "original": original,
+                            "translated": translated,
+                            "output": service._post_process_translation(original, translated),
+                        }
+                    )
+        glossary_manager.deactivate_glossary("golden")
+        user_config.set_value("preserve_punctuation", True)
+
+        files = []
+        for (
+            llm_type,
+            model,
+            content_type,
+            pair,
+            source,
+            fixture,
+            structure,
+            batch_size,
+            display,
+            netflix,
+        ) in SERVICE_SCENARIOS:
+            ServiceFactory.reset_services()
+            user_config.set_value("translation.batch_size", batch_size)
+            texts = JA_FIXTURE if fixture == "ja" else EN_FIXTURE
+            case_dir = Path(tempfile.mkdtemp(prefix="golden-file-", dir=work))
+            srt_path = case_dir / f"{fixture}_input.srt"
+            srt_path.write_text(_fixture_srt(texts), encoding="utf-8")
+
+            svc = ServiceFactory.get_translation_service()
+            svc.prompt_manager.current_content_type = content_type
+            svc.prompt_manager.current_language_pair = pair
+            client = TranslationClient(
+                llm_type,
+                base_url="http://127.0.0.1:9",
+                api_key="sk-test",
+                cache_db_path=str(work / "data" / "translation_cache.db"),
+                netflix_style_config={"enabled": netflix},
+            )
+            client.prompt_manager.current_content_type = content_type
+            client.prompt_manager.current_language_pair = pair
+            fake = _ReplyCompletions()
+            client.openai_client = __import__("types").SimpleNamespace(
+                chat=__import__("types").SimpleNamespace(completions=fake)
+            )
+
+            async def _client(_llm_type, _c=client):
+                return _c
+
+            svc.model_service.get_translation_client = _client
+            import asyncio
+
+            success, result = asyncio.run(
+                svc.translate_subtitle_file(
+                    str(srt_path),
+                    source,
+                    "繁體中文",
+                    model,
+                    3,
+                    display,
+                    llm_type,
+                    use_structure_text=structure,
+                    use_cache=False,
+                )
+            )
+            output = Path(result).read_text(encoding="utf-8") if success else None
+            files.append(
+                {
+                    "llm_type": llm_type,
+                    "model": model,
+                    "content_type": content_type,
+                    "language_pair": pair,
+                    "source_lang": source,
+                    "fixture": fixture,
+                    "structure": structure,
+                    "batch_size": batch_size,
+                    "display_mode": display,
+                    "netflix": netflix,
+                    "input": srt_path.read_text(encoding="utf-8"),
+                    "success": success,
+                    "output_name": Path(result).name if success else None,
+                    "output": output,
+                    "calls": sorted(fake.calls, key=lambda c: json.dumps(c, ensure_ascii=False, sort_keys=True)),
+                }
+            )
+        user_config.set_value("translation.batch_size", 10)
+        ServiceFactory.reset_services()
+    finally:
+        os.chdir(original_cwd)
+    return {"heuristics": heuristics, "post_process": post, "files": files}
+
+
 # ─── Config ─────────────────────────────────────────────────
 
 
@@ -751,6 +1062,8 @@ def main() -> None:
     write(GOLDEN_DIR / "cache.json", cache_cases())
     write(GOLDEN_DIR / "config.json", config_cases())
     write(GOLDEN_DIR / "client.json.gz", client_cases())
+    write(GOLDEN_DIR / "opencc.json.gz", opencc_cases())
+    write(GOLDEN_DIR / "service.json.gz", service_cases())
     write(PROMPT_ASSET, default_prompts_asset())
 
     if args.local:

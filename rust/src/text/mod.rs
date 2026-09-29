@@ -2,6 +2,7 @@
 
 pub mod japanese;
 pub mod normalize;
+pub mod opencc;
 pub mod post_processor;
 
 pub use post_processor::{NetflixStylePostProcessor, ProcessingResult};

@@ -97,8 +97,15 @@ Python → Rust 對應：
   - 對照工具：`cargo run --release --example live_client` 與 `rust/tools/live_client.py`（參數相同）
   - 與 Python 的刻意差異（不影響翻譯內容）：連線/逾時錯誤依來源分類（Python 落入 unknown、重試前不等待）；OpenAI token 用估算法（Python 用 tiktoken，僅影響速率限制）；最後一次重試失敗後不再多等一輪
   - 觀察（Python 既有行為，未改動）：日文名字保護的正則會把 おじさん／おばあちゃん／おねえさん 等親屬稱謂當成名字保留成日文；若要調整需先跑 benchmark
-- [ ] 階段 4：TranslationService 檔案流水線（下一步從 `services/factory.py` 的 `translate_subtitle_file` 與 structure-text 批次開始）
-- [ ] 階段 5
+- [x] **階段 4**（2026-09-29）：`service/`（上下文視窗與智慧批次啟發式、服務層後處理、structure-text 批次＋1:1 驗證＋句型檢查＋退回逐句、整份檔案流程）、`text/opencc.rs`（逐行移植 opencc-python-reimplemented 的 s2twp 演算法並內嵌其字典）、`output.rs`（輸出檔名樣式與衝突處理）、`models.rs`、glossary 匯入/匯出；CLI `translate` / `models` / `glossary`
+  - 驗證：OpenCC 453 組（含 400 組隨機字典鍵壓力案例）、啟發式 38 句 × 9 項、後處理 36 組（術語表/標點開關）、端到端 5 情境（llama.cpp/OpenAI × 一般/structure-text × 顯示模式 × Netflix，含批次行數不符退回逐句）比對輸出 SRT 與全部請求 body，全數一致；後處理順序/上下文視窗/退回視窗/批次安全/顯示模式/OpenCC 最左匹配等變異皆被抓到
+  - CLI 比對：`glossary`（create/add/show/list/export csv/txt/remove/import）與 `models` 輸出及寫出檔案逐位元相同
+  - 實機（Hy-MT2-7B）：CLI 端到端逐句模式日文（adult＋Netflix）、英文（雙語）、日文 structure-text 輸出檔**完全相同**；快取雙向共用（Python 寫 → Rust 讀、Rust 寫 → Python 讀）皆命中且輸出相同；IPZZ-810 466 條並行 3 成功、殘留假名數與 Python 相同；RSS 約 21MB vs 98MB
+  - 英文 structure-text＋Netflix 連跑 13 輪：Python 12/13、Rust 9/13 為同一輸出，其餘為 server 端非決定性變體（請求 body 已由 golden 證明相同；推測與 Rust 請求間隔較短、較常撞到 server 收尾時序有關）
+  - 與 Python 的刻意差異：`-o/--output-dir` 不寫回 `file_handler_config.json`（Python 會永久寫入）；Google 模型列表不額外送請求驗證金鑰；目錄掃描結果依路徑排序
+  - 既有限制（與 Python 相同）：.vtt/.ass 以 SRT 解析器讀取；structure-text 模式會把空白字幕也送進批次並套上譯文；`glossary activate` 只在單次執行有效（翻譯時用 `translate -g`）
+  - 實機觀察：llama.cpp b11286（CUDA）在 `-np 3` 並行解碼時曾發生一次 `CUDA error: an illegal instruction`（dmesg NVRM Xid 13/43）導致 server 崩潰，重啟後同負載未重現；與 client 無關，但若頻繁發生可考慮退回 skill 記載的已驗證 build
+- [ ] 階段 5：GUI（另案評估）、打包發佈；可選：日誌寫檔、`translate` 進度與 Python GUI 的互動介面
 
 ## 6. 開發指令
 

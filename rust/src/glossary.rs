@@ -256,6 +256,86 @@ impl GlossaryManager {
     pub fn dir(&self) -> &Path {
         &self.dir
     }
+
+    /// 匯出術語表：json（同儲存格式）、csv（UTF-8 BOM、含標頭）、txt（`來源\t譯文`，# 開頭為註解）。
+    pub fn export(&self, name: &str, path: &Path, format: &str) -> Result<bool> {
+        let Some(g) = self.glossaries.get(name) else { return Ok(false) };
+        let io_err = |e: std::io::Error| Error::file(format!("匯出術語表失敗: {e}"));
+        let content = match format {
+            "json" => g.to_json(),
+            "csv" => {
+                let mut writer = csv::WriterBuilder::new().terminator(csv::Terminator::CRLF).from_writer(Vec::new());
+                let csv_err = |e: csv::Error| Error::file(format!("匯出術語表失敗: {e}"));
+                writer.write_record(["source", "target", "category", "notes", "case_sensitive"]).map_err(csv_err)?;
+                for e in g.entries.values() {
+                    let cs = if e.case_sensitive { "True" } else { "False" };
+                    writer.write_record([e.source.as_str(), &e.target, &e.category, &e.notes, cs]).map_err(csv_err)?;
+                }
+                let bytes = writer.into_inner().map_err(|e| Error::file(format!("匯出術語表失敗: {e}")))?;
+                format!("\u{feff}{}", String::from_utf8(bytes).expect("csv 輸出為 UTF-8"))
+            }
+            "txt" => {
+                let mut out =
+                    format!("# 術語表: {}\n# 來源語言: {}\n# 目標語言: {}\n\n", g.name, g.source_lang, g.target_lang);
+                for e in g.entries.values() {
+                    out.push_str(&format!("{}\t{}\n", e.source, e.target));
+                }
+                out
+            }
+            other => return Err(Error::file(format!("不支援的匯出格式: {other}"))),
+        };
+        std::fs::write(path, content).map_err(io_err)?;
+        Ok(true)
+    }
+
+    /// 依副檔名匯入（.json/.csv/.txt）並儲存；`name` 為空時用檔名（json 則用檔案內的名稱）。
+    pub fn import(&mut self, path: &Path, name: Option<&str>) -> Result<&Glossary> {
+        let name = name.filter(|n| !n.is_empty());
+        let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+        let read = |p: &Path| std::fs::read_to_string(p).map_err(|e| Error::file(format!("匯入術語表失敗: {e}")));
+        let ext = path.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
+        let glossary = match ext.as_str() {
+            "json" => {
+                let mut g = Glossary::from_json(&read(path)?)?;
+                if let Some(n) = name {
+                    g.name = n.to_string();
+                }
+                g
+            }
+            "csv" => {
+                let text = read(path)?;
+                let mut g = Glossary::new(name.unwrap_or(&stem), "", "", "");
+                let mut reader = csv::Reader::from_reader(text.trim_start_matches('\u{feff}').as_bytes());
+                let headers = reader.headers().map_err(|e| Error::file(format!("匯入術語表失敗: {e}")))?.clone();
+                for record in reader.records() {
+                    let record = record.map_err(|e| Error::file(format!("匯入術語表失敗: {e}")))?;
+                    let field = |k: &str| headers.iter().position(|h| h == k).and_then(|i| record.get(i)).unwrap_or("");
+                    let cs = field("case_sensitive").to_lowercase() == "true";
+                    g.add_entry(field("source"), field("target"), field("category"), field("notes"), cs);
+                }
+                g
+            }
+            "txt" => {
+                let mut g = Glossary::new(name.unwrap_or(&stem), "", "", "");
+                for line in read(path)?.lines() {
+                    let line = py::strip(line);
+                    if line.is_empty() || line.starts_with('#') {
+                        continue;
+                    }
+                    let parts: Vec<&str> = line.split('\t').collect();
+                    if parts.len() >= 2 {
+                        g.add_entry(parts[0], parts[1], "", "", false);
+                    }
+                }
+                g
+            }
+            other => return Err(Error::file(format!("不支援的匯入格式: .{other}"))),
+        };
+        self.save(&glossary)?;
+        let key = glossary.name.clone();
+        self.glossaries.insert(key.clone(), glossary);
+        Ok(&self.glossaries[&key])
+    }
 }
 
 #[cfg(test)]
@@ -269,6 +349,23 @@ mod tests {
         g.add_entry("Fire Department", "消防局", "", "", false);
         g.add_entry("CPR", "心肺復甦術", "", "", true);
         assert_eq!(g.apply_to_text("call the fire department, fire! CPR cpr"), "call the 消防局, 火! 心肺復甦術 cpr");
+    }
+
+    #[test]
+    fn export_import_formats() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut m = GlossaryManager::open(dir.path().join("g")).unwrap();
+        m.create("t", "en", "zh", "").unwrap();
+        m.add_entry("t", "Fire, Dept", "消防局", "單位", "", true).unwrap();
+        for fmt in ["json", "csv", "txt"] {
+            let out = dir.path().join(format!("out.{fmt}"));
+            assert!(m.export("t", &out, fmt).unwrap());
+            let g = m.import(&out, Some(&format!("from_{fmt}"))).unwrap();
+            assert_eq!(g.entries.len(), 1, "{fmt}");
+            assert_eq!(g.get_entry("Fire, Dept").unwrap().target, "消防局");
+        }
+        let csv = std::fs::read_to_string(dir.path().join("out.csv")).unwrap();
+        assert_eq!(csv, "\u{feff}source,target,category,notes,case_sensitive\r\n\"Fire, Dept\",消防局,單位,,True\r\n");
     }
 
     #[test]
