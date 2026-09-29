@@ -96,25 +96,38 @@ pub fn expand_paths(paths: &[PathBuf], extensions: &[String]) -> (Vec<PathBuf>, 
     (files, unsupported)
 }
 
-/// GUI「選擇資料夾」選定後的設定寫入：與 Python `FileHandler.select_directory` 相同，
-/// 所選資料夾同時成為輸出目錄（`batch_settings.output_directory`，之後的譯檔都輸出到這裡）。
+/// GUI「選擇資料夾」選定後的設定寫入（Python `FileHandler.select_directory`）：所選資料夾只是
+/// 要掃描的來源，不改輸出目錄；它成為 file 設定的 `last_directory`，也就是保留目錄結構的基準，
+/// 設有輸出目錄時各子資料夾的同名字幕才不會輸出到同一路徑。
 pub fn remember_selected_folder(config_dir: &Path, folder: &Path) -> Result<()> {
     let mut file_config = ConfigFile::load(config_dir, ConfigKind::File)?;
-    file_config.set_and_save("batch_settings.output_directory", folder.to_string_lossy().into_owned().into())
+    file_config.set_and_save("last_directory", folder.to_string_lossy().into_owned().into())
 }
 
 /// 加入檔案後記住目錄（Python 依來源而不同）：
-/// - 一律寫 user 設定的 `last_directory`（`GUIComponents.add_files`）
-/// - 選檔/拖放另寫 file 設定的 `last_directory`（`FileHandler.select_files` / `handle_drop`，
-///   也是保留目錄結構時的基準）；「選擇資料夾」不寫，基準維持不變
+/// - 一律寫 user 設定的 `last_directory` 為第一個檔案的目錄（`GUIComponents.add_files`）
+/// - 選檔/拖放另寫 file 設定的 `last_directory` 為所有檔案的共同上層目錄（`FileHandler.select_files` /
+///   `handle_drop`，也是保留目錄結構的基準）；「選擇資料夾」已由 [`remember_selected_folder`] 設定
 pub fn remember_added_files(config_dir: &Path, files: &[PathBuf], from_folder: bool) -> Result<()> {
     let Some(parent) = files.first().and_then(|f| f.parent()) else { return Ok(()) };
-    let last = serde_json::Value::from(parent.to_string_lossy().into_owned());
-    set_user_value(config_dir, "last_directory", last.clone())?;
+    set_user_value(config_dir, "last_directory", parent.to_string_lossy().into_owned().into())?;
     if !from_folder {
-        ConfigFile::load(config_dir, ConfigKind::File)?.set_and_save("last_directory", last)?;
+        let base = common_parent(files).unwrap_or_else(|| parent.to_path_buf());
+        ConfigFile::load(config_dir, ConfigKind::File)?
+            .set_and_save("last_directory", base.to_string_lossy().into_owned().into())?;
     }
     Ok(())
+}
+
+/// 所有檔案所在目錄的共同上層（Python `os.path.commonpath`）；不同磁碟機等無共同部分時回傳 None。
+fn common_parent(files: &[PathBuf]) -> Option<PathBuf> {
+    let mut dirs = files.iter().map(|f| f.parent().unwrap_or(Path::new("")));
+    let mut common: Vec<_> = dirs.next()?.components().collect();
+    for dir in dirs {
+        let shared = common.iter().zip(dir.components()).take_while(|(a, b)| **a == *b).count();
+        common.truncate(shared);
+    }
+    (!common.is_empty()).then(|| common.iter().collect())
 }
 
 /// 「選擇資料夾」對話框的起始目錄：輸出目錄存在時優先，否則最後使用的目錄（Python `select_directory`）。
@@ -559,7 +572,7 @@ mod tests {
     }
 
     #[test]
-    fn selected_folder_becomes_output_directory() {
+    fn selected_folder_becomes_structure_base_not_output_directory() {
         let dir = tempfile::tempdir().unwrap();
         let cfg = dir.path().join("config");
         let picked = dir.path().join("subs");
@@ -567,8 +580,42 @@ mod tests {
         assert_eq!(folder_dialog_start(&cfg), None);
         remember_selected_folder(&cfg, &picked).unwrap();
         let output = OutputSettings::from_config(&ConfigFile::load(&cfg, ConfigKind::File).unwrap());
-        assert_eq!(output.output_directory, picked.to_string_lossy());
+        assert_eq!(output.output_directory, "");
+        assert_eq!(output.last_directory, picked.to_string_lossy());
         assert_eq!(folder_dialog_start(&cfg), Some(picked));
+    }
+
+    /// 選資料夾後不同子資料夾的同名字幕：未設輸出目錄時留在原檔旁；設有輸出目錄時保留子資料夾。
+    #[test]
+    fn same_name_files_in_subfolders_get_distinct_outputs() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = dir.path().join("config");
+        let root = dir.path().join("season");
+        let files: Vec<PathBuf> = ["A", "B"]
+            .iter()
+            .map(|sub| {
+                std::fs::create_dir_all(root.join(sub)).unwrap();
+                let f = root.join(sub).join("ep1.srt");
+                std::fs::write(&f, "test").unwrap();
+                f
+            })
+            .collect();
+        remember_selected_folder(&cfg, &root).unwrap();
+        remember_added_files(&cfg, &files, true).unwrap();
+        let resolve = |settings: &OutputSettings| -> Vec<PathBuf> {
+            files
+                .iter()
+                .map(|f| crate::output::resolve_output_path(f, "繁體中文", settings, None).unwrap().unwrap())
+                .collect()
+        };
+
+        let mut output = OutputSettings::from_config(&ConfigFile::load(&cfg, ConfigKind::File).unwrap());
+        assert_eq!(resolve(&output), [root.join("A/ep1_繁體中文.srt"), root.join("B/ep1_繁體中文.srt")]);
+
+        let out = dir.path().join("out");
+        std::fs::create_dir(&out).unwrap();
+        output.output_directory = out.to_string_lossy().into_owned();
+        assert_eq!(resolve(&output), [out.join("A/ep1_繁體中文.srt"), out.join("B/ep1_繁體中文.srt")]);
     }
 
     #[test]
@@ -580,13 +627,17 @@ mod tests {
 
         remember_added_files(&cfg, &[PathBuf::from("/x/a/1.srt"), PathBuf::from("/x/2.srt")], true).unwrap();
         assert_eq!(last(ConfigKind::User), "/x/a");
-        assert_eq!(last(ConfigKind::File), file_before, "選擇資料夾不改保留目錄結構的基準");
+        assert_eq!(last(ConfigKind::File), file_before, "選擇資料夾的基準由 remember_selected_folder 設定");
 
         remember_added_files(&cfg, &[PathBuf::from("/y/3.srt")], false).unwrap();
         assert_eq!((last(ConfigKind::User), last(ConfigKind::File)), ("/y".to_string(), "/y".to_string()));
 
+        // 拖放多個位置：user 記第一個檔案的目錄，保留目錄結構的基準取共同上層
+        remember_added_files(&cfg, &[PathBuf::from("/z/a/1.srt"), PathBuf::from("/z/b/c/2.srt")], false).unwrap();
+        assert_eq!((last(ConfigKind::User), last(ConfigKind::File)), ("/z/a".to_string(), "/z".to_string()));
+
         remember_added_files(&cfg, &[], false).unwrap();
-        assert_eq!(last(ConfigKind::User), "/y");
+        assert_eq!(last(ConfigKind::User), "/z/a");
     }
 
     #[test]

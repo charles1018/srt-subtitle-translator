@@ -120,9 +120,13 @@ Python → Rust 對應：
   - 實機（Hy-MT2-7B，X11 以 XTEST 操作真實視窗）：GUI 翻譯 MIKR 30 條（adult＋Netflix、並行 1）與 Rust CLI、Python CLI **三方逐位元相同**；暫停期間進度不動、繼續後恢復、停止後不寫檔；衝突對話框「重新命名」產生 `.zh_tw_1.srt` 且原檔不變；llama-server 未啟動時預檢訊息與 Python 相同；關閉視窗時寫回設定
   - 與 Python 的刻意差異：多檔改為逐檔翻譯（Python 每檔一個執行緒同時翻、進度互蓋）；停止真正中止且不寫檔；完成後保留最後訊息（Python `reset_ui` 立即蓋成「準備就緒」）；翻譯中鎖住所有設定（Python 只鎖 LLM/模型/顯示模式，但改動會即時影響進行中的翻譯）；衝突選「略過」時回報並計入總進度（Python 不回報、總進度停住）；提示音改用 WebAudio；主題跟隨系統淺色/深色；加入檔案的結果以非模態提示顯示；「清除選中」更名為「清除列表」（Python 實際也是清除全部）；預檢的 OpenAI/Google 錯誤細節取自 HTTP 回應本文、不做 SDK 自動重試
   - 尚未移植（Python 選單項目）：快取管理、進階設定（Python 本身為「開發中」）、字幕格式轉換、從影片提取字幕、統計報告、提示詞匯入/匯出/分析、theme_settings.json 主題
-  - 既有限制（與 Python 相同，已實測 Python `get_output_path`）：全新設定下 file 的 `last_directory` 為空，選資料夾翻譯時不同子資料夾的同名字幕會輸出到同一路徑（ask 模式會詢問、overwrite 模式會覆寫）；要修需兩版一起改
+  - ~~既有限制：選資料夾翻譯時不同子資料夾的同名字幕會輸出到同一路徑~~ → 已於 5b 之後兩版一起修正（見下方「選資料夾輸出路徑修正」）
   - 限制：本機無 mingw `windres`，GUI 的 Windows 編譯只由 CI（MSVC）驗證；發佈流程尚未納入 GUI 執行檔
-  - 推送前 Codex 審查修正：前端在 invoke 前就進入執行狀態（避免 run-finished 先到而卡在「翻譯中」）；衝突對話框開著時按停止回報為停止而非檔案失敗；「選擇資料夾」依 Python `select_directory` 把所選資料夾寫入 `batch_settings.output_directory`（Python 既有怪行為：選來源資料夾同時改掉輸出目錄，為共用設定一致而照搬）；加入檔案時 file 設定的 `last_directory`（保留目錄結構的基準）只在選檔/拖放時更新，選資料夾不動（與 Python 相同，原本兩者都寫會讓子資料夾同名檔輸出衝突）
+  - 推送前 Codex 審查修正：前端在 invoke 前就進入執行狀態（避免 run-finished 先到而卡在「翻譯中」）；衝突對話框開著時按停止回報為停止而非檔案失敗；「選擇資料夾」寫入設定的方式照搬 Python（後已兩版一起修正，見下方）
+- [x] **選資料夾輸出路徑修正**（2026-09-29，Python 與 Rust 一起改，屬行為規格變更）
+  - 原問題：「選擇資料夾」把來源資料夾寫成 `batch_settings.output_directory`，但保留目錄結構的基準 file `last_directory` 沒設（全新設定為空）→ `commonpath` 失敗退回平鋪，不同子資料夾的同名字幕輸出到同一路徑；且之後另選的檔案也會輸出到那個舊資料夾
+  - 修正：選資料夾不再改輸出目錄（譯檔預設留在各自原檔旁），改把所選資料夾設為基準；選檔/拖放的基準改為所有檔案的共同上層目錄（原為第一個檔案的目錄；不同磁碟機時退回第一個檔案的目錄）。舊設定已殘留輸出目錄的使用者也會保留子資料夾結構
+  - 測試：Python `TestFileHandlerFolderSelection` 3 項（舊行為下全失敗）、Rust `app` 2 項新增＋1 項擴充，3 項變異皆被抓到
 - [x] **階段 5c**（2026-09-29）：GUI 納入發佈流程
   - `rust-release.yml` 新增 `build-gui`：Linux（ubuntu-22.04）`.deb` + AppImage、Windows NSIS 安裝程式（currentUser、繁中介面、WebView2 下載啟動器）；檔名統一為 `srt-translator-gui_<版本>_*`＋sha256；標籤版號須與 CLI/GUI Cargo.toml 與 tauri.conf.json 一致；PR 改到 `rust/gui/**`、`rust/packaging/**` 或此 workflow 時也會建置（只產 artifact）
   - GUI 資料目錄（`app::gui_workdir`）：有 `CONFIG_DIR` 或目前目錄有 `config/` → 目前目錄（與 Python 共用）；執行檔旁有 `config/` → 可攜式；否則使用者資料目錄 `srt-subtitle-translator/`。GUI **不切換工作目錄**，改以絕對基準路徑解析快取/術語表/`.env`（`TranslateOptions.base_dir`、`open_cache_in`；CLI 基準為空路徑，行為不變）——實測切換目錄會使 AppImage 的 WebKitNetworkProcess（以相對路徑啟動）找不到而崩潰；AppImage 以 `OWD` 取回使用者原本的目錄

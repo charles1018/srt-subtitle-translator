@@ -172,7 +172,7 @@ async fn pick_files(app: AppHandle, state: State<'_, AppState>) -> CmdResult<Vec
 
 #[tauri::command]
 async fn pick_folder(app: AppHandle, state: State<'_, AppState>) -> CmdResult<Option<String>> {
-    let mut dialog = app.dialog().file().set_title("選擇字幕資料夾（同時作為輸出目錄）");
+    let mut dialog = app.dialog().file().set_title("選擇字幕資料夾");
     if let Some(dir) = app::folder_dialog_start(&state.config_dir) {
         dialog = dialog.set_directory(dir);
     }

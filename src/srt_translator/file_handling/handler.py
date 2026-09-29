@@ -494,9 +494,8 @@ class FileHandler:
             )
 
             if files:
-                # Update last used directory
-                self.last_directory = os.path.dirname(files[0])
-                self._save_last_directory()
+                # Update last used directory (also the base for preserve_folder_structure)
+                self._remember_base_directory(list(files))
 
                 # Filter unsupported file formats
                 valid_files = []
@@ -515,6 +514,22 @@ class FileHandler:
                 messagebox.showerror("Error", f"Error selecting files: {e!s}")
 
         return []
+
+    def _remember_base_directory(self, files: list[str]) -> None:
+        """Remember the common parent directory of the added files
+
+        It is both the initial directory of the next file dialog and the base used by
+        ``get_output_path`` to preserve folder structure, so files with the same name in
+        different subfolders never map to the same output path.
+        """
+        dirs = [os.path.dirname(f) for f in files]
+        try:
+            base = os.path.commonpath(dirs)
+        except ValueError:
+            # Different drives (Windows) or mixed absolute/relative paths
+            base = dirs[0]
+        self.last_directory = base
+        self._save_last_directory()
 
     def _save_last_directory(self) -> None:
         """Save last directory to configuration"""
@@ -536,14 +551,17 @@ class FileHandler:
             initial_dir = os.path.expanduser("~")
 
         try:
-            directory = filedialog.askdirectory(title="Select output directory", initialdir=initial_dir)
+            directory = filedialog.askdirectory(title="Select subtitle folder", initialdir=initial_dir)
 
             if directory:
+                # The folder is a source to scan, not the output directory: translated files stay
+                # next to their sources. It becomes the base for preserve_folder_structure so that
+                # a previously configured output_directory keeps the subfolder layout.
                 with self._lock:
-                    self.batch_settings["output_directory"] = directory
-                    self.config_manager.set_value("batch_settings", self.batch_settings)
+                    self.last_directory = directory
+                    self._save_last_directory()
 
-                logger.info(f"Selected output directory: {directory}")
+                logger.info(f"Selected subtitle folder: {directory}")
                 return directory
         except Exception as e:
             logger.error(f"Error selecting directory: {format_exception(e)}")
@@ -597,8 +615,7 @@ class FileHandler:
 
             # Update last used directory (if valid files were found)
             if valid_files:
-                self.last_directory = os.path.dirname(valid_files[0])
-                self._save_last_directory()
+                self._remember_base_directory(valid_files)
 
             return valid_files
 
