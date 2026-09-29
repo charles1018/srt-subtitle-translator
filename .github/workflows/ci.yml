@@ -85,10 +85,11 @@ jobs:
         with:
           enable-cache: true
 
+      # 需 uv 自帶的 Python：runner 系統 Python 沒有 tkinter，而 gen_golden 會匯入 file_handling（import tkinter）
       - name: Golden freshness
         run: |
-          uv sync --dev --python 3.12
-          uv run python tools/gen_golden.py --check
+          uv sync --dev --python 3.12 --managed-python
+          uv run --managed-python python tools/gen_golden.py --check
 
   rust-windows:
     name: Rust port (Windows tests)
