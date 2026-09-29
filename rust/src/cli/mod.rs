@@ -48,6 +48,10 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
     let mut paths: Vec<PathBuf> = entries.filter_map(|e| e.ok().map(|e| e.path())).collect();
     paths.sort();
     for p in paths {
+        // 與 Python `os.walk`（followlinks=False）相同：不進入指向目錄的符號連結
+        if p.is_symlink() && p.is_dir() {
+            continue;
+        }
         if p.is_dir() {
             walk(&p, out);
         } else if is_supported(&p) {
@@ -386,4 +390,30 @@ pub fn cmd_glossary(command: Option<GlossaryCommand>) -> Result<bool> {
         }
     }
     Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 與 Python `os.walk` 相同：不進入指向目錄的符號連結，但保留指向檔案的連結。
+    #[cfg(unix)]
+    #[test]
+    fn walk_skips_directory_symlinks() {
+        let root = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        let input = root.path().join("subs");
+        std::fs::create_dir_all(input.join("season1")).unwrap();
+        std::fs::write(input.join("season1/ep01.srt"), "").unwrap();
+        std::fs::write(outside.path().join("secret.srt"), "").unwrap();
+        std::os::unix::fs::symlink(root.path(), input.join("loop")).unwrap();
+        std::os::unix::fs::symlink(outside.path(), input.join("elsewhere")).unwrap();
+        std::os::unix::fs::symlink(outside.path().join("secret.srt"), input.join("linked.srt")).unwrap();
+
+        let names: Vec<String> = collect_files(std::slice::from_ref(&input))
+            .iter()
+            .map(|p| p.strip_prefix(&input).unwrap().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, ["linked.srt", "season1/ep01.srt"]);
+    }
 }

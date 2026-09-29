@@ -112,6 +112,7 @@ Python → Rust 對應：
   - `service::TaskControl`（暫停/繼續/停止）與 `translate_subtitle_file_with_control`：每批送出前檢查暫停（進行中批次會完成）、停止時中止進行中的請求且不寫輸出檔、回傳 `Error::Cancelled`；6 項行為測試，4 項變異（移除批次前檢查／寫檔前檢查／逐句路徑／structure-text 路徑不可中止）皆被抓到
   - 與 Python 的刻意差異：Python 的 stop 只停止回報，背景仍跑完並寫出檔案；Python 的暫停卡在逐句進度回呼內，Rust 先回報完該批進度再於下一批前暫停
   - 使用者須知（Python 既有行為）：`-o` 目錄不存在時默默輸出到輸入檔旁（已寫入 `packaging/README.txt`）
+  - 推送前 Codex 審查（`codex review --base main`）：已修——發佈包附 OpenCC 授權（`THIRD-PARTY/`）、目錄掃描不進入指向目錄的符號連結（對齊 Python `os.walk`，原本會重複或越界收檔）；未改——錯誤分類只看訊息字串，Gemini `429 RESOURCE_EXHAUSTED` 不含 rate limit 字樣時會判成 unknown、不等 retry-after，**Python 版同樣如此**（`client.py` `_classify_error`），要改需兩版一起改
 - [ ] 階段 5b：Tauri v2 GUI（純 HTML/JS，無 npm）
 
 ## 6. 開發指令

@@ -97,8 +97,11 @@ jobs:
         id: package
         run: |
           name="srt-translator-rs-${{ steps.version.outputs.version }}-${{ matrix.target }}"
-          mkdir -p "dist-out/$name"
+          mkdir -p "dist-out/$name/THIRD-PARTY"
           cp "target/${{ matrix.target }}/release/${{ matrix.exe }}" packaging/README.txt ../LICENSE "dist-out/$name/"
+          # 執行檔內嵌 OpenCC 字典（Apache 2.0）
+          cp assets/opencc/NOTICE.md "dist-out/$name/THIRD-PARTY/OpenCC-NOTICE.md"
+          cp assets/opencc/LICENSE.txt "dist-out/$name/THIRD-PARTY/OpenCC-LICENSE.txt"
           cd dist-out
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             7z a -tzip "$name.zip" "$name" > /dev/null

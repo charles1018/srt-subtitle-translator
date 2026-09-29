@@ -48,6 +48,11 @@ llamacpp_url 修改。
   srt-translator-rs cache --stats     快取統計
   srt-translator-rs --help            完整說明（每個子命令也有 --help）
 
+授權
+----
+本程式以 MIT 授權（LICENSE）。執行檔內嵌 OpenCC 繁簡轉換字典（Apache License 2.0），
+來源與授權全文見 THIRD-PARTY/。
+
 與 Python 版的差異
 ------------------
   - 沒有圖形介面（GUI 開發中）
