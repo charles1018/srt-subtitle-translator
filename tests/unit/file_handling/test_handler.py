@@ -564,8 +564,12 @@ class TestFileHandlerFolderSelection:
             }
         }
         handler = self._handler(stored)
-        with patch("srt_translator.file_handling.handler.filedialog.askdirectory", return_value=str(root)):
+        with patch("srt_translator.file_handling.handler.filedialog.askdirectory", return_value=str(root)) as ask:
             handler.select_directory()
+            assert ask.call_args.kwargs["initialdir"] == str(out)
+            # 再次選擇時從上次選的來源資料夾開啟，而非輸出目錄
+            handler.select_directory()
+            assert ask.call_args.kwargs["initialdir"] == str(root)
 
         outputs = [handler.get_output_path(f, "繁體中文") for f in files]
         assert outputs == [str(out / "A" / "ep1_繁體中文.srt"), str(out / "B" / "ep1_繁體中文.srt")]

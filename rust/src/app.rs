@@ -130,10 +130,10 @@ fn common_parent(files: &[PathBuf]) -> Option<PathBuf> {
     (!common.is_empty()).then(|| common.iter().collect())
 }
 
-/// 「選擇資料夾」對話框的起始目錄：輸出目錄存在時優先，否則最後使用的目錄（Python `select_directory`）。
+/// 「選擇資料夾」對話框的起始目錄：上次使用的來源目錄存在時優先，否則輸出目錄（Python `select_directory`）。
 pub fn folder_dialog_start(config_dir: &Path) -> Option<PathBuf> {
     let output = OutputSettings::from_config(&ConfigFile::load(config_dir, ConfigKind::File).ok()?);
-    [output.output_directory, output.last_directory]
+    [output.last_directory, output.output_directory]
         .into_iter()
         .map(PathBuf::from)
         .find(|d| !d.as_os_str().is_empty() && d.exists())
@@ -582,7 +582,16 @@ mod tests {
         let output = OutputSettings::from_config(&ConfigFile::load(&cfg, ConfigKind::File).unwrap());
         assert_eq!(output.output_directory, "");
         assert_eq!(output.last_directory, picked.to_string_lossy());
+        assert_eq!(folder_dialog_start(&cfg), Some(picked.clone()));
+
+        // 另有輸出目錄時，對話框仍從上次選的來源資料夾開啟
+        let out = dir.path().join("out");
+        std::fs::create_dir(&out).unwrap();
+        let mut file_config = ConfigFile::load(&cfg, ConfigKind::File).unwrap();
+        file_config.set_and_save("batch_settings.output_directory", out.to_string_lossy().into_owned().into()).unwrap();
         assert_eq!(folder_dialog_start(&cfg), Some(picked));
+        file_config.set_and_save("last_directory", "".into()).unwrap();
+        assert_eq!(folder_dialog_start(&cfg), Some(out));
     }
 
     /// 選資料夾後不同子資料夾的同名字幕：未設輸出目錄時留在原檔旁；設有輸出目錄時保留子資料夾。

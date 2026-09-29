@@ -542,12 +542,13 @@ class FileHandler:
         Returns:
             Selected directory path
         """
+        # Start from the last source folder; fall back to the output directory
         initial_dir = (
-            self.batch_settings["output_directory"]
-            if os.path.exists(self.batch_settings["output_directory"])
-            else self.last_directory
+            self.last_directory
+            if self.last_directory and os.path.exists(self.last_directory)
+            else self.batch_settings["output_directory"]
         )
-        if not os.path.exists(initial_dir):
+        if not initial_dir or not os.path.exists(initial_dir):
             initial_dir = os.path.expanduser("~")
 
         try:
