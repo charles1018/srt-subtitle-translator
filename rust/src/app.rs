@@ -638,12 +638,14 @@ mod tests {
         assert_eq!(last(ConfigKind::User), "/x/a");
         assert_eq!(last(ConfigKind::File), file_before, "選擇資料夾的基準由 remember_selected_folder 設定");
 
+        // 基準以 Path 逐段比較：Windows 上共同上層會以 `\` 重組（與 Python commonpath 相同）
+        let base = || PathBuf::from(last(ConfigKind::File));
         remember_added_files(&cfg, &[PathBuf::from("/y/3.srt")], false).unwrap();
-        assert_eq!((last(ConfigKind::User), last(ConfigKind::File)), ("/y".to_string(), "/y".to_string()));
+        assert_eq!((last(ConfigKind::User), base()), ("/y".to_string(), PathBuf::from("/y")));
 
         // 拖放多個位置：user 記第一個檔案的目錄，保留目錄結構的基準取共同上層
         remember_added_files(&cfg, &[PathBuf::from("/z/a/1.srt"), PathBuf::from("/z/b/c/2.srt")], false).unwrap();
-        assert_eq!((last(ConfigKind::User), last(ConfigKind::File)), ("/z/a".to_string(), "/z".to_string()));
+        assert_eq!((last(ConfigKind::User), base()), ("/z/a".to_string(), PathBuf::from("/z")));
 
         remember_added_files(&cfg, &[], false).unwrap();
         assert_eq!(last(ConfigKind::User), "/z/a");
