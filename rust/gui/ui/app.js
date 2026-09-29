@@ -188,25 +188,35 @@ async function start() {
     await alertBox("警告", "請先選擇要翻譯的檔案");
     return;
   }
-  $("btn-start").disabled = true;
-  setStatus("正在檢查模型連線…", "running");
-  try {
-    await invoke("start_translation", { files: [...state.files], settings: currentSettings() });
-  } catch (e) {
-    $("btn-start").disabled = false;
-    setStatus("準備就緒");
-    await alertBox("錯誤", String(e));
-    return;
-  }
+  // 先進入執行狀態：背景工作可能在 invoke 回傳前就送出 run-finished
+  const settings = currentSettings();
   state.running = true;
   state.paused = false;
   state.stopping = false;
   lockControls(true);
+  $("btn-pause").disabled = true;
+  $("btn-stop").disabled = true;
   renderFiles();
   setProgress(0);
   $("results").replaceChildren();
-  setStatus(`正在翻譯 ${state.files.length} 個檔案...`, "running");
+  setStatus("正在檢查模型連線…", "running");
   $("total-files").textContent = `總進度: 0/${state.files.length} 檔案完成`;
+  try {
+    await invoke("start_translation", { files: [...state.files], settings });
+  } catch (e) {
+    state.running = false;
+    lockControls(false);
+    renderFiles();
+    setStatus("準備就緒");
+    await alertBox("錯誤", String(e));
+    return;
+  }
+  if (!state.running) return; // 已經收到 run-finished
+  $("btn-pause").disabled = false;
+  $("btn-stop").disabled = false;
+  if ($("status").dataset.state === "running" && $("status-text").textContent.startsWith("正在檢查")) {
+    setStatus(`正在翻譯 ${state.files.length} 個檔案...`, "running");
+  }
 }
 
 async function togglePause() {

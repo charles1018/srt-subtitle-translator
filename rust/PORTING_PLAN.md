@@ -121,6 +121,7 @@ Python → Rust 對應：
   - 與 Python 的刻意差異：多檔改為逐檔翻譯（Python 每檔一個執行緒同時翻、進度互蓋）；停止真正中止且不寫檔；完成後保留最後訊息（Python `reset_ui` 立即蓋成「準備就緒」）；翻譯中鎖住所有設定（Python 只鎖 LLM/模型/顯示模式，但改動會即時影響進行中的翻譯）；衝突選「略過」時回報並計入總進度（Python 不回報、總進度停住）；提示音改用 WebAudio；主題跟隨系統淺色/深色；加入檔案的結果以非模態提示顯示；「清除選中」更名為「清除列表」（Python 實際也是清除全部）；預檢的 OpenAI/Google 錯誤細節取自 HTTP 回應本文、不做 SDK 自動重試
   - 尚未移植（Python 選單項目）：快取管理、進階設定（Python 本身為「開發中」）、字幕格式轉換、從影片提取字幕、統計報告、提示詞匯入/匯出/分析、theme_settings.json 主題
   - 限制：本機無 mingw `windres`，GUI 的 Windows 編譯只由 CI（MSVC）驗證；發佈流程尚未納入 GUI 執行檔
+  - 推送前 Codex 審查修正：前端在 invoke 前就進入執行狀態（避免 run-finished 先到而卡在「翻譯中」）；衝突對話框開著時按停止回報為停止而非檔案失敗；「選擇資料夾」依 Python `select_directory` 把所選資料夾寫入 `batch_settings.output_directory`（Python 既有怪行為：選來源資料夾同時改掉輸出目錄，為共用設定一致而照搬）
 
 ## 6. 開發指令
 

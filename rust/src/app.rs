@@ -82,6 +82,22 @@ pub fn expand_paths(paths: &[PathBuf], extensions: &[String]) -> (Vec<PathBuf>, 
     (files, unsupported)
 }
 
+/// GUI「選擇資料夾」選定後的設定寫入：與 Python `FileHandler.select_directory` 相同，
+/// 所選資料夾同時成為輸出目錄（`batch_settings.output_directory`，之後的譯檔都輸出到這裡）。
+pub fn remember_selected_folder(config_dir: &Path, folder: &Path) -> Result<()> {
+    let mut file_config = ConfigFile::load(config_dir, ConfigKind::File)?;
+    file_config.set_and_save("batch_settings.output_directory", folder.to_string_lossy().into_owned().into())
+}
+
+/// 「選擇資料夾」對話框的起始目錄：輸出目錄存在時優先，否則最後使用的目錄（Python `select_directory`）。
+pub fn folder_dialog_start(config_dir: &Path) -> Option<PathBuf> {
+    let output = OutputSettings::from_config(&ConfigFile::load(config_dir, ConfigKind::File).ok()?);
+    [output.output_directory, output.last_directory]
+        .into_iter()
+        .map(PathBuf::from)
+        .find(|d| !d.as_os_str().is_empty() && d.exists())
+}
+
 /// `file_handler_config.json` 的 `supported_formats`（GUI 選檔/拖放/掃描資料夾使用）。
 pub fn supported_extensions(file_config: &ConfigFile) -> Vec<String> {
     file_config
@@ -395,7 +411,8 @@ pub async fn run_files(
                 Some(control),
             )
             .await;
-        if matches!(result, Err(Error::Cancelled)) {
+        // 衝突對話框開著時按停止會以「略過」解除等待，服務層回傳的是一般錯誤，也要視為停止
+        if matches!(result, Err(Error::Cancelled)) || (result.is_err() && control.is_stopped()) {
             return RunSummary { completed, stopped: true };
         }
         completed += 1;
@@ -494,6 +511,19 @@ mod tests {
         let (files, unsupported) = expand_paths(&inputs, &exts);
         assert_eq!(files, [dir.path().join("a.srt"), sub.join("c.vtt")]);
         assert_eq!(unsupported, [dir.path().join("b.txt")]);
+    }
+
+    #[test]
+    fn selected_folder_becomes_output_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = dir.path().join("config");
+        let picked = dir.path().join("subs");
+        std::fs::create_dir(&picked).unwrap();
+        assert_eq!(folder_dialog_start(&cfg), None);
+        remember_selected_folder(&cfg, &picked).unwrap();
+        let output = OutputSettings::from_config(&ConfigFile::load(&cfg, ConfigKind::File).unwrap());
+        assert_eq!(output.output_directory, picked.to_string_lossy());
+        assert_eq!(folder_dialog_start(&cfg), Some(picked));
     }
 
     #[test]

@@ -18,6 +18,7 @@ struct Recorder {
     log: Mutex<Vec<String>>,
     conflict_choice: Mutex<Option<ConflictChoice>>,
     stop_on_progress: Mutex<Option<(usize, TaskControl)>>,
+    stop_on_conflict: Mutex<Option<TaskControl>>,
 }
 
 impl RunEvents for Recorder {
@@ -42,6 +43,11 @@ impl RunEvents for Recorder {
     fn ask_conflict(&self, path: &Path) -> ConflictChoice {
         let name = path.file_name().unwrap().to_string_lossy();
         self.log.lock().unwrap().push(format!("ask {name}"));
+        // 模擬使用者在衝突對話框開著時按停止：GUI 的 stop 以「略過」解除等待
+        if let Some(control) = &*self.stop_on_conflict.lock().unwrap() {
+            control.stop();
+            return ConflictChoice::Skip;
+        }
         self.conflict_choice.lock().unwrap().expect("未預期的衝突詢問")
     }
 }
@@ -157,6 +163,22 @@ async fn stop_ends_run_without_reporting_or_writing() {
     assert_eq!(summary, RunSummary { completed: 0, stopped: true });
     assert_eq!(*events.log.lock().unwrap(), ["start 1/2 a.srt"]);
     assert!(!f.output_of(&files[0]).exists());
+    assert!(!f.output_of(&files[1]).exists());
+}
+
+#[tokio::test]
+async fn stop_while_asking_conflict_is_reported_as_stopped() {
+    let f = Fixture::new(200).await;
+    let files = vec![f.input("a.srt", 1), f.input("b.srt", 1)];
+    std::fs::write(f.output_of(&files[0]), "OLD").unwrap();
+    let control = TaskControl::new();
+    let events = Recorder::default();
+    *events.stop_on_conflict.lock().unwrap() = Some(control.clone());
+    let summary = run_files(&f.session, &files, &control, &events).await;
+
+    assert_eq!(summary, RunSummary { completed: 0, stopped: true });
+    assert_eq!(*events.log.lock().unwrap(), ["start 1/2 a.srt", "ask a_繁體中文.srt"]);
+    assert_eq!(std::fs::read_to_string(f.output_of(&files[0])).unwrap(), "OLD");
     assert!(!f.output_of(&files[1]).exists());
 }
 
