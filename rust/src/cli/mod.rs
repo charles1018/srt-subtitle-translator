@@ -49,7 +49,7 @@ pub fn collect_files(inputs: &[PathBuf]) -> Vec<PathBuf> {
     for input in inputs {
         if input.is_file() {
             if is_supported(input) {
-                files.push(std::path::absolute(input).unwrap_or_else(|_| input.clone()));
+                files.push(app::abspath(input));
             } else {
                 warn!("不支援的檔案格式: {}", input.display());
             }

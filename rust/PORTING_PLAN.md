@@ -103,6 +103,7 @@ Python → Rust 對應：
   - 實機（Hy-MT2-7B）：CLI 端到端逐句模式日文（adult＋Netflix）、英文（雙語）、日文 structure-text 輸出檔**完全相同**；快取雙向共用（Python 寫 → Rust 讀、Rust 寫 → Python 讀）皆命中且輸出相同；IPZZ-810 466 條並行 3 成功、殘留假名數與 Python 相同；RSS 約 21MB vs 98MB
   - 英文 structure-text＋Netflix 連跑 13 輪：Python 12/13、Rust 9/13 為同一輸出，其餘為 server 端非決定性變體（請求 body 已由 golden 證明相同；推測與 Rust 請求間隔較短、較常撞到 server 收尾時序有關）
   - 與 Python 的刻意差異：Google 模型列表不額外送請求驗證金鑰；目錄掃描結果依路徑排序
+  - 已知未對齊（待另案）：Windows 上保留目錄結構的共同上層與前綴比較（`app::common_parent`、`output::commonpath` / `strip_prefix`）區分大小寫，Python `ntpath.commonpath` 不分；同一次執行以不同大小寫輸入同一目錄時，Rust 會多疊一層目錄
   - 既有限制（與 Python 相同）：.vtt/.ass 以 SRT 解析器讀取；structure-text 模式會把空白字幕也送進批次並套上譯文；`glossary activate` 只在單次執行有效（翻譯時用 `translate -g`）
   - 實機觀察：llama.cpp b11286（CUDA）在 `-np 3` 並行解碼時曾發生一次 `CUDA error: an illegal instruction`（dmesg NVRM Xid 13/43）導致 server 崩潰，重啟後同負載未重現；與 client 無關，但若頻繁發生可考慮退回 skill 記載的已驗證 build
 - [x] **階段 5a**（2026-09-29）：打包發佈 + GUI 前置 API（決策：先打包 Linux/Windows，GUI 採 Tauri v2＋純 HTML/JS 前端，理由為中文輸入法/CJK 排版/原生拖放）

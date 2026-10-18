@@ -51,6 +51,12 @@ pub fn open_cache_in(base: &Path, config_dir: &Path) -> Result<CacheManager> {
 /// 遞迴收集目錄內指定副檔名（小寫、不含點）的檔案，依路徑排序、回傳絕對路徑。
 ///
 /// 與 Python `os.walk`（followlinks=False）相同：不進入指向目錄的符號連結，但保留指向檔案的連結。
+/// Python `os.path.abspath`：轉成絕對路徑並消去 `..` / `.`。`std::path::absolute` 在 Unix 上保留 `..`，
+/// 會讓 `A/../B/ep.srt` 的共同上層算成 `A`，保留目錄結構時與 `A/ep.srt` 輸出到同一路徑。
+pub fn abspath(path: &Path) -> PathBuf {
+    crate::output::normpath(&std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf()))
+}
+
 pub fn walk_subtitles(dir: &Path, extensions: &[String]) -> Vec<PathBuf> {
     let mut out = Vec::new();
     walk(dir, extensions, &mut out);
@@ -68,7 +74,7 @@ fn walk(dir: &Path, extensions: &[String], out: &mut Vec<PathBuf>) {
         if p.is_dir() {
             walk(&p, extensions, out);
         } else if has_extension(&p, extensions) {
-            out.push(std::path::absolute(&p).unwrap_or(p));
+            out.push(abspath(&p));
         }
     }
 }
@@ -87,7 +93,7 @@ pub fn expand_paths(paths: &[PathBuf], extensions: &[String]) -> (Vec<PathBuf>, 
             files.extend(walk_subtitles(path, extensions));
         } else if path.is_file() {
             if has_extension(path, extensions) {
-                files.push(std::path::absolute(path).unwrap_or_else(|_| path.clone()));
+                files.push(abspath(path));
             } else {
                 unsupported.push(path.clone());
             }
@@ -633,6 +639,18 @@ mod tests {
         std::fs::create_dir(&out).unwrap();
         output.output_directory = out.to_string_lossy().into_owned();
         assert_eq!(resolve(&output), [out.join("A/ep1_繁體中文.srt"), out.join("B/ep1_繁體中文.srt")]);
+    }
+
+    #[test]
+    fn abspath_resolves_parent_components_like_python() {
+        let dir = tempfile::tempdir().unwrap();
+        let (a, b) = (dir.path().join("A/ep.srt"), dir.path().join("A/../B/ep.srt"));
+        assert_eq!(abspath(&b), dir.path().join("B/ep.srt"));
+
+        let mut output =
+            OutputSettings::from_config(&ConfigFile::load(&dir.path().join("config"), ConfigKind::File).unwrap());
+        use_structure_base_for(&mut output, &[abspath(&a), abspath(&b)]);
+        assert_eq!(PathBuf::from(&output.last_directory), dir.path());
     }
 
     #[test]

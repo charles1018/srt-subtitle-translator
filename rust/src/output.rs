@@ -103,16 +103,19 @@ fn splitext(name: &str) -> (&str, &str) {
 }
 
 /// `os.path.normpath` 的純字串版本（不解析符號連結）。
-fn normpath(path: &Path) -> PathBuf {
+pub(crate) fn normpath(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     for comp in path.components() {
         match comp {
             Component::CurDir => {}
-            Component::ParentDir => {
-                if !out.pop() {
-                    out.push("..");
+            // 與 Python 相同：根目錄之上的 `..` 直接忽略，相對路徑開頭的 `..` 保留
+            Component::ParentDir => match out.components().next_back() {
+                Some(Component::Normal(_)) => {
+                    out.pop();
                 }
-            }
+                Some(Component::RootDir | Component::Prefix(_)) => {}
+                _ => out.push(".."),
+            },
             other => out.push(other.as_os_str()),
         }
     }
@@ -230,6 +233,19 @@ mod tests {
             output_directory: String::new(),
             preserve_folder_structure: true,
             last_directory: String::new(),
+        }
+    }
+
+    #[test]
+    fn normpath_matches_python_parent_dir_semantics() {
+        for (input, expected) in [
+            ("/../tmp/B/ep.srt", "/tmp/B/ep.srt"),
+            ("/tmp/A/../B/ep.srt", "/tmp/B/ep.srt"),
+            ("../../x", "../../x"),
+            ("a/../../x", "../x"),
+            ("a/..", "."),
+        ] {
+            assert_eq!(normpath(Path::new(input)), PathBuf::from(expected), "{input}");
         }
     }
 
