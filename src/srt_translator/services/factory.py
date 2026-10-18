@@ -148,6 +148,8 @@ class TranslationService:
             "start_time": None,
             "end_time": None,
         }
+        # 最近一次 translate_subtitle_file 的逐句結果（呼叫端用來分辨部分失敗）
+        self.last_file_counts = {"total": 0, "successful": 0, "failed": 0}
 
         # 專有名詞詞典 (用於統一翻譯)
         self.key_terms_dict = {}
@@ -775,6 +777,7 @@ class TranslationService:
             self.stats["cached_translations"] = 0
             self.stats["failed_translations"] = 0
             self.stats["processing_time"] = 0.0
+            self.last_file_counts = {"total": 0, "successful": 0, "failed": 0}
 
             # 重置專有名詞詞典
             self.key_terms_dict = {}
@@ -918,6 +921,12 @@ class TranslationService:
 
                     # 更新進度
                     progress_service.increment_progress()
+
+            self.last_file_counts = {
+                "total": total_subtitles,
+                "successful": successful_count,
+                "failed": failed_count,
+            }
 
             # 更新結束時間
             self.stats["end_time"] = time.time()

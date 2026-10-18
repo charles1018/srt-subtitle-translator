@@ -97,7 +97,7 @@ fn ask_conflict(path: &Path) -> ConflictChoice {
     }
 }
 
-/// 執行翻譯；回傳是否全部成功。
+/// 執行翻譯；回傳是否全部成功（有任何字幕失敗的「部分完成」檔案也算不成功）。
 ///
 /// 與 Python 的差異：`-o/--output-dir` 只作用於本次執行，不會寫回 `file_handler_config.json`。
 pub async fn cmd_translate(args: TranslateArgs) -> Result<bool> {
@@ -130,7 +130,7 @@ pub async fn cmd_translate(args: TranslateArgs) -> Result<bool> {
     let progress: &(dyn Fn(usize, usize) + Sync) = if args.quiet { &quiet_progress } else { &print_progress };
     let ask: Option<&dyn Fn(&Path) -> ConflictChoice> = if args.quiet { None } else { Some(&ask_conflict) };
 
-    let (mut ok, mut failed) = (0, 0);
+    let (mut ok, mut partial, mut failed) = (0, 0, 0);
     for (i, file) in files.iter().enumerate() {
         let name = file.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         info!("[{}/{}] 翻譯: {name}", i + 1, files.len());
@@ -138,12 +138,18 @@ pub async fn cmd_translate(args: TranslateArgs) -> Result<bool> {
             Ok(outcome) => {
                 if outcome.failed > 0 {
                     warn!(
-                        "翻譯部分完成 | 成功 {}/{}，失敗 {}（耗時 {}）",
-                        outcome.successful, outcome.total, outcome.failed, outcome.elapsed
+                        "⚠ 部分完成: {}（成功 {}/{}，失敗 {}，耗時 {}）",
+                        outcome.output_path.display(),
+                        outcome.successful,
+                        outcome.total,
+                        outcome.failed,
+                        outcome.elapsed
                     );
+                    partial += 1;
+                } else {
+                    info!("✓ 完成: {}", outcome.output_path.display());
+                    ok += 1;
                 }
-                info!("✓ 完成: {}", outcome.output_path.display());
-                ok += 1;
             }
             Err(e) => {
                 error!("✗ 失敗: {e}");
@@ -151,8 +157,8 @@ pub async fn cmd_translate(args: TranslateArgs) -> Result<bool> {
             }
         }
     }
-    info!("\n翻譯完成: 成功 {ok} 個, 失敗 {failed} 個");
-    Ok(failed == 0)
+    info!("\n翻譯完成: 成功 {ok} 個, 部分完成 {partial} 個, 失敗 {failed} 個");
+    Ok(failed == 0 && partial == 0)
 }
 
 /// 列出 provider 可用模型。

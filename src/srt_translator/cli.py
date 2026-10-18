@@ -508,6 +508,7 @@ async def cmd_translate(args: argparse.Namespace) -> int:
 
     # 翻譯每個檔案
     success_count = 0
+    partial_count = 0
     fail_count = 0
 
     for i, file_path in enumerate(files, 1):
@@ -531,7 +532,13 @@ async def cmd_translate(args: argparse.Namespace) -> int:
                 use_cache=not args.no_cache,
             )
 
-            if success:
+            counts = translation_service.last_file_counts
+            if success and counts["failed"] > 0:
+                logger.warning(
+                    f"⚠ 部分完成: {result}（成功 {counts['successful']}/{counts['total']}，失敗 {counts['failed']}）"
+                )
+                partial_count += 1
+            elif success:
                 logger.info(f"✓ 完成: {result}")
                 success_count += 1
             else:
@@ -543,12 +550,12 @@ async def cmd_translate(args: argparse.Namespace) -> int:
             fail_count += 1
 
     # 顯示摘要
-    logger.info(f"\n翻譯完成: 成功 {success_count} 個, 失敗 {fail_count} 個")
+    logger.info(f"\n翻譯完成: 成功 {success_count} 個, 部分完成 {partial_count} 個, 失敗 {fail_count} 個")
 
     # 清理資源
     ServiceFactory.reset_services()
 
-    return 0 if fail_count == 0 else 1
+    return 0 if fail_count == 0 and partial_count == 0 else 1
 
 
 async def cmd_models(args: argparse.Namespace) -> int:
