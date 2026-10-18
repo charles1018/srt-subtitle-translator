@@ -99,7 +99,7 @@ fn ask_conflict(path: &Path) -> ConflictChoice {
 
 /// 執行翻譯；回傳是否全部成功（有任何字幕失敗的「部分完成」檔案也算不成功）。
 ///
-/// 與 Python 的差異：`-o/--output-dir` 只作用於本次執行，不會寫回 `file_handler_config.json`。
+/// `-o/--output-dir` 只作用於本次執行（與 Python 相同），不會寫回 `file_handler_config.json`。
 pub async fn cmd_translate(args: TranslateArgs) -> Result<bool> {
     ensure_runtime_dirs();
     let files = collect_files(&args.inputs);
@@ -125,7 +125,14 @@ pub async fn cmd_translate(args: TranslateArgs) -> Result<bool> {
         structure_text: args.structure_text,
         base_dir: PathBuf::new(),
     };
-    let Session { service, job, output } = prepare_session(&resolve_config_dir(None), &options)?;
+    if let Some(dir) = &args.output_dir {
+        if let Err(e) = std::fs::create_dir_all(dir) {
+            error!("無法建立輸出目錄 {}: {e}", dir.display());
+            return Ok(false);
+        }
+    }
+    let Session { service, job, mut output } = prepare_session(&resolve_config_dir(None), &options)?;
+    app::use_structure_base_for(&mut output, &files);
     let quiet_progress = |_: usize, _: usize| {};
     let progress: &(dyn Fn(usize, usize) + Sync) = if args.quiet { &quiet_progress } else { &print_progress };
     let ask: Option<&dyn Fn(&Path) -> ConflictChoice> = if args.quiet { None } else { Some(&ask_conflict) };

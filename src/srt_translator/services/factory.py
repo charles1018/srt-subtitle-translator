@@ -1768,6 +1768,14 @@ class FileService:
         """
         self.file_handler.set_batch_settings(settings)
 
+    def set_runtime_output_directory(self, output_directory: str) -> None:
+        """設定僅限本次執行的輸出目錄（不寫回設定檔）"""
+        self.file_handler.set_runtime_output_directory(output_directory)
+
+    def use_structure_base_for(self, files: list[str]) -> None:
+        """以這批檔案的共同上層目錄作為本次執行保留目錄結構的基準（不寫回設定檔）"""
+        self.file_handler.use_structure_base_for(files)
+
     def get_batch_settings(self) -> dict[str, Any]:
         """獲取批次處理設定
 

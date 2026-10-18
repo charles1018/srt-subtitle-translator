@@ -585,6 +585,21 @@ class TestFileHandlerFolderSelection:
         assert handler.last_directory == str(root / "B")
         FileHandler._instance = None
 
+    def test_runtime_structure_base_ignores_stale_remembered_folder(self, temp_dir):
+        """CLI 以本次輸入檔為基準：GUI 記住的無關資料夾不可讓輸出疊上完整絕對路徑，也不寫回設定。"""
+        _root, files = self._same_name_tree(temp_dir)
+        unrelated = temp_dir.parent / "unrelated-videos"
+        out = temp_dir / "out"
+        out.mkdir()
+        handler = self._handler({"last_directory": str(unrelated)})
+        handler.set_runtime_output_directory(str(out))
+        handler.use_structure_base_for(files)
+
+        outputs = [handler.get_output_path(f, "繁體中文") for f in files]
+        assert outputs == [str(out / "A" / "ep1_繁體中文.srt"), str(out / "B" / "ep1_繁體中文.srt")]
+        handler.config_manager.set_value.assert_not_called()
+        FileHandler._instance = None
+
 
 # ============================================================
 # Integration Tests

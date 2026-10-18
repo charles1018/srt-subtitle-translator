@@ -121,11 +121,15 @@ async def test_cmd_translate_aligns_runtime_flags() -> None:
         patch.object(cli.ServiceFactory, "get_model_service", return_value=mock_model_service),
         patch.object(cli.ServiceFactory, "get_file_service", return_value=mock_file_service),
         patch.object(cli.ServiceFactory, "reset_services"),
+        patch.object(cli.os, "makedirs") as mock_makedirs,
     ):
         result = await cli.cmd_translate(args)
 
     assert result == 0
-    mock_file_service.set_batch_settings.assert_called_once_with({"output_directory": "/tmp/output"})
+    mock_makedirs.assert_called_once_with("/tmp/output", exist_ok=True)
+    mock_file_service.set_runtime_output_directory.assert_called_once_with("/tmp/output")
+    mock_file_service.set_batch_settings.assert_not_called()
+    mock_file_service.use_structure_base_for.assert_called_once_with(["/tmp/input.srt"])
     mock_translation_service.translate_subtitle_file.assert_awaited_once()
     call_kwargs = mock_translation_service.translate_subtitle_file.await_args.kwargs
     assert call_kwargs["display_mode"] == "僅顯示翻譯"
@@ -168,6 +172,7 @@ async def test_cmd_translate_applies_cli_translation_overrides() -> None:
         patch.object(cli, "collect_files", return_value=["/tmp/input.srt"]),
         patch.object(cli.ServiceFactory, "get_translation_service", return_value=mock_translation_service),
         patch.object(cli.ServiceFactory, "get_model_service", return_value=mock_model_service),
+        patch.object(cli.ServiceFactory, "get_file_service", return_value=MagicMock()),
         patch.object(cli.ServiceFactory, "reset_services"),
         patch.object(cli.ConfigManager, "get_instance", return_value=mock_user_config),
     ):
@@ -389,6 +394,7 @@ async def test_cmd_translate_returns_failure_when_file_partially_translated() ->
         patch.object(cli, "collect_files", return_value=["/tmp/input.srt"]),
         patch.object(cli.ServiceFactory, "get_translation_service", return_value=mock_translation_service),
         patch.object(cli.ServiceFactory, "get_model_service", return_value=mock_model_service),
+        patch.object(cli.ServiceFactory, "get_file_service", return_value=MagicMock()),
         patch.object(cli.ServiceFactory, "reset_services"),
         patch.object(cli.logger, "warning") as mock_warning,
         patch.object(cli.logger, "info") as mock_info,

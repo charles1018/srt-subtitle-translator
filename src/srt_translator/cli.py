@@ -488,10 +488,18 @@ async def cmd_translate(args: argparse.Namespace) -> int:
         model_name = model_service.get_recommended_model("translation", args.provider)
         logger.info(f"使用推薦模型: {model_name}")
 
-    # 設定輸出目錄
+    # 設定輸出目錄（僅限本次執行，不寫回設定檔）；保留目錄結構以本次輸入檔為基準，
+    # 而非 GUI 上次記住的來源資料夾
+    file_service = ServiceFactory.get_file_service()
     if args.output_dir:
-        file_service = ServiceFactory.get_file_service()
-        file_service.set_batch_settings({"output_directory": args.output_dir})
+        output_dir = os.path.abspath(args.output_dir)
+        try:
+            os.makedirs(output_dir, exist_ok=True)
+        except OSError as e:
+            logger.error(f"無法建立輸出目錄 {output_dir}: {e}")
+            return 1
+        file_service.set_runtime_output_directory(output_dir)
+    file_service.use_structure_base_for(files)
 
     display_mode = normalize_display_mode(args.display_mode)
 

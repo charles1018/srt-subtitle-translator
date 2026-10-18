@@ -119,6 +119,14 @@ pub fn remember_added_files(config_dir: &Path, files: &[PathBuf], from_folder: b
     Ok(())
 }
 
+/// CLI 以本次輸入檔的共同上層作為保留目錄結構的基準（只作用於本次執行，不寫回設定），否則會沿用
+/// GUI 記住的無關資料夾，讓輸出疊上來源的完整絕對路徑（Python `FileHandler.use_structure_base_for`）。
+pub fn use_structure_base_for(output: &mut OutputSettings, files: &[PathBuf]) {
+    let Some(first) = files.first() else { return };
+    let base = common_parent(files).unwrap_or_else(|| first.parent().map(Path::to_path_buf).unwrap_or_default());
+    output.last_directory = base.to_string_lossy().into_owned();
+}
+
 /// 所有檔案所在目錄的共同上層（Python `os.path.commonpath`）；不同磁碟機等無共同部分時回傳 None。
 fn common_parent(files: &[PathBuf]) -> Option<PathBuf> {
     let mut dirs = files.iter().map(|f| f.parent().unwrap_or(Path::new("")));
@@ -201,7 +209,7 @@ pub struct Session {
 
 /// 依設定目錄與參數建立翻譯服務（對等 Python `cmd_translate` 的建立流程）。
 ///
-/// 與 Python 的差異：`output_dir` 只作用於本次執行，不會寫回 `file_handler_config.json`。
+/// `output_dir` 只作用於本次執行（與 Python 相同），不會寫回 `file_handler_config.json`。
 pub fn prepare_session(config_dir: &Path, opts: &TranslateOptions) -> Result<Session> {
     let user = ConfigFile::load(config_dir, ConfigKind::User)?;
     let model_config = ConfigFile::load(config_dir, ConfigKind::Model)?;
@@ -625,6 +633,34 @@ mod tests {
         std::fs::create_dir(&out).unwrap();
         output.output_directory = out.to_string_lossy().into_owned();
         assert_eq!(resolve(&output), [out.join("A/ep1_繁體中文.srt"), out.join("B/ep1_繁體中文.srt")]);
+    }
+
+    #[test]
+    fn runtime_structure_base_ignores_stale_remembered_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("season");
+        let files: Vec<PathBuf> = ["A", "B"]
+            .iter()
+            .map(|sub| {
+                std::fs::create_dir_all(root.join(sub)).unwrap();
+                let f = root.join(sub).join("ep1.srt");
+                std::fs::write(&f, "test").unwrap();
+                f
+            })
+            .collect();
+        let out = dir.path().join("out");
+        std::fs::create_dir(&out).unwrap();
+        let mut output =
+            OutputSettings::from_config(&ConfigFile::load(&dir.path().join("config"), ConfigKind::File).unwrap());
+        output.output_directory = out.to_string_lossy().into_owned();
+        output.last_directory = dir.path().parent().unwrap().join("unrelated-videos").to_string_lossy().into_owned();
+
+        use_structure_base_for(&mut output, &files);
+        let outputs: Vec<PathBuf> = files
+            .iter()
+            .map(|f| crate::output::resolve_output_path(f, "繁體中文", &output, None).unwrap().unwrap())
+            .collect();
+        assert_eq!(outputs, [out.join("A/ep1_繁體中文.srt"), out.join("B/ep1_繁體中文.srt")]);
     }
 
     #[test]

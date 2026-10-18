@@ -522,14 +522,26 @@ class FileHandler:
         ``get_output_path`` to preserve folder structure, so files with the same name in
         different subfolders never map to the same output path.
         """
+        self.last_directory = self._common_parent(files)
+        self._save_last_directory()
+
+    def use_structure_base_for(self, files: list[str]) -> None:
+        """Use the common parent of ``files`` as the preserve_folder_structure base for this run only
+
+        Unlike ``_remember_base_directory`` nothing is saved, so the CLI never inherits or
+        overwrites the base the GUI remembered from an unrelated folder.
+        """
+        if files:
+            self.last_directory = self._common_parent(files)
+
+    @staticmethod
+    def _common_parent(files: list[str]) -> str:
         dirs = [os.path.dirname(f) for f in files]
         try:
-            base = os.path.commonpath(dirs)
+            return os.path.commonpath(dirs)
         except ValueError:
             # Different drives (Windows) or mixed absolute/relative paths
-            base = dirs[0]
-        self.last_directory = base
-        self._save_last_directory()
+            return dirs[0]
 
     def _save_last_directory(self) -> None:
         """Save last directory to configuration"""
@@ -698,6 +710,11 @@ class FileHandler:
                 self.batch_settings.update(settings)
                 self.config_manager.set_value("batch_settings", self.batch_settings)
                 logger.debug(f"Updated batch settings: {self.batch_settings}")
+
+    def set_runtime_output_directory(self, output_directory: str) -> None:
+        """Set the output directory for this run only, without saving it to the configuration"""
+        with self._lock:
+            self.batch_settings["output_directory"] = output_directory
 
     def get_output_path(
         self, file_path: str, target_lang: str, progress_callback: Callable[..., Any] | None = None
