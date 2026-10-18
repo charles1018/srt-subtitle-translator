@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SRT 字幕翻譯器</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>SRT 字幕翻譯器</h1>
+    <nav>
+      <button type="button" class="ghost" id="btn-prompt">提示詞編輯</button>
+      <button type="button" class="ghost" id="btn-help">使用說明</button>
+      <button type="button" class="ghost" id="btn-about">關於</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="card" id="files-card">
+      <div class="card-head">
+        <h2>檔案選擇</h2>
+        <span class="muted" id="file-count">已選擇 0 個檔案</span>
+      </div>
+      <div class="drop-zone" id="drop-zone">
+        <ul id="file-list" aria-label="待翻譯的字幕檔案"></ul>
+        <p class="empty" id="file-empty">把字幕檔或資料夾拖放到這裡，或使用下方按鈕選擇</p>
+      </div>
+      <div class="row">
+        <button type="button" id="btn-files" data-lock>選擇檔案</button>
+        <button type="button" id="btn-folder" data-lock>選擇資料夾</button>
+        <button type="button" id="btn-clear" data-lock>清除列表</button>
+        <span class="muted hint">支援拖放檔案或資料夾 · Ctrl+O 選擇檔案</span>
+      </div>
+    </section>
+
+    <section class="settings">
+      <fieldset class="card">
+        <legend>語言設定</legend>
+        <label>來源語言<select id="source-lang" data-lock></select></label>
+        <label>目標語言<select id="target-lang" data-lock></select></label>
+      </fieldset>
+      <fieldset class="card">
+        <legend>LLM 設定</legend>
+        <label>LLM 類型<select id="llm-type" data-lock></select></label>
+        <label>模型<select id="model" data-lock></select></label>
+        <label>並行請求<select id="parallel" data-lock></select></label>
+      </fieldset>
+      <fieldset class="card">
+        <legend>翻譯選項</legend>
+        <label>內容類型<select id="content-type" data-lock></select></label>
+        <label>翻譯風格<select id="style" data-lock></select></label>
+        <label>顯示模式<select id="display-mode" data-lock></select></label>
+        <label class="check"><input type="checkbox" id="netflix" data-lock> Netflix 風格</label>
+        <label class="check" title="多句合併成一個請求，省 token"><input type="checkbox" id="structure" data-lock> 批次翻譯（合併請求）</label>
+      </fieldset>
+    </section>
+
+    <section class="card" id="progress-card">
+      <div class="card-head">
+        <h2>翻譯進度</h2>
+        <span class="muted" id="total-files">總進度: 0/0 檔案完成</span>
+      </div>
+      <div class="progress-row">
+        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <span class="percent" id="percent">0%</span>
+      </div>
+      <p class="status" id="status" data-state="normal"><span class="dot"></span><span id="status-text">準備就緒</span></p>
+      <p class="muted current-file" id="current-file"></p>
+      <ol class="results" id="results"></ol>
+    </section>
+
+  </main>
+
+  <footer class="actions">
+    <button type="button" class="primary" id="btn-start">▶ 開始翻譯</button>
+    <button type="button" id="btn-pause" disabled>⏸ 暫停</button>
+    <button type="button" class="danger" id="btn-stop" disabled>⏹ 停止</button>
+    <span class="muted hint">Ctrl+Enter 開始 · Esc 停止</span>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <dialog id="message-dialog">
+    <form method="dialog">
+      <h3 id="message-title"></h3>
+      <p id="message-body" class="pre"></p>
+      <div class="row end" id="message-buttons"></div>
+    </form>
+  </dialog>
+
+  <dialog id="prompt-dialog" class="wide">
+    <form method="dialog" id="prompt-form">
+      <h3>提示詞編輯器</h3>
+      <div class="row">
+        <label>內容類型<select id="prompt-content-type"></select></label>
+        <label>LLM 類型<select id="prompt-llm-type"></select></label>
+      </div>
+      <textarea id="prompt-text" spellcheck="false" aria-label="提示詞內容"></textarea>
+      <div class="row end">
+        <button type="button" id="prompt-reset">重置為預設</button>
+        <span class="spacer"></span>
+        <button type="button" id="prompt-close">關閉</button>
+        <button type="button" class="primary" id="prompt-save">儲存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

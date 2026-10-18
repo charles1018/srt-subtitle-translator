@@ -1,0 +1,51 @@
+{
+ "initial": {
+  "source_lang": "英文",
+  "target_lang": "繁體中文",
+  "llm_type": "llamacpp",
+  "model_name": "",
+  "parallel_requests": "3",
+  "display_mode": "僅顯示翻譯",
+  "netflix_style_enabled": false,
+  "structure_text_enabled": false
+ },
+ "language_pair_results": [
+  true,
+  true,
+  false
+ ],
+ "reloaded": {
+  "source_lang": "英文",
+  "target_lang": "繁體中文",
+  "llm_type": "openai",
+  "model_name": "gpt-4.1-mini",
+  "parallel_requests": "5",
+  "display_mode": "僅顯示翻譯",
+  "netflix_style_enabled": true,
+  "structure_text_enabled": true
+ },
+ "user_settings": "{\n    \"source_lang\": \"英文\",\n    \"target_lang\": \"繁體中文\",\n    \"llm_type\": \"openai\",\n    \"model_name\": \"gpt-4.1-mini\",\n    \"parallel_requests\": 5,\n    \"display_mode\": \"僅顯示翻譯\",\n    \"theme\": \"default\",\n    \"play_sound\": true,\n    \"auto_save\": true,\n    \"last_directory\": \"/tmp/subs\",\n    \"translation\": {\n        \"batch_size\": 10,\n        \"max_context_items\": 3,\n        \"smart_context_enabled\": true,\n        \"compact_prompt_enabled\": true,\n        \"terminology_enabled\": true\n    },\n    \"netflix_style_enabled\": true,\n    \"structure_text_enabled\": true\n}",
+ "prompt_config": {
+  "current_content_type": "english_drama",
+  "current_style": "localized",
+  "current_language_pair": "英文→繁體中文",
+  "custom_prompts": {
+   "general": {},
+   "adult": {},
+   "anime": {},
+   "movie": {},
+   "english_drama": {}
+  },
+  "version_history": {}
+ },
+ "partial_initial": {
+  "source_lang": "韓文",
+  "target_lang": "繁體中文",
+  "llm_type": "llamacpp",
+  "model_name": "",
+  "parallel_requests": "10",
+  "display_mode": "僅顯示翻譯",
+  "netflix_style_enabled": false,
+  "structure_text_enabled": false
+ }
+}

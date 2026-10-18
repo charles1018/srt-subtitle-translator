@@ -1,0 +1,25 @@
+[package]
+name = "srt-translator-gui"
+version = "0.1.1"
+edition = "2021"
+rust-version = "1.90"
+description = "SRT Subtitle Translator 桌面 GUI（Tauri）"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "srt-translator-gui"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+srt-translator = { path = ".." }
+tauri = { version = "2.12", features = [] }
+tauri-plugin-dialog = "2.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread"] }
+log = "0.4"
+dirs = "7"

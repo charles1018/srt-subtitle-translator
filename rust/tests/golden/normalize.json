@@ -1,0 +1,393 @@
+{
+ "taiwan_terms": [
+  {
+   "input": "",
+   "output": ""
+  },
+  {
+   "input": "   ",
+   "output": "   "
+  },
+  {
+   "input": "你好",
+   "output": "你好"
+  },
+  {
+   "input": "他說:\"你好\"!",
+   "output": "他說:\"你好\"!"
+  },
+  {
+   "input": "“真的”嗎?",
+   "output": "“真的”嗎?"
+  },
+  {
+   "input": "‘單引號’與'半形'",
+   "output": "‘單引號’與'半形'"
+  },
+  {
+   "input": "價格１，２３４元",
+   "output": "價格１，２３４元"
+  },
+  {
+   "input": "共12,345人，還有1,234人",
+   "output": "共12,345人，還有1,234人"
+  },
+  {
+   "input": "１２３４５６",
+   "output": "１２３４５６"
+  },
+  {
+   "input": "等等.....",
+   "output": "等等....."
+  },
+  {
+   "input": "嗯…。",
+   "output": "嗯…。"
+  },
+  {
+   "input": "這個。。。那個",
+   "output": "這個。。。那個"
+  },
+  {
+   "input": "結束了⋯.",
+   "output": "結束了⋯."
+  },
+  {
+   "input": "好的。\n走吧，",
+   "output": "好的。\n走吧，"
+  },
+  {
+   "input": "尾端有空白。  \n下一行、",
+   "output": "尾端有空白。  \n下一行、"
+  },
+  {
+   "input": "我們今天一起去市場買菜，然後回家煮一頓豐盛的晚餐",
+   "output": "我們今天一起去市場買菜，然後回家煮一頓豐盛的晚餐"
+  },
+  {
+   "input": "我和你還有他與她或者其他人但是沒有人來參加今天晚上的派對",
+   "output": "我和你還有他與她或者其他人但是沒有人來參加今天晚上的派對"
+  },
+  {
+   "input": "這是一個非常非常非常非常非常非常長而且沒有任何標點符號的句子",
+   "output": "這是一個非常非常非常非常非常非常長而且沒有任何標點符號的句子"
+  },
+  {
+   "input": "Short English line",
+   "output": "Short English line"
+  },
+  {
+   "input": "This is a fairly long English subtitle line that should be split somewhere",
+   "output": "This is a fairly long English subtitle line that should be split somewhere"
+  },
+  {
+   "input": "什麼？？",
+   "output": "什麼？？"
+  },
+  {
+   "input": "真的!!",
+   "output": "真的!!"
+  },
+  {
+   "input": "你說什麼?!",
+   "output": "你說什麼?!"
+  },
+  {
+   "input": "怎麼會！？",
+   "output": "怎麼會！？"
+  },
+  {
+   "input": "第一行\n第二行\n第三行",
+   "output": "第一行\n第二行\n第三行"
+  },
+  {
+   "input": "一行很長很長很長很長很長很長很長很長的字幕\n短行",
+   "output": "一行很長很長很長很長很長很長很長很長的字幕\n短行"
+  },
+  {
+   "input": "a,b;c:d!e?f",
+   "output": "a,b;c:d!e?f"
+  },
+  {
+   "input": "“巢狀 ‘引號’ 測試”",
+   "output": "“巢狀 ‘引號’ 測試”"
+  },
+  {
+   "input": "\"未配對的引號",
+   "output": "\"未配對的引號"
+  },
+  {
+   "input": "１，２，３",
+   "output": "１，２，３"
+  },
+  {
+   "input": "價值 ３，０００，０００ 美元",
+   "output": "價值 ３，０００，０００ 美元"
+  },
+  {
+   "input": "tab\t分隔\t文字，以及全形　空白，然後還有更多更多的文字",
+   "output": "tab\t分隔\t文字，以及全形　空白，然後還有更多更多的文字"
+  },
+  {
+   "input": "，開頭就是逗號的一句非常長的字幕內容測試用途",
+   "output": "，開頭就是逗號的一句非常長的字幕內容測試用途"
+  },
+  {
+   "input": "和開頭的連接詞會讓斷點落在零的位置所以要強制斷行處理",
+   "output": "和開頭的連接詞會讓斷點落在零的位置所以要強制斷行處理"
+  },
+  {
+   "input": "Ｗｉｄｅ字母不處理",
+   "output": "Ｗｉｄｅ字母不處理"
+  },
+  {
+   "input": "12,34,567",
+   "output": "12,34,567"
+  },
+  {
+   "input": "約翰 • 威廉姆斯說美聯儲的通脹增長",
+   "output": "約翰·威廉斯說聯準會的通膨成長"
+  },
+  {
+   "input": "美國聯邦儲備銀行與聯邦儲備系統",
+   "output": "美國聯邦儲備銀行與聯準會系統"
+  },
+  {
+   "input": "首席執行官在美東時間宣布招聘計畫",
+   "output": "執行長在東部時間宣布招募計畫"
+  },
+  {
+   "input": "瑪麗 · 安",
+   "output": "瑪麗·安"
+  }
+ ],
+ "source_aware": [
+  {
+   "source": "Straight ahead.",
+   "translated": "直走",
+   "output": "稍後回來"
+  },
+  {
+   "source": "straight   ahead",
+   "translated": "繼續往前",
+   "output": "稍後回來"
+  },
+  {
+   "source": "The oil shock.",
+   "translated": "石油危機來了",
+   "output": "油價衝擊來了"
+  },
+  {
+   "source": "oil shock",
+   "translated": "石油衝擊",
+   "output": "油價衝擊"
+  },
+  {
+   "source": "the oil shock is here",
+   "translated": "石油危機",
+   "output": "石油危機"
+  },
+  {
+   "source": "Much more with John Smith.",
+   "translated": "接下來我們將探討約翰·史密斯的更多觀點。",
+   "output": "稍後請看約翰·史密斯"
+  },
+  {
+   "source": "Much more with the panel",
+   "translated": "更多內容將與小組討論",
+   "output": "稍後請看小組"
+  },
+  {
+   "source": "much more with",
+   "translated": "更多",
+   "output": "更多"
+  },
+  {
+   "source": "Much more with Mary",
+   "translated": "稍後請看瑪麗的看法！",
+   "output": "稍後請看瑪麗"
+  },
+  {
+   "source": "Much  more with  X",
+   "translated": "  接下來是 X 的更多內容。 ",
+   "output": "稍後請看X"
+  },
+  {
+   "source": "Hello",
+   "translated": "  你好  ",
+   "output": "你好"
+  }
+ ],
+ "single_line": [
+  {
+   "source": "one line",
+   "translated": "第一\n第二 ",
+   "output": "第一 第二"
+  },
+  {
+   "source": "one line",
+   "translated": "  前後空白  ",
+   "output": "前後空白"
+  },
+  {
+   "source": "two\nlines",
+   "translated": "第一\n第二",
+   "output": "第一\n第二"
+  },
+  {
+   "source": "x",
+   "translated": "a\t\tb　c",
+   "output": "a b c"
+  }
+ ],
+ "sanitize": [
+  {
+   "input": "你好",
+   "output": "你好"
+  },
+  {
+   "input": "  <think>推理</think>\n你好  ",
+   "output": "你好"
+  },
+  {
+   "input": "<|im_start|>assistant\n你好<|im_end|>",
+   "output": "你好"
+  },
+  {
+   "input": "<THINK>x</THINK>答案</think>",
+   "output": "答案"
+  },
+  {
+   "input": "{\"translation\": \" 你好 \"}",
+   "output": "{\"translation\": \" 你好 \"}"
+  },
+  {
+   "input": "reasoning {\"translation\":\"嗨\"}",
+   "output": "reasoning {\"translation\":\"嗨\"}"
+  },
+  {
+   "input": "```json\n{\"translation\":\"嗨\"}\n```",
+   "output": "```json\n{\"translation\":\"嗨\"}\n```"
+  },
+  {
+   "input": "{\"translation\": 3}",
+   "output": "{\"translation\": 3}"
+  },
+  {
+   "input": "{\"other\": \"x\"}",
+   "output": "{\"other\": \"x\"}"
+  },
+  {
+   "input": "[1, 2]",
+   "output": "[1, 2]"
+  },
+  {
+   "input": "純文字",
+   "output": "純文字"
+  },
+  {
+   "input": "",
+   "output": ""
+  },
+  {
+   "input": "<think>a</think>```\n{\"translation\":\"b\"}```",
+   "output": "```\n{\"translation\":\"b\"}```"
+  }
+ ],
+ "structured": [
+  {
+   "input": "你好",
+   "output": "你好"
+  },
+  {
+   "input": "  <think>推理</think>\n你好  ",
+   "output": "你好"
+  },
+  {
+   "input": "<|im_start|>assistant\n你好<|im_end|>",
+   "output": "<|im_start|>assistant\n你好<|im_end|>"
+  },
+  {
+   "input": "<THINK>x</THINK>答案</think>",
+   "output": "答案</think>"
+  },
+  {
+   "input": "{\"translation\": \" 你好 \"}",
+   "output": "你好"
+  },
+  {
+   "input": "reasoning {\"translation\":\"嗨\"}",
+   "output": "嗨"
+  },
+  {
+   "input": "```json\n{\"translation\":\"嗨\"}\n```",
+   "output": "嗨"
+  },
+  {
+   "input": "{\"translation\": 3}",
+   "output": "{\"translation\": 3}"
+  },
+  {
+   "input": "{\"other\": \"x\"}",
+   "output": "{\"other\": \"x\"}"
+  },
+  {
+   "input": "[1, 2]",
+   "output": "[1, 2]"
+  },
+  {
+   "input": "純文字",
+   "output": "純文字"
+  },
+  {
+   "input": "",
+   "output": ""
+  },
+  {
+   "input": "<think>a</think>```\n{\"translation\":\"b\"}```",
+   "output": "b"
+  }
+ ],
+ "records": [
+  {
+   "input": "a\nb",
+   "encoded": "a\\nb",
+   "decoded": "a\nb"
+  },
+  {
+   "input": "back\\slash",
+   "encoded": "back\\\\slash",
+   "decoded": "back\\slash"
+  },
+  {
+   "input": "\\n literal",
+   "encoded": "\\\\n literal",
+   "decoded": "\n literal"
+  },
+  {
+   "input": "trailing\\",
+   "encoded": "trailing\\\\",
+   "decoded": "trailing\\"
+  },
+  {
+   "input": "",
+   "encoded": "",
+   "decoded": ""
+  },
+  {
+   "input": "  spaced  ",
+   "encoded": "  spaced  ",
+   "decoded": "  spaced  "
+  },
+  {
+   "input": "cr\r\nlf\rmix",
+   "encoded": "cr\\nlf\\nmix",
+   "decoded": "cr\r\nlf\rmix"
+  },
+  {
+   "input": "a\\tb",
+   "encoded": "a\\\\tb",
+   "decoded": "a\\tb"
+  }
+ ]
+}

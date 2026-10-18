@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "主視窗權限：事件收發與原生檔案對話框",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:default"]
+}
