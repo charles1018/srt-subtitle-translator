@@ -133,7 +133,7 @@ Python → Rust 對應：
   - GUI 資料目錄（`app::gui_workdir`）：有 `CONFIG_DIR` 或目前目錄有 `config/` → 目前目錄（與 Python 共用）；執行檔旁有 `config/` → 可攜式；否則使用者資料目錄 `srt-subtitle-translator/`。GUI **不切換工作目錄**，改以絕對基準路徑解析快取/術語表/`.env`（`TranslateOptions.base_dir`、`open_cache_in`；CLI 基準為空路徑，行為不變）——實測切換目錄會使 AppImage 的 WebKitNetworkProcess（以相對路徑啟動）找不到而崩潰；AppImage 以 `OWD` 取回使用者原本的目錄
   - 驗證（本機 tauri-cli 2.12）：.deb 6.8MB（Depends: libwebkit2gtk-4.1-0, libgtk-3-0）、AppImage 84MB；AppImage 於空目錄啟動→設定建在 XDG 資料目錄且不寫入目前目錄、於含 config/ 的目錄啟動→沿用該設定；.deb 解出的執行檔同樣正確；Windows 安裝程式只由 CI 驗證
 - [x] **0.1.1**（2026-09-29）：發佈上述選資料夾輸出路徑修正；另修正 Windows 上測試以字串比較路徑分隔符的誤判
-- [x] **0.1.1 之後的未發佈修正**（2026-10-18，尚未進 release，建議 0.1.2 帶入；Python 與 Rust 一起改）
+- [x] **0.1.2**（2026-11-14）：發佈下列 0.1.1 之後的修正（2026-10-18；Python 與 Rust 一起改）
   - `d2345f2`：CLI 有字幕翻譯失敗時改顯示「部分完成」、摘要加入部分完成數並回傳非零（原 exit code 為 0）
   - `6401f85`：CLI `-o` 不再疊上來源完整絕對路徑，保留目錄結構的基準改為本次輸入檔共同上層（僅限本次執行）；`-o` 目錄不存在時自動建立，Python 不再把 `-o` 寫回設定檔
   - `05fb640`：Rust 輸入路徑含 `..` 時保留目錄結構的基準算錯、導致同名輸出覆寫
@@ -141,8 +141,8 @@ Python → Rust 對應：
 
 ### 下一步（建議順序，動手前先與使用者確認）
 
-1. 使用者回報 GUI 中文輸入法實測、Windows 版實際執行結果 → 有問題優先修，修完發 0.1.2
-2. PR #1 轉為正式並以 **merge commit**（非 squash，發佈標籤指向分支上的 commit）合併進 main；之後每項功能開獨立 PR
+1. 使用者回報 GUI 中文輸入法實測、Windows 版實際執行結果 → 有問題優先修（0.1.2 已於 2026-11-14 先行發佈以送出覆寫修正，實測仍未完成，對外推薦前必須補上）
+2. ~~PR #1 轉為正式並以 **merge commit** 合併進 main~~ → 已於 2026-11-14 完成（merge commit `d9ef7b0`）；之後每項功能從 main 開分支、獨立 PR，發佈標籤打在 main 上
 3. 移植 Python 選單尚未移植的功能：快取管理（lib/CLI 已有，最便宜）→ 提示詞匯入/匯出/分析（需補 `analyze_prompt` golden）→ 統計報告 → 字幕格式轉換（可能需真正的 VTT/ASS 讀寫，先盤點）→ 從影片提取字幕（外部依賴，打包風險最高）
 4. Python 既有問題（兩版一起改）：Gemini `429 RESOURCE_EXHAUSTED` 錯誤分類（`client.py` `_classify_error` / Rust `client` 錯誤分類）
 
