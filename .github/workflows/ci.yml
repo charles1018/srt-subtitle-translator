@@ -47,3 +47,115 @@ jobs:
       # tkinter/顯示器在裸 runner 上不保證存在，排除 gui marker 保持 headless 安全
       - name: Pytest (non-GUI)
         run: uv run pytest -q -m "not gui"
+
+  rust:
+    name: Rust port (fmt / clippy / tests / golden freshness)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install stable --profile minimal --component rustfmt,clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('rust/Cargo.lock') }}
+
+      - name: Rustfmt
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Tests
+        run: cargo test --locked
+
+      # Python 版是行為規格：重新產生 golden，若與 commit 內容不同代表 Python 行為已變但 Rust 未同步
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+
+      # 需 uv 自帶的 Python：runner 系統 Python 沒有 tkinter，而 gen_golden 會匯入 file_handling（import tkinter）
+      - name: Golden freshness
+        run: |
+          uv sync --dev --python 3.12 --managed-python
+          uv run --managed-python python tools/gen_golden.py --check
+
+  rust-windows:
+    name: Rust port (Windows tests)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: rust
+    steps:
+      # golden 測試會讀 repo 內的字幕 fixture，不可轉成 CRLF
+      - name: Disable CRLF conversion
+        working-directory: .
+        run: git config --global core.autocrlf false
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('rust/Cargo.lock') }}
+
+      - name: Tests
+        run: cargo test --locked
+
+      # GUI（Tauri / WebView2）只檢查能否在 Windows 編譯
+      - name: GUI clippy
+        run: cargo clippy -p srt-translator-gui --locked -- -D warnings
+
+  rust-gui:
+    name: Rust GUI (Tauri clippy / frontend syntax)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Tauri v2 在 Linux 的建置相依（WebKitGTK 4.1 等）
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install stable --profile minimal --component clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: cargo-gui-${{ runner.os }}-${{ hashFiles('rust/Cargo.lock') }}
+
+      - name: Clippy
+        run: cargo clippy -p srt-translator-gui --all-targets --locked -- -D warnings
+
+      - name: Frontend syntax
+        run: node --check gui/ui/app.js

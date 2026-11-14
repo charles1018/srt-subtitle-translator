@@ -1,0 +1,4027 @@
+[
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "",
+  "text": "",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "   ",
+  "text": "   ",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "你好",
+  "text": "你好",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "他說:\"你好\"!",
+  "text": "他說：「你好」！",
+  "auto_fixed": 2,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "他說:\"你好\"!",
+    "fixed_text": "他說：\"你好\"！"
+   },
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "他說：\"你好\"！",
+    "fixed_text": "他說：「你好」！"
+   }
+  ],
+  "formatted": "共 2 個警告，2 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: 他說:\"你好\"!...\n   修正: 他說：\"你好\"！...\n2. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: 他說：\"你好\"！...\n   修正: 他說：「你好」！..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "“真的”嗎?",
+  "text": "「真的」嗎？",
+  "auto_fixed": 2,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "“真的”嗎?",
+    "fixed_text": "“真的”嗎？"
+   },
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "“真的”嗎？",
+    "fixed_text": "「真的」嗎？"
+   }
+  ],
+  "formatted": "共 2 個警告，2 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: “真的”嗎?...\n   修正: “真的”嗎？...\n2. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: “真的”嗎？...\n   修正: 「真的」嗎？..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "‘單引號’與'半形'",
+  "text": "「單引號」與「半形」",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "‘單引號’與'半形'",
+    "fixed_text": "「單引號」與「半形」"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: ‘單引號’與'半形'...\n   修正: 「單引號」與「半形」..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "價格１，２３４元",
+  "text": "價格1234元",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "NUMBER_FIXED",
+    "message": "已自動轉換數字格式（全形轉半形，移除四位數逗號）",
+    "line_number": null,
+    "original_text": "價格１，２３４元",
+    "fixed_text": "價格1234元"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [NUMBER_FIXED] 已自動轉換數字格式（全形轉半形，移除四位數逗號）\n   原文: 價格１，２３４元...\n   修正: 價格1234元..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "共12,345人，還有1,234人",
+  "text": "共12，345人，還有1\n234人",
+  "auto_fixed": 2,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "共12,345人，還有1,234人",
+    "fixed_text": "共12，345人，還有1，234人"
+   },
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (17 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "共12，345人，還有1，234人",
+    "fixed_text": "共12，345人，還有1\n234人"
+   }
+  ],
+  "formatted": "共 2 個警告，2 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: 共12,345人，還有1,234人...\n   修正: 共12，345人，還有1，234人...\n2. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (17 字符)，已自動分割為 2 行\n   原文: 共12，345人，還有1，234人...\n   修正: 共12，345人，還有1\n234人..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "１２３４５６",
+  "text": "123456",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "NUMBER_FIXED",
+    "message": "已自動轉換數字格式（全形轉半形，移除四位數逗號）",
+    "line_number": null,
+    "original_text": "１２３４５６",
+    "fixed_text": "123456"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [NUMBER_FIXED] 已自動轉換數字格式（全形轉半形，移除四位數逗號）\n   原文: １２３４５６...\n   修正: 123456..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "等等.....",
+  "text": "等等⋯",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "ELLIPSIS_FIXED",
+    "message": "已自動統一省略號格式為 ⋯",
+    "line_number": null,
+    "original_text": "等等.....",
+    "fixed_text": "等等⋯"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [ELLIPSIS_FIXED] 已自動統一省略號格式為 ⋯\n   原文: 等等........\n   修正: 等等⋯..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "嗯…。",
+  "text": "嗯⋯",
+  "auto_fixed": 2,
+  "warnings": [
+   {
+    "code": "ELLIPSIS_FIXED",
+    "message": "已自動統一省略號格式為 ⋯",
+    "line_number": null,
+    "original_text": "嗯…。",
+    "fixed_text": "嗯⋯。"
+   },
+   {
+    "code": "LINE_END_PUNCT_REMOVED",
+    "message": "已自動移除行尾的句號和逗號",
+    "line_number": null,
+    "original_text": "嗯⋯。",
+    "fixed_text": "嗯⋯"
+   }
+  ],
+  "formatted": "共 2 個警告，2 個自動修正:\n\n1. [ELLIPSIS_FIXED] 已自動統一省略號格式為 ⋯\n   原文: 嗯…。...\n   修正: 嗯⋯。...\n2. [LINE_END_PUNCT_REMOVED] 已自動移除行尾的句號和逗號\n   原文: 嗯⋯。...\n   修正: 嗯⋯..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "這個。。。那個",
+  "text": "這個⋯那個",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "ELLIPSIS_FIXED",
+    "message": "已自動統一省略號格式為 ⋯",
+    "line_number": null,
+    "original_text": "這個。。。那個",
+    "fixed_text": "這個⋯那個"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [ELLIPSIS_FIXED] 已自動統一省略號格式為 ⋯\n   原文: 這個。。。那個...\n   修正: 這個⋯那個..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "結束了⋯.",
+  "text": "結束了⋯",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "ELLIPSIS_FIXED",
+    "message": "已自動統一省略號格式為 ⋯",
+    "line_number": null,
+    "original_text": "結束了⋯.",
+    "fixed_text": "結束了⋯"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [ELLIPSIS_FIXED] 已自動統一省略號格式為 ⋯\n   原文: 結束了⋯....\n   修正: 結束了⋯..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "好的。\n走吧，",
+  "text": "好的\n走吧",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_END_PUNCT_REMOVED",
+    "message": "已自動移除行尾的句號和逗號",
+    "line_number": null,
+    "original_text": "好的。\n走吧，",
+    "fixed_text": "好的\n走吧"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_END_PUNCT_REMOVED] 已自動移除行尾的句號和逗號\n   原文: 好的。\n走吧，...\n   修正: 好的\n走吧..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "尾端有空白。  \n下一行、",
+  "text": "尾端有空白  \n下一行",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_END_PUNCT_REMOVED",
+    "message": "已自動移除行尾的句號和逗號",
+    "line_number": null,
+    "original_text": "尾端有空白。  \n下一行、",
+    "fixed_text": "尾端有空白  \n下一行"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_END_PUNCT_REMOVED] 已自動移除行尾的句號和逗號\n   原文: 尾端有空白。  \n下一行、...\n   修正: 尾端有空白  \n下一行..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "我們今天一起去市場買菜，然後回家煮一頓豐盛的晚餐",
+  "text": "我們今天一起去市場買菜\n然後回家煮一頓豐盛的晚餐",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (24 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "我們今天一起去市場買菜，然後回家煮一頓豐盛的晚餐",
+    "fixed_text": "我們今天一起去市場買菜\n然後回家煮一頓豐盛的晚餐"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (24 字符)，已自動分割為 2 行\n   原文: 我們今天一起去市場買菜，然後回家煮一頓豐盛的晚餐...\n   修正: 我們今天一起去市場買菜\n然後回家煮一頓豐盛的晚餐..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "我和你還有他與她或者其他人但是沒有人來參加今天晚上的派對",
+  "text": "我和你還有他與她或者其他人\n但是沒有人來參加今天晚上的派對",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (28 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "我和你還有他與她或者其他人但是沒有人來參加今天晚上的派對",
+    "fixed_text": "我和你還有他與她或者其他人\n但是沒有人來參加今天晚上的派對"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (28 字符)，已自動分割為 2 行\n   原文: 我和你還有他與她或者其他人但是沒有人來參加今天晚上的派對...\n   修正: 我和你還有他與她或者其他人\n但是沒有人來參加今天晚上的派對..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "這是一個非常非常非常非常非常非常長而且沒有任何標點符號的句子",
+  "text": "這是一個非常非常非常非常非常非常\n長而且沒有任何標點符號的句子",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (30 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "這是一個非常非常非常非常非常非常長而且沒有任何標點符號的句子",
+    "fixed_text": "這是一個非常非常非常非常非常非常\n長而且沒有任何標點符號的句子"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (30 字符)，已自動分割為 2 行\n   原文: 這是一個非常非常非常非常非常非常長而且沒有任何標點符號的句子...\n   修正: 這是一個非常非常非常非常非常非常\n長而且沒有任何標點符號的句子..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Short English line",
+  "text": "Short English\nline",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (18 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "Short English line",
+    "fixed_text": "Short English\nline"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (18 字符)，已自動分割為 2 行\n   原文: Short English line...\n   修正: Short English\nline..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "This is a fairly long English subtitle line that should be split somewhere",
+  "text": "This is a\nfairly long\nEnglish\nsubtitle line\nthat should be\nsplit somewhere",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (74 字符)，已自動分割為 6 行",
+    "line_number": 1,
+    "original_text": "This is a fairly long English subtitle line that should be split somewhere",
+    "fixed_text": "This is a\nfairly long\nEnglish\nsubtitle line\nthat should be\nsplit somewhere"
+   },
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 6 行 (最多 2 行)",
+    "line_number": 6,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 2 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (74 字符)，已自動分割為 6 行\n   原文: This is a fairly long English subtitle line that s...\n   修正: This is a\nfairly long\nEnglish\nsubtitle line\nthat s...\n2. [TOO_MANY_LINES] (第6行) 超過最大行數限制: 6 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "什麼？？",
+  "text": "什麼？？",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "DOUBLE_QUESTION_MARK",
+    "message": "不應使用雙問號 (？？)",
+    "line_number": null,
+    "original_text": "什麼？？",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [DOUBLE_QUESTION_MARK] 不應使用雙問號 (？？)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "真的!!",
+  "text": "真的！！",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "真的!!",
+    "fixed_text": "真的！！"
+   },
+   {
+    "code": "DOUBLE_EXCLAMATION",
+    "message": "不應使用雙驚嘆號 (！！)",
+    "line_number": null,
+    "original_text": "真的！！",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 2 個警告，1 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: 真的!!...\n   修正: 真的！！...\n2. [DOUBLE_EXCLAMATION] 不應使用雙驚嘆號 (！！)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "你說什麼?!",
+  "text": "你說什麼？！",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "你說什麼?!",
+    "fixed_text": "你說什麼？！"
+   },
+   {
+    "code": "MIXED_PUNCTUATION",
+    "message": "不應使用混合驚嘆問號 (!? 或 ?!)",
+    "line_number": null,
+    "original_text": "你說什麼？！",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 2 個警告，1 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: 你說什麼?!...\n   修正: 你說什麼？！...\n2. [MIXED_PUNCTUATION] 不應使用混合驚嘆問號 (!? 或 ?!)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "怎麼會！？",
+  "text": "怎麼會！？",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "MIXED_PUNCTUATION",
+    "message": "不應使用混合驚嘆問號 (!? 或 ?!)",
+    "line_number": null,
+    "original_text": "怎麼會！？",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [MIXED_PUNCTUATION] 不應使用混合驚嘆問號 (!? 或 ?!)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "第一行\n第二行\n第三行",
+  "text": "第一行\n第二行\n第三行",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 3 行 (最多 2 行)",
+    "line_number": 3,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [TOO_MANY_LINES] (第3行) 超過最大行數限制: 3 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "一行很長很長很長很長很長很長很長很長的字幕\n短行",
+  "text": "一行很長很長很長很長很長很長很長\n很長的字幕\n短行",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (21 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "一行很長很長很長很長很長很長很長很長的字幕",
+    "fixed_text": "一行很長很長很長很長很長很長很長\n很長的字幕"
+   },
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 3 行 (最多 2 行)",
+    "line_number": 3,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 2 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (21 字符)，已自動分割為 2 行\n   原文: 一行很長很長很長很長很長很長很長很長的字幕...\n   修正: 一行很長很長很長很長很長很長很長\n很長的字幕...\n2. [TOO_MANY_LINES] (第3行) 超過最大行數限制: 3 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "a,b;c:d!e?f",
+  "text": "a，b；c：d！e？f",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "a,b;c:d!e?f",
+    "fixed_text": "a，b；c：d！e？f"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: a,b;c:d!e?f...\n   修正: a，b；c：d！e？f..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "“巢狀 ‘引號’ 測試”",
+  "text": "「巢狀 「引號」 測試」",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "“巢狀 ‘引號’ 測試”",
+    "fixed_text": "「巢狀 「引號」 測試」"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: “巢狀 ‘引號’ 測試”...\n   修正: 「巢狀 「引號」 測試」..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "\"未配對的引號",
+  "text": "「未配對的引號",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "\"未配對的引號",
+    "fixed_text": "「未配對的引號"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: \"未配對的引號...\n   修正: 「未配對的引號..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "１，２，３",
+  "text": "1,2，3",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "NUMBER_FIXED",
+    "message": "已自動轉換數字格式（全形轉半形，移除四位數逗號）",
+    "line_number": null,
+    "original_text": "１，２，３",
+    "fixed_text": "1,2，3"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [NUMBER_FIXED] 已自動轉換數字格式（全形轉半形，移除四位數逗號）\n   原文: １，２，３...\n   修正: 1,2，3..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "價值 ３，０００，０００ 美元",
+  "text": "價值 3000,000 美元",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "NUMBER_FIXED",
+    "message": "已自動轉換數字格式（全形轉半形，移除四位數逗號）",
+    "line_number": null,
+    "original_text": "價值 ３，０００，０００ 美元",
+    "fixed_text": "價值 3000,000 美元"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [NUMBER_FIXED] 已自動轉換數字格式（全形轉半形，移除四位數逗號）\n   原文: 價值 ３，０００，０００ 美元...\n   修正: 價值 3000,000 美元..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "tab\t分隔\t文字，以及全形　空白，然後還有更多更多的文字",
+  "text": "tab\t分隔\t文字\n以及全形　空白\n然後還有更多更多的文字",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (29 字符)，已自動分割為 3 行",
+    "line_number": 1,
+    "original_text": "tab\t分隔\t文字，以及全形　空白，然後還有更多更多的文字",
+    "fixed_text": "tab\t分隔\t文字\n以及全形　空白\n然後還有更多更多的文字"
+   },
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 3 行 (最多 2 行)",
+    "line_number": 3,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 2 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (29 字符)，已自動分割為 3 行\n   原文: tab\t分隔\t文字，以及全形　空白，然後還有更多更多的文字...\n   修正: tab\t分隔\t文字\n以及全形　空白\n然後還有更多更多的文字...\n2. [TOO_MANY_LINES] (第3行) 超過最大行數限制: 3 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "，開頭就是逗號的一句非常長的字幕內容測試用途",
+  "text": "\n開頭就是逗號的一句非常長的字幕內\n容測試用途",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (22 字符)，已自動分割為 3 行",
+    "line_number": 1,
+    "original_text": "，開頭就是逗號的一句非常長的字幕內容測試用途",
+    "fixed_text": "\n開頭就是逗號的一句非常長的字幕內\n容測試用途"
+   },
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 3 行 (最多 2 行)",
+    "line_number": 3,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 2 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (22 字符)，已自動分割為 3 行\n   原文: ，開頭就是逗號的一句非常長的字幕內容測試用途...\n   修正: \n開頭就是逗號的一句非常長的字幕內\n容測試用途...\n2. [TOO_MANY_LINES] (第3行) 超過最大行數限制: 3 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "和開頭的連接詞會讓斷點落在零的位置所以要強制斷行處理",
+  "text": "和開頭的連接詞會讓斷點落在零的位\n置所以要強制斷行處理",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (26 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "和開頭的連接詞會讓斷點落在零的位置所以要強制斷行處理",
+    "fixed_text": "和開頭的連接詞會讓斷點落在零的位\n置所以要強制斷行處理"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (26 字符)，已自動分割為 2 行\n   原文: 和開頭的連接詞會讓斷點落在零的位置所以要強制斷行處理...\n   修正: 和開頭的連接詞會讓斷點落在零的位\n置所以要強制斷行處理..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Ｗｉｄｅ字母不處理",
+  "text": "Ｗｉｄｅ字母不處理",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "12,34,567",
+  "text": "12，34，567",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "12,34,567",
+    "fixed_text": "12，34，567"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: 12,34,567...\n   修正: 12，34，567..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "約翰 • 威廉姆斯說美聯儲的通脹增長",
+  "text": "約翰 •\n威廉姆斯說美聯儲的通脹增長",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (18 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "約翰 • 威廉姆斯說美聯儲的通脹增長",
+    "fixed_text": "約翰 •\n威廉姆斯說美聯儲的通脹增長"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (18 字符)，已自動分割為 2 行\n   原文: 約翰 • 威廉姆斯說美聯儲的通脹增長...\n   修正: 約翰 •\n威廉姆斯說美聯儲的通脹增長..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "美國聯邦儲備銀行與聯邦儲備系統",
+  "text": "美國聯邦儲備銀行與聯邦儲備系統",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "首席執行官在美東時間宣布招聘計畫",
+  "text": "首席執行官在美東時間宣布招聘計畫",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "瑪麗 · 安",
+  "text": "瑪麗 · 安",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "メアちゃん、こっち来て",
+  "text": "メアちゃん、こっち来て",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "「ゆいさんの」とメアちゃん",
+  "text": "「ゆいさんの」とメアちゃん",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "ゆいちゃんってさ、かわいいね",
+  "text": "ゆいちゃんってさ、かわいいね",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "タナカ先生が来た",
+  "text": "タナカ先生が来た",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "お兄ちゃん",
+  "text": "お兄ちゃん",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "さくら先輩！待って",
+  "text": "さくら先輩！待って",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "メアちゃんとゆいちゃんとメアちゃん",
+  "text": "メアちゃんとゆいちゃんとメアちゃ\nん",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (17 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "メアちゃんとゆいちゃんとメアちゃん",
+    "fixed_text": "メアちゃんとゆいちゃんとメアちゃ\nん"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (17 字符)，已自動分割為 2 行\n   原文: メアちゃんとゆいちゃんとメアちゃん...\n   修正: メアちゃんとゆいちゃんとメアちゃ\nん..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "アイ様のこと好き",
+  "text": "アイ様のこと好き",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "ハナコさんはどこ？",
+  "text": "ハナコさんはどこ？",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "こんにちは",
+  "text": "こんにちは",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "今日は天気がいい",
+  "text": "今日は天気がいい",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "東京",
+  "text": "東京",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Hello there",
+  "text": "Hello there",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "ユウキくん、ユウキくんってば",
+  "text": "ユウキくん、ユウキくんってば",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": " カナさん",
+  "text": " カナさん",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "（リンちゃん）",
+  "text": "（リンちゃん）",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "ミサキ氏に",
+  "text": "ミサキ氏に",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "あーちゃんね",
+  "text": "あーちゃんね",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "ゆいさんの",
+  "text": "ゆいさんの",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Hello, world!",
+  "text": "Hello， world！",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "Hello, world!",
+    "fixed_text": "Hello， world！"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: Hello, world!...\n   修正: Hello， world！..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "This is a test subtitle.",
+  "text": "This is a test\nsubtitle.",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (24 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "This is a test subtitle.",
+    "fixed_text": "This is a test\nsubtitle."
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (24 字符)，已自動分割為 2 行\n   原文: This is a test subtitle....\n   修正: This is a test\nsubtitle...."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Welcome to the translation system.",
+  "text": "Welcome to the\ntranslation\nsystem.",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (34 字符)，已自動分割為 3 行",
+    "line_number": 1,
+    "original_text": "Welcome to the translation system.",
+    "fixed_text": "Welcome to the\ntranslation\nsystem."
+   },
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 3 行 (最多 2 行)",
+    "line_number": 3,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 2 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (34 字符)，已自動分割為 3 行\n   原文: Welcome to the translation system....\n   修正: Welcome to the\ntranslation\nsystem....\n2. [TOO_MANY_LINES] (第3行) 超過最大行數限制: 3 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "こんにちは、世界！",
+  "text": "こんにちは、世界！",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "これはテスト字幕です。",
+  "text": "これはテスト字幕です",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_END_PUNCT_REMOVED",
+    "message": "已自動移除行尾的句號和逗號",
+    "line_number": null,
+    "original_text": "これはテスト字幕です。",
+    "fixed_text": "これはテスト字幕です"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_END_PUNCT_REMOVED] 已自動移除行尾的句號和逗號\n   原文: これはテスト字幕です。...\n   修正: これはテスト字幕です..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "翻訳システムへようこそ。",
+  "text": "翻訳システムへようこそ",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_END_PUNCT_REMOVED",
+    "message": "已自動移除行尾的句號和逗號",
+    "line_number": null,
+    "original_text": "翻訳システムへようこそ。",
+    "fixed_text": "翻訳システムへようこそ"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_END_PUNCT_REMOVED] 已自動移除行尾的句號和逗號\n   原文: 翻訳システムへようこそ。...\n   修正: 翻訳システムへようこそ..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Special characters test: 你好世界! 🌍🚀",
+  "text": "Special\ncharacters\ntest： 你好世界！ 🌍🚀",
+  "auto_fixed": 2,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "Special characters test: 你好世界! 🌍🚀",
+    "fixed_text": "Special characters test： 你好世界！ 🌍🚀"
+   },
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (33 字符)，已自動分割為 3 行",
+    "line_number": 1,
+    "original_text": "Special characters test： 你好世界！ 🌍🚀",
+    "fixed_text": "Special\ncharacters\ntest： 你好世界！ 🌍🚀"
+   },
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 3 行 (最多 2 行)",
+    "line_number": 3,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 3 個警告，2 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: Special characters test: 你好世界! 🌍🚀...\n   修正: Special characters test： 你好世界！ 🌍🚀...\n2. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (33 字符)，已自動分割為 3 行\n   原文: Special characters test： 你好世界！ 🌍🚀...\n   修正: Special\ncharacters\ntest： 你好世界！ 🌍🚀...\n3. [TOO_MANY_LINES] (第3行) 超過最大行數限制: 3 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Emojis: 😀😎🎉 ❤️💯✨",
+  "text": "Emojis： 😀😎🎉 ❤️💯✨",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "Emojis: 😀😎🎉 ❤️💯✨",
+    "fixed_text": "Emojis： 😀😎🎉 ❤️💯✨"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: Emojis: 😀😎🎉 ❤️💯✨...\n   修正: Emojis： 😀😎🎉 ❤️💯✨..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Symbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/",
+  "text": "Symbols：\n@#$%^&*()_+-=[]{\n}|；「：「<>，.？/",
+  "auto_fixed": 3,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "Symbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/",
+    "fixed_text": "Symbols： @#$%^&*()_+-=[]{}|；'：\"<>，.？/"
+   },
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "Symbols： @#$%^&*()_+-=[]{}|；'：\"<>，.？/",
+    "fixed_text": "Symbols： @#$%^&*()_+-=[]{}|；「：「<>，.？/"
+   },
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (37 字符)，已自動分割為 3 行",
+    "line_number": 1,
+    "original_text": "Symbols： @#$%^&*()_+-=[]{}|；「：「<>，.？/",
+    "fixed_text": "Symbols：\n@#$%^&*()_+-=[]{\n}|；「：「<>，.？/"
+   },
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 3 行 (最多 2 行)",
+    "line_number": 3,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 4 個警告，3 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: Symbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/...\n   修正: Symbols： @#$%^&*()_+-=[]{}|；'：\"<>，.？/...\n2. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: Symbols： @#$%^&*()_+-=[]{}|；'：\"<>，.？/...\n   修正: Symbols： @#$%^&*()_+-=[]{}|；「：「<>，.？/...\n3. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (37 字符)，已自動分割為 3 行\n   原文: Symbols： @#$%^&*()_+-=[]{}|；「：「<>，.？/...\n   修正: Symbols：\n@#$%^&*()_+-=[]{\n}|；「：「<>，.？/...\n4. [TOO_MANY_LINES] (第3行) 超過最大行數限制: 3 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Mixed: Hello世界 Test測試 123！",
+  "text": "Mixed： Hello世界\nTest測試 123！",
+  "auto_fixed": 2,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "Mixed: Hello世界 Test測試 123！",
+    "fixed_text": "Mixed： Hello世界 Test測試 123！"
+   },
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (26 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "Mixed： Hello世界 Test測試 123！",
+    "fixed_text": "Mixed： Hello世界\nTest測試 123！"
+   }
+  ],
+  "formatted": "共 2 個警告，2 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: Mixed: Hello世界 Test測試 123！...\n   修正: Mixed： Hello世界 Test測試 123！...\n2. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (26 字符)，已自動分割為 2 行\n   原文: Mixed： Hello世界 Test測試 123！...\n   修正: Mixed： Hello世界\nTest測試 123！..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Unicode: \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432",
+  "text": "Unicode：\n\\u4f60\\u597d\n\\u03b1\\u03b2\\u03\nb3\n\\u0430\\u0431\\u04\n32",
+  "auto_fixed": 2,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "Unicode: \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432",
+    "fixed_text": "Unicode： \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432"
+   },
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (59 字符)，已自動分割為 6 行",
+    "line_number": 1,
+    "original_text": "Unicode： \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432",
+    "fixed_text": "Unicode：\n\\u4f60\\u597d\n\\u03b1\\u03b2\\u03\nb3\n\\u0430\\u0431\\u04\n32"
+   },
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 6 行 (最多 2 行)",
+    "line_number": 6,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 3 個警告，2 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: Unicode: \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0...\n   修正: Unicode： \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0...\n2. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (59 字符)，已自動分割為 6 行\n   原文: Unicode： \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0...\n   修正: Unicode：\n\\u4f60\\u597d\n\\u03b1\\u03b2\\u03\nb3\n\\u0430\\u...\n3. [TOO_MANY_LINES] (第6行) 超過最大行數限制: 6 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "This is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.",
+  "text": "This is an\nextremely long\nsubtitle text\nthat contains\nmore than one\nthousand\ncharacters to\ntest the\nsystem「s\nability to\nhandle very\nlong subtitle\nentries. Lorem\nipsum dolor sit\namet\nconsectetur\nadipiscing\nelit. Sed do\neiusmod tempor\nincididunt ut\nlabore et\ndolore magna\naliqua. Ut enim\nad minim\nveniam\nquis nostrud\nexercitation\nullamco laboris\nnisi ut aliquip\nex ea commodo\nconsequat. Duis\naute irure\ndolor in\nreprehenderit\nin voluptate\nvelit esse\ncillum dolore\neu fugiat nulla\npariatur.\nExcepteur sint\noccaecat\ncupidatat non\nproident\nsunt in culpa\nqui officia\ndeserunt mollit\nanim id est\nlaborum. Sed ut\nperspiciatis\nunde omnis iste\nnatus error sit\nvoluptatem\naccusantium\ndoloremque\nlaudantium\ntotam rem\naperiam\neaque ipsa quae\nab illo\ninventore\nveritatis et\nquasi\narchitecto\nbeatae vitae\ndicta sunt\nexplicabo. Nemo\nenim ipsam\nvoluptatem quia\nvoluptas sit\naspernatur aut\nodit aut fugit\nsed quia\nconsequuntur\nmagni dolores\neos qui ratione\nvoluptatem\nsequi nesciunt.\nNeque porro\nquisquam est\nqui dolorem\nipsum quia\ndolor sit amet\nconsectetur\nadipisci velit\nsed quia non\nnumquam eius\nmodi tempora\nincidunt ut\nlabore et\ndolore magnam\naliquam quaerat\nvoluptatem.",
+  "auto_fixed": 3,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.",
+    "fixed_text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet， consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam， quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident， sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium， totam rem aperiam， eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit， sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est， qui dolorem ipsum quia dolor sit amet， consectetur， adipisci velit， sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem."
+   },
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet， consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam， quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident， sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium， totam rem aperiam， eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit， sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est， qui dolorem ipsum quia dolor sit amet， consectetur， adipisci velit， sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.",
+    "fixed_text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system「s ability to handle very long subtitle entries. Lorem ipsum dolor sit amet， consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam， quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident， sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium， totam rem aperiam， eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit， sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est， qui dolorem ipsum quia dolor sit amet， consectetur， adipisci velit， sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem."
+   },
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (1168 字符)，已自動分割為 92 行",
+    "line_number": 1,
+    "original_text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system「s ability to handle very long subtitle entries. Lorem ipsum dolor sit amet， consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam， quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident， sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium， totam rem aperiam， eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit， sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est， qui dolorem ipsum quia dolor sit amet， consectetur， adipisci velit， sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.",
+    "fixed_text": "This is an\nextremely long\nsubtitle text\nthat contains\nmore than one\nthousand\ncharacters to\ntest the\nsystem「s\nability to\nhandle very\nlong subtitle\nentries. Lorem\nipsum dolor sit\namet\nconsectetur\nadipiscing\nelit. Sed do\neiusmod tempor\nincididunt ut\nlabore et\ndolore magna\naliqua. Ut enim\nad minim\nveniam\nquis nostrud\nexercitation\nullamco laboris\nnisi ut aliquip\nex ea commodo\nconsequat. Duis\naute irure\ndolor in\nreprehenderit\nin voluptate\nvelit esse\ncillum dolore\neu fugiat nulla\npariatur.\nExcepteur sint\noccaecat\ncupidatat non\nproident\nsunt in culpa\nqui officia\ndeserunt mollit\nanim id est\nlaborum. Sed ut\nperspiciatis\nunde omnis iste\nnatus error sit\nvoluptatem\naccusantium\ndoloremque\nlaudantium\ntotam rem\naperiam\neaque ipsa quae\nab illo\ninventore\nveritatis et\nquasi\narchitecto\nbeatae vitae\ndicta sunt\nexplicabo. Nemo\nenim ipsam\nvoluptatem quia\nvoluptas sit\naspernatur aut\nodit aut fugit\nsed quia\nconsequuntur\nmagni dolores\neos qui ratione\nvoluptatem\nsequi nesciunt.\nNeque porro\nquisquam est\nqui dolorem\nipsum quia\ndolor sit amet\nconsectetur\nadipisci velit\nsed quia non\nnumquam eius\nmodi tempora\nincidunt ut\nlabore et\ndolore magnam\naliquam quaerat\nvoluptatem."
+   },
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 92 行 (最多 2 行)",
+    "line_number": 92,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 4 個警告，3 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: This is an extremely long subtitle text that conta...\n   修正: This is an extremely long subtitle text that conta...\n2. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: This is an extremely long subtitle text that conta...\n   修正: This is an extremely long subtitle text that conta...\n3. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (1168 字符)，已自動分割為 92 行\n   原文: This is an extremely long subtitle text that conta...\n   修正: This is an\nextremely long\nsubtitle text\nthat conta...\n4. [TOO_MANY_LINES] (第92行) 超過最大行數限制: 92 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Normal subtitle after long one.",
+  "text": "Normal subtitle\nafter long one.",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (31 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "Normal subtitle after long one.",
+    "fixed_text": "Normal subtitle\nafter long one."
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (31 字符)，已自動分割為 2 行\n   原文: Normal subtitle after long one....\n   修正: Normal subtitle\nafter long one...."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Testing continues.",
+  "text": "Testing\ncontinues.",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (18 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "Testing continues.",
+    "fixed_text": "Testing\ncontinues."
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (18 字符)，已自動分割為 2 行\n   原文: Testing continues....\n   修正: Testing\ncontinues...."
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "",
+  "text": "",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "   ",
+  "text": "   ",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "你好",
+  "text": "你好",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "他說:\"你好\"!",
+  "text": "他說:\"你好\"!",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "“真的”嗎?",
+  "text": "“真的”嗎?",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "‘單引號’與'半形'",
+  "text": "‘單引號’與'半形'",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "價格１，２３４元",
+  "text": "價格１，２３４元",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "共12,345人，還有1,234人",
+  "text": "共12,345人，還有1,234人",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 17 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "共12,345人，還有1,234人",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 17 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "１２３４５６",
+  "text": "１２３４５６",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "等等.....",
+  "text": "等等.....",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "嗯…。",
+  "text": "嗯…。",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "這個。。。那個",
+  "text": "這個。。。那個",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "結束了⋯.",
+  "text": "結束了⋯.",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "好的。\n走吧，",
+  "text": "好的。\n走吧，",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "尾端有空白。  \n下一行、",
+  "text": "尾端有空白。  \n下一行、",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "我們今天一起去市場買菜，然後回家煮一頓豐盛的晚餐",
+  "text": "我們今天一起去市場買菜，然後回家煮一頓豐盛的晚餐",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 24 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "我們今天一起去市場買菜，然後回家煮一頓豐盛的晚餐",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 24 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "我和你還有他與她或者其他人但是沒有人來參加今天晚上的派對",
+  "text": "我和你還有他與她或者其他人但是沒有人來參加今天晚上的派對",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 28 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "我和你還有他與她或者其他人但是沒有人來參加今天晚上的派對",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 28 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "這是一個非常非常非常非常非常非常長而且沒有任何標點符號的句子",
+  "text": "這是一個非常非常非常非常非常非常長而且沒有任何標點符號的句子",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 30 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "這是一個非常非常非常非常非常非常長而且沒有任何標點符號的句子",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 30 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Short English line",
+  "text": "Short English line",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 18 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "Short English line",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 18 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "This is a fairly long English subtitle line that should be split somewhere",
+  "text": "This is a fairly long English subtitle line that should be split somewhere",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 74 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "This is a fairly long English subtitle line that should be split somewhere",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 74 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "什麼？？",
+  "text": "什麼？？",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "DOUBLE_QUESTION_MARK",
+    "message": "不應使用雙問號 (？？)",
+    "line_number": null,
+    "original_text": "什麼？？",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [DOUBLE_QUESTION_MARK] 不應使用雙問號 (？？)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "真的!!",
+  "text": "真的!!",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "DOUBLE_EXCLAMATION",
+    "message": "不應使用雙驚嘆號 (！！)",
+    "line_number": null,
+    "original_text": "真的!!",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [DOUBLE_EXCLAMATION] 不應使用雙驚嘆號 (！！)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "你說什麼?!",
+  "text": "你說什麼?!",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "MIXED_PUNCTUATION",
+    "message": "不應使用混合驚嘆問號 (!? 或 ?!)",
+    "line_number": null,
+    "original_text": "你說什麼?!",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [MIXED_PUNCTUATION] 不應使用混合驚嘆問號 (!? 或 ?!)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "怎麼會！？",
+  "text": "怎麼會！？",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "MIXED_PUNCTUATION",
+    "message": "不應使用混合驚嘆問號 (!? 或 ?!)",
+    "line_number": null,
+    "original_text": "怎麼會！？",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [MIXED_PUNCTUATION] 不應使用混合驚嘆問號 (!? 或 ?!)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "第一行\n第二行\n第三行",
+  "text": "第一行\n第二行\n第三行",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 3 行 (最多 2 行)",
+    "line_number": 3,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [TOO_MANY_LINES] (第3行) 超過最大行數限制: 3 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "一行很長很長很長很長很長很長很長很長的字幕\n短行",
+  "text": "一行很長很長很長很長很長很長很長很長的字幕\n短行",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 21 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "一行很長很長很長很長很長很長很長很長的字幕",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 21 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "a,b;c:d!e?f",
+  "text": "a,b;c:d!e?f",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "“巢狀 ‘引號’ 測試”",
+  "text": "“巢狀 ‘引號’ 測試”",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "\"未配對的引號",
+  "text": "\"未配對的引號",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "１，２，３",
+  "text": "１，２，３",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "價值 ３，０００，０００ 美元",
+  "text": "價值 ３，０００，０００ 美元",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "tab\t分隔\t文字，以及全形　空白，然後還有更多更多的文字",
+  "text": "tab\t分隔\t文字，以及全形　空白，然後還有更多更多的文字",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 29 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "tab\t分隔\t文字，以及全形　空白，然後還有更多更多的文字",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 29 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "，開頭就是逗號的一句非常長的字幕內容測試用途",
+  "text": "，開頭就是逗號的一句非常長的字幕內容測試用途",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 22 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "，開頭就是逗號的一句非常長的字幕內容測試用途",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 22 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "和開頭的連接詞會讓斷點落在零的位置所以要強制斷行處理",
+  "text": "和開頭的連接詞會讓斷點落在零的位置所以要強制斷行處理",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 26 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "和開頭的連接詞會讓斷點落在零的位置所以要強制斷行處理",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 26 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Ｗｉｄｅ字母不處理",
+  "text": "Ｗｉｄｅ字母不處理",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "12,34,567",
+  "text": "12,34,567",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "約翰 • 威廉姆斯說美聯儲的通脹增長",
+  "text": "約翰 • 威廉姆斯說美聯儲的通脹增長",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 18 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "約翰 • 威廉姆斯說美聯儲的通脹增長",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 18 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "美國聯邦儲備銀行與聯邦儲備系統",
+  "text": "美國聯邦儲備銀行與聯邦儲備系統",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "首席執行官在美東時間宣布招聘計畫",
+  "text": "首席執行官在美東時間宣布招聘計畫",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "瑪麗 · 安",
+  "text": "瑪麗 · 安",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "メアちゃん、こっち来て",
+  "text": "メアちゃん、こっち来て",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "「ゆいさんの」とメアちゃん",
+  "text": "「ゆいさんの」とメアちゃん",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "ゆいちゃんってさ、かわいいね",
+  "text": "ゆいちゃんってさ、かわいいね",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "タナカ先生が来た",
+  "text": "タナカ先生が来た",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "お兄ちゃん",
+  "text": "お兄ちゃん",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "さくら先輩！待って",
+  "text": "さくら先輩！待って",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "メアちゃんとゆいちゃんとメアちゃん",
+  "text": "メアちゃんとゆいちゃんとメアちゃん",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 17 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "メアちゃんとゆいちゃんとメアちゃん",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 17 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "アイ様のこと好き",
+  "text": "アイ様のこと好き",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "ハナコさんはどこ？",
+  "text": "ハナコさんはどこ？",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "こんにちは",
+  "text": "こんにちは",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "今日は天気がいい",
+  "text": "今日は天気がいい",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "東京",
+  "text": "東京",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Hello there",
+  "text": "Hello there",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "ユウキくん、ユウキくんってば",
+  "text": "ユウキくん、ユウキくんってば",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": " カナさん",
+  "text": " カナさん",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "（リンちゃん）",
+  "text": "（リンちゃん）",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "ミサキ氏に",
+  "text": "ミサキ氏に",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "あーちゃんね",
+  "text": "あーちゃんね",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "ゆいさんの",
+  "text": "ゆいさんの",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Hello, world!",
+  "text": "Hello, world!",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "This is a test subtitle.",
+  "text": "This is a test subtitle.",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 24 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "This is a test subtitle.",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 24 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Welcome to the translation system.",
+  "text": "Welcome to the translation system.",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 34 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "Welcome to the translation system.",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 34 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "こんにちは、世界！",
+  "text": "こんにちは、世界！",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "これはテスト字幕です。",
+  "text": "これはテスト字幕です。",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "翻訳システムへようこそ。",
+  "text": "翻訳システムへようこそ。",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Special characters test: 你好世界! 🌍🚀",
+  "text": "Special characters test: 你好世界! 🌍🚀",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 33 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "Special characters test: 你好世界! 🌍🚀",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 33 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Emojis: 😀😎🎉 ❤️💯✨",
+  "text": "Emojis: 😀😎🎉 ❤️💯✨",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Symbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/",
+  "text": "Symbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 37 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "Symbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 37 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Mixed: Hello世界 Test測試 123！",
+  "text": "Mixed: Hello世界 Test測試 123！",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 26 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "Mixed: Hello世界 Test測試 123！",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 26 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Unicode: \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432",
+  "text": "Unicode: \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 59 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "Unicode: \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 59 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "This is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.",
+  "text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 1168 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 1168 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Normal subtitle after long one.",
+  "text": "Normal subtitle after long one.",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 31 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "Normal subtitle after long one.",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 31 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": false,
+   "strict_mode": false,
+   "max_chars_per_line": 16,
+   "max_lines": 2
+  },
+  "input": "Testing continues.",
+  "text": "Testing continues.",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG",
+    "message": "第 1 行超過字符限制: 18 字符 (最多 16 字符)",
+    "line_number": 1,
+    "original_text": "Testing continues.",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [LINE_TOO_LONG] (第1行) 第 1 行超過字符限制: 18 字符 (最多 16 字符)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "",
+  "text": "",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "   ",
+  "text": "   ",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "你好",
+  "text": "你好",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "他說:\"你好\"!",
+  "text": "他說：「你好」！",
+  "auto_fixed": 2,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "他說:\"你好\"!",
+    "fixed_text": "他說：\"你好\"！"
+   },
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "他說：\"你好\"！",
+    "fixed_text": "他說：「你好」！"
+   }
+  ],
+  "formatted": "共 2 個警告，2 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: 他說:\"你好\"!...\n   修正: 他說：\"你好\"！...\n2. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: 他說：\"你好\"！...\n   修正: 他說：「你好」！..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "“真的”嗎?",
+  "text": "「真的」嗎？",
+  "auto_fixed": 2,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "“真的”嗎?",
+    "fixed_text": "“真的”嗎？"
+   },
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "“真的”嗎？",
+    "fixed_text": "「真的」嗎？"
+   }
+  ],
+  "formatted": "共 2 個警告，2 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: “真的”嗎?...\n   修正: “真的”嗎？...\n2. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: “真的”嗎？...\n   修正: 「真的」嗎？..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "‘單引號’與'半形'",
+  "text": "「單引號」與「半形」",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "‘單引號’與'半形'",
+    "fixed_text": "「單引號」與「半形」"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: ‘單引號’與'半形'...\n   修正: 「單引號」與「半形」..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "價格１，２３４元",
+  "text": "價格1234元",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "NUMBER_FIXED",
+    "message": "已自動轉換數字格式（全形轉半形，移除四位數逗號）",
+    "line_number": null,
+    "original_text": "價格１，２３４元",
+    "fixed_text": "價格1234元"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [NUMBER_FIXED] 已自動轉換數字格式（全形轉半形，移除四位數逗號）\n   原文: 價格１，２３４元...\n   修正: 價格1234元..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "共12,345人，還有1,234人",
+  "text": "共12，345人，還有1，234人",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "共12,345人，還有1,234人",
+    "fixed_text": "共12，345人，還有1，234人"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: 共12,345人，還有1,234人...\n   修正: 共12，345人，還有1，234人..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "１２３４５６",
+  "text": "123456",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "NUMBER_FIXED",
+    "message": "已自動轉換數字格式（全形轉半形，移除四位數逗號）",
+    "line_number": null,
+    "original_text": "１２３４５６",
+    "fixed_text": "123456"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [NUMBER_FIXED] 已自動轉換數字格式（全形轉半形，移除四位數逗號）\n   原文: １２３４５６...\n   修正: 123456..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "等等.....",
+  "text": "等等⋯",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "ELLIPSIS_FIXED",
+    "message": "已自動統一省略號格式為 ⋯",
+    "line_number": null,
+    "original_text": "等等.....",
+    "fixed_text": "等等⋯"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [ELLIPSIS_FIXED] 已自動統一省略號格式為 ⋯\n   原文: 等等........\n   修正: 等等⋯..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "嗯…。",
+  "text": "嗯⋯",
+  "auto_fixed": 2,
+  "warnings": [
+   {
+    "code": "ELLIPSIS_FIXED",
+    "message": "已自動統一省略號格式為 ⋯",
+    "line_number": null,
+    "original_text": "嗯…。",
+    "fixed_text": "嗯⋯。"
+   },
+   {
+    "code": "LINE_END_PUNCT_REMOVED",
+    "message": "已自動移除行尾的句號和逗號",
+    "line_number": null,
+    "original_text": "嗯⋯。",
+    "fixed_text": "嗯⋯"
+   }
+  ],
+  "formatted": "共 2 個警告，2 個自動修正:\n\n1. [ELLIPSIS_FIXED] 已自動統一省略號格式為 ⋯\n   原文: 嗯…。...\n   修正: 嗯⋯。...\n2. [LINE_END_PUNCT_REMOVED] 已自動移除行尾的句號和逗號\n   原文: 嗯⋯。...\n   修正: 嗯⋯..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "這個。。。那個",
+  "text": "這個⋯那個",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "ELLIPSIS_FIXED",
+    "message": "已自動統一省略號格式為 ⋯",
+    "line_number": null,
+    "original_text": "這個。。。那個",
+    "fixed_text": "這個⋯那個"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [ELLIPSIS_FIXED] 已自動統一省略號格式為 ⋯\n   原文: 這個。。。那個...\n   修正: 這個⋯那個..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "結束了⋯.",
+  "text": "結束了⋯",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "ELLIPSIS_FIXED",
+    "message": "已自動統一省略號格式為 ⋯",
+    "line_number": null,
+    "original_text": "結束了⋯.",
+    "fixed_text": "結束了⋯"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [ELLIPSIS_FIXED] 已自動統一省略號格式為 ⋯\n   原文: 結束了⋯....\n   修正: 結束了⋯..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "好的。\n走吧，",
+  "text": "好的\n走吧",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_END_PUNCT_REMOVED",
+    "message": "已自動移除行尾的句號和逗號",
+    "line_number": null,
+    "original_text": "好的。\n走吧，",
+    "fixed_text": "好的\n走吧"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_END_PUNCT_REMOVED] 已自動移除行尾的句號和逗號\n   原文: 好的。\n走吧，...\n   修正: 好的\n走吧..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "尾端有空白。  \n下一行、",
+  "text": "尾端有空白  \n下一行",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_END_PUNCT_REMOVED",
+    "message": "已自動移除行尾的句號和逗號",
+    "line_number": null,
+    "original_text": "尾端有空白。  \n下一行、",
+    "fixed_text": "尾端有空白  \n下一行"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_END_PUNCT_REMOVED] 已自動移除行尾的句號和逗號\n   原文: 尾端有空白。  \n下一行、...\n   修正: 尾端有空白  \n下一行..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "我們今天一起去市場買菜，然後回家煮一頓豐盛的晚餐",
+  "text": "我們今天一起去市場買菜\n然後回家煮一頓豐盛的晚餐",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (24 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "我們今天一起去市場買菜，然後回家煮一頓豐盛的晚餐",
+    "fixed_text": "我們今天一起去市場買菜\n然後回家煮一頓豐盛的晚餐"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (24 字符)，已自動分割為 2 行\n   原文: 我們今天一起去市場買菜，然後回家煮一頓豐盛的晚餐...\n   修正: 我們今天一起去市場買菜\n然後回家煮一頓豐盛的晚餐..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "我和你還有他與她或者其他人但是沒有人來參加今天晚上的派對",
+  "text": "我和你還有他與她或者其他人\n但是沒有人來參加今天晚上的派對",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (28 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "我和你還有他與她或者其他人但是沒有人來參加今天晚上的派對",
+    "fixed_text": "我和你還有他與她或者其他人\n但是沒有人來參加今天晚上的派對"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (28 字符)，已自動分割為 2 行\n   原文: 我和你還有他與她或者其他人但是沒有人來參加今天晚上的派對...\n   修正: 我和你還有他與她或者其他人\n但是沒有人來參加今天晚上的派對..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "這是一個非常非常非常非常非常非常長而且沒有任何標點符號的句子",
+  "text": "這是一個非常非常非常非常非常非常長而且沒有任\n何標點符號的句子",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (30 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "這是一個非常非常非常非常非常非常長而且沒有任何標點符號的句子",
+    "fixed_text": "這是一個非常非常非常非常非常非常長而且沒有任\n何標點符號的句子"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (30 字符)，已自動分割為 2 行\n   原文: 這是一個非常非常非常非常非常非常長而且沒有任何標點符號的句子...\n   修正: 這是一個非常非常非常非常非常非常長而且沒有任\n何標點符號的句子..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "Short English line",
+  "text": "Short English line",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "This is a fairly long English subtitle line that should be split somewhere",
+  "text": "This is a fairly long\nEnglish subtitle line\nthat should be split\nsomewhere",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (74 字符)，已自動分割為 4 行",
+    "line_number": 1,
+    "original_text": "This is a fairly long English subtitle line that should be split somewhere",
+    "fixed_text": "This is a fairly long\nEnglish subtitle line\nthat should be split\nsomewhere"
+   },
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 4 行 (最多 2 行)",
+    "line_number": 4,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 2 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (74 字符)，已自動分割為 4 行\n   原文: This is a fairly long English subtitle line that s...\n   修正: This is a fairly long\nEnglish subtitle line\nthat s...\n2. [TOO_MANY_LINES] (第4行) 超過最大行數限制: 4 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "什麼？？",
+  "text": "什麼？？",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "DOUBLE_QUESTION_MARK",
+    "message": "不應使用雙問號 (？？)",
+    "line_number": null,
+    "original_text": "什麼？？",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [DOUBLE_QUESTION_MARK] 不應使用雙問號 (？？)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "真的!!",
+  "text": "真的！！",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "真的!!",
+    "fixed_text": "真的！！"
+   },
+   {
+    "code": "DOUBLE_EXCLAMATION",
+    "message": "不應使用雙驚嘆號 (！！)",
+    "line_number": null,
+    "original_text": "真的！！",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 2 個警告，1 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: 真的!!...\n   修正: 真的！！...\n2. [DOUBLE_EXCLAMATION] 不應使用雙驚嘆號 (！！)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "你說什麼?!",
+  "text": "你說什麼？！",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "你說什麼?!",
+    "fixed_text": "你說什麼？！"
+   },
+   {
+    "code": "MIXED_PUNCTUATION",
+    "message": "不應使用混合驚嘆問號 (!? 或 ?!)",
+    "line_number": null,
+    "original_text": "你說什麼？！",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 2 個警告，1 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: 你說什麼?!...\n   修正: 你說什麼？！...\n2. [MIXED_PUNCTUATION] 不應使用混合驚嘆問號 (!? 或 ?!)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "怎麼會！？",
+  "text": "怎麼會！？",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "MIXED_PUNCTUATION",
+    "message": "不應使用混合驚嘆問號 (!? 或 ?!)",
+    "line_number": null,
+    "original_text": "怎麼會！？",
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [MIXED_PUNCTUATION] 不應使用混合驚嘆問號 (!? 或 ?!)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "第一行\n第二行\n第三行",
+  "text": "第一行\n第二行\n第三行",
+  "auto_fixed": 0,
+  "warnings": [
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 3 行 (最多 2 行)",
+    "line_number": 3,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 1 個警告，0 個自動修正:\n\n1. [TOO_MANY_LINES] (第3行) 超過最大行數限制: 3 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "一行很長很長很長很長很長很長很長很長的字幕\n短行",
+  "text": "一行很長很長很長很長很長很長很長很長的字幕\n短行",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "a,b;c:d!e?f",
+  "text": "a，b；c：d！e？f",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "a,b;c:d!e?f",
+    "fixed_text": "a，b；c：d！e？f"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: a,b;c:d!e?f...\n   修正: a，b；c：d！e？f..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "“巢狀 ‘引號’ 測試”",
+  "text": "「巢狀 「引號」 測試」",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "“巢狀 ‘引號’ 測試”",
+    "fixed_text": "「巢狀 「引號」 測試」"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: “巢狀 ‘引號’ 測試”...\n   修正: 「巢狀 「引號」 測試」..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "\"未配對的引號",
+  "text": "「未配對的引號",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "\"未配對的引號",
+    "fixed_text": "「未配對的引號"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: \"未配對的引號...\n   修正: 「未配對的引號..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "１，２，３",
+  "text": "1,2，3",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "NUMBER_FIXED",
+    "message": "已自動轉換數字格式（全形轉半形，移除四位數逗號）",
+    "line_number": null,
+    "original_text": "１，２，３",
+    "fixed_text": "1,2，3"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [NUMBER_FIXED] 已自動轉換數字格式（全形轉半形，移除四位數逗號）\n   原文: １，２，３...\n   修正: 1,2，3..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "價值 ３，０００，０００ 美元",
+  "text": "價值 3000,000 美元",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "NUMBER_FIXED",
+    "message": "已自動轉換數字格式（全形轉半形，移除四位數逗號）",
+    "line_number": null,
+    "original_text": "價值 ３，０００，０００ 美元",
+    "fixed_text": "價值 3000,000 美元"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [NUMBER_FIXED] 已自動轉換數字格式（全形轉半形，移除四位數逗號）\n   原文: 價值 ３，０００，０００ 美元...\n   修正: 價值 3000,000 美元..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "tab\t分隔\t文字，以及全形　空白，然後還有更多更多的文字",
+  "text": "tab\t分隔\t文字，以及全形\n空白，然後還有更多更多的文字",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (29 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "tab\t分隔\t文字，以及全形　空白，然後還有更多更多的文字",
+    "fixed_text": "tab\t分隔\t文字，以及全形\n空白，然後還有更多更多的文字"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (29 字符)，已自動分割為 2 行\n   原文: tab\t分隔\t文字，以及全形　空白，然後還有更多更多的文字...\n   修正: tab\t分隔\t文字，以及全形\n空白，然後還有更多更多的文字..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "，開頭就是逗號的一句非常長的字幕內容測試用途",
+  "text": "，開頭就是逗號的一句非常長的字幕內容測試用途",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "和開頭的連接詞會讓斷點落在零的位置所以要強制斷行處理",
+  "text": "和開頭的連接詞會讓斷點落在零的位置所以要強制\n斷行處理",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (26 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "和開頭的連接詞會讓斷點落在零的位置所以要強制斷行處理",
+    "fixed_text": "和開頭的連接詞會讓斷點落在零的位置所以要強制\n斷行處理"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (26 字符)，已自動分割為 2 行\n   原文: 和開頭的連接詞會讓斷點落在零的位置所以要強制斷行處理...\n   修正: 和開頭的連接詞會讓斷點落在零的位置所以要強制\n斷行處理..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "Ｗｉｄｅ字母不處理",
+  "text": "Ｗｉｄｅ字母不處理",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "12,34,567",
+  "text": "12，34，567",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "12,34,567",
+    "fixed_text": "12，34，567"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: 12,34,567...\n   修正: 12，34，567..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "約翰 • 威廉姆斯說美聯儲的通脹增長",
+  "text": "約翰 • 威廉姆斯說美聯儲的通脹增長",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "美國聯邦儲備銀行與聯邦儲備系統",
+  "text": "美國聯邦儲備銀行與聯邦儲備系統",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "首席執行官在美東時間宣布招聘計畫",
+  "text": "首席執行官在美東時間宣布招聘計畫",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "瑪麗 · 安",
+  "text": "瑪麗 · 安",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "メアちゃん、こっち来て",
+  "text": "メアちゃん、こっち来て",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "「ゆいさんの」とメアちゃん",
+  "text": "「ゆいさんの」とメアちゃん",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "ゆいちゃんってさ、かわいいね",
+  "text": "ゆいちゃんってさ、かわいいね",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "タナカ先生が来た",
+  "text": "タナカ先生が来た",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "お兄ちゃん",
+  "text": "お兄ちゃん",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "さくら先輩！待って",
+  "text": "さくら先輩！待って",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "メアちゃんとゆいちゃんとメアちゃん",
+  "text": "メアちゃんとゆいちゃんとメアちゃん",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "アイ様のこと好き",
+  "text": "アイ様のこと好き",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "ハナコさんはどこ？",
+  "text": "ハナコさんはどこ？",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "こんにちは",
+  "text": "こんにちは",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "今日は天気がいい",
+  "text": "今日は天気がいい",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "東京",
+  "text": "東京",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "Hello there",
+  "text": "Hello there",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "ユウキくん、ユウキくんってば",
+  "text": "ユウキくん、ユウキくんってば",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": " カナさん",
+  "text": " カナさん",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "（リンちゃん）",
+  "text": "（リンちゃん）",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "ミサキ氏に",
+  "text": "ミサキ氏に",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "あーちゃんね",
+  "text": "あーちゃんね",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "ゆいさんの",
+  "text": "ゆいさんの",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "Hello, world!",
+  "text": "Hello， world！",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "Hello, world!",
+    "fixed_text": "Hello， world！"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: Hello, world!...\n   修正: Hello， world！..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "This is a test subtitle.",
+  "text": "This is a test\nsubtitle.",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (24 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "This is a test subtitle.",
+    "fixed_text": "This is a test\nsubtitle."
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (24 字符)，已自動分割為 2 行\n   原文: This is a test subtitle....\n   修正: This is a test\nsubtitle...."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "Welcome to the translation system.",
+  "text": "Welcome to the\ntranslation system.",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (34 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "Welcome to the translation system.",
+    "fixed_text": "Welcome to the\ntranslation system."
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (34 字符)，已自動分割為 2 行\n   原文: Welcome to the translation system....\n   修正: Welcome to the\ntranslation system...."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "こんにちは、世界！",
+  "text": "こんにちは、世界！",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "これはテスト字幕です。",
+  "text": "これはテスト字幕です",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_END_PUNCT_REMOVED",
+    "message": "已自動移除行尾的句號和逗號",
+    "line_number": null,
+    "original_text": "これはテスト字幕です。",
+    "fixed_text": "これはテスト字幕です"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_END_PUNCT_REMOVED] 已自動移除行尾的句號和逗號\n   原文: これはテスト字幕です。...\n   修正: これはテスト字幕です..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "翻訳システムへようこそ。",
+  "text": "翻訳システムへようこそ",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_END_PUNCT_REMOVED",
+    "message": "已自動移除行尾的句號和逗號",
+    "line_number": null,
+    "original_text": "翻訳システムへようこそ。",
+    "fixed_text": "翻訳システムへようこそ"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_END_PUNCT_REMOVED] 已自動移除行尾的句號和逗號\n   原文: 翻訳システムへようこそ。...\n   修正: 翻訳システムへようこそ..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "Special characters test: 你好世界! 🌍🚀",
+  "text": "Special characters\ntest： 你好世界！ 🌍🚀",
+  "auto_fixed": 2,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "Special characters test: 你好世界! 🌍🚀",
+    "fixed_text": "Special characters test： 你好世界！ 🌍🚀"
+   },
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (33 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "Special characters test： 你好世界！ 🌍🚀",
+    "fixed_text": "Special characters\ntest： 你好世界！ 🌍🚀"
+   }
+  ],
+  "formatted": "共 2 個警告，2 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: Special characters test: 你好世界! 🌍🚀...\n   修正: Special characters test： 你好世界！ 🌍🚀...\n2. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (33 字符)，已自動分割為 2 行\n   原文: Special characters test： 你好世界！ 🌍🚀...\n   修正: Special characters\ntest： 你好世界！ 🌍🚀..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "Emojis: 😀😎🎉 ❤️💯✨",
+  "text": "Emojis： 😀😎🎉 ❤️💯✨",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "Emojis: 😀😎🎉 ❤️💯✨",
+    "fixed_text": "Emojis： 😀😎🎉 ❤️💯✨"
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: Emojis: 😀😎🎉 ❤️💯✨...\n   修正: Emojis： 😀😎🎉 ❤️💯✨..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "Symbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/",
+  "text": "Symbols：\n@#$%^&*()_+-=[]{}|；「：「\n<>，.？/",
+  "auto_fixed": 3,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "Symbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/",
+    "fixed_text": "Symbols： @#$%^&*()_+-=[]{}|；'：\"<>，.？/"
+   },
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "Symbols： @#$%^&*()_+-=[]{}|；'：\"<>，.？/",
+    "fixed_text": "Symbols： @#$%^&*()_+-=[]{}|；「：「<>，.？/"
+   },
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (37 字符)，已自動分割為 3 行",
+    "line_number": 1,
+    "original_text": "Symbols： @#$%^&*()_+-=[]{}|；「：「<>，.？/",
+    "fixed_text": "Symbols：\n@#$%^&*()_+-=[]{}|；「：「\n<>，.？/"
+   },
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 3 行 (最多 2 行)",
+    "line_number": 3,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 4 個警告，3 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: Symbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/...\n   修正: Symbols： @#$%^&*()_+-=[]{}|；'：\"<>，.？/...\n2. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: Symbols： @#$%^&*()_+-=[]{}|；'：\"<>，.？/...\n   修正: Symbols： @#$%^&*()_+-=[]{}|；「：「<>，.？/...\n3. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (37 字符)，已自動分割為 3 行\n   原文: Symbols： @#$%^&*()_+-=[]{}|；「：「<>，.？/...\n   修正: Symbols：\n@#$%^&*()_+-=[]{}|；「：「\n<>，.？/...\n4. [TOO_MANY_LINES] (第3行) 超過最大行數限制: 3 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "Mixed: Hello世界 Test測試 123！",
+  "text": "Mixed： Hello世界 Test測試\n123！",
+  "auto_fixed": 2,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "Mixed: Hello世界 Test測試 123！",
+    "fixed_text": "Mixed： Hello世界 Test測試 123！"
+   },
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (26 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "Mixed： Hello世界 Test測試 123！",
+    "fixed_text": "Mixed： Hello世界 Test測試\n123！"
+   }
+  ],
+  "formatted": "共 2 個警告，2 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: Mixed: Hello世界 Test測試 123！...\n   修正: Mixed： Hello世界 Test測試 123！...\n2. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (26 字符)，已自動分割為 2 行\n   原文: Mixed： Hello世界 Test測試 123！...\n   修正: Mixed： Hello世界 Test測試\n123！..."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "Unicode: \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432",
+  "text": "Unicode： \\u4f60\\u597d\n\\u03b1\\u03b2\\u03b3\n\\u0430\\u0431\\u0432",
+  "auto_fixed": 2,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "Unicode: \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432",
+    "fixed_text": "Unicode： \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432"
+   },
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (59 字符)，已自動分割為 3 行",
+    "line_number": 1,
+    "original_text": "Unicode： \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432",
+    "fixed_text": "Unicode： \\u4f60\\u597d\n\\u03b1\\u03b2\\u03b3\n\\u0430\\u0431\\u0432"
+   },
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 3 行 (最多 2 行)",
+    "line_number": 3,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 3 個警告，2 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: Unicode: \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0...\n   修正: Unicode： \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0...\n2. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (59 字符)，已自動分割為 3 行\n   原文: Unicode： \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0...\n   修正: Unicode： \\u4f60\\u597d\n\\u03b1\\u03b2\\u03b3\n\\u0430\\u0...\n3. [TOO_MANY_LINES] (第3行) 超過最大行數限制: 3 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "This is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.",
+  "text": "This is an extremely\nlong subtitle text\nthat contains more\nthan one thousand\ncharacters to test\nthe system「s ability\nto handle very long\nsubtitle entries.\nLorem ipsum dolor sit\namet\nconsectetur\nadipiscing elit. Sed\ndo eiusmod tempor\nincididunt ut labore\net dolore magna\naliqua. Ut enim ad\nminim veniam\nquis nostrud\nexercitation ullamco\nlaboris nisi ut\naliquip ex ea commodo\nconsequat. Duis aute\nirure dolor in\nreprehenderit in\nvoluptate velit esse\ncillum dolore eu\nfugiat nulla\npariatur. Excepteur\nsint occaecat\ncupidatat non\nproident\nsunt in culpa qui\nofficia deserunt\nmollit anim id est\nlaborum. Sed ut\nperspiciatis unde\nomnis iste natus\nerror sit voluptatem\naccusantium\ndoloremque\nlaudantium\ntotam rem aperiam\neaque ipsa quae ab\nillo inventore\nveritatis et quasi\narchitecto beatae\nvitae dicta sunt\nexplicabo. Nemo enim\nipsam voluptatem quia\nvoluptas sit\naspernatur aut odit\naut fugit\nsed quia consequuntur\nmagni dolores eos qui\nratione voluptatem\nsequi nesciunt. Neque\nporro quisquam est\nqui dolorem ipsum\nquia dolor sit amet\nconsectetur\nadipisci velit\nsed quia non numquam\neius modi tempora\nincidunt ut labore et\ndolore magnam aliquam\nquaerat voluptatem.",
+  "auto_fixed": 3,
+  "warnings": [
+   {
+    "code": "PUNCT_FIXED",
+    "message": "已自動轉換半形標點為全形中文標點",
+    "line_number": null,
+    "original_text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.",
+    "fixed_text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet， consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam， quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident， sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium， totam rem aperiam， eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit， sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est， qui dolorem ipsum quia dolor sit amet， consectetur， adipisci velit， sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem."
+   },
+   {
+    "code": "QUOTE_FIXED",
+    "message": "已自動轉換引號為中文引號「」",
+    "line_number": null,
+    "original_text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet， consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam， quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident， sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium， totam rem aperiam， eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit， sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est， qui dolorem ipsum quia dolor sit amet， consectetur， adipisci velit， sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.",
+    "fixed_text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system「s ability to handle very long subtitle entries. Lorem ipsum dolor sit amet， consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam， quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident， sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium， totam rem aperiam， eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit， sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est， qui dolorem ipsum quia dolor sit amet， consectetur， adipisci velit， sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem."
+   },
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (1168 字符)，已自動分割為 66 行",
+    "line_number": 1,
+    "original_text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system「s ability to handle very long subtitle entries. Lorem ipsum dolor sit amet， consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam， quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident， sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium， totam rem aperiam， eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit， sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est， qui dolorem ipsum quia dolor sit amet， consectetur， adipisci velit， sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.",
+    "fixed_text": "This is an extremely\nlong subtitle text\nthat contains more\nthan one thousand\ncharacters to test\nthe system「s ability\nto handle very long\nsubtitle entries.\nLorem ipsum dolor sit\namet\nconsectetur\nadipiscing elit. Sed\ndo eiusmod tempor\nincididunt ut labore\net dolore magna\naliqua. Ut enim ad\nminim veniam\nquis nostrud\nexercitation ullamco\nlaboris nisi ut\naliquip ex ea commodo\nconsequat. Duis aute\nirure dolor in\nreprehenderit in\nvoluptate velit esse\ncillum dolore eu\nfugiat nulla\npariatur. Excepteur\nsint occaecat\ncupidatat non\nproident\nsunt in culpa qui\nofficia deserunt\nmollit anim id est\nlaborum. Sed ut\nperspiciatis unde\nomnis iste natus\nerror sit voluptatem\naccusantium\ndoloremque\nlaudantium\ntotam rem aperiam\neaque ipsa quae ab\nillo inventore\nveritatis et quasi\narchitecto beatae\nvitae dicta sunt\nexplicabo. Nemo enim\nipsam voluptatem quia\nvoluptas sit\naspernatur aut odit\naut fugit\nsed quia consequuntur\nmagni dolores eos qui\nratione voluptatem\nsequi nesciunt. Neque\nporro quisquam est\nqui dolorem ipsum\nquia dolor sit amet\nconsectetur\nadipisci velit\nsed quia non numquam\neius modi tempora\nincidunt ut labore et\ndolore magnam aliquam\nquaerat voluptatem."
+   },
+   {
+    "code": "TOO_MANY_LINES",
+    "message": "超過最大行數限制: 66 行 (最多 2 行)",
+    "line_number": 66,
+    "original_text": null,
+    "fixed_text": null
+   }
+  ],
+  "formatted": "共 4 個警告，3 個自動修正:\n\n1. [PUNCT_FIXED] 已自動轉換半形標點為全形中文標點\n   原文: This is an extremely long subtitle text that conta...\n   修正: This is an extremely long subtitle text that conta...\n2. [QUOTE_FIXED] 已自動轉換引號為中文引號「」\n   原文: This is an extremely long subtitle text that conta...\n   修正: This is an extremely long subtitle text that conta...\n3. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (1168 字符)，已自動分割為 66 行\n   原文: This is an extremely long subtitle text that conta...\n   修正: This is an extremely\nlong subtitle text\nthat conta...\n4. [TOO_MANY_LINES] (第66行) 超過最大行數限制: 66 行 (最多 2 行)"
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "Normal subtitle after long one.",
+  "text": "Normal subtitle after\nlong one.",
+  "auto_fixed": 1,
+  "warnings": [
+   {
+    "code": "LINE_TOO_LONG_AUTO_FIXED",
+    "message": "第 1 行超過限制 (31 字符)，已自動分割為 2 行",
+    "line_number": 1,
+    "original_text": "Normal subtitle after long one.",
+    "fixed_text": "Normal subtitle after\nlong one."
+   }
+  ],
+  "formatted": "共 1 個警告，1 個自動修正:\n\n1. [LINE_TOO_LONG_AUTO_FIXED] (第1行) 第 1 行超過限制 (31 字符)，已自動分割為 2 行\n   原文: Normal subtitle after long one....\n   修正: Normal subtitle after\nlong one...."
+ },
+ {
+  "config": {
+   "auto_fix": true,
+   "strict_mode": false,
+   "max_chars_per_line": 22,
+   "max_lines": 2
+  },
+  "input": "Testing continues.",
+  "text": "Testing continues.",
+  "auto_fixed": 0,
+  "warnings": [],
+  "formatted": "無警告"
+ }
+]

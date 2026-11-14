@@ -110,6 +110,7 @@ async def test_cmd_translate_aligns_runtime_flags() -> None:
 
     mock_translation_service = MagicMock()
     mock_translation_service.translate_subtitle_file = AsyncMock(return_value=(True, "/tmp/output/input.zh_tw.srt"))
+    mock_translation_service.last_file_counts = {"total": 1, "successful": 1, "failed": 0}
     mock_model_service = MagicMock()
     mock_model_service.get_recommended_model.return_value = "llama3.2"
     mock_file_service = MagicMock()
@@ -120,11 +121,15 @@ async def test_cmd_translate_aligns_runtime_flags() -> None:
         patch.object(cli.ServiceFactory, "get_model_service", return_value=mock_model_service),
         patch.object(cli.ServiceFactory, "get_file_service", return_value=mock_file_service),
         patch.object(cli.ServiceFactory, "reset_services"),
+        patch.object(cli.os, "makedirs") as mock_makedirs,
     ):
         result = await cli.cmd_translate(args)
 
     assert result == 0
-    mock_file_service.set_batch_settings.assert_called_once_with({"output_directory": "/tmp/output"})
+    mock_makedirs.assert_called_once_with("/tmp/output", exist_ok=True)
+    mock_file_service.set_runtime_output_directory.assert_called_once_with("/tmp/output")
+    mock_file_service.set_batch_settings.assert_not_called()
+    mock_file_service.use_structure_base_for.assert_called_once_with(["/tmp/input.srt"])
     mock_translation_service.translate_subtitle_file.assert_awaited_once()
     call_kwargs = mock_translation_service.translate_subtitle_file.await_args.kwargs
     assert call_kwargs["display_mode"] == "僅顯示翻譯"
@@ -158,6 +163,7 @@ async def test_cmd_translate_applies_cli_translation_overrides() -> None:
     mock_translation_service = MagicMock()
     mock_translation_service.prompt_manager = mock_prompt_manager
     mock_translation_service.translate_subtitle_file = AsyncMock(return_value=(True, "/tmp/output/input.zh_tw.srt"))
+    mock_translation_service.last_file_counts = {"total": 1, "successful": 1, "failed": 0}
     mock_model_service = MagicMock()
     mock_model_service.get_recommended_model.return_value = "gemini-2.0-flash"
     mock_user_config = MagicMock()
@@ -166,6 +172,7 @@ async def test_cmd_translate_applies_cli_translation_overrides() -> None:
         patch.object(cli, "collect_files", return_value=["/tmp/input.srt"]),
         patch.object(cli.ServiceFactory, "get_translation_service", return_value=mock_translation_service),
         patch.object(cli.ServiceFactory, "get_model_service", return_value=mock_model_service),
+        patch.object(cli.ServiceFactory, "get_file_service", return_value=MagicMock()),
         patch.object(cli.ServiceFactory, "reset_services"),
         patch.object(cli.ConfigManager, "get_instance", return_value=mock_user_config),
     ):
@@ -369,3 +376,31 @@ def test_cmd_cps_audit_returns_nonzero_when_problematic(capsys) -> None:
     assert "總字幕數: 10" in output
     assert "問題字幕: 2" in output
     assert "問題字幕詳情" in output
+
+
+@pytest.mark.asyncio
+async def test_cmd_translate_returns_failure_when_file_partially_translated() -> None:
+    """部分字幕翻譯失敗時，即使已輸出檔案也應回報部分完成並回傳非零。"""
+    parser = cli.create_parser()
+    args = parser.parse_args(["translate", "input.srt", "-s", "日文", "-t", "繁體中文", "-q"])
+
+    mock_translation_service = MagicMock()
+    mock_translation_service.translate_subtitle_file = AsyncMock(return_value=(True, "/tmp/input_繁體中文.srt"))
+    mock_translation_service.last_file_counts = {"total": 912, "successful": 474, "failed": 438}
+    mock_model_service = MagicMock()
+    mock_model_service.get_recommended_model.return_value = "llama3.2"
+
+    with (
+        patch.object(cli, "collect_files", return_value=["/tmp/input.srt"]),
+        patch.object(cli.ServiceFactory, "get_translation_service", return_value=mock_translation_service),
+        patch.object(cli.ServiceFactory, "get_model_service", return_value=mock_model_service),
+        patch.object(cli.ServiceFactory, "get_file_service", return_value=MagicMock()),
+        patch.object(cli.ServiceFactory, "reset_services"),
+        patch.object(cli.logger, "warning") as mock_warning,
+        patch.object(cli.logger, "info") as mock_info,
+    ):
+        result = await cli.cmd_translate(args)
+
+    assert result == 1
+    assert any("部分完成" in c.args[0] and "成功 474/912，失敗 438" in c.args[0] for c in mock_warning.call_args_list)
+    assert any("成功 0 個, 部分完成 1 個, 失敗 0 個" in c.args[0] for c in mock_info.call_args_list)

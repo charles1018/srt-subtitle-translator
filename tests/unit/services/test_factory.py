@@ -978,6 +978,7 @@ class TestTranslationService:
         subs.save.assert_called_once_with("/tmp/output.srt", encoding="utf-8")
         assert subs[0].text == "你好"
         assert subs[1].text == "ありがとう"
+        assert service.last_file_counts == {"total": 2, "successful": 1, "failed": 1}
         assert any(
             "翻譯部分完成" in call.args[0] and "成功 1/2，失敗 1" in call.args[0]
             for call in complete_callback.call_args_list

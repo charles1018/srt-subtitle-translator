@@ -1,0 +1,836 @@
+[
+ {
+  "file": "empty.srt",
+  "items": [],
+  "serialized": "",
+  "extract_error": 1400,
+  "cps_audit_error": 1400
+ },
+ {
+  "file": "invalid.srt",
+  "items": [],
+  "serialized": "",
+  "extract_error": 1400,
+  "cps_audit_error": 1400
+ },
+ {
+  "file": "large_sample.srt",
+  "items": [
+   {
+    "index": 1,
+    "start": "00:00:01,000",
+    "end": "00:00:03,000",
+    "text": "Welcome to the subtitle translator.",
+    "position": ""
+   },
+   {
+    "index": 2,
+    "start": "00:00:04,000",
+    "end": "00:00:06,000",
+    "text": "This tool helps you translate subtitles.",
+    "position": ""
+   },
+   {
+    "index": 3,
+    "start": "00:00:07,000",
+    "end": "00:00:09,000",
+    "text": "It supports multiple languages.",
+    "position": ""
+   },
+   {
+    "index": 4,
+    "start": "00:00:10,000",
+    "end": "00:00:12,000",
+    "text": "You can translate from English to Chinese.",
+    "position": ""
+   },
+   {
+    "index": 5,
+    "start": "00:00:13,000",
+    "end": "00:00:15,000",
+    "text": "The system uses AI for translation.",
+    "position": ""
+   },
+   {
+    "index": 6,
+    "start": "00:00:16,000",
+    "end": "00:00:18,000",
+    "text": "Translation quality is high.",
+    "position": ""
+   },
+   {
+    "index": 7,
+    "start": "00:00:19,000",
+    "end": "00:00:21,000",
+    "text": "Cache mechanism improves performance.",
+    "position": ""
+   },
+   {
+    "index": 8,
+    "start": "00:00:22,000",
+    "end": "00:00:24,000",
+    "text": "Multiple files can be processed.",
+    "position": ""
+   },
+   {
+    "index": 9,
+    "start": "00:00:25,000",
+    "end": "00:00:27,000",
+    "text": "Thank you for using our tool.",
+    "position": ""
+   },
+   {
+    "index": 10,
+    "start": "00:00:28,000",
+    "end": "00:00:30,000",
+    "text": "Enjoy your translation experience!",
+    "position": ""
+   }
+  ],
+  "serialized": "1\n00:00:01,000 --> 00:00:03,000\nWelcome to the subtitle translator.\n\n2\n00:00:04,000 --> 00:00:06,000\nThis tool helps you translate subtitles.\n\n3\n00:00:07,000 --> 00:00:09,000\nIt supports multiple languages.\n\n4\n00:00:10,000 --> 00:00:12,000\nYou can translate from English to Chinese.\n\n5\n00:00:13,000 --> 00:00:15,000\nThe system uses AI for translation.\n\n6\n00:00:16,000 --> 00:00:18,000\nTranslation quality is high.\n\n7\n00:00:19,000 --> 00:00:21,000\nCache mechanism improves performance.\n\n8\n00:00:22,000 --> 00:00:24,000\nMultiple files can be processed.\n\n9\n00:00:25,000 --> 00:00:27,000\nThank you for using our tool.\n\n10\n00:00:28,000 --> 00:00:30,000\nEnjoy your translation experience!\n\n",
+  "extract": {
+   "structure": "[\n  {\n    \"index\": 1,\n    \"start\": \"00:00:01,000\",\n    \"end\": \"00:00:03,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 2,\n    \"start\": \"00:00:04,000\",\n    \"end\": \"00:00:06,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 3,\n    \"start\": \"00:00:07,000\",\n    \"end\": \"00:00:09,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 4,\n    \"start\": \"00:00:10,000\",\n    \"end\": \"00:00:12,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 5,\n    \"start\": \"00:00:13,000\",\n    \"end\": \"00:00:15,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 6,\n    \"start\": \"00:00:16,000\",\n    \"end\": \"00:00:18,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 7,\n    \"start\": \"00:00:19,000\",\n    \"end\": \"00:00:21,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 8,\n    \"start\": \"00:00:22,000\",\n    \"end\": \"00:00:24,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 9,\n    \"start\": \"00:00:25,000\",\n    \"end\": \"00:00:27,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 10,\n    \"start\": \"00:00:28,000\",\n    \"end\": \"00:00:30,000\",\n    \"line_count\": 1\n  }\n]",
+   "text": "Welcome to the subtitle translator.\nThis tool helps you translate subtitles.\nIt supports multiple languages.\nYou can translate from English to Chinese.\nThe system uses AI for translation.\nTranslation quality is high.\nCache mechanism improves performance.\nMultiple files can be processed.\nThank you for using our tool.\nEnjoy your translation experience!\n"
+  },
+  "assembled": "1\n00:00:01,000 --> 00:00:03,000\nWelcome to the subtitle translator.\n\n2\n00:00:04,000 --> 00:00:06,000\nThis tool helps you translate subtitles.\n\n3\n00:00:07,000 --> 00:00:09,000\nIt supports multiple languages.\n\n4\n00:00:10,000 --> 00:00:12,000\nYou can translate from English to Chinese.\n\n5\n00:00:13,000 --> 00:00:15,000\nThe system uses AI for translation.\n\n6\n00:00:16,000 --> 00:00:18,000\nTranslation quality is high.\n\n7\n00:00:19,000 --> 00:00:21,000\nCache mechanism improves performance.\n\n8\n00:00:22,000 --> 00:00:24,000\nMultiple files can be processed.\n\n9\n00:00:25,000 --> 00:00:27,000\nThank you for using our tool.\n\n10\n00:00:28,000 --> 00:00:30,000\nEnjoy your translation experience!\n\n",
+  "qa": {
+   "is_valid": true,
+   "source_count": 10,
+   "target_count": 10,
+   "errors": [],
+   "warnings": []
+  },
+  "cps_audit": {
+   "total_subtitles": 10,
+   "problematic_count": 10,
+   "entries": [
+    {
+     "index": 1,
+     "text": "Welcome to the subtitle translator.",
+     "duration_ms": 2000,
+     "char_count": 35,
+     "cps": 17.5,
+     "line_count": 1,
+     "max_line_length": 35,
+     "issues": [
+      "CPS=17.5 (>17.0)",
+      "行長=35 (>22)"
+     ]
+    },
+    {
+     "index": 2,
+     "text": "This tool helps you translate subtitles.",
+     "duration_ms": 2000,
+     "char_count": 40,
+     "cps": 20.0,
+     "line_count": 1,
+     "max_line_length": 40,
+     "issues": [
+      "CPS=20.0 (>17.0)",
+      "行長=40 (>22)"
+     ]
+    },
+    {
+     "index": 3,
+     "text": "It supports multiple languages.",
+     "duration_ms": 2000,
+     "char_count": 31,
+     "cps": 15.5,
+     "line_count": 1,
+     "max_line_length": 31,
+     "issues": [
+      "行長=31 (>22)"
+     ]
+    },
+    {
+     "index": 4,
+     "text": "You can translate from English to Chinese.",
+     "duration_ms": 2000,
+     "char_count": 42,
+     "cps": 21.0,
+     "line_count": 1,
+     "max_line_length": 42,
+     "issues": [
+      "CPS=21.0 (>17.0)",
+      "行長=42 (>22)"
+     ]
+    },
+    {
+     "index": 5,
+     "text": "The system uses AI for translation.",
+     "duration_ms": 2000,
+     "char_count": 35,
+     "cps": 17.5,
+     "line_count": 1,
+     "max_line_length": 35,
+     "issues": [
+      "CPS=17.5 (>17.0)",
+      "行長=35 (>22)"
+     ]
+    },
+    {
+     "index": 6,
+     "text": "Translation quality is high.",
+     "duration_ms": 2000,
+     "char_count": 28,
+     "cps": 14.0,
+     "line_count": 1,
+     "max_line_length": 28,
+     "issues": [
+      "行長=28 (>22)"
+     ]
+    },
+    {
+     "index": 7,
+     "text": "Cache mechanism improves performance.",
+     "duration_ms": 2000,
+     "char_count": 37,
+     "cps": 18.5,
+     "line_count": 1,
+     "max_line_length": 37,
+     "issues": [
+      "CPS=18.5 (>17.0)",
+      "行長=37 (>22)"
+     ]
+    },
+    {
+     "index": 8,
+     "text": "Multiple files can be processed.",
+     "duration_ms": 2000,
+     "char_count": 32,
+     "cps": 16.0,
+     "line_count": 1,
+     "max_line_length": 32,
+     "issues": [
+      "行長=32 (>22)"
+     ]
+    },
+    {
+     "index": 9,
+     "text": "Thank you for using our tool.",
+     "duration_ms": 2000,
+     "char_count": 29,
+     "cps": 14.5,
+     "line_count": 1,
+     "max_line_length": 29,
+     "issues": [
+      "行長=29 (>22)"
+     ]
+    },
+    {
+     "index": 10,
+     "text": "Enjoy your translation experience!",
+     "duration_ms": 2000,
+     "char_count": 34,
+     "cps": 17.0,
+     "line_count": 1,
+     "max_line_length": 34,
+     "issues": [
+      "行長=34 (>22)"
+     ]
+    }
+   ],
+   "avg_cps": 17.15,
+   "max_cps": 21.0,
+   "summary": {
+    "high_cps": 5,
+    "long_line": 10,
+    "too_many_lines": 0,
+    "short_duration": 0
+   }
+  }
+ },
+ {
+  "file": "long_subtitle.srt",
+  "items": [
+   {
+    "index": 1,
+    "start": "00:00:00,000",
+    "end": "00:00:10,000",
+    "text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.",
+    "position": ""
+   },
+   {
+    "index": 2,
+    "start": "00:00:10,000",
+    "end": "00:00:12,000",
+    "text": "Normal subtitle after long one.",
+    "position": ""
+   },
+   {
+    "index": 3,
+    "start": "00:00:12,000",
+    "end": "00:00:14,000",
+    "text": "Testing continues.",
+    "position": ""
+   }
+  ],
+  "serialized": "1\n00:00:00,000 --> 00:00:10,000\nThis is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.\n\n2\n00:00:10,000 --> 00:00:12,000\nNormal subtitle after long one.\n\n3\n00:00:12,000 --> 00:00:14,000\nTesting continues.\n\n",
+  "extract": {
+   "structure": "[\n  {\n    \"index\": 1,\n    \"start\": \"00:00:00,000\",\n    \"end\": \"00:00:10,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 2,\n    \"start\": \"00:00:10,000\",\n    \"end\": \"00:00:12,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 3,\n    \"start\": \"00:00:12,000\",\n    \"end\": \"00:00:14,000\",\n    \"line_count\": 1\n  }\n]",
+   "text": "This is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.\nNormal subtitle after long one.\nTesting continues.\n"
+  },
+  "assembled": "1\n00:00:00,000 --> 00:00:10,000\nThis is an extremely long subtitle text that contains more than one thousand characters to test the system's ability to handle very long subtitle entries. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.\n\n2\n00:00:10,000 --> 00:00:12,000\nNormal subtitle after long one.\n\n3\n00:00:12,000 --> 00:00:14,000\nTesting continues.\n\n",
+  "qa": {
+   "is_valid": true,
+   "source_count": 3,
+   "target_count": 3,
+   "errors": [],
+   "warnings": []
+  },
+  "cps_audit": {
+   "total_subtitles": 3,
+   "problematic_count": 2,
+   "entries": [
+    {
+     "index": 1,
+     "text": "This is an extremely long subtitle text that contains more t",
+     "duration_ms": 10000,
+     "char_count": 1168,
+     "cps": 116.8,
+     "line_count": 1,
+     "max_line_length": 1168,
+     "issues": [
+      "CPS=116.8 (>17.0)",
+      "行長=1168 (>22)"
+     ]
+    },
+    {
+     "index": 2,
+     "text": "Normal subtitle after long one.",
+     "duration_ms": 2000,
+     "char_count": 31,
+     "cps": 15.5,
+     "line_count": 1,
+     "max_line_length": 31,
+     "issues": [
+      "行長=31 (>22)"
+     ]
+    }
+   ],
+   "avg_cps": 47.1,
+   "max_cps": 116.8,
+   "summary": {
+    "high_cps": 1,
+    "long_line": 2,
+    "too_many_lines": 0,
+    "short_duration": 0
+   }
+  }
+ },
+ {
+  "file": "sample.srt",
+  "items": [
+   {
+    "index": 1,
+    "start": "00:00:01,000",
+    "end": "00:00:03,000",
+    "text": "Hello, world!",
+    "position": ""
+   },
+   {
+    "index": 2,
+    "start": "00:00:04,000",
+    "end": "00:00:06,000",
+    "text": "This is a test subtitle.",
+    "position": ""
+   },
+   {
+    "index": 3,
+    "start": "00:00:07,000",
+    "end": "00:00:09,000",
+    "text": "Welcome to the translation system.",
+    "position": ""
+   }
+  ],
+  "serialized": "1\n00:00:01,000 --> 00:00:03,000\nHello, world!\n\n2\n00:00:04,000 --> 00:00:06,000\nThis is a test subtitle.\n\n3\n00:00:07,000 --> 00:00:09,000\nWelcome to the translation system.\n\n",
+  "extract": {
+   "structure": "[\n  {\n    \"index\": 1,\n    \"start\": \"00:00:01,000\",\n    \"end\": \"00:00:03,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 2,\n    \"start\": \"00:00:04,000\",\n    \"end\": \"00:00:06,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 3,\n    \"start\": \"00:00:07,000\",\n    \"end\": \"00:00:09,000\",\n    \"line_count\": 1\n  }\n]",
+   "text": "Hello, world!\nThis is a test subtitle.\nWelcome to the translation system.\n"
+  },
+  "assembled": "1\n00:00:01,000 --> 00:00:03,000\nHello, world!\n\n2\n00:00:04,000 --> 00:00:06,000\nThis is a test subtitle.\n\n3\n00:00:07,000 --> 00:00:09,000\nWelcome to the translation system.\n\n",
+  "qa": {
+   "is_valid": true,
+   "source_count": 3,
+   "target_count": 3,
+   "errors": [],
+   "warnings": []
+  },
+  "cps_audit": {
+   "total_subtitles": 3,
+   "problematic_count": 2,
+   "entries": [
+    {
+     "index": 2,
+     "text": "This is a test subtitle.",
+     "duration_ms": 2000,
+     "char_count": 24,
+     "cps": 12.0,
+     "line_count": 1,
+     "max_line_length": 24,
+     "issues": [
+      "行長=24 (>22)"
+     ]
+    },
+    {
+     "index": 3,
+     "text": "Welcome to the translation system.",
+     "duration_ms": 2000,
+     "char_count": 34,
+     "cps": 17.0,
+     "line_count": 1,
+     "max_line_length": 34,
+     "issues": [
+      "行長=34 (>22)"
+     ]
+    }
+   ],
+   "avg_cps": 11.83,
+   "max_cps": 17.0,
+   "summary": {
+    "high_cps": 0,
+    "long_line": 2,
+    "too_many_lines": 0,
+    "short_duration": 0
+   }
+  }
+ },
+ {
+  "file": "sample_japanese.srt",
+  "items": [
+   {
+    "index": 1,
+    "start": "00:00:01,000",
+    "end": "00:00:03,000",
+    "text": "こんにちは、世界！",
+    "position": ""
+   },
+   {
+    "index": 2,
+    "start": "00:00:04,000",
+    "end": "00:00:06,000",
+    "text": "これはテスト字幕です。",
+    "position": ""
+   },
+   {
+    "index": 3,
+    "start": "00:00:07,000",
+    "end": "00:00:09,000",
+    "text": "翻訳システムへようこそ。",
+    "position": ""
+   }
+  ],
+  "serialized": "1\n00:00:01,000 --> 00:00:03,000\nこんにちは、世界！\n\n2\n00:00:04,000 --> 00:00:06,000\nこれはテスト字幕です。\n\n3\n00:00:07,000 --> 00:00:09,000\n翻訳システムへようこそ。\n\n",
+  "extract": {
+   "structure": "[\n  {\n    \"index\": 1,\n    \"start\": \"00:00:01,000\",\n    \"end\": \"00:00:03,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 2,\n    \"start\": \"00:00:04,000\",\n    \"end\": \"00:00:06,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 3,\n    \"start\": \"00:00:07,000\",\n    \"end\": \"00:00:09,000\",\n    \"line_count\": 1\n  }\n]",
+   "text": "こんにちは、世界！\nこれはテスト字幕です。\n翻訳システムへようこそ。\n"
+  },
+  "assembled": "1\n00:00:01,000 --> 00:00:03,000\nこんにちは、世界！\n\n2\n00:00:04,000 --> 00:00:06,000\nこれはテスト字幕です。\n\n3\n00:00:07,000 --> 00:00:09,000\n翻訳システムへようこそ。\n\n",
+  "qa": {
+   "is_valid": true,
+   "source_count": 3,
+   "target_count": 3,
+   "errors": [],
+   "warnings": []
+  },
+  "cps_audit": {
+   "total_subtitles": 3,
+   "problematic_count": 0,
+   "entries": [],
+   "avg_cps": 5.33,
+   "max_cps": 6.0,
+   "summary": {
+    "high_cps": 0,
+    "long_line": 0,
+    "too_many_lines": 0,
+    "short_duration": 0
+   }
+  }
+ },
+ {
+  "file": "special_chars.srt",
+  "items": [
+   {
+    "index": 1,
+    "start": "00:00:00,000",
+    "end": "00:00:02,000",
+    "text": "Special characters test: 你好世界! 🌍🚀",
+    "position": ""
+   },
+   {
+    "index": 2,
+    "start": "00:00:02,000",
+    "end": "00:00:04,000",
+    "text": "Emojis: 😀😎🎉 ❤️💯✨",
+    "position": ""
+   },
+   {
+    "index": 3,
+    "start": "00:00:04,000",
+    "end": "00:00:06,000",
+    "text": "Symbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/",
+    "position": ""
+   },
+   {
+    "index": 4,
+    "start": "00:00:06,000",
+    "end": "00:00:08,000",
+    "text": "Mixed: Hello世界 Test測試 123！",
+    "position": ""
+   },
+   {
+    "index": 5,
+    "start": "00:00:08,000",
+    "end": "00:00:10,000",
+    "text": "Unicode: \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432",
+    "position": ""
+   }
+  ],
+  "serialized": "1\n00:00:00,000 --> 00:00:02,000\nSpecial characters test: 你好世界! 🌍🚀\n\n2\n00:00:02,000 --> 00:00:04,000\nEmojis: 😀😎🎉 ❤️💯✨\n\n3\n00:00:04,000 --> 00:00:06,000\nSymbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/\n\n4\n00:00:06,000 --> 00:00:08,000\nMixed: Hello世界 Test測試 123！\n\n5\n00:00:08,000 --> 00:00:10,000\nUnicode: \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432\n\n",
+  "extract": {
+   "structure": "[\n  {\n    \"index\": 1,\n    \"start\": \"00:00:00,000\",\n    \"end\": \"00:00:02,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 2,\n    \"start\": \"00:00:02,000\",\n    \"end\": \"00:00:04,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 3,\n    \"start\": \"00:00:04,000\",\n    \"end\": \"00:00:06,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 4,\n    \"start\": \"00:00:06,000\",\n    \"end\": \"00:00:08,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 5,\n    \"start\": \"00:00:08,000\",\n    \"end\": \"00:00:10,000\",\n    \"line_count\": 1\n  }\n]",
+   "text": "Special characters test: 你好世界! 🌍🚀\nEmojis: 😀😎🎉 ❤️💯✨\nSymbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/\nMixed: Hello世界 Test測試 123！\nUnicode: \\\\u4f60\\\\u597d \\\\u03b1\\\\u03b2\\\\u03b3 \\\\u0430\\\\u0431\\\\u0432\n"
+  },
+  "assembled": "1\n00:00:00,000 --> 00:00:02,000\nSpecial characters test: 你好世界! 🌍🚀\n\n2\n00:00:02,000 --> 00:00:04,000\nEmojis: 😀😎🎉 ❤️💯✨\n\n3\n00:00:04,000 --> 00:00:06,000\nSymbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/\n\n4\n00:00:06,000 --> 00:00:08,000\nMixed: Hello世界 Test測試 123！\n\n5\n00:00:08,000 --> 00:00:10,000\nUnicode: \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432\n\n",
+  "qa": {
+   "is_valid": true,
+   "source_count": 5,
+   "target_count": 5,
+   "errors": [],
+   "warnings": []
+  },
+  "cps_audit": {
+   "total_subtitles": 5,
+   "problematic_count": 4,
+   "entries": [
+    {
+     "index": 1,
+     "text": "Special characters test: 你好世界! 🌍🚀",
+     "duration_ms": 2000,
+     "char_count": 33,
+     "cps": 16.5,
+     "line_count": 1,
+     "max_line_length": 33,
+     "issues": [
+      "行長=33 (>22)"
+     ]
+    },
+    {
+     "index": 3,
+     "text": "Symbols: @#$%^&*()_+-=[]{}|;':\"<>,.?/",
+     "duration_ms": 2000,
+     "char_count": 37,
+     "cps": 18.5,
+     "line_count": 1,
+     "max_line_length": 37,
+     "issues": [
+      "CPS=18.5 (>17.0)",
+      "行長=37 (>22)"
+     ]
+    },
+    {
+     "index": 4,
+     "text": "Mixed: Hello世界 Test測試 123！",
+     "duration_ms": 2000,
+     "char_count": 26,
+     "cps": 13.0,
+     "line_count": 1,
+     "max_line_length": 26,
+     "issues": [
+      "行長=26 (>22)"
+     ]
+    },
+    {
+     "index": 5,
+     "text": "Unicode: \\u4f60\\u597d \\u03b1\\u03b2\\u03b3 \\u0430\\u0431\\u0432",
+     "duration_ms": 2000,
+     "char_count": 59,
+     "cps": 29.5,
+     "line_count": 1,
+     "max_line_length": 59,
+     "issues": [
+      "CPS=29.5 (>17.0)",
+      "行長=59 (>22)"
+     ]
+    }
+   ],
+   "avg_cps": 17.1,
+   "max_cps": 29.5,
+   "summary": {
+    "high_cps": 2,
+    "long_line": 4,
+    "too_many_lines": 0,
+    "short_duration": 0
+   }
+  }
+ },
+ {
+  "file": "file1.srt",
+  "items": [
+   {
+    "index": 1,
+    "start": "00:00:00,000",
+    "end": "00:00:02,000",
+    "text": "Welcome to batch translation test.",
+    "position": ""
+   },
+   {
+    "index": 2,
+    "start": "00:00:02,000",
+    "end": "00:00:04,000",
+    "text": "This is the first file.",
+    "position": ""
+   },
+   {
+    "index": 3,
+    "start": "00:00:04,000",
+    "end": "00:00:06,000",
+    "text": "It contains three subtitles.",
+    "position": ""
+   }
+  ],
+  "serialized": "1\n00:00:00,000 --> 00:00:02,000\nWelcome to batch translation test.\n\n2\n00:00:02,000 --> 00:00:04,000\nThis is the first file.\n\n3\n00:00:04,000 --> 00:00:06,000\nIt contains three subtitles.\n\n",
+  "extract": {
+   "structure": "[\n  {\n    \"index\": 1,\n    \"start\": \"00:00:00,000\",\n    \"end\": \"00:00:02,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 2,\n    \"start\": \"00:00:02,000\",\n    \"end\": \"00:00:04,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 3,\n    \"start\": \"00:00:04,000\",\n    \"end\": \"00:00:06,000\",\n    \"line_count\": 1\n  }\n]",
+   "text": "Welcome to batch translation test.\nThis is the first file.\nIt contains three subtitles.\n"
+  },
+  "assembled": "1\n00:00:00,000 --> 00:00:02,000\nWelcome to batch translation test.\n\n2\n00:00:02,000 --> 00:00:04,000\nThis is the first file.\n\n3\n00:00:04,000 --> 00:00:06,000\nIt contains three subtitles.\n\n",
+  "qa": {
+   "is_valid": true,
+   "source_count": 3,
+   "target_count": 3,
+   "errors": [],
+   "warnings": []
+  },
+  "cps_audit": {
+   "total_subtitles": 3,
+   "problematic_count": 3,
+   "entries": [
+    {
+     "index": 1,
+     "text": "Welcome to batch translation test.",
+     "duration_ms": 2000,
+     "char_count": 34,
+     "cps": 17.0,
+     "line_count": 1,
+     "max_line_length": 34,
+     "issues": [
+      "行長=34 (>22)"
+     ]
+    },
+    {
+     "index": 2,
+     "text": "This is the first file.",
+     "duration_ms": 2000,
+     "char_count": 23,
+     "cps": 11.5,
+     "line_count": 1,
+     "max_line_length": 23,
+     "issues": [
+      "行長=23 (>22)"
+     ]
+    },
+    {
+     "index": 3,
+     "text": "It contains three subtitles.",
+     "duration_ms": 2000,
+     "char_count": 28,
+     "cps": 14.0,
+     "line_count": 1,
+     "max_line_length": 28,
+     "issues": [
+      "行長=28 (>22)"
+     ]
+    }
+   ],
+   "avg_cps": 14.17,
+   "max_cps": 17.0,
+   "summary": {
+    "high_cps": 0,
+    "long_line": 3,
+    "too_many_lines": 0,
+    "short_duration": 0
+   }
+  }
+ },
+ {
+  "file": "file2.srt",
+  "items": [
+   {
+    "index": 1,
+    "start": "00:00:00,000",
+    "end": "00:00:02,000",
+    "text": "Batch processing is efficient.",
+    "position": ""
+   },
+   {
+    "index": 2,
+    "start": "00:00:02,000",
+    "end": "00:00:04,000",
+    "text": "Multiple files can be translated simultaneously.",
+    "position": ""
+   },
+   {
+    "index": 3,
+    "start": "00:00:04,000",
+    "end": "00:00:06,000",
+    "text": "This improves productivity.",
+    "position": ""
+   }
+  ],
+  "serialized": "1\n00:00:00,000 --> 00:00:02,000\nBatch processing is efficient.\n\n2\n00:00:02,000 --> 00:00:04,000\nMultiple files can be translated simultaneously.\n\n3\n00:00:04,000 --> 00:00:06,000\nThis improves productivity.\n\n",
+  "extract": {
+   "structure": "[\n  {\n    \"index\": 1,\n    \"start\": \"00:00:00,000\",\n    \"end\": \"00:00:02,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 2,\n    \"start\": \"00:00:02,000\",\n    \"end\": \"00:00:04,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 3,\n    \"start\": \"00:00:04,000\",\n    \"end\": \"00:00:06,000\",\n    \"line_count\": 1\n  }\n]",
+   "text": "Batch processing is efficient.\nMultiple files can be translated simultaneously.\nThis improves productivity.\n"
+  },
+  "assembled": "1\n00:00:00,000 --> 00:00:02,000\nBatch processing is efficient.\n\n2\n00:00:02,000 --> 00:00:04,000\nMultiple files can be translated simultaneously.\n\n3\n00:00:04,000 --> 00:00:06,000\nThis improves productivity.\n\n",
+  "qa": {
+   "is_valid": true,
+   "source_count": 3,
+   "target_count": 3,
+   "errors": [],
+   "warnings": []
+  },
+  "cps_audit": {
+   "total_subtitles": 3,
+   "problematic_count": 3,
+   "entries": [
+    {
+     "index": 1,
+     "text": "Batch processing is efficient.",
+     "duration_ms": 2000,
+     "char_count": 30,
+     "cps": 15.0,
+     "line_count": 1,
+     "max_line_length": 30,
+     "issues": [
+      "行長=30 (>22)"
+     ]
+    },
+    {
+     "index": 2,
+     "text": "Multiple files can be translated simultaneously.",
+     "duration_ms": 2000,
+     "char_count": 48,
+     "cps": 24.0,
+     "line_count": 1,
+     "max_line_length": 48,
+     "issues": [
+      "CPS=24.0 (>17.0)",
+      "行長=48 (>22)"
+     ]
+    },
+    {
+     "index": 3,
+     "text": "This improves productivity.",
+     "duration_ms": 2000,
+     "char_count": 27,
+     "cps": 13.5,
+     "line_count": 1,
+     "max_line_length": 27,
+     "issues": [
+      "行長=27 (>22)"
+     ]
+    }
+   ],
+   "avg_cps": 17.5,
+   "max_cps": 24.0,
+   "summary": {
+    "high_cps": 1,
+    "long_line": 3,
+    "too_many_lines": 0,
+    "short_duration": 0
+   }
+  }
+ },
+ {
+  "file": "file3.srt",
+  "items": [
+   {
+    "index": 1,
+    "start": "00:00:00,000",
+    "end": "00:00:02,000",
+    "text": "Testing batch translation feature.",
+    "position": ""
+   },
+   {
+    "index": 2,
+    "start": "00:00:02,000",
+    "end": "00:00:04,000",
+    "text": "All files should be processed correctly.",
+    "position": ""
+   },
+   {
+    "index": 3,
+    "start": "00:00:04,000",
+    "end": "00:00:06,000",
+    "text": "Quality should remain consistent.",
+    "position": ""
+   }
+  ],
+  "serialized": "1\n00:00:00,000 --> 00:00:02,000\nTesting batch translation feature.\n\n2\n00:00:02,000 --> 00:00:04,000\nAll files should be processed correctly.\n\n3\n00:00:04,000 --> 00:00:06,000\nQuality should remain consistent.\n\n",
+  "extract": {
+   "structure": "[\n  {\n    \"index\": 1,\n    \"start\": \"00:00:00,000\",\n    \"end\": \"00:00:02,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 2,\n    \"start\": \"00:00:02,000\",\n    \"end\": \"00:00:04,000\",\n    \"line_count\": 1\n  },\n  {\n    \"index\": 3,\n    \"start\": \"00:00:04,000\",\n    \"end\": \"00:00:06,000\",\n    \"line_count\": 1\n  }\n]",
+   "text": "Testing batch translation feature.\nAll files should be processed correctly.\nQuality should remain consistent.\n"
+  },
+  "assembled": "1\n00:00:00,000 --> 00:00:02,000\nTesting batch translation feature.\n\n2\n00:00:02,000 --> 00:00:04,000\nAll files should be processed correctly.\n\n3\n00:00:04,000 --> 00:00:06,000\nQuality should remain consistent.\n\n",
+  "qa": {
+   "is_valid": true,
+   "source_count": 3,
+   "target_count": 3,
+   "errors": [],
+   "warnings": []
+  },
+  "cps_audit": {
+   "total_subtitles": 3,
+   "problematic_count": 3,
+   "entries": [
+    {
+     "index": 1,
+     "text": "Testing batch translation feature.",
+     "duration_ms": 2000,
+     "char_count": 34,
+     "cps": 17.0,
+     "line_count": 1,
+     "max_line_length": 34,
+     "issues": [
+      "行長=34 (>22)"
+     ]
+    },
+    {
+     "index": 2,
+     "text": "All files should be processed correctly.",
+     "duration_ms": 2000,
+     "char_count": 40,
+     "cps": 20.0,
+     "line_count": 1,
+     "max_line_length": 40,
+     "issues": [
+      "CPS=20.0 (>17.0)",
+      "行長=40 (>22)"
+     ]
+    },
+    {
+     "index": 3,
+     "text": "Quality should remain consistent.",
+     "duration_ms": 2000,
+     "char_count": 33,
+     "cps": 16.5,
+     "line_count": 1,
+     "max_line_length": 33,
+     "issues": [
+      "行長=33 (>22)"
+     ]
+    }
+   ],
+   "avg_cps": 17.83,
+   "max_cps": 20.0,
+   "summary": {
+    "high_cps": 1,
+    "long_line": 3,
+    "too_many_lines": 0,
+    "short_duration": 0
+   }
+  }
+ }
+]

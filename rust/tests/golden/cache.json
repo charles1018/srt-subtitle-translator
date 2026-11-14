@@ -1,0 +1,58 @@
+{
+ "hashes": [
+  {
+   "context": [],
+   "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  {
+   "context": [
+    "",
+    "  "
+   ],
+   "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  {
+   "context": [
+    "前の文",
+    "こんにちは",
+    "次の文"
+   ],
+   "hash": "89a27136a81631479b97e7e7b49da1f8"
+  },
+  {
+   "context": [
+    " 日本 ",
+    "ab"
+   ],
+   "hash": "52a54aeecdb2a9ccaf786b260267a98a"
+  },
+  {
+   "context": [
+    "[CURRENT_INDEX]1",
+    "a",
+    "b"
+   ],
+   "hash": "c4d22e7ae5f160ac6376dc67b3162798"
+  }
+ ],
+ "schema": [
+  "CREATE INDEX idx_context ON translations(context_hash)",
+  "CREATE INDEX idx_last_used ON translations(last_used)",
+  "CREATE INDEX idx_model ON translations(model_name)",
+  "CREATE INDEX idx_style ON translations(style)",
+  "CREATE INDEX idx_usage ON translations(usage_count)",
+  "CREATE TABLE cache_metadata (\n                key TEXT PRIMARY KEY,\n                value TEXT\n            )",
+  "CREATE TABLE translations (\n                source_text TEXT,\n                target_text TEXT,\n                context_hash TEXT,\n                model_name TEXT,\n                style TEXT DEFAULT 'standard',\n                prompt_version TEXT DEFAULT '',\n                created_at timestamp,\n                usage_count INTEGER,\n                last_used timestamp,\n                PRIMARY KEY (source_text, context_hash, model_name, style, prompt_version)\n            )"
+ ],
+ "rows": [
+  [
+   "こんにちは",
+   "你好",
+   "89a27136a81631479b97e7e7b49da1f8",
+   "model-x",
+   "standard",
+   "abcd1234",
+   1
+  ]
+ ]
+}

@@ -488,10 +488,18 @@ async def cmd_translate(args: argparse.Namespace) -> int:
         model_name = model_service.get_recommended_model("translation", args.provider)
         logger.info(f"使用推薦模型: {model_name}")
 
-    # 設定輸出目錄
+    # 設定輸出目錄（僅限本次執行，不寫回設定檔）；保留目錄結構以本次輸入檔為基準，
+    # 而非 GUI 上次記住的來源資料夾
+    file_service = ServiceFactory.get_file_service()
     if args.output_dir:
-        file_service = ServiceFactory.get_file_service()
-        file_service.set_batch_settings({"output_directory": args.output_dir})
+        output_dir = os.path.abspath(args.output_dir)
+        try:
+            os.makedirs(output_dir, exist_ok=True)
+        except OSError as e:
+            logger.error(f"無法建立輸出目錄 {output_dir}: {e}")
+            return 1
+        file_service.set_runtime_output_directory(output_dir)
+    file_service.use_structure_base_for(files)
 
     display_mode = normalize_display_mode(args.display_mode)
 
@@ -508,6 +516,7 @@ async def cmd_translate(args: argparse.Namespace) -> int:
 
     # 翻譯每個檔案
     success_count = 0
+    partial_count = 0
     fail_count = 0
 
     for i, file_path in enumerate(files, 1):
@@ -531,7 +540,13 @@ async def cmd_translate(args: argparse.Namespace) -> int:
                 use_cache=not args.no_cache,
             )
 
-            if success:
+            counts = translation_service.last_file_counts
+            if success and counts["failed"] > 0:
+                logger.warning(
+                    f"⚠ 部分完成: {result}（成功 {counts['successful']}/{counts['total']}，失敗 {counts['failed']}）"
+                )
+                partial_count += 1
+            elif success:
                 logger.info(f"✓ 完成: {result}")
                 success_count += 1
             else:
@@ -543,12 +558,12 @@ async def cmd_translate(args: argparse.Namespace) -> int:
             fail_count += 1
 
     # 顯示摘要
-    logger.info(f"\n翻譯完成: 成功 {success_count} 個, 失敗 {fail_count} 個")
+    logger.info(f"\n翻譯完成: 成功 {success_count} 個, 部分完成 {partial_count} 個, 失敗 {fail_count} 個")
 
     # 清理資源
     ServiceFactory.reset_services()
 
-    return 0 if fail_count == 0 else 1
+    return 0 if fail_count == 0 and partial_count == 0 else 1
 
 
 async def cmd_models(args: argparse.Namespace) -> int:
