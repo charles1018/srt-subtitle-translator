@@ -16,12 +16,12 @@
 
 - provider/runtime cleanup 已完成
 - 文件、測試與目前 shipped behavior 已對齊到 `llamacpp` / `openai` / `google`
-- 非 GUI 基線目前為 `941 passed / 0 skipped / 0 warnings`
+- 非 GUI 基線目前為 `946 passed / 0 skipped / 0 warnings`
 
 ## 本輪完成重點
 
 - 清除最後一批高訊號 skipped tests
-  - `tests/unit/translation/test_manager.py`
+  - `tests/unit/translation/test_manager.py`（已隨死碼 `translation/manager.py` 刪除）
   - `tests/unit/services/test_factory.py`
 - 更新高流量文件與 API 文件，使其符合目前 CLI / provider / key-loading reality
 - 更新 `.env.example`、`docs/TESTING.md`、`CONTRIBUTING.md`、llama.cpp 相關指南
@@ -29,15 +29,15 @@
 ## 驗證基線
 
 ```bash
-uv run pytest tests/unit/translation/test_manager.py tests/unit/services/test_factory.py -q
+uv run pytest tests/unit/services/test_factory.py -q
 uv run pytest -m "not gui" -q
 uv run ruff check .
 ```
 
 最近確認結果：
 
-- targeted 單元測試：`126 passed`
-- 非 GUI 全量基線：`941 passed / 0 skipped / 0 warnings`
+- targeted 單元測試：`126 passed`（含已刪除的 `test_manager.py`，現僅剩 `test_factory.py`，數字未重算）
+- 非 GUI 全量基線：`946 passed / 0 skipped / 0 warnings`
 - `ruff check .`：通過
 
 ## 封存文件

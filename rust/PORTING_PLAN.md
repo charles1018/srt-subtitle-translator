@@ -109,7 +109,7 @@ Python → Rust 對應：
 - [x] **階段 5a**（2026-09-29）：打包發佈 + GUI 前置 API（決策：先打包 Linux/Windows，GUI 採 Tauri v2＋純 HTML/JS 前端，理由為中文輸入法/CJK 排版/原生拖放）
   - release profile（fat LTO、codegen-units 1、strip）：17.2MB → Linux 12.2MB / Windows 10.4MB；Windows MSVC 以 `rust/.cargo/config.toml` 靜態連結 CRT
   - `.github/workflows/rust-release.yml`：推 `rust-v*` 標籤（須與 Cargo 版本一致）→ 兩平台先跑 `cargo test` → Linux 以 cargo-zigbuild 連結 glibc 2.28、Windows MSVC → 冒煙 → tar.gz / zip＋sha256 → **草稿** Release；`workflow_dispatch` 只產 artifact。`ci.yml` 新增 `rust-windows` 測試 job（checkout 前關閉 autocrlf，golden 會讀 repo 內字幕 fixture）
-  - 驗證：zig＋LTO 建置的 Linux 測試二進位 90 項全過；Windows GNU 交叉編譯（主程式＋測試）通過（本機無 wine，**Windows 上的測試尚未實際執行，待首次推送由 CI 驗證**）；actionlint 通過；打包內容解壓後於空目錄執行正常；打包的執行檔實機（Hy-MT2-7B，`-c 1 --no-cache`）日文 adult＋Netflix、英文雙語輸出與 Python **逐位元相同**
+  - 驗證：zig＋LTO 建置的 Linux 測試二進位 90 項全過；Windows GNU 交叉編譯（主程式＋測試）通過（本機無 wine，**Windows 上的測試尚未實際執行，待首次推送由 CI 驗證**）（後續已由 CI `rust-windows` job 實際執行並通過，2026-11-14 確認）；actionlint 通過；打包內容解壓後於空目錄執行正常；打包的執行檔實機（Hy-MT2-7B，`-c 1 --no-cache`）日文 adult＋Netflix、英文雙語輸出與 Python **逐位元相同**
   - `service::TaskControl`（暫停/繼續/停止）與 `translate_subtitle_file_with_control`：每批送出前檢查暫停（進行中批次會完成）、停止時中止進行中的請求且不寫輸出檔、回傳 `Error::Cancelled`；6 項行為測試，4 項變異（移除批次前檢查／寫檔前檢查／逐句路徑／structure-text 路徑不可中止）皆被抓到
   - 與 Python 的刻意差異：Python 的 stop 只停止回報，背景仍跑完並寫出檔案；Python 的暫停卡在逐句進度回呼內，Rust 先回報完該批進度再於下一批前暫停
   - 使用者須知（Python 既有行為）：`-o` 目錄不存在時默默輸出到輸入檔旁（已寫入 `packaging/README.txt`）
@@ -133,6 +133,11 @@ Python → Rust 對應：
   - GUI 資料目錄（`app::gui_workdir`）：有 `CONFIG_DIR` 或目前目錄有 `config/` → 目前目錄（與 Python 共用）；執行檔旁有 `config/` → 可攜式；否則使用者資料目錄 `srt-subtitle-translator/`。GUI **不切換工作目錄**，改以絕對基準路徑解析快取/術語表/`.env`（`TranslateOptions.base_dir`、`open_cache_in`；CLI 基準為空路徑，行為不變）——實測切換目錄會使 AppImage 的 WebKitNetworkProcess（以相對路徑啟動）找不到而崩潰；AppImage 以 `OWD` 取回使用者原本的目錄
   - 驗證（本機 tauri-cli 2.12）：.deb 6.8MB（Depends: libwebkit2gtk-4.1-0, libgtk-3-0）、AppImage 84MB；AppImage 於空目錄啟動→設定建在 XDG 資料目錄且不寫入目前目錄、於含 config/ 的目錄啟動→沿用該設定；.deb 解出的執行檔同樣正確；Windows 安裝程式只由 CI 驗證
 - [x] **0.1.1**（2026-09-29）：發佈上述選資料夾輸出路徑修正；另修正 Windows 上測試以字串比較路徑分隔符的誤判
+- [x] **0.1.1 之後的未發佈修正**（2026-10-18，尚未進 release，建議 0.1.2 帶入；Python 與 Rust 一起改）
+  - `d2345f2`：CLI 有字幕翻譯失敗時改顯示「部分完成」、摘要加入部分完成數並回傳非零（原 exit code 為 0）
+  - `6401f85`：CLI `-o` 不再疊上來源完整絕對路徑，保留目錄結構的基準改為本次輸入檔共同上層（僅限本次執行）；`-o` 目錄不存在時自動建立，Python 不再把 `-o` 寫回設定檔
+  - `05fb640`：Rust 輸入路徑含 `..` 時保留目錄結構的基準算錯、導致同名輸出覆寫
+- 測試基線（2026-11-14）：Rust 核心約 121 項、GUI crate 0 項（GUI 無自動化測試）；Python 非 GUI 946 passed
 
 ### 下一步（建議順序，動手前先與使用者確認）
 
@@ -140,6 +145,8 @@ Python → Rust 對應：
 2. PR #1 轉為正式並以 **merge commit**（非 squash，發佈標籤指向分支上的 commit）合併進 main；之後每項功能開獨立 PR
 3. 移植 Python 選單尚未移植的功能：快取管理（lib/CLI 已有，最便宜）→ 提示詞匯入/匯出/分析（需補 `analyze_prompt` golden）→ 統計報告 → 字幕格式轉換（可能需真正的 VTT/ASS 讀寫，先盤點）→ 從影片提取字幕（外部依賴，打包風險最高）
 4. Python 既有問題（兩版一起改）：Gemini `429 RESOURCE_EXHAUSTED` 錯誤分類（`client.py` `_classify_error` / Rust `client` 錯誤分類）
+
+> 註記（2026-11-14）：全 repo 審查的整合計畫與 Go/No-Go 見根目錄 `FUTURE_AGENT_REPO_GUIDE.md`（本機檔）。審查者建議 merge 不必等 Windows/IME 實測，但 0.1.2 之後對外推薦前必須完成；執行順序待使用者確認。
 
 ## 6. 開發指令
 

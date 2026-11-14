@@ -10,6 +10,7 @@
 ### Added
 
 - **`GlossaryManager` 專屬單元測試**：新增 `tests/unit/core/test_glossary.py`（20 個測試），補上先前只有間接覆蓋的缺口；重點鎖定 `apply_glossaries` 語言篩選行為（不帶語言參數時一律套用，對應 `-g` 顯式啟用的輸出端字面替換設計）、長來源優先替換、大小寫敏感與匯出/匯入往返
+- **Rust 移植版（`rust/`）**：提供 CLI（`srt-translator-rs`）與 Tauri v2 GUI（`rust/gui/`），位於 `rust-port` 分支，使用獨立版本線（標籤 `rust-v*`，已發佈 `rust-v0.1.0`、`rust-v0.1.1`）；行為以 Python 版為規格並以 golden 測試對齊。詳見 `rust/PORTING_PLAN.md`
 
 ### Changed
 
@@ -18,6 +19,14 @@
 - **新增 pre-commit hook**：`.pre-commit-config.yaml` 於 commit 前依序自動執行 `ruff check --fix` 與 `ruff format`（local hook 經 `uv run`，版本與 `uv.lock` / CI 一致）；`pre-commit` 加入 dev 依賴，clone 後執行 `uv run pre-commit install` 啟用
 - **全 repo 套用 ruff 0.16 格式**：23 個檔案（含 Markdown 內的 Python 程式碼區塊）統一排版，純格式變更、prompt 字串內容不變；CI 新增 `ruff format --check` 防止回退
 - **`chardet` 仍維持 `<6`，但理由更新**：`requests` 2.34 已支援 chardet `<8`，原相容性警告理由不再成立；改因 chardet 7 實測對 Shift-JIS / Big5 / GBK 信心值降至 0.34–0.66（會觸發低信心警告），且 cp1252 誤判為 Windows-1251
+
+
+### Fixed
+
+- **CLI 有字幕翻譯失敗時改回報「部分完成」並回傳非零**：原本部分字幕失敗時摘要仍顯示「成功 1 個，失敗 0 個」且 exit code 為 0；現在顯示「部分完成」、摘要加入部分完成數，並回傳非零（`TranslationService` 新增 `last_file_counts` 供呼叫端判斷）。**影響**：依賴 exit code 為 0 的腳本需調整
+- **CLI `-o` 輸出路徑不再疊上來源完整絕對路徑**：原本保留目錄結構的基準沿用 GUI 記住的 `last_directory`，來源與其不同根時輸出變成 `out/<來源完整路徑>/`；改以本次輸入檔的共同上層目錄為基準。`-o` 僅限本次執行，不再寫入 `file_handler_config.json`；`-o` 目錄不存在時自動建立（原本會默默改存到原檔旁）
+- **選擇資料夾翻譯時，不同子資料夾的同名字幕不再輸出到同一路徑**：「選擇資料夾」不再改寫輸出目錄，改把所選資料夾設為保留目錄結構的基準（譯檔預設留在原檔旁）；選檔/拖放的基準改為所有檔案的共同上層目錄（不同磁碟機時退回第一個檔案的目錄）
+- **GUI「選擇資料夾」對話框起始位置**：優先開在上次選的來源資料夾，不存在時才退回輸出目錄
 
 ### Removed
 
