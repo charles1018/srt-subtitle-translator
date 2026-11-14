@@ -10,7 +10,7 @@
 ### Added
 
 - **`GlossaryManager` 專屬單元測試**：新增 `tests/unit/core/test_glossary.py`（20 個測試），補上先前只有間接覆蓋的缺口；重點鎖定 `apply_glossaries` 語言篩選行為（不帶語言參數時一律套用，對應 `-g` 顯式啟用的輸出端字面替換設計）、長來源優先替換、大小寫敏感與匯出/匯入往返
-- **Rust 移植版（`rust/`）**：提供 CLI（`srt-translator-rs`）與 Tauri v2 GUI（`rust/gui/`），位於 `rust-port` 分支，使用獨立版本線（標籤 `rust-v*`，已發佈 `rust-v0.1.0`、`rust-v0.1.1`）；行為以 Python 版為規格並以 golden 測試對齊。詳見 `rust/PORTING_PLAN.md`
+- **Rust 移植版（`rust/`）**：提供 CLI（`srt-translator-rs`）與 Tauri v2 GUI（`rust/gui/`），已併入 `main`，使用獨立版本線（標籤 `rust-v*`，已發佈 `rust-v0.1.0`、`rust-v0.1.1`、`rust-v0.1.2`）；行為以 Python 版為規格並以 golden 測試對齊。詳見 `rust/PORTING_PLAN.md`
 
 ### Changed
 
